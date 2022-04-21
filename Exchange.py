@@ -918,6 +918,42 @@ if __name__=='__main__':
     trader.update_stock('003', 14.1) 
     #print(trader)
     """
+
+    """
+    #测试Trader类
+    stock = {'001':[12, 12, 0, 2000, 24000, 2000],
+             '002':[21.2, 21.2, 0, 2400, 2400*21.2, 2400]}
+    trader = Robot1('jnx1', 100001, 0, stock)
+    print(trader)
+    trader.strategy(stock)
+
+    
+    order = trader.create_order('001','bid',11.9,1000)
+    #print(trader.orders[order.number])
+    order1 = Order(order.number, order.tid, order.otype, 11.8, 500, order.time, order.stockcode) 
+    #print(trader)
+    trader.done_order(order1)
+    #print(trader)
+    #print(trader.orders[order.number])
+    order = trader.create_order('003','bid',14,1000)
+    #print(trader)
+    trader.done_order(order)
+    #print(trader)
+    order = trader.create_order('002','ask',21,2400)
+    order1 = Order(order.number, order.tid, order.otype, 21, 2000, order.time, order.stockcode)
+    trader.done_order(order1)
+    #print(trader)
+    order2 = Order(order.number, order.tid, order.otype, 21, 400, order.time, order.stockcode)
+    trader.done_order(order2)
+    #print(trader)
+    trader.update_stock('003', 14.1) 
+    #print(trader)
+    """
+
+
+
+
+    
     """
     exchange = Exchange(0,100,'002', 20)
     for i in range(10):
