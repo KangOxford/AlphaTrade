@@ -1,6 +1,7 @@
 import datetime
 import random
 
+
 class Singleton:
     """
     A non-thread-safe helper class to ease implementing singletons.
