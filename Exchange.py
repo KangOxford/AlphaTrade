@@ -4,6 +4,7 @@
 import datetime
 import random
 
+
 # order应该具有流水号，交易者ID，买入或卖出， 价格， 数量 ，时间， 股票代码这些参数
 class Order:
 
