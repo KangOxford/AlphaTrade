@@ -1,5 +1,5 @@
 # Dissertation
-Oxford Dissertation
+Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 
 * Refer to **Debug** branch for the most updated version.
