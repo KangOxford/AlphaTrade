@@ -17,7 +17,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
         * [Simulating and analyzing order book data: The queue-reactive model](https://drive.google.com/file/d/1rJd7TxzcZSoQipzNI9asJ_DwCUhqEVB4/view?usp=sharing)
         * [Deep Reinforcement Learning in Agent Based Financial Market Simulation](https://drive.google.com/file/d/1k8URGCP06wvm2J5Se7m11iq9KAkkqv0B/view?usp=sharing)
         * [Generative models of limit order books](https://drive.google.com/file/d/1_rxMUxZsnmNJG4ytfgnenvw0HTTy-P9D/view?usp=sharing)
-        * **[Important][Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing)**
+        * **[`Important` Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing)**
   * [![Week 2 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-02_05-45-57.png?raw=true)](https://drive.google.com/file/d/1dpWcKu6MEcqurQbWi0OFWNAgvPZWcq0M/view?usp=sharing)
 
 
