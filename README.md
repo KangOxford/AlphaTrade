@@ -7,10 +7,11 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing)
 * [Week_1 Slides Latex](https://www.overleaf.com/8586558697psrwmhswmvyc), **Introduction**, `revised` with meeting records. 
 </br>`2022.April.25, 11:00AM~12:00Noon`, with `Prof. Foerster` and `Prof. Hambly`, at `Information Engineering Department`.
-[![Week 1 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-01_17-09-15.png?raw=true)](https://drive.google.com/file/d/1gqLcS46IOkqJgZbIBukd3N5wH4IrHiGd/view?usp=sharing)
+  * [![Week 1 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-01_17-09-15.png?raw=true)](https://drive.google.com/file/d/1gqLcS46IOkqJgZbIBukd3N5wH4IrHiGd/view?usp=sharing)
 * [Week_2 Slides Latex](https://www.overleaf.com/9548188445gqpcppdvxbrf), **Market Simulation Literature Review**. Here are the [papers](https://drive.google.com/drive/folders/15qHlvRmFMd_oaMlqXxRFkLD64gnkAPcy?usp=sharing) for this review. It has been [`revised`](https://www.overleaf.com/9548188445gqpcppdvxbrf) with meeting records.
 </br>`2022.May.02, 11:30AM~12:00Noon`, with `Prof. Foerster`, `Dr. Christian`, and `Timon`, at `Information Engineering Department`.
 </br>`2022.May.04, 12:00AM~12:45Noon`, with `Prof. Hambly`, and `Huining Yang`, at `Mathematical Institute`.
+</br>`2022.May.04, 04:30PM~05:00PM`, with `Timon`, and `Chris`, at `Mathematical Institute`. [Slides](https://www.overleaf.com/7776181439bdmxqpfsrsgp) for `Introduction of the math part`.
   * `#TODO` this week
       * get familiar with the [GPU version of LOB](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb) this week.
       * read the following paper:
