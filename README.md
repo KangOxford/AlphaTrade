@@ -12,6 +12,9 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 </br>`2022.May.02, 11:30AM~12:00Noon`, with `Prof. Foerster`, `Dr. Christian`, and `Timon`, at `Information Engineering Department`.
 </br>`2022.May.04, 12:00AM~12:45Noon`, with `Prof. Hambly`, and `Huining Yang`, at `Mathematical Institute`.
 </br>~~`2022.May.04, 04:30PM~05:00PM`, with `Timon`, and `Chris`, at `Mathematical Institute`~~ `Rearranged`. [Slides](https://www.overleaf.com/7776181439bdmxqpfsrsgp) for `Introduction of the math part`.
+  * Math Intro to the Optimail Liquidation
+      * [Algorithmic and High-Frequency Trading](https://drive.google.com/file/d/1RROKPIsICQnoc6jPudeSk4wTkgsh777h/view?usp=sharing) 
+      * [Market Microstructure and Algorithmic Trading](https://drive.google.com/file/d/1wBDATDeOrFL10NuHgy7gdA3AYIinx_y7/view?usp=sharing)
   * `#TODO` this week
       * get familiar with the [GPU version of LOB](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb) this week.
       * read the following paper:
