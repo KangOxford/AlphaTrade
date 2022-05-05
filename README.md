@@ -11,7 +11,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * [Week_2 Slides Latex](https://www.overleaf.com/9548188445gqpcppdvxbrf), **Market Simulation Literature Review**. Here are the [papers](https://drive.google.com/drive/folders/15qHlvRmFMd_oaMlqXxRFkLD64gnkAPcy?usp=sharing) for this review. It has been [`revised`](https://www.overleaf.com/9548188445gqpcppdvxbrf) with meeting records.
 </br>`2022.May.02, 11:30AM~12:00Noon`, with `Prof. Foerster`, `Dr. Christian`, and `Timon`, at `Information Engineering Department`.
 </br>`2022.May.04, 12:00AM~12:45Noon`, with `Prof. Hambly`, and `Huining Yang`, at `Mathematical Institute`.
-</br>`2022.May.04, 04:30PM~05:00PM`, with `Timon`, and `Chris`, at `Mathematical Institute`. [Slides](https://www.overleaf.com/7776181439bdmxqpfsrsgp) for `Introduction of the math part`.
+</br>~~`2022.May.04, 04:30PM~05:00PM`, with `Timon`, and `Chris`, at `Mathematical Institute`~~ `Rearranged`. [Slides](https://www.overleaf.com/7776181439bdmxqpfsrsgp) for `Introduction of the math part`.
   * `#TODO` this week
       * get familiar with the [GPU version of LOB](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb) this week.
       * read the following paper:
