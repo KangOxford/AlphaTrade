@@ -9,10 +9,12 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 * Week_3, **Market Simulation Implemention and Benchmark Seeking**. 
   </br>`2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
+  * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process, or `High(2N) dimensional PDEs`, solved by `Fourie Neural Operater`(2020)
   * `#TODO` This week
     * Implement PPO agents in the setting of this paper: [`Setting_2` Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) ,with no need to turn to the GPU version unless coming across the situation we really need the speed. 
     * Find the Benchmark for the `Setting_2`.
-  * `Setting_3` Generative Models
+  * `Setting_3` RL agents with preset reward functions(parameters calibrated from historical data), rather than fixed action policies.
+  * `Setting_4` Generative Models
     * [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing) 
     * [Deep Learning of the Order Flow for Modelling Price Formation](https://drive.google.com/file/d/1ohi-dCJf7uiGsYSh8x6Jkd_eYr0sFr2D/view?usp=sharing)
   * Sheduled meeting : 
@@ -36,8 +38,6 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
         * [Generative models of limit order books](https://drive.google.com/file/d/1_rxMUxZsnmNJG4ytfgnenvw0HTTy-P9D/view?usp=sharing)
         * **[`Important` Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing)**
   * [![Week 2 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-02_05-45-57.png?raw=true)](https://drive.google.com/file/d/1TqkdstZFrnRDiwFLoJaF078_EWiFs2pn/view?usp=sharing)
-
-
 
 * [Week_1 Slides in Latex](https://www.overleaf.com/8586558697psrwmhswmvyc), **Introduction**, `revised` with meeting records. 
   </br>`2022.April.25, 11:00AM~12:00Noon`, with `Prof. Foerster` and `Prof. Hambly`, at `Information Engineering Department`.
