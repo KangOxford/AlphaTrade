@@ -30,7 +30,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `#TODO` This week
     * Implement PPO agents in the setting of this paper: [`Setting_2` Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) ,with no need to turn to the GPU version unless coming across the situation we really need the speed. 
     * Find the Benchmark for the `Setting_2`.
-  * Generative Models
+  * `Setting_3` Generative Models
     * [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing) 
   * Sheduled meeting : 
     * `May.17 04:00P.M, Next Tuesday` with `Prof. Hambly`, and `Huining Yang`.
