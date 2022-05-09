@@ -1,6 +1,6 @@
 # Dissertation
 Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
-* Basic Componoents
+* Basic Components
   * Refer to **Debug** branch for the most updated version.
   * Here is the link to dissertation [overleaf](https://www.overleaf.com/8586558697psrwmhswmvyc)
   * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing)
