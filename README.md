@@ -32,6 +32,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Find the Benchmark for the `Setting_2`.
   * `Setting_3` Generative Models
     * [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing) 
+    * [Deep Learning of the Order Flow for Modelling Price Formation](https://drive.google.com/file/d/1ohi-dCJf7uiGsYSh8x6Jkd_eYr0sFr2D/view?usp=sharing)
   * Sheduled meeting : 
     * `May.17 04:00P.M, Next Tuesday` with `Prof. Hambly`, and `Huining Yang`.
     * Discuss with  `Prof. Foerster` via email after the meeting.
