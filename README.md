@@ -21,7 +21,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * `May.23 11:00A.M.` with  `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian`.
   * Data requirements
     * `Pending` [Lobster](https://lobsterdata.com/) data from Prof. Hambly
-    * `Pending` LOB data from Huining Yang
+    * `Pending` Amazon LOB [data](https://drive.google.com/file/d/13aazGzyp6MqhwZDs--TRR2WQu9uo5TI7/view?usp=sharing) from Huining Yang
 
 ## Week_2
 * [Week_2 Slides in Latex](https://www.overleaf.com/9548188445gqpcppdvxbrf), **Market Simulation Literature Review**. Here are the [papers](https://drive.google.com/drive/folders/15qHlvRmFMd_oaMlqXxRFkLD64gnkAPcy?usp=sharing) for this review. It has been [`revised`](https://www.overleaf.com/9548188445gqpcppdvxbrf) with meeting records.
