@@ -1,9 +1,12 @@
 # Dissertation
 Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
+
+<!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/10jy4Z4Vb_D0miQY21NnhhNnac0cTEwCI/view?usp=sharing) -->
+
 * Basic Components
   * Here is the link to dissertation [overleaf](https://www.overleaf.com/8586558697psrwmhswmvyc)
   * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing), with all the shard files.
-
+  * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
 ## Week_3
 * **Market Simulation Implemention and Benchmark Seeking**. 
   </br>`2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
@@ -21,7 +24,8 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * `May.23 11:00A.M.` with  `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian`.
   * Data requirements
     * `Pending` [Lobster](https://lobsterdata.com/) data from Prof. Hambly
-    * `Pending` Amazon LOB [data](https://drive.google.com/file/d/13aazGzyp6MqhwZDs--TRR2WQu9uo5TI7/view?usp=sharing) from Huining Yang
+    * `Solved ` Amazon LOB [data](https://drive.google.com/file/d/13aazGzyp6MqhwZDs--TRR2WQu9uo5TI7/view?usp=sharing) from Huining Yang
+
 
 ## Week_2
 * [Week_2 Slides in Latex](https://www.overleaf.com/9548188445gqpcppdvxbrf), **Market Simulation Literature Review**. Here are the [papers](https://drive.google.com/drive/folders/15qHlvRmFMd_oaMlqXxRFkLD64gnkAPcy?usp=sharing) for this review. It has been [`revised`](https://www.overleaf.com/9548188445gqpcppdvxbrf) with meeting records.
