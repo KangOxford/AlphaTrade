@@ -1,6 +1,6 @@
 # Dissertation
 
-RL in Limit Order Book, for PhD Research
+Reinforcement learning in optimal execution
 
 Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
