@@ -9,8 +9,10 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
 ## Week_4
 * **Market Simulation Implemention and Benchmark Seeking**. 
-* testing of performance of the rama lob model.
-* data synthesis via gan.
+* Testing of performance of the rama lob model.
+  * Meeting with `Zhangcheng.sun` at `Qube `
+
+* Data synthesis via GAN.
 
 ## Week_3
 * **Market Simulation Implemention and Benchmark Seeking**. 
