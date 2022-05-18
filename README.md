@@ -1,5 +1,8 @@
 # Dissertation
-Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
+
+RL in Limit Order Book, for PhD Research
+
+Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 <!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/10jy4Z4Vb_D0miQY21NnhhNnac0cTEwCI/view?usp=sharing) -->
 
