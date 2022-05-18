@@ -8,14 +8,14 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing), with all the shard files.
   * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
 
-## Week_4
-* **Market Simulation Implemention and Benchmark Seeking**. `May.16~May.22`
+## Week_4 `May.16~May.22`
+* **Market Simulation Implemention and Benchmark Seeking**. 
 * Testing of performance of the rama lob model.
   * Meeting with `Zhangcheng.sun` at `Qube `
 * Data synthesis via GAN.
 
-## Week_3
-* **Market Simulation Implemention and Benchmark Seeking**. `May.09~May.15`
+## Week_3  `May.09~May.15`
+* **Market Simulation Implemention and Benchmark Seeking**.
   </br>`2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process, or `High(2N) dimensional PDEs`, solved by `Fourie Neural Operater`(2020)
   * `#TODO` This week
@@ -36,7 +36,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * [Shared folders from Cornell University](https://drive.google.com/drive/folders/1lxM0_JTE4FrqS-2AJgyqRVxfIyVAqQmm?usp=sharing)
 
 
-## Week_2
+## Week_2  `May.02~May.08`
 * [Week_2 Slides in Latex](https://www.overleaf.com/9548188445gqpcppdvxbrf), **Market Simulation Literature Review**. Here are the [papers](https://drive.google.com/drive/folders/15qHlvRmFMd_oaMlqXxRFkLD64gnkAPcy?usp=sharing) for this review. It has been [`revised`](https://www.overleaf.com/9548188445gqpcppdvxbrf) with meeting records.
   </br>`2022.May.02, 11:30AM~12:00Noon`, with `Prof. Foerster`, `Dr. Christian`, and `Timon`, at `Information Engineering Department`.
   </br>`2022.May.04, 12:00AM~12:45Noon`, with `Prof. Hambly`, and `Huining Yang`, at `Mathematical Institute`.
@@ -54,7 +54,7 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * [![Week 2 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-02_05-45-57.png?raw=true)](https://drive.google.com/file/d/1TqkdstZFrnRDiwFLoJaF078_EWiFs2pn/view?usp=sharing)
 
 
-## Week_1
+## Week_1  `Apr.25~May.01`
 * [Week_1 Slides in Latex](https://www.overleaf.com/8586558697psrwmhswmvyc), **Introduction**, `revised` with meeting records. 
   </br>`2022.April.25, 11:00AM~12:00Noon`, with `Prof. Foerster` and `Prof. Hambly`, at `Information Engineering Department`.
   * [![Week 1 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-01_17-09-15.png?raw=true)](https://drive.google.com/file/d/1gqLcS46IOkqJgZbIBukd3N5wH4IrHiGd/view?usp=sharing)
