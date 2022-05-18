@@ -7,15 +7,15 @@ Oxford Dissertation, supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Here is the link to dissertation [overleaf](https://www.overleaf.com/8586558697psrwmhswmvyc)
   * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing), with all the shard files.
   * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
+
 ## Week_4
-* **Market Simulation Implemention and Benchmark Seeking**. 
+* **Market Simulation Implemention and Benchmark Seeking**. `May.16~May.22`
 * Testing of performance of the rama lob model.
   * Meeting with `Zhangcheng.sun` at `Qube `
-
 * Data synthesis via GAN.
 
 ## Week_3
-* **Market Simulation Implemention and Benchmark Seeking**. 
+* **Market Simulation Implemention and Benchmark Seeking**. `May.09~May.15`
   </br>`2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process, or `High(2N) dimensional PDEs`, solved by `Fourie Neural Operater`(2020)
   * `#TODO` This week
