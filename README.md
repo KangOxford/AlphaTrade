@@ -13,9 +13,14 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 ## `Week.04 May.16~May.22`
 * **Market Simulation Implemention and Benchmark Seeking**. 
+ </br>`2022.May.18, 04:00PM~04:45PM`, with `Prof. Hambly`, and `Huining Yang` at `Mathematical Institute`.
 * Testing of performance of the rama lob model.
   * Meeting with `Zhangcheng.sun` at `Qube `
 * Data synthesis via GAN.
+* Optimal Liquidation
+  * Use the Huining's LQR model as a benchmark.
+  * `Dynamic` and `Static` LOB
+    * the difference is that the Dynamic one can have the price impact 
 
 ## `Week.03 May.09~May.15`
 * **Market Simulation Implemention and Benchmark Seeking**.
