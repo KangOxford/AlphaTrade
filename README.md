@@ -24,6 +24,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Imitation learning via AIRL and GAIL 
     * `AIRL` [Learning Robust Rewards with Adverserial Inverse Reinforcement Learning](https://drive.google.com/file/d/195Km4VxW9AVKWitmCcSlbuXurbsIyeL1/view?usp=sharing)
     * [Adversarial recovery of agent rewards from latent spaces of the limit order book](https://drive.google.com/file/d/11oXnRRrwfighxG5ifVE6ENPJB43_TYmK/view?usp=sharing)
+      * Inverse RL, reward recovery may conduct to different sets of rewards.
+      * We should instead, recover the policy from the expert trajectories.
 
 ## `Week.03 May.09~May.15`
 * **Market Simulation Implemention and Benchmark Seeking**.
