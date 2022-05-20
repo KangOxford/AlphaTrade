@@ -26,6 +26,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * [Adversarial recovery of agent rewards from latent spaces of the limit order book](https://drive.google.com/file/d/11oXnRRrwfighxG5ifVE6ENPJB43_TYmK/view?usp=sharing)
       * Inverse RL, reward recovery may conduct to different sets of rewards.
       * We should instead, recover the policy from the expert trajectories.
+* [A stochastic model for order book dynamics](https://drive.google.com/file/d/125ZhxZKB-42gNbCmUfjtWgKntsAUUwin/view?usp=sharing) `Implemented`
 
 ## `Week.03 May.09~May.15`
 * **Market Simulation Implemention and Benchmark Seeking**.
