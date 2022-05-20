@@ -19,7 +19,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Data synthesis via GAN.
 * Optimal Liquidation
   * Use the Huining's LQR model as a benchmark.
-    * It works with unknown parameters and outperfom the AC model.
+    * It can work with unknown parameters and outperfoms the AC model.
   * `Dynamic` and `Static` LOB
     * the difference is that the Dynamic one can have the price impact 
   * Imitation learning via AIRL and GAIL 
