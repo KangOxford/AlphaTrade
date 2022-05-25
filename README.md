@@ -10,6 +10,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Here is the link to dissertation [overleaf](https://www.overleaf.com/8586558697psrwmhswmvyc)
   * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing), with all the shard files.
   * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
+  * 
+## `Week.05 May.23~May.29`
+* **Market Simulation Implemention**. 
 
 ## `Week.04 May.16~May.22`
 * **Market Simulation Implemention and Benchmark Seeking**. 
@@ -47,7 +50,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Data requirements
     * `Pending` [Lobster](https://lobsterdata.com/) data from Prof. Hambly
     * `Solved ` Amazon LOB [data](https://drive.google.com/file/d/13aazGzyp6MqhwZDs--TRR2WQu9uo5TI7/view?usp=sharing) from Huining Yang
-* `New Criterion Found` : **KS-distance** in [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1UYb4mNsqTcfmy25oxcqRqy8qoAXbSuOr/view?usp=sharing)
+* `New Criterion Found` : **KS-distance or Wasserstein Distance** in [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1UYb4mNsqTcfmy25oxcqRqy8qoAXbSuOr/view?usp=sharing)
   * [Shared folders from Cornell University](https://drive.google.com/drive/folders/1lxM0_JTE4FrqS-2AJgyqRVxfIyVAqQmm?usp=sharing)
 
 
