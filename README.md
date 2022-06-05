@@ -30,7 +30,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Techniques in GAN training
   
   * Ensemble, to figure out the problem of low diversity
-  * Different GAN architechtures for different tasks with specific purpose
+  * Different GAN architechtures for distinct tasks with specific purpose
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
     * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
     * Domain-adversarial training for traing and testing data are in different doimains
