@@ -28,7 +28,6 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     <img width="583" alt="image" src="https://user-images.githubusercontent.com/37290277/172031871-abafdad8-e4d2-4a37-bafc-8853427e1ed2.png">
   * Wasserstein distance
 * Techniques in GAN training
-  
   * Ensemble, to figure out the problem of low diversity
   * Different GAN architechtures for distinct tasks with specific purpose
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
@@ -37,7 +36,6 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Feature disentangle and Cycle-GAN(same thing: dual/disco GAN) for style transfer
     * Coupled GAN for parameter sharing
  * Typical issues to be aware of while designing the GAN architecture: `Model Collapse`
-
 * Time Series Data Synthesis
   * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
   * `Time GAN`, GAN applied in time series genetation
