@@ -29,14 +29,14 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Wasserstein distance
 * Techniques in GAN training
   * Ensemble, to figure out the problem of low diversity
-  * Typical issues to be aware of while designing the GAN architecture: `Model Collapse`
+  * Typical issues to be aware of while designing the GAN architecture: `Model Collapse`, `Missing Mode`, `Memory GAN`
   * Evalutation: `likelihood`(kernal density estimation), evaluated by other networks(eg. Inception score), FID score. 
   * Different GAN architechtures for distinct tasks with specific purpose
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
     * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
     * Domain-adversarial training for traing and testing data are in different doimains
     * Feature disentangle, UNIT(based on Coupled GAN) and Cycle-GAN(same thing: dual/disco GAN) for style transfer
-* Are GANs creared equal? (GANs distinguish litte. GAN outperforms VAE to a great extent.)
+* Are GANs creared equal? (GANs have not so big difference. GAN outperforms VAE to a great extent.)
   </br> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035714-8f4a36e5-59c4-4046-85bd-347c5f3f2cf7.png"> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035780-7d7b9afe-4584-468f-88cc-e290497d2871.png">
   </br> <img width="700" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
 * Time Series Data Synthesis
