@@ -17,6 +17,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.05 May.23~May.29`
 * **Market Simulation Implemention**. 
 </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
+</br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Critic for $P_{data}$ and $P_{G}$
   * Fenchel Conjugate, choose different $f-divergence$
   * Wasserstein distance
