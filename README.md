@@ -13,7 +13,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 ## `Week.06 May.30~Jun.05`
 * **RL Strategies**. 
-
+* `Time GAN`, GAN applied in time series genetation 
+<!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
+ 
 ## `Week.05 May.23~May.29`
 * **Market Simulation Implemention**. 
 </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
