@@ -13,7 +13,11 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * 
 ## `Week.05 May.23~May.29`
 * **Market Simulation Implemention**. 
-
+* Critic for $P_{data}$ and $P_{G}$
+  * Fenchel Conjugate, choose different $f-divergence$
+  * Wasserstein distance
+* Techniques in GAN training
+  * PitchGAN and StackGAN 
 ## `Week.04 May.16~May.22`
 * **Market Simulation Implemention and Benchmark Seeking**. 
  </br>`2022.May.18, 04:00PM~04:45PM`, with `Prof. Hambly`, and `Huining Yang` at `Mathematical Institute`.
