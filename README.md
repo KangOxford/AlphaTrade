@@ -28,7 +28,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     <img width="583" alt="image" src="https://user-images.githubusercontent.com/37290277/172031871-abafdad8-e4d2-4a37-bafc-8853427e1ed2.png">
   * Wasserstein distance
 * Techniques in GAN training
-  * Ensemble, to figure out the problem of low diversity
+  * Ensemble, to figure out the problem of low diversity, `Standard ensemble`, `Self-ensemble` and `Cascade of GAN`
   * Typical issues to be aware of while designing the GAN architecture: `Model Collapse`, `Missing Mode`, `Memory GAN`
   * Evalutation: `likelihood`(kernal density estimation), evaluated by other networks(eg. Inception score), FID score. 
   * Different GAN architechtures for distinct tasks with specific purpose
