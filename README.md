@@ -28,6 +28,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Wasserstein distance
 * Techniques in GAN training
   * Pitch GAN and Stack GAN 
+  * Ensemble, to figure out the problem of low diversity
 * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
 * `Time GAN`, GAN applied in time series genetation 
 <!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
