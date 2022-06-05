@@ -10,14 +10,19 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Here is the link to dissertation [overleaf](https://www.overleaf.com/8586558697psrwmhswmvyc)
   * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing), with all the shard files.
   * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
-  * 
+
+## `Week.06 May.30~Jun.05`
+* **RL Strategies**. 
+
 ## `Week.05 May.23~May.29`
 * **Market Simulation Implemention**. 
+</br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
 * Critic for $P_{data}$ and $P_{G}$
   * Fenchel Conjugate, choose different $f-divergence$
   * Wasserstein distance
 * Techniques in GAN training
   * PitchGAN and StackGAN 
+
 ## `Week.04 May.16~May.22`
 * **Market Simulation Implemention and Benchmark Seeking**. 
  </br>`2022.May.18, 04:00PM~04:45PM`, with `Prof. Hambly`, and `Huining Yang` at `Mathematical Institute`.
