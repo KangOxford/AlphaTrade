@@ -20,8 +20,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.05 May.23~May.29`
 
 * **Market Simulation Implemention**.
-  `</br>2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
-  `</br>2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
+  </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
+  </br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Critic for $P_{data}$ and $P_{G}$ in GAN
   * $f$-GAN, with Fenchel Conjugate, choose different $f-divergence$
     <img width="666" alt="image" src="https://user-images.githubusercontent.com/37290277/172031861-cd6b8278-f801-412c-a163-b0e7c8d526c1.png">
@@ -40,9 +40,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.04 May.16~May.22`
 
 * **Market Simulation Implemention and Benchmark Seeking**.
-  `</br>2022.May.18, 04:00PM~04:45PM`, with `Prof. Hambly`, and `Huining Yang` at `Mathematical Institute`.
+  </br>`2022.May.18, 04:00PM~04:45PM`, with `Prof. Hambly`, and `Huining Yang` at `Mathematical Institute`.
 * Testing of performance of the rama lob model.
-  * Meeting with `Zhangcheng.sun` at `Qube `
+  * Meeting with `Zhangcheng.sun` at `Qube`
 * Data synthesis via GAN.
 * Optimal Liquidation
   * Use the Huining's LQR model as a benchmark.
@@ -59,7 +59,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.03 May.09~May.15`
 
 * **Market Simulation Implemention and Benchmark Seeking**.
-  `</br>2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
+  </br>`2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process, or `High(2N) dimensional PDEs`, solved by `Fourie Neural Operater`(2020). Implemention refer to this [repository](https://github.com/KangOxford/Fourier-Transformer).
   * `#TODO` This week
     * Implement PPO agents in the setting of this paper: [`Setting_2` Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) ,with no need to turn to the GPU version unless coming across the situation we really need the speed.
@@ -81,9 +81,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.02 May.02~May.08`
 
 * [Week_2 Slides in Latex](https://www.overleaf.com/9548188445gqpcppdvxbrf), **Market Simulation Literature Review**. Here are the [papers](https://drive.google.com/drive/folders/15qHlvRmFMd_oaMlqXxRFkLD64gnkAPcy?usp=sharing) for this review. It has been [`revised`](https://www.overleaf.com/9548188445gqpcppdvxbrf) with meeting records.
-  `</br>2022.May.02, 11:30AM~12:00Noon`, with `Prof. Foerster`, `Dr. Christian`, and `Timon`, at `Information Engineering Department`.
-  `</br>2022.May.04, 12:00AM~12:45Noon`, with `Prof. Hambly`, and `Huining Yang`, at `Mathematical Institute`.
-  `</br>`~~`2022.May.04, 04:30PM~05:00PM`, with `Timon`, and `Chris`, at `Mathematical Institute`~~ `Rearranged`. [Slides](https://www.overleaf.com/7776181439bdmxqpfsrsgp) for `Introduction of the math part`.
+  </br>`2022.May.02, 11:30AM~12:00Noon`, with `Prof. Foerster`, `Dr. Christian`, and `Timon`, at `Information Engineering Department`.
+  </br>`2022.May.04, 12:00AM~12:45Noon`, with `Prof. Hambly`, and `Huining Yang`, at `Mathematical Institute`.
+  </br>`~~`2022.May.04, 04:30PM~05:00PM`, with `Timon`, and `Chris`, at `Mathematical Institute`~~ `Rearranged`. [Slides](https://www.overleaf.com/7776181439bdmxqpfsrsgp) for `Introduction of the math part`.
   * Math Intro to the Optimail Liquidation
     * [Algorithmic and High-Frequency Trading](https://drive.google.com/file/d/1RROKPIsICQnoc6jPudeSk4wTkgsh777h/view?usp=sharing)
     * [Market Microstructure and Algorithmic Trading](https://drive.google.com/file/d/1wBDATDeOrFL10NuHgy7gdA3AYIinx_y7/view?usp=sharing)
@@ -99,5 +99,5 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.01 Apr.25~May.01`
 
 * [Week_1 Slides in Latex](https://www.overleaf.com/8586558697psrwmhswmvyc), **Introduction**, `revised` with meeting records.
-  `</br>2022.April.25, 11:00AM~12:00Noon`, with `Prof. Foerster` and `Prof. Hambly`, at `Information Engineering Department`.
+  </br>`2022.April.25, 11:00AM~12:00Noon`, with `Prof. Foerster` and `Prof. Hambly`, at `Information Engineering Department`.
   * [![Week 1 Slides](https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-01_17-09-15.png?raw=true)](https://drive.google.com/file/d/1gqLcS46IOkqJgZbIBukd3N5wH4IrHiGd/view?usp=sharing)
