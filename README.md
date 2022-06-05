@@ -19,7 +19,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 ## `Week.05 May.23~May.29`
 
-* **Market Simulation Implemention**.
+* **Market Simulation Implemention Based on GAN**.
   </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
   </br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Critic for $P_{data}$ and $P_{G}$ in GAN
@@ -33,9 +33,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
     * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
     * Domain-adversarial training for traing and testing data are in different doimains
-    * Feature disentangle and Cycle-GAN(same thing: dual/disco GAN) for style transfer
-    * Coupled GAN for parameter sharing
+    * Feature disentangle, UNIT(based on Coupled GAN) and Cycle-GAN(same thing: dual/disco GAN) for style transfer
   * Typical issues to be aware of while designing the GAN architecture: `Model Collapse`
+  * Evalutation: `likelihood`(kernal density estimation), evaluated by other networks(eg. Inception score), FIT score. 
 * Time Series Data Synthesis
   * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
   * `Time GAN`, GAN applied in time series genetation
