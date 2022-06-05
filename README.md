@@ -15,8 +15,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * **RL Strategies**. 
 * Policy gradient methods, NPG, TRPO and PPO
   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen.
-* `Time GAN`, GAN applied in time series genetation 
-<!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
+
  
 ## `Week.05 May.23~May.29`
 * **Market Simulation Implemention**. 
@@ -29,6 +28,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Wasserstein distance
 * Techniques in GAN training
   * Pitch GAN and Stack GAN 
+* `Time GAN`, GAN applied in time series genetation 
+<!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
 
 ## `Week.04 May.16~May.22`
 * **Market Simulation Implemention and Benchmark Seeking**. 
