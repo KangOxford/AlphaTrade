@@ -13,6 +13,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 ## `Week.06 May.30~Jun.05`
 * **RL Strategies**. 
+* Policy gradient methods, NPG, TRPO and PPO
+  * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen.
 * `Time GAN`, GAN applied in time series genetation 
 <!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
  
