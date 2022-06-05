@@ -28,10 +28,15 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     <img width="583" alt="image" src="https://user-images.githubusercontent.com/37290277/172031871-abafdad8-e4d2-4a37-bafc-8853427e1ed2.png">
   * Wasserstein distance
 * Techniques in GAN training
-  * Pitch GAN and Stack GAN
+  
   * Ensemble, to figure out the problem of low diversity
-  * Feature Extraction
-    * InfoGAN
+  * Different GAN architechtures for different tasks with specific purpose
+    * `Pitch GAN` and `Stack GAN` for large single_data_size generation
+    * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
+    * Domain-adversarial training for traing and testing data are in different doimains
+    * Feature disentangle and Cycle-GAN(same thing: dual/disco GAN) for style transfer
+    * Coupled GAN for parameter sharing
+* Typical Issues: `Model Collapse`
 * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
 * `Time GAN`, GAN applied in time series genetation
 
