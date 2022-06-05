@@ -36,9 +36,11 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Domain-adversarial training for traing and testing data are in different doimains
     * Feature disentangle and Cycle-GAN(same thing: dual/disco GAN) for style transfer
     * Coupled GAN for parameter sharing
-* Typical Issues: `Model Collapse`
-* Conditional GAN, keeping the historical part of the generated data the same with the historical data.
-* `Time GAN`, GAN applied in time series genetation
+ * typical issues to be aware of while designing the GAN architecture: `Model Collapse`
+
+* Time Series Data Synthesis
+  * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
+  * `Time GAN`, GAN applied in time series genetation
 
 <!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
 
