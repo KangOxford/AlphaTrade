@@ -37,8 +37,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Domain-adversarial training for traing and testing data are in different doimains
     * Feature disentangle, UNIT(based on Coupled GAN) and Cycle-GAN(same thing: dual/disco GAN) for style transfer
 * Are GANs creared equal?
-    </br> <img height="100" alt="image" src="https://user-images.githubusercontent.com/37290277/172035714-8f4a36e5-59c4-4046-85bd-347c5f3f2cf7.png"> <img height="100" alt="image" src="https://user-images.githubusercontent.com/37290277/172035780-7d7b9afe-4584-468f-88cc-e290497d2871.png">
-    </br> <img width="600" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
+    </br> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035714-8f4a36e5-59c4-4046-85bd-347c5f3f2cf7.png"> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035780-7d7b9afe-4584-468f-88cc-e290497d2871.png">
+    </br> <img width="700" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
 * Time Series Data Synthesis
   * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
   * `Time GAN`, GAN applied in time series genetation
