@@ -18,7 +18,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * **Market Simulation Implemention**. 
 </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
 </br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
-* Critic for $P_{data}$ and $P_{G}$
+* Critic for $P_{data}$ and $P_{G}$ in GAN
   * $f$-GAN, with Fenchel Conjugate, choose different $f-divergence$
     <img width="666" alt="image" src="https://user-images.githubusercontent.com/37290277/172031861-cd6b8278-f801-412c-a163-b0e7c8d526c1.png">
     <img width="583" alt="image" src="https://user-images.githubusercontent.com/37290277/172031871-abafdad8-e4d2-4a37-bafc-8853427e1ed2.png">
