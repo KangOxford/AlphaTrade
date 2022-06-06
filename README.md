@@ -30,7 +30,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Techniques in GAN training
   * Ensemble, to figure out the problem of low diversity, `Standard ensemble`, `Self-ensemble` and `Cascade of GAN`
   * Typical issues to be aware of while designing the GAN architecture: `Model Collapse`, `Missing Mode`, `Memory GAN`
-  * Evalutation: `likelihood`(kernal density estimation), evaluated by other networks(eg. Inception score), FID score. 
+  * Evalutation: `likelihood`(kernal density estimation), evaluated by other networks, eg. Inception score(IS)，Fréchet Inception Distance(FID). 
   * Different GAN architechtures for distinct tasks with specific purpose
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
     * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
@@ -39,11 +39,13 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Are GANs creared equal? (GANs have not so big difference. GAN outperforms VAE to a great extent.)
   </br> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035714-8f4a36e5-59c4-4046-85bd-347c5f3f2cf7.png"> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035780-7d7b9afe-4584-468f-88cc-e290497d2871.png">
   </br> <img width="700" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
-* Time Series Data Synthesis
+* `2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`.
+  * `LOB model, with the focus of forecasting` (Time Series and DL)
   * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
   * `Time GAN`, GAN applied in time series genetation
+  * `Quant GAN`. Time Series Data Synthesis
 
-<!--  </br>`2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`. -->
+
 
 ## `Week.04 May.16~May.22`
 
