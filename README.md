@@ -1,15 +1,15 @@
 # Dissertation
 
-Reinforcement learning in optimal execution
+**`Reinforcement learning in optimal execution`**
 
 Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 <!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/10jy4Z4Vb_D0miQY21NnhhNnac0cTEwCI/view?usp=sharing) -->
 
 * Basic Components
-  * Here is the link to dissertation [overleaf](https://www.overleaf.com/8586558697psrwmhswmvyc)
-  * Here is the link to the [google drive folder](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing), with all the shard files.
-  * Here is the link to run it on the [Colab-Vscode](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing)
+  * [`Dissertation`](https://www.overleaf.com/read/mswtggqkvywb) Overleaf
+  * [`Documents`](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Google drive folder, with all the shard files.
+  * [`Experiments`](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing) &nbsp; To run it on the [Colab-Vscode]
 
 ## `Week.06 May.30~Jun.05`
 
