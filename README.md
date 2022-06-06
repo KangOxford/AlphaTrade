@@ -45,14 +45,14 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `Time GAN`, GAN applied in time series genetation
   * `Quant GAN`. Time Series Data Synthesis
 * Implemention of the common GANs
-  * [SimpleGAN]()
-  * [DCGAN]()
-  * [WGAN]()
-  * [WGAN-GP]()
-  * [CycleGAN]()
-  * [StyleGAN]()
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN]()
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [DCGAN]()
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN]()
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN-GP]()
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [CycleGAN]()
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [StyleGAN]()
 
-
+<!-- &nbsp; -->
 
 ## `Week.04 May.16~May.22`
 
