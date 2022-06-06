@@ -34,7 +34,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Different GAN architechtures for distinct tasks with specific purpose
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
     * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
-    * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
+    * Conditional GAN (on LOB), keeping the historical part of the generated data based on the historical data.
     * Domain-adversarial training for traing and testing data are in different doimains
     * Feature disentangle, UNIT(based on Coupled GAN) and Cycle-GAN(same thing: dual/disco GAN) for style transfer
 * Are GANs creared equal? (GANs have not so big difference. GAN outperforms VAE to a great extent.)
