@@ -44,7 +44,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `LOB model, with the focus of forecasting` (Time Series and DL)
   * `Time GAN`, GAN applied in time series genetation
   * `Quant GAN`. Time Series Data Synthesis
-* Implemention of the common GANs from scratch
+* `Implemention` of the common GANs `from scratch`
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/SimpleGAN)
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [DCGAN]()
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN]()
