@@ -44,6 +44,13 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
   * `Time GAN`, GAN applied in time series genetation
   * `Quant GAN`. Time Series Data Synthesis
+* Implemention of the common GANs
+  * [SimpleGAN]()
+  * [DCGAN]()
+  * [WGAN]()
+  * [WGAN-GP]()
+  * [CycleGAN]()
+  * [StyleGAN]()
 
 
 
