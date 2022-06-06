@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.datasets as datasets
-from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 class Discriminator(nn.Module):
@@ -21,4 +21,4 @@ class Discriminator(nn.Module):
 class Generator(nn.Module):
     def __init__(self, latent_dim, generated_dim):
         super.__init__()
-        
+
