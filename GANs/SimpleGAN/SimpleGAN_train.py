@@ -85,6 +85,3 @@ for epoch in range(num_epochs):
             writer_gene.add_image("Fake Images", img_generated, global_step= step) 
             writer_gene.add_image("Real Images", img_realdata, global_step= step)
             step += 1 
-
-
-
