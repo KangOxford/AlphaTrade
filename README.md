@@ -34,6 +34,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Different GAN architechtures for distinct tasks with specific purpose
     * `Pitch GAN` and `Stack GAN` for large single_data_size generation
     * `InfoGAN`, `VAE-GAN`, `BiGAN` for Feature extraction
+    * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
     * Domain-adversarial training for traing and testing data are in different doimains
     * Feature disentangle, UNIT(based on Coupled GAN) and Cycle-GAN(same thing: dual/disco GAN) for style transfer
 * Are GANs creared equal? (GANs have not so big difference. GAN outperforms VAE to a great extent.)
@@ -41,7 +42,6 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   </br> <img width="700" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
 * `2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`.
   * `LOB model, with the focus of forecasting` (Time Series and DL)
-  * Conditional GAN, keeping the historical part of the generated data the same with the historical data.
   * `Time GAN`, GAN applied in time series genetation
   * `Quant GAN`. Time Series Data Synthesis
 * Implemention of the common GANs
