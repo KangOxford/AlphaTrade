@@ -70,6 +70,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 * **Market Simulation Implemention and Benchmark Seeking**.
   </br>`2022.May.09, 11:00AM~12:15Noon`, with `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian` at `Mathematical Institute`.
+  </br>`May.17 04:00P.M, Next Tuesday` with `Prof. Hambly`, and `Huining Yang`
+  </br>`May.23 11:00A.M.` with  `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian`.
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process, or `High(2N) dimensional PDEs`, solved by `Fourie Neural Operater`(2020). Implemention refer to this [repository](https://github.com/KangOxford/Fourier-Transformer).
   * `#TODO` This week
     * Implement PPO agents in the setting of this paper: [`Setting_2` Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) ,with no need to turn to the GPU version unless coming across the situation we really need the speed.
@@ -78,10 +80,6 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `Setting_4` Generative Models
     * [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing)
     * [Deep Learning of the Order Flow for Modelling Price Formation](https://drive.google.com/file/d/1ohi-dCJf7uiGsYSh8x6Jkd_eYr0sFr2D/view?usp=sharing)
-  * Sheduled meeting :
-    * `May.17 04:00P.M, Next Tuesday` with `Prof. Hambly`, and `Huining Yang`.
-    * Discuss with  `Prof. Foerster` via email after the meeting.
-    * `May.23 11:00A.M.` with  `Prof. Hambly`, `Prof. Foerster`, `Huining Yang`, and `Dr. Christian`.
   * Data requirements
     * `Pending` [Lobster](https://lobsterdata.com/) data from Prof. Hambly
     * `Solved ` Amazon LOB [data](https://drive.google.com/file/d/13aazGzyp6MqhwZDs--TRR2WQu9uo5TI7/view?usp=sharing) from Huining Yang
