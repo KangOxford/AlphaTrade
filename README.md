@@ -27,7 +27,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 6. We then have to be sure that we have enough real data so that we can <ins>produce enough samples and the agent doesn't just memorise these trajectories.</ins>
 7. If you take out a big chunk, then people are likely to throw things in because they think they're gonna get executed.
 8. <ins>There's no approximations at all.</ins>
-9. For an agent: observation $\tao$ is the 10 minites order book history. And also dollar: how much you want to sell.
+9. For an agent: observation $\tau$ is the 10 minites order book history. And also dollar: how much you want to sell.
 10. The reward is how much money we get for this.
 11. The action space is in the next 10 minutes, at any time point we can take an action. From execution, we have determined a period to excute.
 
