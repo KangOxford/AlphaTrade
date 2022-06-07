@@ -25,8 +25,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   </br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Difference between $P_{data}$ and $P_{G}$ ($Generated$) in GAN
   * $f$-GAN, with Fenchel Conjugate, choose different $f-divergence$
-    <img width="666" alt="image" src="https://user-images.githubusercontent.com/37290277/172031861-cd6b8278-f801-412c-a163-b0e7c8d526c1.png">
-    <img width="583" alt="image" src="https://user-images.githubusercontent.com/37290277/172031871-abafdad8-e4d2-4a37-bafc-8853427e1ed2.png">
+    <img width="600" alt="image" src="https://user-images.githubusercontent.com/37290277/172031861-cd6b8278-f801-412c-a163-b0e7c8d526c1.png">
+    <img width="600" alt="image" src="https://user-images.githubusercontent.com/37290277/172031871-abafdad8-e4d2-4a37-bafc-8853427e1ed2.png">
   * Wasserstein distance
 * Techniques in GAN training
   * Ensemble, to figure out the problem of low diversity, `Standard ensemble`, `Self-ensemble` and `Cascade of GAN`
@@ -39,8 +39,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Domain-adversarial training for traing and testing data are in different doimains
     * Feature disentangle, UNIT(based on Coupled GAN) and Cycle-GAN(same thing: dual/disco GAN) for style transfer
 * Are GANs creared equal? (GANs have not so big difference. GAN outperforms VAE to a great extent.)
-  </br> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035714-8f4a36e5-59c4-4046-85bd-347c5f3f2cf7.png"> <img height="120" alt="image" src="https://user-images.githubusercontent.com/37290277/172035780-7d7b9afe-4584-468f-88cc-e290497d2871.png">
-  </br> <img width="700" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
+  </br> <img height="135" alt="image" src="https://user-images.githubusercontent.com/37290277/172035714-8f4a36e5-59c4-4046-85bd-347c5f3f2cf7.png"> <img height="135" alt="image" src="https://user-images.githubusercontent.com/37290277/172035780-7d7b9afe-4584-468f-88cc-e290497d2871.png">
+  </br> <img width="800" alt="image" src="https://user-images.githubusercontent.com/37290277/172035651-45d83015-249c-4952-97b9-c408a8f5e11b.png"> 
 * `2022.Jun.05, 06:00PM~07:30PM`, with `Chao Zhang` from `Department of Statistics`.
   * `LOB model, with the focus of forecasting` (Time Series and DL)
   * `Time GAN`, GAN applied in time series genetation
