@@ -20,7 +20,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * It isn't an interesting way to generate the environment, basically, it's basically the environment actually consists of real data.
   * Some heuristic for how the real data changes based on the interactions of the agent. So it's basically saying, and we don't need to make it because that was a linearity assumption. 
   * We don't really have to go and generate all the data. We just want to generate a difference between what happened in it.
-  * However, if we interact in the market, there's going to be a tiny Delta, we are just going to try and like have a model for the delta between the data based upon the agents actions, as a result, and you've done this in your in your paper, right, because you've said there is a linear there is a delta is delta that is linear. 
+  * However, if we interact in the market, there's going to be a tiny $\delta$, we are just going to try and like have a model for the delta between the data based upon the agents actions, as a result, and you've done this in your in your paper, right, because you've said there is a linear there is a delta is delta that is linear. 
   * We only have to have a model for the perturbation of the data. And obviously, that means that the overall `approximation error, because I have to first order in correct`. And if I'm like one of many people playing in the market, hopefully the market isn't gonna look completely different based on my actions.
   * We then have to be sure that we have enough real data so that we can `produce enough samples` and the agent doesn't just memorise these trajectories.
   * If you take out a big chunk, then people are likely to throw things in because they think they're gonna get executed
