@@ -27,7 +27,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
 </br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Policy gradient methods, NPG, TRPO and PPO
-* Fisher matrix can define a norm as it is a positive definite matrix. Under this norm, the steepest descent direction is NPG and NPG is invariant to the coordinate system we have chosen. Another advantage of NPG is insensitive to the parametrized family of policy we have chosen and thus the training is more stable. <!--   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen. -->
+  * Fisher matrix can define a norm as it is a positive definite matrix. Under this norm, the steepest descent direction is NPG and NPG is invariant to the coordinate system we have chosen. Another advantage of NPG is insensitive to the parametrized family of policy we have chosen and thus the training is more stable. <!--   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen. -->
+* Model free RL for the experiment.
 
 **Meeting Record** 
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
@@ -42,6 +43,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 9. For an agent: observation $\tau$ is the 10 minites order book history. And also dollar: how much you want to sell.
 10. The reward is how much money we get for this.
 11. The action space is in the next 10 minutes, at any time point we can take an action. From execution, we have determined a period to excute.
+12. At the end of 10 minutes, everything else will get sold. We actually have to clean the position.
 
 
  <br> 
