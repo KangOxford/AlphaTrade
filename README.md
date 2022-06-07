@@ -25,9 +25,13 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 4. However, if we interact in the market, there's going to be a tiny $\delta$, we are just going to try and like have a model for the delta between the data based upon the agents actions, as a result, and you've done this in your in your paper, right, because you've said there is a linear there is a delta is delta that is linear. 
 5. We only have to have a model for the perturbation of the data. And obviously, that means that the overall <ins>approximation error, because I have to first order in correct</ins>. And if I'm like one of many people playing in the market, hopefully the market isn't gonna look completely different based on my actions.
 6. We then have to be sure that we have enough real data so that we can <ins>produce enough samples and the agent doesn't just memorise these trajectories.</ins>
-7. If you take out a big chunk, then people are likely to throw things in because they think they're gonna get executed
+7. If you take out a big chunk, then people are likely to throw things in because they think they're gonna get executed.
+8. <ins>There's no approximations at all.</ins>
+9. For an agent: observation $\tao$ is the 10 minites order book history. And also dollar: how much you want to sell.
+10. The reward is how much money we get for this.
+11. The action space is in the next 10 minutes, at any time point we can take an action. From execution, we have determined a period to excute.
 
-****
+
 ## `Week.05 May.23~May.29`
 
 * **Market Simulation Implemention Based on GAN**.
