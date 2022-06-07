@@ -33,7 +33,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 **Meeting Record** 
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
-</br> <int>Still confused about the underlined parts</int>
+</br> <ins>Still confused about the underlined parts</ins>
 
 **In Summary** 
 1. We have what exactly was the environment that only uses historical data without modelling any response from other agents to our actions for now.
