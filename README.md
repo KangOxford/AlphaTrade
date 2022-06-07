@@ -36,7 +36,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 **In Summary** 
 1. We have what exactly was the environment that only uses historical data without modelling any response from other agents to our actions for now.
-2. An then we are going to give the agent the ability to eat into the order book, to excute the trades.
+2. And then we are going to give the agent the ability to eat into the order book, to excute the trades.
 3. But we are still going to use the fact that there are changes to the order book based on the incoming orders.
 4. So if I eat into the order book, and somebody else happens to like, throw more orders, I can keep excuting. <ins>So the arrival of new orders into the order book is going to be assumed to be unchanged.</ins>
 5. GPU simulation already built: turn order flow into order book.
