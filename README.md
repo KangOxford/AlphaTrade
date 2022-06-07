@@ -117,7 +117,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * The paper for the code: [Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets](https://drive.google.com/file/d/1JSwaeL8hP9UVeiGfgI63F3oROKTS4aAm/view?usp=sharing) -->
 * Generative model for the `setting3`
   * PGSGAN : Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets 
-  * SGAN 
+  * StockGAN 
 
 <!-- &nbsp; -->
 <!--   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> CycleGAN
