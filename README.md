@@ -30,8 +30,19 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * Fisher matrix can define a norm as it is a positive definite matrix. Under this norm, the steepest descent direction is NPG and NPG is invariant to the coordinate system we have chosen. Another advantage of NPG is insensitive to the parametrized family of policy we have chosen and thus the training is more stable. <!--   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen. -->
 * Model free RL for the experiment.
 
+
 **Meeting Record** 
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
+
+**In summery** 
+1. We have what exactly was the environment that only uses historical data without modelling any response from other agents to our actions for now.
+2. An then we are going to give the agent the ability to eat into the order book, to excute the trades.
+3. But we are still going to use the fact that there are changes to the order book based on the incoming orders.
+4. So if I eat into the order book, and somebody else happens to like, throw more orders, I can keep excuting. <ins>So the arrival of new orders into the order book is going to be assumed to be unchanged.</ins>
+5. GPU simulation already built: turn order flow into order book.
+6. <ins>Then I can add to the order flow as the agent</ins> The agent can add to the order flow, and then we should be good because just pretend that the historical flow is the agent. Then gradually, we could replace more agents with <ins>it</ins> to have the response. <ins>And that gives us stays keeps us close to the data.</ins>
+
+**In Details**
 1. It isn't an interesting way to generate the environment, basically, it's basically the environment actually consists of real data.
 2. Some heuristic for how the real data changes based on the interactions of the agent. So it's basically saying, and we don't need to make it because that was a linearity assumption. 
 3. We don't really have to go and generate all the data. We just want to generate a difference between what happened in it.
@@ -44,6 +55,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 10. The reward is how much money we get for this.
 11. The action space is in the next 10 minutes, at any time point we can take an action. From execution, we have determined a period to excute.
 12. At the end of 10 minutes, everything else will get sold. We actually have to clean the position.
+13. Challenge: Do we have enough data?
+14. And then later on, maybe once you have this agent, you can throw a bunch of these into the environment that want to buy and sell different amounts of stuff. And that generates response.
+15. Then you have a model for response among these RL agents but always <ins>grounded around the historical data<ins>. <ins>And the response emerges quite naturally because there's other agents</ins>.
 
 
  <br> 
