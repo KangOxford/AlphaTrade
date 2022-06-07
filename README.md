@@ -13,7 +13,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 ## `Week.06 May.30~Jun.05`
 
-* **RL Strategies**.
+**RL Strategies**.
+</br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
+</br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Policy gradient methods, NPG, TRPO and PPO
 * Fisher matrix can define a norm as it is a positive definite matrix. Under this norm, the steepest descent direction is NPG and NPG is invariant to the coordinate system we have chosen. Another advantage of NPG is insensitive to the parametrized family of policy we have chosen and thus the training is more stable. <!--   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen. -->
 
@@ -35,8 +37,6 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 ## `Week.05 May.23~May.29`
 
 * **Market Simulation Implemention Based on GAN**.
-  </br>`2022.May.27, 04:00PM~04:45PM`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`.
-  </br>`2022.May.28, 02:00PM~03:00PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 * Difference between $P_{data}$ and $P_{G}$ ($Generated$) in GAN
   * $f$-GAN, with Fenchel Conjugate, choose different $f-divergence$
     <img width="600" alt="image" src="https://user-images.githubusercontent.com/37290277/172031861-cd6b8278-f801-412c-a163-b0e7c8d526c1.png">
