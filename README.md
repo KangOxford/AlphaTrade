@@ -11,6 +11,12 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * [`Documents`](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Google drive folder, with all the shard files.
   * [`Experiments`](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing) &nbsp; To run it on the `Colab-Vscode`
 
+## `Week.07 Jun.06~Jun.12`
+**RL Strategies and Dissertation Draft**.
+</br>`2022.Jun.07, 02:30PM~03:30PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
+</br>`2022.Jun.08`, with `Prof. Hambly` and `Huining Yang` at `Mathematical Institute`.
+
+
 ## `Week.06 May.30~Jun.05`
 
 **RL Strategies**.
