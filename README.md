@@ -100,7 +100,10 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Conditional GAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Context Conditional GAN
 * `Implemention` of Stock GAN for Realistic Discrete Order Data Generation in Financial Markets `from scratch`
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [PGSGAN](https://github.com/KangOxford/Dissertation/blob/main/GANs/PGSGAN/PGSGAN.ipynb) 
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [PGSGAN](https://github.com/KangOxford/Dissertation/blob/main/GANs/PGSGAN/PGSGAN.ipynb)
+  * The paper for the code, [Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets](https://drive.google.com/file/d/1JSwaeL8hP9UVeiGfgI63F3oROKTS4aAm/view?usp=sharing)
+
+
 <!-- &nbsp; -->
 <!--   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> CycleGAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> StyleGAN -->
