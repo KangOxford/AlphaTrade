@@ -10,7 +10,15 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * [`Dissertation`](https://www.overleaf.com/read/mswtggqkvywb) Overleaf
   * [`Documents`](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Google drive folder, with all the shard files.
   * [`Experiments`](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing) &nbsp; To run it on the `Colab-Vscode`
-
+* Timeline 
+  * Jun.01~Jun.31
+    * Jun.01-Jun.15 Experiments Implemention.
+      * Experiment.01 Turn the Order Flow in to Order Book, with the cancellation type taken into consideration.
+      * Experiment.02 Implement the LQR form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
+      * Experiment.03 Test different RL strategies to do the optimal liquidation.
+      * Experiment.04 Compare RL strategies and LQR strategies.
+    * Jun.16-Jun.30 Periodically eassy for the works have been done before. 
+    
  <br> 
 
 <H1> Part II, RL Strategies</H1>
