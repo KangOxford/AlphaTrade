@@ -17,7 +17,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
       * Experiment.02 Implement the LQR form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
       * Experiment.03 Test different RL strategies to do the optimal liquidation.
       * Experiment.04 Compare RL strategies and LQR strategies.
-    * Jun.16-Jun.30 Periodically eassy for the works have been done before. 
+    * Jun.16-Jun.30 Periodical eassy for the works have been done before. 
     
  <br> 
 
