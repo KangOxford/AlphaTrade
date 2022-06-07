@@ -15,7 +15,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 * **RL Strategies**.
 * Policy gradient methods, NPG, TRPO and PPO
-  * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen.
+* Fisher matrix can define a norm as it is a positive definite matrix. Under this norm, the steepest descent direction is NPG and NPG is invariant to the coordinate system we have chosen. Another advantage of NPG is insensitive to the parametrized family of policy we have chosen and thus the training is more stable.
+<!--   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen. -->
 
 ## `Week.05 May.23~May.29`
 
