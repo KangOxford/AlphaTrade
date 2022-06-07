@@ -34,7 +34,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 **Meeting Record** 
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
 
-**In Summery** 
+**In Summary** 
 1. We have what exactly was the environment that only uses historical data without modelling any response from other agents to our actions for now.
 2. An then we are going to give the agent the ability to eat into the order book, to excute the trades.
 3. But we are still going to use the fact that there are changes to the order book based on the incoming orders.
