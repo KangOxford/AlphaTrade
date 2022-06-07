@@ -16,14 +16,15 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * **RL Strategies**.
 * Policy gradient methods, NPG, TRPO and PPO
 * Fisher matrix can define a norm as it is a positive definite matrix. Under this norm, the steepest descent direction is NPG and NPG is invariant to the coordinate system we have chosen. Another advantage of NPG is insensitive to the parametrized family of policy we have chosen and thus the training is more stable. <!--   * With the Fisher matrix in the NPG, which is a kind of norm as it is a positive definite matrix, we can get a `Homeomorphism mapping`. It is insensitive to the coordinate system we have chosen. -->
-* Meeting Record, `Wednesday Meeting`
+* Meeting Record, `Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
   * It isn't an interesting way to generate the environment, basically, it's basically the environment actually consists of real data.
-  * Some heuristic for how the real data changes based on the interactions of the agent.  So it's basically saying, and I don't need to make it because that was a linearity assumption. 
+  * Some heuristic for how the real data changes based on the interactions of the agent. So it's basically saying, and we don't need to make it because that was a linearity assumption. 
   * We don't really have to go and generate all the data. We just want to generate a difference between what happened in it.
-  * However, if I interact in the market, there's going to be a tiny Delta, I'm just going to try and like have a model for the delta between the data based upon the agents actions, as a result, and you've done this in your in your paper, right, because you've said there is a linear there is a delta is delta that is linear. 
+  * However, if we interact in the market, there's going to be a tiny Delta, we are just going to try and like have a model for the delta between the data based upon the agents actions, as a result, and you've done this in your in your paper, right, because you've said there is a linear there is a delta is delta that is linear. 
+  * We only have to have a model for the perturbation of the data.
   * We then have to be sure that we have enough real data so that we can produce enough samples and the agent doesn't just memorise these trajectories.
 
-
+****
 ## `Week.05 May.23~May.29`
 
 * **Market Simulation Implemention Based on GAN**.
