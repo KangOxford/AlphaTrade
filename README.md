@@ -40,7 +40,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * In the figure, the observation is the limit order book at one time point. We can add time horizion into it by combining more LOB from different time points 
 
 **Data Augmentation** and **Pretrain by Imitation Learnning**<br>
-<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
+<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
 
 ## `Week.06 May.30~Jun.05`
 
