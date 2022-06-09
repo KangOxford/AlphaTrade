@@ -33,9 +33,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 </br>`2022.Jun.07, 02:30PM~03:30PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 </br>`2022.Jun.08`, with `Prof. Hambly` and `Huining Yang` at `Mathematical Institute`.
 
-**Structure of `Experiment02`**
-
-![01](/static/Asset2.png)
+**Structure of `Experiment02`**<br>
+<img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset2.png">
 
 ## `Week.06 May.30~Jun.05`
 
@@ -50,9 +49,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 [**Meeting Record**](https://github.com/KangOxford/Dissertation/tree/main/MeetingRecords/Week6)
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
 
-**Structure of `Experiment01`**
-
-![01](/static/Asset1.png)
+**Structure of `Experiment01`**<br>
+<img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
 
  
 <br>
