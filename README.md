@@ -9,6 +9,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Basic Components
   * [`Dissertation`](https://www.overleaf.com/read/mswtggqkvywb) Overleaf
   * [`Documents`](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Google drive folder, with all the shard files.
+    * [`Data`](https://drive.google.com/drive/folders/1Hj6sB3eKQi_SpJWncFln8OSVjhlrHGnq?usp=sharing): [Discriptions](https://github.com/KangOxford/Dissertation/tree/main/Data)
   * [`Experiments`](https://colab.research.google.com/drive/1QZjz5Q6rIEoTdrgC0N56EiTSorW-Xaqq?usp=sharing) &nbsp; To run it on the `Colab-Vscode`
 * Timeline 
   * Jun.01~Jun.31
