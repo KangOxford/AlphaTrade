@@ -56,12 +56,12 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
 
 **Structure of `Experiment01.v2`**<br>
-<img width="500" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset2.png">
-<img width="500" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset6.v2.png">
+<img width="450" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset2.png">
+<img width="450" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset6.v2.png">
 
 **Structure of `Experiment01.v1`**<br>
-<img width="700" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
-<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset7.png">
+<img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
+<img height="250" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset7.png">
  
 <br>
 
