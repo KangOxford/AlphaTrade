@@ -42,6 +42,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 **Data Augmentation**<br>
 <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png">
 
+**Pretrain by Imitation Learnning**<br>
+<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
+
 ## `Week.06 May.30~Jun.05`
 
 **RL Strategies**.
