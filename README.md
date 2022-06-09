@@ -13,10 +13,11 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Timeline 
   * Jun.01~Jun.31
     * Jun.01-Jun.15 Experiments Implemention.
-      * Experiment.01 Turn the Order Flow in to Order Book, with the cancellation type taken into consideration.
-      * Experiment.02 Implement the LQR form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
-      * Experiment.03 Test different RL strategies to do the optimal liquidation.
-      * Experiment.04 Compare RL strategies and LQR strategies.
+      * Experiment.01 
+        * PartA Turn the Order Flow in to Order Book, with the cancellation type taken into consideration.
+        * PartB Implement the LQR form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
+      * Experiment.02 Test different RL strategies to do the optimal liquidation.
+      * Experiment.03 Compare RL strategies and LQR strategies.
     * Jun.16-Jun.30 Periodical eassy for the works have been done before. 
 * Four different settings
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process.
@@ -33,7 +34,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 </br>`2022.Jun.07, 02:30PM~03:30PM`, with `Chriss` and `Timon` at `Informaion Engineering`.
 </br>`2022.Jun.08`, with `Prof. Hambly` and `Huining Yang` at `Mathematical Institute`.
 
-**Structure of `Experiment02`**<br>
+**Structure of `Experiment01.v2`**<br>
 <img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset2.png">
 
 ## `Week.06 May.30~Jun.05`
@@ -49,7 +50,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 [**Meeting Record**](https://github.com/KangOxford/Dissertation/tree/main/MeetingRecords/Week6)
 </br>`Wednesday Meeting` at the `S0.29`, with `Prof. Hambly`, `Dr. Christian`, and `Prof. Foerster` at `Mathematical Institute`. 
 
-**Structure of `Experiment01`**<br>
+**Structure of `Experiment01.v1`**<br>
 <img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
 
  
