@@ -37,9 +37,10 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 **State Representation**<br>
 <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset3.png">
+* In the figure, the observation is the limit order book at one time point. We can add time horizion into it by combining more LOB from different time points 
 
-**Data Augmentation**<br>
-<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png">
+**Data Augmentation** and **Pretrain by Imitation Learnning**<br>
+<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
 
 ## `Week.06 May.30~Jun.05`
 
@@ -56,7 +57,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 **Structure of `Experiment01.v2`**<br>
 <img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset2.png">
-* In the figure, the observation is the limit order book at one time point. We can add time horizion into it by combining more LOB from different time points 
+<img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset6.png">
 
 **Structure of `Experiment01.v1`**<br>
 <img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
@@ -149,7 +150,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * `Pending` [Lobster](https://lobsterdata.com/) data from Prof. Hambly
     * `Solved ` Amazon LOB [data](https://drive.google.com/file/d/13aazGzyp6MqhwZDs--TRR2WQu9uo5TI7/view?usp=sharing) from Huining Yang
 * `New Criterion Found` : **KS-distance or Wasserstein Distance** in [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1UYb4mNsqTcfmy25oxcqRqy8qoAXbSuOr/view?usp=sharing)
-  * [Shared folders from Cornell University](https://drive.google.com/drive/folders/1lxM0_JTE4FrqS-2AJgyqRVxfIyVAqQmm?usp=sharing)
+  * [Shared folders from Cornell University](https://drive.google.com/drive/folders/1lxM0_JTE4FrqS-2AJgyqRVxfIyVAqQmm?usp=sharing)(Prof. Andreea C. Minca)
 
 ## `Week.02 May.02~May.08`
 
