@@ -56,6 +56,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 **Structure of `Experiment01.v2`**<br>
 <img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset2.png">
+* In the figure, the observation is the limit order book at one time point. We can add time horizion into it by combining more LOB from different time points 
 
 **Structure of `Experiment01.v1`**<br>
 <img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
