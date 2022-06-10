@@ -64,7 +64,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 <img width="700" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset6.v2.png">
 
 **Structure of `Experiment01.v1`**<br>
-<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset7.v2.png">
+<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset7.v3.png">
 <img width="450" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset1.png">
 <!-- <img height="200" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset7.png"> -->
  
