@@ -22,7 +22,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Jun.16-Jun.30 Periodical eassy for the works have been done before. 
 * Four different settings
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process.
-  * `Setting_2` Simulated markets based on PPO agents interaction. [Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) 
+  * `Setting_2` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Simulated markets based on PPO agents](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb) interaction. [Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) 
   * `Setting_3` RL agents with preset reward functions(parameters calibrated from historical data), rather than fixed action policies.
   * `Setting_4` Generative Models. [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing)
    
