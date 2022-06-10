@@ -40,7 +40,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * In the figure, the observation is the limit order book at one time point. We can add time horizion into it by combining more LOB from different time points 
 
 **Data Augmentation** and **Pretrain by Imitation Learnning**<br>
-<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
+<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.v2.png">
 * In the situation imitation learning, the `Benchmark_models` is then converted to the `Baseline_models`.
 
 [**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it `OpenAI Gym` like style. <br>
