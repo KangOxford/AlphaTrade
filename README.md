@@ -47,7 +47,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 *  `In Implemention` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Two kinds of Behaviour Cloning for pretrain with imitation learning: [MSE based](https://github.com/KangOxford/Dissertation/tree/main/ImitationLearning), [MLE based](https://github.com/KangOxford/Dissertation/tree/main/ImitationLearning).
 
 [**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it `OpenAI Gym` like style. <br>
-<img height="450" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png"> <img height="450" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset9.png">
+<img height="420" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png"> <img height="420" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset9.png">
 
 
 ## `Week.06 May.30~Jun.05`
