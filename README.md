@@ -16,7 +16,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Jun.01-Jun.15 Experiments Implemention.
       * Experiment.01 
         * PartA Turn the Order Flow in to Order Book, with the cancellation type taken into consideration.
-        * PartB [Implement](https://github.com/KangOxford/Dissertation/blob/main/Model_Free_LQR-type1.ipynb) the Model-free LQR form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
+        * PartB [Implemented](https://github.com/KangOxford/Dissertation/blob/main/Model_Free_LQR-type1.ipynb) the Model-free LQR form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
       * Experiment.02 Test different RL strategies to do the optimal liquidation.
       * Experiment.03 Compare RL strategies and LQR strategies.
     * Jun.16-Jun.30 Periodical eassy for the works have been done before. 
@@ -44,6 +44,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * In the situation imitation learning, the `Benchmark_models` is then converted to the `Baseline_models`.
 * There remains a condition, that is the rewards/policy of the `expert model` and `rl model` must keep the same. If this condition is satisfied then the succeeding rl model tend to have a better performence than the baseline model.
 * For pretraining, we tend to apply the offline algorithms to train, rather than apply the rl method, which needs to interact with the environment, such as `GAIL` and `AIRL`.
+*  `Implemented` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Two kinds of Behaviour Cloning: [MSE based], [MLE based].
 
 [**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it `OpenAI Gym` like style. <br>
 <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png"> <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset9.png">
