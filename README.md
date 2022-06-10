@@ -44,7 +44,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * In the situation imitation learning, the `Benchmark_models` is then converted to the `Baseline_models`.
 * There remains a condition, that is the rewards/policy of the `expert model` and `rl model` must keep the same. If this condition is satisfied then the succeeding rl model tend to have a better performence than the baseline model.
 * For pretraining, we tend to apply the offline algorithms to train, rather than apply the rl method, which needs to interact with the environment, such as `GAIL` and `AIRL`.
-*  `Implemented` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Two kinds of Behaviour Cloning for pretrain with imitation learning: [MSE based](), [MLE based]().
+*  `In Implemention` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Two kinds of Behaviour Cloning for pretrain with imitation learning: [MSE based](https://github.com/KangOxford/Dissertation/tree/main/ImitationLearning), [MLE based](https://github.com/KangOxford/Dissertation/tree/main/ImitationLearning).
 
 [**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it `OpenAI Gym` like style. <br>
 <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png"> <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset9.png">
