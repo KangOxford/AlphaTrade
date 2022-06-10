@@ -22,7 +22,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Jun.16-Jun.30 Periodical eassy for the works have been done before. 
 * Four different settings
   * `Setting_1` Queue-reactive model, with quantity solved by `Monte Carlo` simulation to the stochastic process.
-  * `Setting_2` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Simulated markets based on PPO agents](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb) interaction. [Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) 
+  * `Setting_2` `Implemented` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Simulated markets based on PPO agents interaction](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb). [Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) 
   * `Setting_3` RL agents with preset reward functions(parameters calibrated from historical data), rather than fixed action policies.
   * `Setting_4` Generative Models. [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing)
    
@@ -41,6 +41,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 **Data Augmentation** and **Pretrain by Imitation Learnning**<br>
 <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
+* In the situation imitation learning, the `Benchmark_models` is then converted to the `Baseline_models`.
 
 [**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it `OpenAI Gym` like style. <br>
 <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png"> <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset9.png">
