@@ -42,8 +42,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 **Data Augmentation** and **Pretrain by Imitation Learnning**<br>
 <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.png">
 
-[**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp)<br> &nbsp; Make it OpenAI Gym like style.
-<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v4.png">
+[**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it OpenAI Gym like style. <br>
+<img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png">
 
 
 ## `Week.06 May.30~Jun.05`
