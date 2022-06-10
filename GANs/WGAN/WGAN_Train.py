@@ -6,7 +6,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from SimpleGAN import Discriminator, Generator
+from WGAN import Discriminator, Generator
 
 # ---------------------------------------------- #
 # ---------------------------------------------- #
