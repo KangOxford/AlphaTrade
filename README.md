@@ -42,7 +42,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 **Data Augmentation** and **Pretrain by Imitation Learnning**<br>
 <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset4.v2.png"> &nbsp; &nbsp; &nbsp; &nbsp; <img height="300" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset5.v2.png">
 * In the situation imitation learning, the `Benchmark_models` is then converted to the `Baseline_models`.
-* There remains a condition, that is the rewards/policy of the `expert model` and `rl model` must keep the same.
+* There remains a condition, that is the rewards/policy of the `expert model` and `rl model` must keep the same. If this condition is satisfied then the succeeding rl model tend to have a better performence than the baseline model.
+* For pretraining, we tend to apply the offline algorithms to train, rather than apply the rl method, which needs to interact with the environment, such as `GAIL` and `AIRL`.
 
 [**Web App by Flask**](https://github.com/KangOxford/Dissertation/tree/main/WebApp) &nbsp; Make it `OpenAI Gym` like style. <br>
 <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset8.v5.png"> <img height="400" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset9.png">
