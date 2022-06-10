@@ -14,25 +14,40 @@ from WGAN import Discriminator, Generator
 # >>> 01 Iintailize Hyperparameters <<<
 device = "cuda" if torch.cuda.is_available() else "cpu"
 lr = 3e-4
-latent_dim = 64
-generated_dim = 28*28
-batch_size = 32
-num_epochs = 100
+latent_dim = 128
+figure_dim = 64
+noise_dim = 100
+noise_Dim = 32
+channels_dim = 1
+generated_dim = 64
+discriminator_dim = 64
+discriminator_iterations = 10
+batch_size = 128
+num_epochs = 10
 
 # >>> 02 Iintailize Generator and Discriminator <<<
-discriminator = Discriminator(generated_dim).to(device)
-generator = Generator(latent_dim, generated_dim).to(device)
+def initializing_weights(model):
+    for item in model.modules():
+        if isinstance(item, (nn.Conv2d, nn.ConvTranspose2d)):
+            nn.init.normal_(item.weight.data, 0.0, 0.01)
+discriminator = Discriminator(channels_dim, discriminator_dim).to(device)
+generator = Generator(latent_dim, channels_dim, generated_dim).to(device)
+initializing_weights(discriminator)
+initializing_weights(generator)
 
 # >>> 03 Iintailize Dataset <<<
-fixed_noise = torch.randn((batch_size, latent_dim)).to(device)
-transforms = transforms.Compose([transforms.ToTensor, transforms.Normalize((0.1307,),(0.3081,))])
+fixed_noise = torch.randn(noise_Dim, noise_dim, 1, 1).to(device)
+transforms = transforms.Compose([
+    transforms.Resize(figure_dim),
+    transforms.ToTensor,
+    transforms.Normalize([0.1307 for _ in range(channels_dim)],[0.3081 for _ in range(channels_dim)])
+    ])
 dataset = datasets.MNIST(root="./dataset/", train=False, transform=transforms, download=True)
 loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 # >>> 04 Iintailize Optimizer <<<
-optim_discriminator =  optim.Adam(discriminator.parameters(), lr = lr)
-optim_generator = optim.Adam(generator.parameters(), lr = lr)
-criterion = nn.BCELoss()
+optim_discriminator =  optim.RMSprop(discriminator.parameters(), lr = lr)
+optim_generator = optim.RMSprop(generator.parameters(), lr = lr)
 
 # >>> 05 Set Tensorboard <<<
 writer_gene = SummaryWriter(f"logs/gene")
@@ -50,23 +65,26 @@ for epoch in range(num_epochs):
         generated = generator(torch.randn(batch_size, latent_dim).to(device))
 
         # >>> 06.01  Training Discriminator <<<
-        # >>> 06.01.01  Data of Discriminator <<<
-        discriminator_data = discriminator(data).view(-1)
-        discriminator_gene = discriminator(generated).view(-1)
-        # >>> 06.01.02 Loss of Discriminator <<<
-        loss_discriminator_data = criterion(discriminator_data, torch.ones_like(discriminator_data))
-        loss_discriminator_gene = criterion(discriminator_gene, torch.ones_like(discriminator_gene))
-        loss_discriminator = (loss_discriminator_data + loss_discriminator_gene) / 2.0
-        # >>> 06.01.03 Gradient of Discriminator <<<
-        discriminator.zero_grad()
-        loss_discriminator.backward(retain_graph = True)
-        optim_discriminator.step()
+        for _ in range(discriminator_iterations):
+            # >>> 06.01.01  Data of Discriminator <<<
+            noise_data = torch.rand(batch_size, latent_dim, 1, 1).to(device)
+            discriminator_data = discriminator(data).view(-1)
+            discriminator_gene = discriminator(generated).view(-1)
+            # >>> 06.01.02 Loss of Discriminator <<<
+            loss_discriminator = -1 * (torch.mean(discriminator_data) - torch.mean(discriminator_gene))
+            # >>> 06.01.03 Gradient of Discriminator <<<
+            discriminator.zero_grad()
+            loss_discriminator.backward(retain_graph = True)
+            optim_discriminator.step()
+            # >>> 06.01.04 weights clipping of Discriminator <<<
+            for item in discriminator.parameters():
+                item.data.clamp_(-0.01, 0.01)
 
         # >>> 06.02  Training Generator <<<
         # >>> 06.02.01  Data of Generator <<<
         output_discriminator = discriminator(generated).view(-1)
         # >>> 06.02.02 Loss of Generator <<<
-        loss_generator = criterion(output_discriminator, torch.ones_like(output_discriminator))
+        loss_generator = -1 * torch.mean(output_discriminator)
         # >>> 06.02.03 Gradient of Generator <<<
         generator.zero_grad()
         loss_generator.backward()
