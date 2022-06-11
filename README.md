@@ -186,3 +186,13 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * [Week_1 Slides in Latex](https://www.overleaf.com/8586558697psrwmhswmvyc), **Introduction**, `revised` with meeting records.
   </br>`2022.April.25, 11:00AM~12:00Noon`, with `Prof. Foerster` and `Prof. Hambly`, at `Information Engineering Department`.
   * [<img width="600" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Snipaste_2022-05-01_17-09-15.png?raw=true">](https://drive.google.com/file/d/1gqLcS46IOkqJgZbIBukd3N5wH4IrHiGd/view?usp=sharing)
+
+
+Contributing
+------------
+
+.. image:: https://gitpod.io/button/open-in-gitpod.svg
+   :alt: open in gitpod for one-click development
+   :target: https://gitpod.io/#/github.com/KangOxford/Dissertation
+
+Contributions to this respository are welcome.
