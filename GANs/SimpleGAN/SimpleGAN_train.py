@@ -8,8 +8,14 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from SimpleGAN import Discriminator, Generator
 
-# ---------------------------------------------- #
-# ---------------------------------------------- #
+# ------------------------------------------- #
+#                                             #
+# SimpleGAN May.2022                          #
+# Written by Kang                             #
+# Funtion:                                    #
+#   For the training process of the SimpleGAN #
+#                                             #
+# ------------------------------------------- #
 
 # >>> 01 Iintailize Hyperparameters <<<
 device = "cuda" if torch.cuda.is_available() else "cpu"
