@@ -111,6 +111,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> InfoGAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Conditional GAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN
+* New feature implemented: `ArgumentParser`, make it easier to be used in the command line.
 * Generative model for the `setting3`
   * StockGAN 
   * PGSGAN: Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets 
