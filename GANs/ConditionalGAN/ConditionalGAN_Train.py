@@ -10,6 +10,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+from ArgumentParser import Argument_Parser
+from ConditionalGAN import Generator, Discriminator
+
 # -------------------------------------------------------- #
 #                                                          #
 #    Conditional GAN May.2022                              #
@@ -22,7 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 # -------------------------------------------------------- #
 
 # >>> 01 Iintailize ArgumentParser <<<
-
+option = Argument_Parser()
 
 # >>> 02 Iintailize Generator and Discriminator <<<
 def initializing_weights(model):
