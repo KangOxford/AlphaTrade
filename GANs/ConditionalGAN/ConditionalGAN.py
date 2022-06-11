@@ -7,6 +7,17 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+# ---------------------------------------------------------- #
+#                                                            #
+#    Conditional GAN May.2022                                #
+#    Written by Kang                                         #
+#    Funtion:                                                #
+#      For the network architecture of the Conditional GAN   #
+#    Dependency:                                             #
+#      Argument_Parser in ArgumentParser                     #
+#                                                            #
+# ---------------------------------------------------------- #
+
 class Discriminator(nn.Module):
     def __init__(self, opt):
         super(Discriminator, self).__init__()
