@@ -111,7 +111,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> InfoGAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Conditional GAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ConditionalGAN)
-* New feature implemented: `ArgumentParser`, make it easier to be used in the command line.
+* New feature implemented:  <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon.v5.jpeg"> [ArgumentParser](), make it easier to be used in the command line.
 * Generative model for the `setting3`
   * StockGAN 
   * PGSGAN: Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets 
