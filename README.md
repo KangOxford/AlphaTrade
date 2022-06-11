@@ -109,8 +109,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> ACGAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> EBGAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> InfoGAN
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Conditional GAN
   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Conditional GAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ConditionalGAN)
 * New feature implemented: `ArgumentParser`, make it easier to be used in the command line.
 * Generative model for the `setting3`
   * StockGAN 
