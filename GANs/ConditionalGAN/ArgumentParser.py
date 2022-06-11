@@ -1,5 +1,21 @@
 import argparse
 
+# --------------------------------------------------------------- #
+#                                                                 #
+#    ArgumentParser May.2022                                      #
+#    Written by Kang                                              #
+#    Funtion:                                                     #
+#       ArgumentParser by the following parameters:               #
+#       - The number of training epochs                           #
+#       - The size of the traingin batches                        #
+#       - Adam training parameters:                               #
+#         learning rate, betas                                    #
+#       - Network parameters:                                     #
+#         dimension of latent space, generated space, channels.   #
+#                                                                 #
+# --------------------------------------------------------------  # 
+
+
 def Argument_Parser():
     # >>> 01 Iintailize ArgumentParser <<<
     # >>> 01.01 Iintailize Training Basics <<<
