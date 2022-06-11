@@ -8,14 +8,14 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from DCGAN import Discriminator, Generator
 
-# ----------------------------------------- #
-#                                           #
-# DCGAN May.2022                            #
-# Written by Kang                           #
-# Funtion:                                  #
-#   For the training process of the DCGAN   #
-#                                           #
-# ----------------------------------------- #
+# -------------------------------------------- #
+#                                              #
+#    DCGAN May.2022                            #
+#    Written by Kang                           #
+#    Funtion:                                  #
+#      For the training process of the DCGAN   #
+#                                              #
+# -------------------------------------------- #
 
 # >>> 01 Iintailize Hyperparameters <<<
 device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -9,14 +9,14 @@ from torch.utils.tensorboard import SummaryWriter
 from WGAN import Discriminator, Generator
 from Grandient_Penalty import gradient_penalty
 
-# ------------------------------------------- #
-#                                             #
-# WGAN-GP May.2022                            #
-# Written by Kang                             #
-# Funtion:                                    #
-#   For the training process of the WGAN-GP   #
-#                                             #
-# ------------------------------------------- #
+# ------------------------------------------------- #
+#                                                   #
+#     WGAN-GP May.2022                              #
+#     Written by Kang                               #
+#     Funtion:                                      #
+#       For the training process of the WGAN-GP     #
+#                                                   #
+# ------------------------------------------------- #
 
 # >>> 01 Iintailize Hyperparameters <<<
 device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -12,16 +12,16 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-# ---------------------------------------------------- #
-#                                                      #
-#  Conditional GAN May.2022                            #
-#  Written by Kang                                     #
-#  Funtion:                                            #
-#    For the training process of the Conditional GAN   #
-#  Dependency:                                         #
-#    Discriminator, Generator in ConditionalGAN        #
-#                                                      #
-# ---------------------------------------------------- #
+# -------------------------------------------------------- #
+#                                                          #
+#    Conditional GAN May.2022                              #
+#    Written by Kang                                       #
+#    Funtion:                                              #
+#      For the training process of the Conditional GAN     #
+#    Dependency:                                           #
+#      Discriminator, Generator in ConditionalGAN          #
+#                                                          #
+# -------------------------------------------------------- #
 
 # >>> 01 Iintailize ArgumentParser <<<
 # >>> 01.01 Iintailize Training Basics <<<
