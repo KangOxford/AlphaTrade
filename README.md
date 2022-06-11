@@ -191,8 +191,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 Contributing
 ------------
 
-.. image:: https://gitpod.io/button/open-in-gitpod.svg
-   :alt: open in gitpod for one-click development
-   :target: https://gitpod.io/#/github.com/KangOxford/Dissertation
+[<img width="200" alt="image" src="https://gitpod.io/button/open-in-gitpod.svg">](https://gitpod.io/#/github.com/KangOxford/Dissertation)
 
 Contributions to this respository are welcome.
+
