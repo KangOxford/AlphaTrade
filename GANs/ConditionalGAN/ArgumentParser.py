@@ -22,6 +22,8 @@ def Argument_Parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs_number", type = int, default = 100)
     parser.add_argument("--batch_size", type = int, default = 32) # the default for the most of choices.
+    parser.add_argument("--number_classes", type = int, default=10)
+    parser.add_argument("--hidden_layer_dim", type = int, default=128)
     # >>> 01.02 Iintailize Adam Parameters <<<
     parser.add_argument("--learning_rate", type = float, default = 0.01)
     parser.add_argument("--beta_firt_moment", type = float, default = 0.5)
@@ -31,6 +33,6 @@ def Argument_Parser():
     parser.add_argument("--generated_dim", type = int, default = 32)
     parser.add_argument("--channel_dim", type = int, default = 3)
     # >>> 01.04 Parsing Parameters <<<
-    (options, args) = parser.parse_args()
-    print(options, args)
+    (option, args) = parser.parse_args()
+    print(option, args)
     return parser.parse_args()
