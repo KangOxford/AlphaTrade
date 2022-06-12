@@ -31,7 +31,7 @@ from torch.utils.tensorboard import SummaryWriter
 # ----------------------------------------------------------- #
 
 class Discriminator(nn.Module):
-    def __init__(self, noise, labels, options):
+    def __init__(self, options):
         super(Generator, self).__init__()
         self.label_embedding    = nn.Embedding(options.number_classes, options.number_classes),
         self.view_generated_dim = int(options.channel_dim * options.generated_dim * options.generated_dim)

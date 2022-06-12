@@ -26,7 +26,7 @@ def Argument_Parser():
     parser.add_argument("--hidden_layer_dim", type = int, default=128)
     # >>> 01.02 Iintailize Adam Parameters <<<
     parser.add_argument("--learning_rate", type = float, default = 0.01)
-    parser.add_argument("--beta_firt_moment", type = float, default = 0.5)
+    parser.add_argument("--beta_first_moment", type = float, default = 0.5)
     parser.add_argument("--beta_second_moment", type = float, default = 0.99)
     # >>> 01.03 Iintailize Network Parameters <<<
     parser.add_argument("--latent_dim", type = int, default = 64)
