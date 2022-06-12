@@ -9,28 +9,26 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-# ---------------------------------------------------------- #
-#                                                            #
-#    Conditional GAN May.2022                                #
-#    Written by Kang                                         #
-#    Funtion:                                                #
-#      For the network architecture of the Conditional GAN   #
-#    Dependency:                                             #
-#      Argument_Parser in ArgumentParser                     #
-#                                                            #
-# ---------------------------------------------------------- #
-
-
-#                                             ┌────┐
-# ┌─────────┐                                 │real│
-# │Z (noise)├───┐                           ┌►│fake│
-# └─────────┘   │   ┌─┐   ┌──────┐          │ └────┘
-#               ├──►│G├──►│X_fake├──┐       │
-# ┌─────────┐   │   └─┘   └──────┘  │   ┌─┐ │ ┌──────┐
-# │C (class)├───┘                   ├──►│D├─┤ │Class1│
-# └─────────┘             ┌──────┐  │   └─┘ └►│...   │
-#                         │X_real├──┘         │ClassN│
-#                         └──────┘            └──────┘
+# ----------------------------------------------------------- #
+#                                                             #
+#    Conditional GAN May.2022                                 #
+#    Written by Kang                                          #
+#    Funtion:                                                 #
+#      For the network architecture of the Conditional GAN    #
+#    Dependency:                                              #
+#      Argument_Parser in ArgumentParser                      #
+#                                                             #
+#                                                ┌────┐       # 
+#    ┌─────────┐                                 │real│       # 
+#    │Z (noise)├───┐                           ┌►│fake│       # 
+#    └─────────┘   │   ┌─┐   ┌──────┐          │ └────┘       # 
+#                  ├──►│G├──►│X_fake├──┐       │              #
+#    ┌─────────┐   │   └─┘   └──────┘  │   ┌─┐ │ ┌──────┐     # 
+#    │C (class)├───┘                   ├──►│D├─┤ │Class1│     #  
+#    └─────────┘             ┌──────┐  │   └─┘ └►│...   │     #
+#                            │X_real├──┘         │ClassN│     #
+#                            └──────┘            └──────┘     #
+# ----------------------------------------------------------- #
 
 class Discriminator(nn.Module):
     def __init__(self, noise, labels, options):
