@@ -36,8 +36,9 @@ class Discriminator(nn.Module):
         return self.discriminator(input)
 
 class Generator(nn.Module):
-    def __init__(self, noise, latent_dim, generated_dim):
+    def __init__(self, noise, latent_dim, generated_dim, option):
         super(Generator, self).__init__()
+        self.label_embedding = nn.Embedding(option.n_classes, option.n_classes)
         self.generator = nn.Sequential(
             self.block(noise, generated_dim*16,4,1,0),
             self.block(generated_dim*16, generated_dim*8,4,2,1),
