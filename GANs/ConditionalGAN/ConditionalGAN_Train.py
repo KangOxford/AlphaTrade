@@ -16,16 +16,26 @@ from torch.utils.tensorboard import SummaryWriter
 from ArgumentParser import Argument_Parser
 from ConditionalGAN import Generator, Discriminator
 
-# -------------------------------------------------------- #
-#                                                          #
-#    Conditional GAN May.2022                              #
-#    Written by Kang                                       #
-#    Funtion:                                              #
-#      For the training process of the Conditional GAN     #
-#    Dependency:                                           #
-#      Discriminator, Generator in ConditionalGAN          #
-#                                                          #
-# -------------------------------------------------------- #
+# ---------------------------------------------------------- #
+#                                                            #
+#    Conditional GAN May.2022                                #
+#    Written by Kang                                         #
+#    Funtion:                                                #
+#      For the training process of the Conditional GAN       #
+#    Dependency:                                             #
+#      Discriminator, Generator in ConditionalGAN            #
+#                                                            #
+#                                                ┌────┐      # 
+#    ┌─────────┐                                 │real│      # 
+#    │Z (noise)├───┐                           ┌►│fake│      # 
+#    └─────────┘   │   ┌─┐   ┌──────┐          │ └────┘      # 
+#                  ├──►│G├──►│X_fake├──┐       │             #
+#    ┌─────────┐   │   └─┘   └──────┘  │   ┌─┐ │ ┌──────┐    # 
+#    │C (class)├───┘                   ├──►│D├─┤ │Class1│    #  
+#    └─────────┘             ┌──────┐  │   └─┘ └►│...   │    #
+#                            │X_real├──┘         │ClassN│    #
+#                            └──────┘            └──────┘    #
+# ---------------------------------------------------------- #
 
 # >>> 01 Iintailize ArgumentParser <<<
 options = Argument_Parser()
