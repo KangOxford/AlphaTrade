@@ -103,15 +103,6 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `Quant GAN`. Time Series Data Synthesis
 * `Implemention` of the common GANs `from scratch`
 
-* New feature implemented:  <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon.v5.jpeg"> [ArgumentParser](https://github.com/KangOxford/Dissertation/blob/main/GANs/ConditionalGAN/ArgumentParser.py), make it easier to be used in the command line.
-* [GANs Training Tricks]()
-* Generative model for the `setting3`
-  * StockGAN 
-  * PGSGAN: Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets 
-    * `Implemention` of Stock GAN(PG-StockGAN) for Realistic Discrete Order Data Generation in Financial Markets `from scratch`
-      * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [PGSGAN](https://github.com/KangOxford/Dissertation/blob/main/GANs/PGSGAN/PGSGAN.ipynb)
-      * The paper for the code: [Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets](https://drive.google.com/file/d/1JSwaeL8hP9UVeiGfgI63F3oROKTS4aAm/view?usp=sharing)
-
 <table>
 <tr><th> GANs Implementation </th><th> Example of code comments </th></tr>
 <tr><td>
@@ -137,6 +128,15 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 </td></tr> </table>
 
+
+* New feature implemented:  <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon.v5.jpeg"> [ArgumentParser](https://github.com/KangOxford/Dissertation/blob/main/GANs/ConditionalGAN/ArgumentParser.py), make it easier to be used in the command line.
+* [GANs Training Tricks]()
+* Generative model for the `setting3`
+  * StockGAN 
+  * PGSGAN: Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets 
+    * `Implemention` of Stock GAN(PG-StockGAN) for Realistic Discrete Order Data Generation in Financial Markets `from scratch`
+      * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [PGSGAN](https://github.com/KangOxford/Dissertation/blob/main/GANs/PGSGAN/PGSGAN.ipynb)
+      * The paper for the code: [Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets](https://drive.google.com/file/d/1JSwaeL8hP9UVeiGfgI63F3oROKTS4aAm/view?usp=sharing)
 
 
 <!--   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/SimpleGAN)
