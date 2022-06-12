@@ -102,12 +102,11 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `Time GAN`, GAN applied in time series genetation
   * `Quant GAN`. Time Series Data Synthesis
 * `Implemention` of the common GANs `from scratch`
-
 <table>
 <tr><th> GANs Implementation </th><th> Example of code comments </th></tr>
 <tr><td>
 
- 
+
 |  The name of GANs | 
 |---------------------------------|
 |              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/SimpleGAN)                  |                          
@@ -120,14 +119,13 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 |              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN       |       
 |              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Conditional GAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ConditionalGAN)                  |                              
 
- 
- 
+
+
 </td><td>
 
-<img width="150" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset11.png"> 
+<img height="420" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset11.png"> 
 
 </td></tr> </table>
-
 
 * New feature implemented:  <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon.v5.jpeg"> [ArgumentParser](https://github.com/KangOxford/Dissertation/blob/main/GANs/ConditionalGAN/ArgumentParser.py), make it easier to be used in the command line.
 * [GANs Training Tricks]()
