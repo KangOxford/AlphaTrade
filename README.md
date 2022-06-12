@@ -123,7 +123,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 </td><td>
 
-<img height="420" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset11.png"> 
+[<img height="420" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset11.png">](https://github.com/KangOxford/Dissertation/blob/main/GANs/ConditionalGAN/ConditionalGAN.py)
 
 </td></tr> </table>
 
