@@ -20,6 +20,18 @@ from torch.utils.tensorboard import SummaryWriter
 #                                                            #
 # ---------------------------------------------------------- #
 
+
+#                                             ┌────┐
+# ┌─────────┐                                 │real│
+# │Z (noise)├───┐                           ┌►│fake│
+# └─────────┘   │   ┌─┐   ┌──────┐          │ └────┘
+#               ├──►│G├──►│X_fake├──┐       │
+# ┌─────────┐   │   └─┘   └──────┘  │   ┌─┐ │ ┌──────┐
+# │C (class)├───┘                   ├──►│D├─┤ │Class1│
+# └─────────┘             ┌──────┐  │   └─┘ └►│...   │
+#                         │X_real├──┘         │ClassN│
+#                         └──────┘            └──────┘
+
 class Discriminator(nn.Module):
     def __init__(self, noise, labels, options):
         super(Generator, self).__init__()
