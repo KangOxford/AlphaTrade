@@ -15,7 +15,6 @@ import argparse
 #                                                                 #
 # --------------------------------------------------------------  # 
 
-
 def Argument_Parser():
     # >>> 01 Iintailize ArgumentParser <<<
     # >>> 01.01 Iintailize Training Basics <<<
