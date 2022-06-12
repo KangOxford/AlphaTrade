@@ -102,15 +102,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `Time GAN`, GAN applied in time series genetation
   * `Quant GAN`. Time Series Data Synthesis
 * `Implemention` of the common GANs `from scratch`
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/SimpleGAN)
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [DCGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/DCGAN)
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/WGAN)
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN-GP](https://github.com/KangOxford/Dissertation/tree/main/GANs/WGAN-GP)
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [ACGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ACGAN)
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> EBGAN
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> InfoGAN
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN
-  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Conditional GAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ConditionalGAN)
+
 * New feature implemented:  <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon.v5.jpeg"> [ArgumentParser](https://github.com/KangOxford/Dissertation/blob/main/GANs/ConditionalGAN/ArgumentParser.py), make it easier to be used in the command line.
 * [GANs Training Tricks]()
 * Generative model for the `setting3`
@@ -119,6 +111,45 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * `Implemention` of Stock GAN(PG-StockGAN) for Realistic Discrete Order Data Generation in Financial Markets `from scratch`
       * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [PGSGAN](https://github.com/KangOxford/Dissertation/blob/main/GANs/PGSGAN/PGSGAN.ipynb)
       * The paper for the code: [Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets](https://drive.google.com/file/d/1JSwaeL8hP9UVeiGfgI63F3oROKTS4aAm/view?usp=sharing)
+
+<table>
+<tr><th> GANs Implementation </th><th> Example of code comments </th></tr>
+<tr><td>
+
+ 
+|  The name of GANs | 
+|---------------------------------|
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/SimpleGAN)                  |                          
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [DCGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/DCGAN)                  |                              
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/WGAN)                  |                              
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN-GP](https://github.com/KangOxford/Dissertation/tree/main/GANs/WGAN-GP)                  |                              
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [ACGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ACGAN)                  |                              
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> EBGAN                  |     
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> InfoGAN                 |   
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN       |       
+|              <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Conditional GAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ConditionalGAN)                  |                              
+
+ 
+ 
+</td><td>
+
+<img width="150" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/Asset11.png"> 
+
+</td></tr> </table>
+
+
+
+<!--   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [SimpleGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/SimpleGAN)
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [DCGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/DCGAN)
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/WGAN)
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [WGAN-GP](https://github.com/KangOxford/Dissertation/tree/main/GANs/WGAN-GP)
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [ACGAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ACGAN)
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> EBGAN
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> InfoGAN
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> Contextural GAN
+  * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Conditional GAN](https://github.com/KangOxford/Dissertation/tree/main/GANs/ConditionalGAN) -->
+
+
 
 <!-- &nbsp; -->
 <!--   * <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> CycleGAN
