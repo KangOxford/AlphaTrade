@@ -128,7 +128,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 </td></tr> </table>
 
 * New feature implemented:  <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon.v5.jpeg"> [ArgumentParser](https://github.com/KangOxford/Dissertation/blob/main/GANs/ConditionalGAN/ArgumentParser.py), make it easier to be used in the command line.
-* [GANs Training Tricks]()
+* [GANs Training Tricks](https://github.com/KangOxford/Dissertation/tree/main/GANs/Training_Tricks)
 * Generative model for the `setting3`
   * StockGAN 
   * PGSGAN: Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets 
