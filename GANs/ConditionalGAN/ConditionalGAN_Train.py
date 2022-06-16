@@ -25,13 +25,13 @@ from ConditionalGAN import Generator, Discriminator
 #    Dependency:                                             #
 #      Discriminator, Generator in ConditionalGAN            #
 #                                                            #
-#                                                ┌────┐      # 
-#    ┌─────────┐                                 │real│      # 
-#    │Z (noise)├───┐                           ┌►│fake│      # 
-#    └─────────┘   │   ┌─┐   ┌──────┐          │ └────┘      # 
+#                                                ┌────┐      #
+#    ┌─────────┐                                 │real│      #
+#    │Z (noise)├───┐                           ┌►│fake│      #
+#    └─────────┘   │   ┌─┐   ┌──────┐          │ └────┘      #
 #                  ├──►│G├──►│X_fake├──┐       │             #
-#    ┌─────────┐   │   └─┘   └──────┘  │   ┌─┐ │ ┌──────┐    # 
-#    │C (class)├───┘                   ├──►│D├─┤ │Class1│    #  
+#    ┌─────────┐   │   └─┘   └──────┘  │   ┌─┐ │ ┌──────┐    #
+#    │C (class)├───┘                   ├──►│D├─┤ │Class1│    #
 #    └─────────┘             ┌──────┐  │   └─┘ └►│...   │    #
 #                            │X_real├──┘         │ClassN│    #
 #                            └──────┘            └──────┘    #
