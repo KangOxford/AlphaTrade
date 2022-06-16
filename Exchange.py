@@ -4,6 +4,41 @@
 import datetime
 import random
 
+class Singleton:
+    """
+    A non-thread-safe helper class to ease implementing singletons.
+    This should be used as a decorator -- not a metaclass -- to the
+    class that should be a singleton.
+    The decorated class can define one `__init__` function that
+    takes only the `self` argument. Also, the decorated class cannot be
+    inherited from. Other than that, there are no restrictions that apply
+    to the decorated class.
+    To get the singleton instance, use the `instance` method. Trying
+    to use `__call__` will result in a `TypeError` being raised.
+    """
+
+    def __init__(self, decorated):
+        self._decorated = decorated
+
+    def instance(self):
+        """
+        Returns the singleton instance. Upon its first call, it creates a
+        new instance of the decorated class and calls its `__init__` method.
+        On all subsequent calls, the already created instance is returned.
+        """
+        try:
+            return self._instance
+        except AttributeError:
+            self._instance = self._decorated()
+            return self._instance
+
+    def __call__(self):
+        raise TypeError('Singletons must be accessed through `instance()`.')
+
+    def __instancecheck__(self, inst):
+        return isinstance(inst, self._decorated)
+
+
 
 # order应该具有流水号，交易者ID，买入或卖出， 价格， 数量 ，时间， 股票代码这些参数
 class Order:
@@ -639,6 +674,8 @@ class Stock:
         self.change = round(self.price - self.pre_prece, 2)
         self.rate = round(self.change/self.pre_prece, 4)
 
+
+# @Singleton
 class Market:
     #市场
     def __init__(self,time1,time2,time3,time4,time5,time6, stocks, traders):
@@ -864,7 +901,7 @@ if __name__=='__main__':
         order2=Order(str(i+10),'2','ask',round(12.24-0.02*i,2),i+1,str(i),'001')
         price = exchange.process_order_A('2018-5-17',order1, False)
         price = exchange.process_order_A('2018-5-17',order2,False)
-        print(price)
+        print(">>> 01 测试集合竞价代码, price:", price)
     exchange.process_order_A('2018-5-17',finish = True)
     result1=exchange.return_info()
     result2=exchange.tape  
@@ -882,6 +919,8 @@ if __name__=='__main__':
         sumqty += exchange.per_qty
     result1=exchange.return_info()
     result2=exchange.tape
+    print(">>> 02.01 测试连续竞价代码, result1:", result1)
+    print(">>> 02.02 测试连续竞价代码, result2:", result2)
     """
     """
     #测试Stock类
@@ -890,6 +929,7 @@ if __name__=='__main__':
         stock = Stock('00%d'%(i), round(i * 10.12, 2))
         stocks[stock.stockcode] = stock
     stocks['004'].update(40, 1000)
+    print(">>> 03 测试连续竞价代码:")
     print(stocks['004'].volume, stocks['004'].change, stocks['004'].rate)
     """
     """
@@ -928,6 +968,7 @@ if __name__=='__main__':
         exchange.process_order_A('2018-5-23',order1)
         exchange.process_order_A('2018-5-23',order2)
         price = exchange.process_order_A('2018-5-23',order3)
+        print(">>> 04 测试Exchange代码:", price)
         print(price)
     exchange.process_order_A('2018-5-23',finish = True)
     result1=exchange.return_info()

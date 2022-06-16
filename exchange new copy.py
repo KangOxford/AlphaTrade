@@ -790,7 +790,7 @@ class Market:
         
         
 if __name__=='__main__':
-    """
+
     #Test the collection bidding code
     exchange = Exchange(0,100,'001', 12)
     for i in range(10):
@@ -802,7 +802,7 @@ if __name__=='__main__':
     exchange.process_order_A('2018-5-17',finish = True)
     result1=exchange.return_info()
     result2=exchange.tape  
-    """
+
     """
     #continuous auction
     exchange = Exchange(0,100,'101', 12)
