@@ -37,7 +37,18 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 * Make it gym-like env
 * If the data is already in the digital number format, then there is no need to do the state representation.
 * IL is applied with the situation where there is only the expert trajectories but with no policy. If there is already the policy, we can in turn minus the baseline <ins>in the designing.</ins>
-
+```python
+# Interface
+import exchange
+env = exchange.make()
+observation, info =  env.reset(return_info = True)
+for _ in range(1000):
+    action = policy(observation)
+    observation, reward, done, infor = env.step(action)
+    if done:
+        observation, info = env.reset(return_info = True)
+env.close()
+```
 #### Dissertaion Draft
 `2022.Jun.08`, with `Prof. Hambly` at `Mathematical Institute`.
 
