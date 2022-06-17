@@ -34,6 +34,9 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 #### Determine Experiment Structure
 `2022.Jun.07, 02:30PM~03:30PM`, with `Prof. Jakob` at `Informaion Engineering`.
 * Keep it simple
+* Make it gym-like env
+* If the data is already in the digital number format, then there is no need to do the state representation.
+* IL is applied with the situation where there is only the expert trajectories but with no policy. If there is already the policy, we can in turn minus the baseline <ins>in the designing.</ins>
 
 #### Dissertaion Draft
 `2022.Jun.08`, with `Prof. Hambly` at `Mathematical Institute`.
