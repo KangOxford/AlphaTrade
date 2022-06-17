@@ -31,9 +31,13 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 <H1> Part II, RL Strategies</H1>
 
 ## `Week.08 Jun.13~Jun.19`
-#### `2022.Jun.07, 02:30PM~03:30PM`, with `Prof. Jakob` at `Informaion Engineering`.
-#### `2022.Jun.08`, with `Prof. Hambly` at `Mathematical Institute`.
-Keep it simple
+#### Determine Experiment Structure
+</br>`2022.Jun.07, 02:30PM~03:30PM`, with `Prof. Jakob` at `Informaion Engineering`.
+* Keep it simple
+
+#### Dissertaion Draft
+</br>`2022.Jun.08`, with `Prof. Hambly` at `Mathematical Institute`.
+
 
 ## `Week.07 Jun.06~Jun.12`
 **RL Strategies and Dissertation Draft**.
