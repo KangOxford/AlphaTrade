@@ -32,11 +32,11 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
 
 ## `Week.08 Jun.13~Jun.19`
 #### Determine Experiment Structure
-</br>`2022.Jun.07, 02:30PM~03:30PM`, with `Prof. Jakob` at `Informaion Engineering`.
+`2022.Jun.07, 02:30PM~03:30PM`, with `Prof. Jakob` at `Informaion Engineering`.
 * Keep it simple
 
 #### Dissertaion Draft
-</br>`2022.Jun.08`, with `Prof. Hambly` at `Mathematical Institute`.
+`2022.Jun.08`, with `Prof. Hambly` at `Mathematical Institute`.
 
 
 ## `Week.07 Jun.06~Jun.12`
