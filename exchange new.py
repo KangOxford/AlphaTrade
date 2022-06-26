@@ -790,7 +790,7 @@ class Market:
         
         
 if __name__=='__main__':
-    """
+    # """
     #Test the collection bidding code
     exchange = Exchange(0,100,'001', 12)
     for i in range(10):
@@ -802,8 +802,8 @@ if __name__=='__main__':
     exchange.process_order_A('2018-5-17',finish = True)
     result1=exchange.return_info()
     result2=exchange.tape  
-    """
-    """
+    # """
+    # """
     #continuous auction
     exchange = Exchange(0,100,'101', 12)
     sumqty = 0
@@ -816,8 +816,8 @@ if __name__=='__main__':
         sumqty += exchange.per_qty
     result1=exchange.return_info()
     result2=exchange.tape
-    """
-    """
+    # """
+    # """
     # testing class Stock
     stocks = {}
     for i in range(10):
@@ -825,8 +825,8 @@ if __name__=='__main__':
         stocks[stock.stockcode] = stock
     stocks['004'].update(40, 1000)
     print(stocks['004'].volume, stocks['004'].change, stocks['004'].rate)
-    """
-    """
+    # """
+    # """
     # test ing class Trader
     stock = {'001':[12, 12, 0, 2000, 24000, 2000],
              '002':[21.2, 21.2, 0, 2400, 2400*21.2, 2400]}
@@ -852,8 +852,8 @@ if __name__=='__main__':
     #print(trader)
     trader.update_stock('003', 14.1) 
     #print(trader)
-    """
-    """
+    # """
+    # """
     exchange = Exchange(0,100,'002', 20)
     for i in range(10):
         order1 = Order(str(i),'1','bid',round(12+0.02*i,2),i+1,str(i),'001')
@@ -866,4 +866,4 @@ if __name__=='__main__':
     exchange.process_order_A('2018-5-23',finish = True)
     result1=exchange.return_info()
     result2=exchange.tape  
-    """
+    # """
