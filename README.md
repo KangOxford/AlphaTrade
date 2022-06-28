@@ -16,7 +16,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
     * Jun.01-Jun.15 Experiments Implemention.
       * Experiment.01 
         * PartA Turn the Order Flow in to Order Book, with the cancellation type taken into consideration.
-        * PartB `Implemented` <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon1.ico"> [The Model-free LQR](https://github.com/KangOxford/Dissertation/blob/main/Model_Free_LQR-type1.ipynb) form Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
+        * PartB `Implemented` <img width="15" alt="image" src="https://github.com/KangOxford/Dissertation/blob/main/static/icon1.ico"> [The Model-free LQR, codes from Dr. Yang](https://github.com/KangOxford/Dissertation/blob/main/Model_Free_LQR-type1.ipynb) from Huining Yang's [paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=DknyNcIAAAAJ&citation_for_view=DknyNcIAAAAJ:u5HHmVD_uO8C). 
       * Experiment.02 Test different RL strategies to do the optimal liquidation.
       * Experiment.03 Compare RL strategies and LQR strategies.
     * Jun.16-Jun.30 Periodical eassy for the works have been done before. 
