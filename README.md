@@ -28,6 +28,10 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
    
  <br> 
 
+ <H1> Part III, Improving Learning</H1>
+ ## `Week.11 Jul.04~Jul.10`
+#### Methods for Improving Learning
+
 <H1> Part II, RL Strategies</H1>
 
 ## `Week.08 Jun.13~Jun.19`
