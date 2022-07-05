@@ -1,11 +1,27 @@
 # Dissertation
 
-**`Reinforcement learning in optimal execution`**
+**`Reinforcement learning in optimal execution`** 
 
-Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
+Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <!-- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/10jy4Z4Vb_D0miQY21NnhhNnac0cTEwCI/view?usp=sharing) -->
 
+
+
+   
+ <br> 
+
+<H1> Part III, Improving Learning</H1>
+
+## `Week.11 Jul.04~Jul.10`
+#### Methods for Improving Learning
+* Limit Order Book Data from the Coinbase
+* `ofi = limit_arrivals - cancel_arrivals - market_arrivals`
+
+<H1> Part II, RL Strategies</H1>
+
+## `Week.09&10 Jun.20~Jul.03`
+#### Thesis Writing
 * Basic Components
   * [`Dissertation`](https://www.overleaf.com/read/mswtggqkvywb) Overleaf
   * [`Documents`](https://drive.google.com/drive/folders/1Ta5N33J8PjD9tZH2OyeXcnMtxd1vS-mT?usp=sharing) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Google drive folder, with all the shard files. &nbsp; 
@@ -25,16 +41,8 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
   * `Setting_2` `Implemented` <img width="12" alt="image" src="https://upload.wikimedia.org/wikipedia/commons/1/10/PyTorch_logo_icon.svg"> [Simulated markets based on PPO agents interaction](https://github.com/KangOxford/Dissertation/blob/main/market%20sim.ipynb). [Get Real: Realism Metrics for Robust Limit Order Book Market Simulations](https://drive.google.com/file/d/1QpmPRC4Wm32QfS8uvjhY66T0AQTSu6LM/view?usp=sharing) 
   * `Setting_3` RL agents with preset reward functions(parameters calibrated from historical data), rather than fixed action policies.
   * `Setting_4` Generative Models. [Generating Realistic Stock Market Order Streams](https://drive.google.com/file/d/1zX1tQfpPaMCSeK7KWcx8x2UhSRsvbQYh/view?usp=sharing)
-   
- <br> 
 
- <H1> Part III, Improving Learning</H1>
- ## `Week.11 Jul.04~Jul.10`
-#### Methods for Improving Learning
-* Limit Order Book Data from the Coinbase
-* `ofi = limit_arrivals - cancel_arrivals - market_arrivals`
 
-<H1> Part II, RL Strategies</H1>
 
 ## `Week.08 Jun.13~Jun.19`
 #### Determine Experiment Structure
