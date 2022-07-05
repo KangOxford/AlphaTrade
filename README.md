@@ -31,6 +31,7 @@ Supervised by Prof. Ben Hambly and Prof. Jakob Foerster.
  <H1> Part III, Improving Learning</H1>
  ## `Week.11 Jul.04~Jul.10`
 #### Methods for Improving Learning
+* Limit Order Book Data from the Coinbase
 
 <H1> Part II, RL Strategies</H1>
 
