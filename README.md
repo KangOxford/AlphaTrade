@@ -17,6 +17,7 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 #### Methods for Improving Learning
 * Limit Order Book Data from the Coinbase
 * `ofi = limit_arrivals - cancel_arrivals - market_arrivals`
+* `gym_trading` from the `crypto-rl`
 ```
 _________________________________________________________________
  Layer (type)                Output Shape              Param #   
