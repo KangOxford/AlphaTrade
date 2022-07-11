@@ -18,6 +18,7 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 * Limit Order Book Data from the Coinbase
 * `ofi = limit_arrivals - cancel_arrivals - market_arrivals`
 * `gym_trading` from the `crypto-rl`
+* Here are the examples of the [output](https://github.com/KangOxford/Dissertation/blob/main/log1.txt)
 ```
 _________________________________________________________________
  Layer (type)                Output Shape              Param #   
