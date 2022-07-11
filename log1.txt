@@ -1,0 +1,149 @@
+[2022-07-11 12:33:53,860] Experiment creating agent with kwargs: {'window_size': 50, 'max_position': 5, 'fitting_file': '/content/drive/MyDrive/GitHub/crypto-rl/data_recorder/database/data_exports/demo_LTC-USD_20190926.csv.xz', 'testing_file': 'demo_LTC-USD_20190926.csv.xz', 'symbol': 'LTC-USD', 'id': 'trend-following-v0', 'number_of_training_steps': 100000.0, 'gamma': 0.99, 'seed': 1, 'action_repeats': 5, 'load_weights': False, 'visualize': False, 'training': True, 'reward_type': 'default', 'nn_type': 'cnn', 'dueling_network': True, 'double_dqn': True}
+[2022-07-11 12:33:53,861] EMA smoothing ENABLED: 0.99
+[2022-07-11 12:33:58,076] Imported o_LTC-USD_20190926.csv.xz from a csv in 4 seconds
+[2022-07-11 12:33:58,322] Applying EMA to data...
+[2022-07-11 12:34:01,506] Imported o_LTC-USD_20190926.csv.xz from a csv in 2 seconds
+[2022-07-11 12:34:01,799] Applying EMA to data...
+[2022-07-11 12:34:02,267] Adding order imbalances...
+[2022-07-11 12:34:02,303] Reset EMA data.
+[2022-07-11 12:34:02,303] Applying EMA to data...
+[2022-07-11 12:34:02,768] EMA smoothing ENABLED: 0.99
+[2022-07-11 12:34:02,768] EMA smoothing ENABLED: 0.99
+[2022-07-11 12:34:02,768] EMA smoothing ENABLED: 0.99
+[2022-07-11 12:34:02,768] EMA smoothing ENABLED: 0.99
+Resetting environment #1 on episode #0.
+trend-following-v0 LTC-USD #1 instantiated
+observation_space: (50, 121) reward_type = DEFAULT max_steps = 91396
+[2022-07-11 12:34:02,904] creating model for cnn
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ conv2d (Conv2D)             (None, 5, 10, 121)        55        
+                                                                 
+ conv2d_1 (Conv2D)           (None, 5, 5, 121)         130       
+                                                                 
+ conv2d_2 (Conv2D)           (None, 5, 3, 121)         105       
+                                                                 
+ flatten (Flatten)           (None, 1815)              0         
+                                                                 
+ dense (Dense)               (None, 256)               464896    
+                                                                 
+ dense_1 (Dense)             (None, 3)                 771       
+                                                                 
+=================================================================
+Total params: 465,957
+Trainable params: 465,957
+Non-trainable params: 0
+_________________________________________________________________
+[2022-07-11 12:34:03,029] None
+/usr/local/lib/python3.7/dist-packages/keras/optimizer_v2/adam.py:105: UserWarning: The `lr` argument is deprecated, use `learning_rate` instead.
+  super(Adam, self).__init__(name, **kwargs)
+2022-07-11 12:34:07.277773: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:39] Overriding allow_growth setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+[2022-07-11 12:34:08,135] Agent created. Agent = DQN | env = trend-following-v0 | number_of_training_steps = 100000.0
+[2022-07-11 12:34:08,136] weights_filename: /content/drive/MyDrive/GitHub/crypto-rl/agent/dqn_weights/dqn_trend-following-v0_cnn_weights.h5f
+[2022-07-11 12:34:08,136] checkpoint_weights_filename: /content/drive/MyDrive/GitHub/crypto-rl/agent/dqn_weights/dqn_trend-following-v0_weights_{step}.h5f
+[2022-07-11 12:34:08,136] log_filename: /content/drive/MyDrive/GitHub/crypto-rl/agent/dqn_weights/dqn_trend-following-v0_log.json
+[2022-07-11 12:34:08,136] Starting training...
+Resetting environment #1 on episode #0.
+/usr/local/lib/python3.7/dist-packages/keras/engine/training_v1.py:2079: UserWarning: `Model.state_updates` will be removed in a future version. This property should not be used in TensorFlow 2.0, as `updates` are applied automatically.
+  updates=self.state_updates,
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: -7.8596
+Episode PnL: -167.97%
+Trade Count: 3247
+Average PnL per Trade: -0.2587%
+Total # of episodes: 1
+short_inventory_market_orders	=	1709
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1538
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	5192
+===========================================================================
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: 66.3115
+Episode PnL: -175.82%
+Trade Count: 3679
+Average PnL per Trade: -0.2390%
+Total # of episodes: 2
+short_inventory_market_orders	=	2258
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1421
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	17289
+===========================================================================
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: 121.8816
+Episode PnL: -143.44%
+Trade Count: 3277
+Average PnL per Trade: -0.2189%
+Total # of episodes: 3
+short_inventory_market_orders	=	1698
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1579
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	10955
+===========================================================================
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: 154.0571
+Episode PnL: -141.09%
+Trade Count: 3356
+Average PnL per Trade: -0.2102%
+Total # of episodes: 4
+short_inventory_market_orders	=	1578
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1778
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	7813
+===========================================================================
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: 112.6967
+Episode PnL: -170.92%
+Trade Count: 3758
+Average PnL per Trade: -0.2274%
+Total # of episodes: 5
+short_inventory_market_orders	=	2081
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1677
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	144
+===========================================================================
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: 75.0165
+Episode PnL: -175.56%
+Trade Count: 3715
+Average PnL per Trade: -0.2363%
+Total # of episodes: 6
+short_inventory_market_orders	=	1995
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1720
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	16332
+===========================================================================
+[2022-07-11 14:06:58,569] training over.
+[2022-07-11 14:06:58,569] Saving AGENT weights...
+[2022-07-11 14:06:59,051] AGENT weights saved.
