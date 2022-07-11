@@ -17,6 +17,40 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 #### Methods for Improving Learning
 * Limit Order Book Data from the Coinbase
 * `ofi = limit_arrivals - cancel_arrivals - market_arrivals`
+```
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ conv2d (Conv2D)             (None, 5, 10, 121)        55        
+                                                                 
+ conv2d_1 (Conv2D)           (None, 5, 5, 121)         130       
+                                                                 
+ conv2d_2 (Conv2D)           (None, 5, 3, 121)         105       
+                                                                 
+ flatten (Flatten)           (None, 1815)              0         
+                                                                 
+ dense (Dense)               (None, 256)               464896    
+                                                                 
+ dense_1 (Dense)             (None, 3)                 771       
+                                                                 
+=================================================================
+------------------------- LTC-USD-1 DEFAULT EPISODE RESET -------------------------
+Episode Reward: -7.8596
+Episode PnL: -167.97%
+Trade Count: 3247
+Average PnL per Trade: -0.2587%
+Total # of episodes: 1
+short_inventory_market_orders	=	1709
+short_inventory_orders_placed	=	0
+short_inventory_orders_updated	=	0
+short_inventory_orders_executed	=	0
+long_inventory_market_orders	=	1538
+long_inventory_orders_placed	=	0
+long_inventory_orders_updated	=	0
+long_inventory_orders_executed	=	0
+First step:	5192
+===========================================================================
+```
 
 <H1> Part II, RL Strategies</H1>
 
