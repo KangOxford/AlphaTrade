@@ -67,6 +67,7 @@ def remove_replicate(diff_list):
     present_flow = []
     i = 0
     while True:
+        print(">>> diff_list length is {}, list is {} ##### present_flow,length is {}, list is {}".format(len(diff_list), diff_list, len(present_flow), present_flow))
         if i==len(diff_list)-1:
             present_flow.append(
             [diff_list[i][0],diff_list[i][1]])
@@ -82,10 +83,12 @@ def remove_replicate(diff_list):
             [diff_list[i][0],diff_list[i][1]])
             i+=1
             if i > len(diff_list): break
+    print(">>>while loop in remove_replicate is alright")
     result = present_flow.copy()
     for j in range(len(present_flow)):
         if present_flow[j][1] == 0:
             result.remove(present_flow[j])
+    print(">>>for loop in remove_replicate is alright")
     return result
 new_diff_list = remove_replicate(diff_list)  
 # %%
@@ -94,7 +97,7 @@ def diff(index,flow):
 New_diff_list = diff(4,sample_flow)
 
 # %%
-def update(index,flow,diff_obs):
+def update(index,flow, diff_obs):
     '''update at time index based on the observation of index-1'''
     previous_flow = utils.from_series2pair(index-1,flow)
     previous_flow.extend(diff_obs)
@@ -105,9 +108,10 @@ index = 4
 diff_obs = diff(index, flow)
 updated = update(index, flow, diff_obs)
 represented4 = utils.from_pair2series(name_lst, updated)
+sample_flow.iloc[index,:] == represented4
 # %%
 # class broker
-def level_market_order_liquidating(num, observation):
+def level_market_order_liquidating(num, obs):
     '''observation is one row of the flow, observed at specific time t'''   
     i = 0
     result = 0
@@ -115,39 +119,46 @@ def level_market_order_liquidating(num, observation):
         if i>=10: 
             result = -999
             break
-        num -= pair[i][1]
+        num -= obs[i][1]
         i+=1
         result = i
     return result
-pair = utils.from_series2pair(3, flow)
-num, observation = 20, pair
-level_market_order_liquidating(num, observation)
+# num, obs = 20, utils.from_series2pair(3, flow)
+# level_market_order_liquidating(num, obs)
 #%%
-def pairs_market_order_liquidating(num, observation):
-    level = level_market_order_liquidating(num, observation)
+def pairs_market_order_liquidating(num, obs):
+    level = level_market_order_liquidating(num, obs)
     # TODO need the num <=609 the sum of prices at all leveles
     sum_quantity = 0
     quantity_list = []
-    for i in range(len(pair)):
-        sum_quantity+=pair[i][1]
+    for i in range(len(obs)):
+        sum_quantity+=obs[i][1]
         quantity_list.append(sum_quantity)
     
     result = []
     if level>1:
         for i in range(level-1):
             result.append(
-                [observation[i][0],-observation[i][1]])
+                [obs[i][0],-obs[i][1]])
         result.append(
-            [observation[level-1][0],-num+quantity_list[level-2]])
+            [obs[level-1][0],-num+quantity_list[level-2]])
     if level == 1:
-        result.append([observation[0][0],-num])
+        result.append([obs[0][0],-num])
     if level == 0:
         pass
     if level == -999:
         result.append(-999)
     return result
-new_pairs = pairs_market_order_liquidating(num, observation)
-    
+index = 4
+num, obs = 20, utils.from_series2pair(index-1, flow)
+new_obs = pairs_market_order_liquidating(num, obs)
+# %%
+# def broker_with_diff():
+diff_obs = diff(index, flow)
+diff_obs.extend(new_obs)
+to_be_updated = remove_replicate(diff_obs)
+# %%
+new_updated = update(index, flow, to_be_updated)
 
 
     
