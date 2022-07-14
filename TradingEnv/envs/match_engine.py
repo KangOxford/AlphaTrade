@@ -45,6 +45,7 @@ class utils():
     
 
 # %%
+# class Diff():
 def get_diff(index, flow):
     b = -flow.diff()
     col_num = b.shape[1] 
@@ -93,15 +94,62 @@ def diff(index,flow):
 New_diff_list = diff(4,sample_flow)
 
 # %%
-def update(index,flow):
+def update(index,flow,diff_obs):
     '''update at time index based on the observation of index-1'''
     previous_flow = utils.from_series2pair(index-1,flow)
-    Temp = diff(index,flow)
-    previous_flow.extend(Temp)
+    previous_flow.extend(diff_obs)
     new = sorted(previous_flow)
     result = remove_replicate(new)
     return result
-updated = update(4, flow)
+index = 4
+diff_obs = diff(index, flow)
+updated = update(index, flow, diff_obs)
 represented4 = utils.from_pair2series(name_lst, updated)
+# %%
+# class broker
+def level_market_order_liquidating(num, observation):
+    '''observation is one row of the flow, observed at specific time t'''   
+    i = 0
+    result = 0
+    while num>0:
+        if i>=10: 
+            result = -999
+            break
+        num -= pair[i][1]
+        i+=1
+        result = i
+    return result
+pair = utils.from_series2pair(3, flow)
+num, observation = 20, pair
+level_market_order_liquidating(num, observation)
+#%%
+def pairs_market_order_liquidating(num, observation):
+    level = level_market_order_liquidating(num, observation)
+    # TODO need the num <=609 the sum of prices at all leveles
+    sum_quantity = 0
+    quantity_list = []
+    for i in range(len(pair)):
+        sum_quantity+=pair[i][1]
+        quantity_list.append(sum_quantity)
+    
+    result = []
+    if level>1:
+        for i in range(level-1):
+            result.append(
+                [observation[i][0],-observation[i][1]])
+        result.append(
+            [observation[level-1][0],-num+quantity_list[level-2]])
+    if level == 1:
+        result.append([observation[0][0],-num])
+    if level == 0:
+        pass
+    if level == -999:
+        result.append(-999)
+    return result
+new_pairs = pairs_market_order_liquidating(num, observation)
+    
+
+
+    
 # %%
 # if __name__ == "__main__":
