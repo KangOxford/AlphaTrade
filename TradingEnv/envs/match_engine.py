@@ -20,6 +20,48 @@ sample_flow = flow.iloc[0:200,:]
 a=sample_flow.diff()
 b=-sample_flow.diff()
 # %%
+
+class utils():
+    def from_series2pair(index,flow):
+        previous_list = list(flow.iloc[index,:])
+        previous_flow = []
+        for i in range(flow.shape[1]):
+            if i%2==0:
+                previous_flow.append(
+                    [previous_list[i],previous_list[i+1]]
+                    ) 
+        return previous_flow
+    def from_pair2series(name_lst, flow):
+        flow = sorted(flow,reverse=True)
+        new_name = []
+        for i in range(len(name_lst)):
+            if i%4==2 or i%4==3:
+                new_name.append(name_lst[i])
+        result = []
+        for item in flow:
+            result.append(item[0])
+            result.append(item[1])
+        return pd.Series(data=result, index = new_name)
+    
+
+# %%
+def get_diff(index, flow):
+    b = -flow.diff()
+    col_num = b.shape[1] 
+    # for item in b.iloc[index,:]:
+    diff_list = [] 
+    for i in range(col_num):
+        if i%2 == 0:
+            # if b.iat[index,i] !=0 and b.iat[index,i+1] !=0:
+            #     diff_list.append([sample_flow.iat[index,i],sample_flow.iat[index,i+1]])
+            #     diff_list.append([sample_flow.iat[index-1,i],-sample_flow.iat[index-1,i+1]])
+            # elif b.iat[index,i] !=0 and b.iat[index,i+1] ==0:
+            if b.iat[index,i] !=0 or b.iat[index,i+1] !=0:
+                diff_list.append([sample_flow.iat[index,i],sample_flow.iat[index,i+1]])
+                diff_list.append([sample_flow.iat[index-1,i],-sample_flow.iat[index-1,i+1]])
+    return diff_list
+diff_list = get_diff(4, flow)
+# %%
 def remove_replicate(diff_list):
     present_flow = []
     i = 0
@@ -44,37 +86,22 @@ def remove_replicate(diff_list):
         if present_flow[j][1] == 0:
             result.remove(present_flow[j])
     return result
-# new_diff_list = remove_replicate(diff_list)  
+new_diff_list = remove_replicate(diff_list)  
 # %%
 def diff(index,flow):
-    b = -flow.diff()
-    col_num = b.shape[1] 
-    # for item in b.iloc[index,:]:
-    diff_list = [] 
-    for i in range(col_num):
-        if i%2 == 0:
-            if b.iat[index,i] !=0 and b.iat[index,i+1] !=0:
-                diff_list.append([sample_flow.iat[index,i],sample_flow.iat[index,i+1]])
-                diff_list.append([sample_flow.iat[index-1,i],-sample_flow.iat[index-1,i+1]])
-    return remove_replicate(diff_list)
-diff_list = diff(4,sample_flow)
-  
+    return remove_replicate(get_diff(index,flow))
+New_diff_list = diff(4,sample_flow)
+
 # %%
 def update(index,flow):
     '''update at time index based on the observation of index-1'''
-    previous_list = list(flow.iloc[index-1,:])
-    previous_flow = []
-    for i in range(flow.shape[1]):
-        if i%2==0:
-            previous_flow.append(
-                [previous_list[i],previous_list[i+1]]
-                ) 
-    # temp = diff(index,sample_flow)
+    previous_flow = utils.from_series2pair(index-1,flow)
     Temp = diff(index,flow)
     previous_flow.extend(Temp)
     new = sorted(previous_flow)
     result = remove_replicate(new)
     return result
 updated = update(4, flow)
+represented4 = utils.from_pair2series(name_lst, updated)
 # %%
 # if __name__ == "__main__":
