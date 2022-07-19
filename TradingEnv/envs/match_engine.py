@@ -91,12 +91,12 @@ def remove_replicate(diff_list):
                 diff_list[i][0],
                 diff_list[i][1]
                 ])
-    if index_list[-1] == len(diff_list):
+    if index_list[-1] == len(diff_list)-1:
         present_flow.append([
             diff_list[-1][0],
             diff_list[-1][1]
             ])
-    elif index_list[-1] != len(diff_list):
+    elif index_list[-1] != len(diff_list)-1:
         present_flow.append([
             diff_list[-2][0], 
             diff_list[-2][1]+diff_list[-1][1]
@@ -131,17 +131,14 @@ def remove_replicate(diff_list):
             i+=1
             if i > len(diff_list): break
     # print(">>>while loop in remove_replicate is alright")
+
+# =============================================================================
+
     result = present_flow.copy()
     for j in range(len(present_flow)):
         if present_flow[j][1] == 0:
             result.remove(present_flow[j])
     # print(">>>for loop in remove_replicate is alright")
-
-# =============================================================================
-    
-    
-    
-    
     return result
 # new_diff_list = remove_replicate(diff_list)  
 # %%
