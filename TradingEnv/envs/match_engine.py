@@ -64,33 +64,86 @@ def get_diff(index, flow):
 diff_list = get_diff(4, flow)
 # %%
 def remove_replicate(diff_list):
+    print(">>> remove_replicate")
+    
+# =============================================================================
+    
+    diff_list_keys = []
+    for item in diff_list:
+        diff_list_keys.append(item[0])
+    set_diff_list_keys = set(diff_list_keys)
+    
+    index_list = []
+    for item in set_diff_list_keys:
+        index_list.append(diff_list_keys.index(item))
+    index_list = sorted(index_list)
+    
+    present_flow = []
+    for i in range(len(index_list)-1):
+        index = index_list[i]
+        if diff_list[index][0] == diff_list[index+1][0] :
+            present_flow.append([
+                diff_list[index][0], 
+                diff_list[index][1]+diff_list[index+1][1]
+                ]) 
+        elif diff_list[index][0] != diff_list[index+1][0] :
+            present_flow.append([
+                diff_list[i][0],
+                diff_list[i][1]
+                ])
+    if index_list[-1] == len(diff_list):
+        present_flow.append([
+            diff_list[-1][0],
+            diff_list[-1][1]
+            ])
+    elif index_list[-1] != len(diff_list):
+        present_flow.append([
+            diff_list[-2][0], 
+            diff_list[-2][1]+diff_list[-1][1]
+            ])     
+        
+        
+# =============================================================================
+
     present_flow = []
     i = 0
     while True:
-        print(">>> diff_list length is {}, list is {} ##### present_flow,length is {}, list is {}".format(len(diff_list), diff_list, len(present_flow), present_flow))
+        # print(">>> diff_list length is {}, list is {} ##### present_flow,length is {}, list is {}".format(len(diff_list), diff_list, len(present_flow), present_flow))
+        # if i==13:
+        #     pass
+        print(i)
         if i==len(diff_list)-1:
+            # print("&& case1 && i = {} &&&&".format(i))
             present_flow.append(
             [diff_list[i][0],diff_list[i][1]])
             break
         elif diff_list[i][0] == diff_list[i+1][0]:
+            # print("&& case2 && i = {} &&&&".format(i))
             present_flow.append(
                 [diff_list[i][0], diff_list[i][1]+diff_list[i+1][1]]
                 )    
             i+=2
             if i > len(diff_list): break
         else: 
+            # print("&& case3 && i = {} &&&&".format(i))
             present_flow.append(
             [diff_list[i][0],diff_list[i][1]])
             i+=1
             if i > len(diff_list): break
-    print(">>>while loop in remove_replicate is alright")
+    # print(">>>while loop in remove_replicate is alright")
     result = present_flow.copy()
     for j in range(len(present_flow)):
         if present_flow[j][1] == 0:
             result.remove(present_flow[j])
-    print(">>>for loop in remove_replicate is alright")
+    # print(">>>for loop in remove_replicate is alright")
+
+# =============================================================================
+    
+    
+    
+    
     return result
-new_diff_list = remove_replicate(diff_list)  
+# new_diff_list = remove_replicate(diff_list)  
 # %%
 def diff(index,flow):
     return remove_replicate(get_diff(index,flow))
@@ -102,13 +155,15 @@ def update(index,flow, diff_obs):
     previous_flow = utils.from_series2pair(index-1,flow)
     previous_flow.extend(diff_obs)
     new = sorted(previous_flow)
+    print("### >>> result = remove_replicate(new)")
     result = remove_replicate(new)
+    print("### <<< result = remove_replicate(new)")
     return result
-index = 4
-diff_obs = diff(index, flow)
-updated = update(index, flow, diff_obs)
-represented4 = utils.from_pair2series(name_lst, updated)
-sample_flow.iloc[index,:] == represented4
+# index = 4
+# diff_obs = diff(index, flow)
+# updated = update(index, flow, diff_obs)
+# represented4 = utils.from_pair2series(name_lst, updated)
+# sample_flow.iloc[index,:] == represented4
 # %%
 # class broker
 def level_market_order_liquidating(num, obs):
