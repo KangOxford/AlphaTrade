@@ -65,9 +65,6 @@ diff_list = get_diff(4, flow)
 # %%
 def remove_replicate(diff_list):
     print(">>> remove_replicate")
-    
-# =============================================================================
-    
     diff_list_keys = []
     for item in diff_list:
         diff_list_keys.append(item[0])
@@ -101,44 +98,10 @@ def remove_replicate(diff_list):
             diff_list[-2][0], 
             diff_list[-2][1]+diff_list[-1][1]
             ])     
-        
-        
-# =============================================================================
-
-    present_flow = []
-    i = 0
-    while True:
-        # print(">>> diff_list length is {}, list is {} ##### present_flow,length is {}, list is {}".format(len(diff_list), diff_list, len(present_flow), present_flow))
-        # if i==13:
-        #     pass
-        print(i)
-        if i==len(diff_list)-1:
-            # print("&& case1 && i = {} &&&&".format(i))
-            present_flow.append(
-            [diff_list[i][0],diff_list[i][1]])
-            break
-        elif diff_list[i][0] == diff_list[i+1][0]:
-            # print("&& case2 && i = {} &&&&".format(i))
-            present_flow.append(
-                [diff_list[i][0], diff_list[i][1]+diff_list[i+1][1]]
-                )    
-            i+=2
-            if i > len(diff_list): break
-        else: 
-            # print("&& case3 && i = {} &&&&".format(i))
-            present_flow.append(
-            [diff_list[i][0],diff_list[i][1]])
-            i+=1
-            if i > len(diff_list): break
-    # print(">>>while loop in remove_replicate is alright")
-
-# =============================================================================
-
     result = present_flow.copy()
     for j in range(len(present_flow)):
         if present_flow[j][1] == 0:
             result.remove(present_flow[j])
-    # print(">>>for loop in remove_replicate is alright")
     return result
 # new_diff_list = remove_replicate(diff_list)  
 # %%
@@ -213,6 +176,12 @@ to_be_updated = remove_replicate(diff_obs)
 new_updated = update(index, flow, to_be_updated)
 
 
-    
+class MatchEngine():
+    '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
+    def __init__(self):
+        pass
+    def step(self, action, observation):
+        pass
+        
 # %%
 # if __name__ == "__main__":

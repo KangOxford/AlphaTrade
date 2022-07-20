@@ -1,9 +1,12 @@
 from abc import ABC
 # from abc import abstractmethod
-from gym import Env
 from gym import spaces
 import numpy as np
 
+# =============================================================================
+from gym import Env
+from match_engine import MatchEngine
+# =============================================================================
 
 class BaseEnvironment(Env, ABC):
 
