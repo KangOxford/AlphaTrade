@@ -176,12 +176,44 @@ new_updated = update(index, flow, to_be_updated) # it should be the updated flow
 
 # flow.T.iloc[:,:10].to_csv("flow.csv")
 # to_be_updated
-
+# %%
+class DataPipeline():
+    def __init__(self, path):
+        import pandas as pd
+        self.count = 0
+        self.namelist = self._namelist()
+        self.data = pd.read_csv(path, names= self.namelist)
+    def _namelist(self):
+        name_lst = []
+        for i in range(40//4):
+            name_lst.append("ask"+str(i+1))
+            name_lst.append("ask"+str(i+1)+"_quantity")
+            name_lst.append("bid"+str(i+1))
+            name_lst.append("bid"+str(i+1)+"_quantity")
+        return name_lst
+    
+    def __call__(self):
+        return self.data
+    def get(self, index):
+        return self.data.iloc[index,:]
+    def step(self):
+        result = self.data.iloc[self.count,:]
+        self.count += 1
+        return result
+    # def reset(self):
+    #     """ !TODO reset the class """
+    #     return self.data.iloc[0,:]
+Dir = "/Users/kang/GitHub/Dissertation/TradingEnv/envs/"
+filename = "AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
+dataPath = Dir + filename
+datapipeline = DataPipeline(dataPath)
+# data = datapipeline.reset()
+data = datapipeline.step()
 # %%
 class MatchEngine():
     '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
     def __init__(self):
-        pass
+        self._state = None
     def step(self, action, observation):
         pass
         
