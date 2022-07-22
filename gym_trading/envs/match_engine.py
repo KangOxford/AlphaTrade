@@ -3,22 +3,22 @@ import pandas as pd
 from copy import copy
 # import numpy as np
 # Dir = "/workspaces/Dissertation/TradingEnv/envs/"
-Dir = "/Users/kang/GitHub/Dissertation/TradingEnv/envs/"
-filename = "AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
-name_lst = []
-for i in range(40//4):
-    name_lst.append("ask"+str(i+1))
-    name_lst.append("ask"+str(i+1)+"_quantity")
-    name_lst.append("bid"+str(i+1))
-    name_lst.append("bid"+str(i+1)+"_quantity")
+# Dir = "/Users/kang/GitHub/Dissertation/TradingEnv/envs/"
+# filename = "AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
+# name_lst = []
+# for i in range(40//4):
+#     name_lst.append("ask"+str(i+1))
+#     name_lst.append("ask"+str(i+1)+"_quantity")
+#     name_lst.append("bid"+str(i+1))
+#     name_lst.append("bid"+str(i+1)+"_quantity")
     
-Flow = pd.read_csv(Dir + filename, names= name_lst)
-column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
-flow = Flow.iloc[:,column_numbers]
+# Flow = pd.read_csv(Dir + filename, names= name_lst)
+# column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+# flow = Flow.iloc[:,column_numbers]
 # %%
-sample_flow = flow.iloc[0:200,:]
-a=sample_flow.diff()
-b=-sample_flow.diff()
+# sample_flow = flow.iloc[0:200,:]
+# a=sample_flow.diff()
+# b=-sample_flow.diff()
 # %%
 
 class utils():
@@ -178,19 +178,11 @@ new_updated = update(index, flow, to_be_updated) # it should be the updated flow
 # to_be_updated
 # %%
 class DataPipeline():
-    def __init__(self, path):
-        import pandas as pd
+    def __init__(self, data):
         self.count = 0
         self.namelist = self._namelist()
-        self.data = pd.read_csv(path, names= self.namelist)
-    def _namelist(self):
-        name_lst = []
-        for i in range(40//4):
-            name_lst.append("ask"+str(i+1))
-            name_lst.append("ask"+str(i+1)+"_quantity")
-            name_lst.append("bid"+str(i+1))
-            name_lst.append("bid"+str(i+1)+"_quantity")
-        return name_lst
+        self.data = data
+
     
     def __call__(self):
         return self.data
@@ -200,13 +192,29 @@ class DataPipeline():
         result = self.data.iloc[self.count,:]
         self.count += 1
         return result
-    # def reset(self):
-    #     """ !TODO reset the class """
-    #     return self.data.iloc[0,:]
-Dir = "/Users/kang/GitHub/Dissertation/TradingEnv/envs/"
-filename = "AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
-dataPath = Dir + filename
-datapipeline = DataPipeline(dataPath)
+    def reset(self):
+        """ !TODO reset the class """
+        self.count = 0
+        return self.data.iloc[0,:]
+
+class ExternalData():
+    @classmethod
+    def get_sample_order_book_data(cls):
+        import pandas as pd
+        def namelist():
+            name_lst = []
+            for i in range(40//4):
+                name_lst.append("ask"+str(i+1))
+                name_lst.append("ask"+str(i+1)+"_quantity")
+                name_lst.append("bid"+str(i+1))
+                name_lst.append("bid"+str(i+1)+"_quantity")
+            return name_lst
+        url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
+        path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]
+        df = pd.read_csv(path,names = namelist())
+        return df
+data = ExternalData.get_sample_order_book_data()
+datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
 # data = datapipeline.reset()
 data = datapipeline.step()
 # %%
