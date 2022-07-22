@@ -61,14 +61,14 @@ def get_diff(index, flow):
                 diff_list.append([sample_flow.iat[index,i],sample_flow.iat[index,i+1]])
                 diff_list.append([sample_flow.iat[index-1,i],-sample_flow.iat[index-1,i+1]])
     return diff_list
-diff_list = get_diff(4, flow)
+# diff_list = get_diff(4, flow) ##
 # %%
 def remove_replicate(diff_list):
     print(">>> remove_replicate")
     diff_list_keys = []
     for item in diff_list:
         diff_list_keys.append(item[0])
-    set_diff_list_keys = set(diff_list_keys)
+    set_diff_list_keys = sorted(set(diff_list_keys))
     
     index_list = []
     for item in set_diff_list_keys:
@@ -85,8 +85,8 @@ def remove_replicate(diff_list):
                 ]) 
         elif diff_list[index][0] != diff_list[index+1][0] :
             present_flow.append([
-                diff_list[i][0],
-                diff_list[i][1]
+                diff_list[index][0],
+                diff_list[index][1]
                 ])
     if index_list[-1] == len(diff_list)-1:
         present_flow.append([
@@ -107,7 +107,7 @@ def remove_replicate(diff_list):
 # %%
 def diff(index,flow):
     return remove_replicate(get_diff(index,flow))
-New_diff_list = diff(4,sample_flow)
+# New_diff_list = diff(4,sample_flow) ##
 
 # %%
 def update(index,flow, diff_obs):
@@ -172,10 +172,12 @@ new_obs = pairs_market_order_liquidating(num, obs)
 diff_obs = diff(index, flow)
 diff_obs.extend(new_obs)
 to_be_updated = remove_replicate(diff_obs)
+new_updated = update(index, flow, to_be_updated) # it should be the updated flow at the position of index
+
+# flow.T.iloc[:,:10].to_csv("flow.csv")
+# to_be_updated
+
 # %%
-new_updated = update(index, flow, to_be_updated)
-
-
 class MatchEngine():
     '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
     def __init__(self):
