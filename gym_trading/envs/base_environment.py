@@ -1,11 +1,12 @@
-from abc import ABC
-# from abc import abstractmethod
-from gym import spaces
-import numpy as np
-
 # =============================================================================
+import numpy as np
+from abc import ABC
+from abc import abstractmethod
+# ----------------------------------------------------------------------------
 from gym import Env
-from match_engine import MatchEngine
+from gym import spaces
+# ----------------------------------------------------------------------------
+# from gym_trading.envs.match_engine import MatchEngine
 # =============================================================================
 
 class BaseEnvironment(Env, ABC):
@@ -14,7 +15,7 @@ class BaseEnvironment(Env, ABC):
         super().__init__()
         self.min_action = 0.0
         self.max_action = 100.0
-        self.min_position = 
+        # self.min_position = 
         high = np.array(
             [100],
             dtype = np.float32
