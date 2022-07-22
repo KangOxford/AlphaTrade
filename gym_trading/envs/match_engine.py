@@ -58,8 +58,8 @@ def get_diff(index, flow):
             #     diff_list.append([sample_flow.iat[index-1,i],-sample_flow.iat[index-1,i+1]])
             # elif b.iat[index,i] !=0 and b.iat[index,i+1] ==0:
             if b.iat[index,i] !=0 or b.iat[index,i+1] !=0:
-                diff_list.append([sample_flow.iat[index,i],sample_flow.iat[index,i+1]])
-                diff_list.append([sample_flow.iat[index-1,i],-sample_flow.iat[index-1,i+1]])
+                diff_list.append([flow.iat[index,i],flow.iat[index,i+1]])
+                diff_list.append([flow.iat[index-1,i],-flow.iat[index-1,i+1]])
     return diff_list
 # diff_list = get_diff(4, flow) ##
 # %%
@@ -164,18 +164,7 @@ def pairs_market_order_liquidating(num, obs):
     if level == -999:
         result.append(-999)
     return result
-index = 4
-num, obs = 20, utils.from_series2pair(index-1, flow)
-new_obs = pairs_market_order_liquidating(num, obs)
-# %%
-# def broker_with_diff():
-diff_obs = diff(index, flow)
-diff_obs.extend(new_obs)
-to_be_updated = remove_replicate(diff_obs)
-new_updated = update(index, flow, to_be_updated) # it should be the updated flow at the position of index
 
-# flow.T.iloc[:,:10].to_csv("flow.csv")
-# to_be_updated
 # %%
 class DataPipeline():
     def __init__(self, data):
@@ -196,6 +185,7 @@ class DataPipeline():
         """ !TODO reset the class """
         self.count = 0
         return self.data.iloc[0,:]
+    
 
 class ExternalData():
     @classmethod
@@ -212,11 +202,34 @@ class ExternalData():
         url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
         path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]
         df = pd.read_csv(path,names = namelist())
-        return df
-data = ExternalData.get_sample_order_book_data()
-datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
+        column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+        Flow = df.iloc[:,column_numbers]
+        return Flow
+    
+    
+Flow = ExternalData.get_sample_order_book_data()
+# datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
 # data = datapipeline.reset()
-data = datapipeline.step()
+# data = datapipeline.step()
+# %%
+# %%
+index = 4
+num, obs = 20, utils.from_series2pair(index-1, Flow)
+new_obs = pairs_market_order_liquidating(num, obs)
+# # %%
+# # def broker_with_diff():
+diff_obs = diff(index, Flow)
+diff_obs.extend(new_obs)
+to_be_updated = remove_replicate(diff_obs)
+new_updated = update(index, Flow, to_be_updated) # it should be the updated Flow at the position of index
+
+# flow.T.iloc[:,:10].to_csv("flow.csv")
+# to_be_updated
+
+
+
+
+
 # %%
 class MatchEngine():
     '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
