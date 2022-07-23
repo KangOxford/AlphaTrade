@@ -72,26 +72,6 @@ class Utils():
         return result
     
 
-# %%
-class Diff():
-    def __init__(self, flow):
-        self.flow = flow
-    def get_diff(self, index):
-        b = -self.flow.diff()
-        col_num = b.shape[1] 
-        diff_list = [] 
-        for i in range(col_num):
-            if i%2 == 0:
-                if b.iat[index,i] !=0 or b.iat[index,i+1] !=0:
-                    diff_list.append([self.flow.iat[index,i],self.flow.iat[index,i+1]])
-                    diff_list.append([self.flow.iat[index-1,i],-self.flow.iat[index-1,i+1]])
-        return diff_list
-    def diff(self, index):
-        result = self.get_diff(index)
-        if len(result) == 0:
-            return []
-        else:
-            return Utils.remove_replicate(result)
 
 
 # %%
@@ -182,7 +162,7 @@ class ExternalData():
     
     
 Flow = ExternalData.get_sample_order_book_data()
-flow = Flow.iloc[3:100,:]
+flow = Flow.iloc[3:100,:].reset_index().drop("index",axis=1)
 # datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
 # data = datapipeline.reset()
 # data = datapipeline.step()
@@ -195,33 +175,26 @@ class Core():
         self.state = self.initial_state()
     def initial_state(self):
         return self.flow.iloc[Core.init_index,:]
-    def get_obs(self):
-        result = Utils.from_series2pair(flow.iloc[self.index-1,:])
-        return result 
+    # def get_obs(self):
+    #     result = Utils.from_series2pair(flow.iloc[self.index-1,:])
+        # return result 
     def get_new_obs(self, num, obs):
         return Broker.pairs_market_order_liquidating(num, obs)
-    
-    def get_diffed_obs(self, index, obs, new_obs):
-        """1/2 part of the update"""
-        diff_obs = Diff(self.flow).diff(index-1)
-        diff_obs.extend(new_obs)
-        to_be_updated = Utils.remove_replicate(diff_obs)
-        return to_be_updated
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
         obs.extend(diff_obs)
         new = sorted(obs)
         result = Utils.remove_replicate(new)
-        self.state = result
         return result
     def get_reward(self):
         return 0
     def step(self, action):
-        obs = self.get_obs()
+        # obs = self.get_obs()
         self.index += 1
         state = Utils.from_series2pair(self.state)
         new_obs = self.get_new_obs(action, state)
-        to_be_updated = self.get_diffed_obs(self.index, obs, new_obs)
+        diff_obs = self.diff(self.index-1)
+        to_be_updated = self.update(diff_obs, new_obs)
         updated_state = self.update(state, to_be_updated)
         if type(updated_state) == list:
             updated_state = Utils.from_pair2series(updated_state)
@@ -234,13 +207,29 @@ class Core():
         self.state = self.initial_state()
         return self.state
     def get_ceilling(self):
-        next_stage = self.state # !TODO change to converted by the diff
+        next_stage = self.state
         next_stage_lst = list(next_stage)
         result = 0.0
         for i in range(len(next_stage_lst)):
             if i % 2 == 1:
                 result += next_stage_lst[i]
         return result
+    def diff(self, index):
+        b = -self.flow.diff()
+        col_num = b.shape[1] 
+        diff_list = [] 
+        for i in range(col_num):
+            if i%2 == 0:
+                if b.iat[index,i] !=0 or b.iat[index,i+1] !=0:
+                    diff_list.append([self.flow.iat[index,i],
+                                      self.flow.iat[index,i+1]])
+                    diff_list.append([self.flow.iat[index-1,i],
+                                      -self.flow.iat[index-1,i+1]])
+        
+        if len(diff_list) == 0:
+            return []
+        else:
+            return Utils.remove_replicate(diff_list)        
 # %%
 # index = 4
 # num = 20
