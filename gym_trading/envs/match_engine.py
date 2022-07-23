@@ -32,6 +32,7 @@ class Utils():
 
     def remove_replicate(diff_list):
         # remove_replicate
+        # diff_list = sorted(diff_list) ## !TODO not sure
         diff_list_keys = []
         for item in diff_list:
             diff_list_keys.append(item[0])
@@ -162,7 +163,7 @@ class ExternalData():
     
     
 Flow = ExternalData.get_sample_order_book_data()
-flow = Flow.iloc[3:100,:].reset_index().drop("index",axis=1)
+flow = Flow.iloc[3:1000,:].reset_index().drop("index",axis=1)
 # datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
 # data = datapipeline.reset()
 # data = datapipeline.step()
@@ -171,6 +172,7 @@ class Core():
     init_index = 0
     def __init__(self, flow):
         self.flow = flow
+        self._flow = -self.flow.diff()
         self.index = Core.init_index
         self.state = self.initial_state()
     def initial_state(self):
@@ -180,9 +182,10 @@ class Core():
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
         obs.extend(diff_obs)
-        new = sorted(obs)
-        result = Utils.remove_replicate(new)
-        return result
+        if len(obs) == 0:
+            return []
+        else:
+            return Utils.remove_replicate(sorted(obs))
     def get_reward(self):
         return 0
     def step(self, action):
@@ -193,6 +196,7 @@ class Core():
         to_be_updated = self.update(diff_obs, new_obs)
         updated_state = self.update(state, to_be_updated)
         if type(updated_state) == list:
+            updated_state = self.check_positive(updated_state)
             updated_state = Utils.from_pair2series(updated_state)
         self.state = updated_state
         reward = self.get_reward()
@@ -210,21 +214,26 @@ class Core():
                 result += next_stage_lst[i]
         return result
     def diff(self, index):
-        b = -self.flow.diff()
-        col_num = b.shape[1] 
+        index += 1 ## !TODO not sure
+        col_num = self._flow.shape[1] 
         diff_list = [] 
         for i in range(col_num):
             if i%2 == 0:
-                if b.iat[index,i] !=0 or b.iat[index,i+1] !=0:
+                if self._flow.iat[index,i] !=0 or self._flow.iat[index,i+1] !=0:
                     diff_list.append([self.flow.iat[index,i],
                                       self.flow.iat[index,i+1]])
                     diff_list.append([self.flow.iat[index-1,i],
                                       -self.flow.iat[index-1,i+1]])
-        
         if len(diff_list) == 0:
             return []
         else:
-            return Utils.remove_replicate(diff_list)        
+            return Utils.remove_replicate(sorted(diff_list))  
+    def check_positive(self, updated_state):
+        for item in updated_state:
+            if item[1]<0:
+                item[1]=0
+        return updated_state
+        
 # %%
 
 core = Core(flow)
@@ -260,17 +269,856 @@ obs10= core.step(min(20,core.get_ceilling()))[0]
 
 
 # ==================================================
-obs11 = core.step(min(20,core.get_ceilling()))[0]
-obs12 = core.step(min(20,core.get_ceilling()))[0]
-obs13 = core.step(min(20,core.get_ceilling()))[0]
-obs14 = core.step(min(20,core.get_ceilling()))[0]
-obs15 = core.step(min(20,core.get_ceilling()))[0]
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
 ##
-obs16 = core.step(min(20,core.get_ceilling()))[0]
-obs17 = core.step(min(20,core.get_ceilling()))[0]
-obs18 = core.step(min(20,core.get_ceilling()))[0]
-obs19 = core.step(min(20,core.get_ceilling()))[0]
-obs20 = core.step(min(20,core.get_ceilling()))[0]
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+
+
+
+
+
+
+
+
+
+# ==================================================
+# obs11 = core.step(min(20,core.get_ceilling()))[0]
+# obs12 = core.step(min(20,core.get_ceilling()))[0]
+# obs13 = core.step(min(20,core.get_ceilling()))[0]
+# obs14 = core.step(min(20,core.get_ceilling()))[0]
+# obs15 = core.step(min(20,core.get_ceilling()))[0]
+# # # ##
+# obs16 = core.step(min(20,core.get_ceilling()))[0]
+# obs17 = core.step(min(20,core.get_ceilling()))[0]   
+# obs18 = core.step(min(20,core.get_ceilling()))[0]
+# obs19 = core.step(min(20,core.get_ceilling()))[0]
+# obs20 = core.step(min(20,core.get_ceilling()))[0]
 # ==================================================
 
 # obs3 = core.step(20)[0]
