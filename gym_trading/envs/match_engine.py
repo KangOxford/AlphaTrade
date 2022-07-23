@@ -233,6 +233,14 @@ class Core():
         self.index = 1
         self.state = self.initial_state()
         return self.state
+    def get_ceilling(self):
+        next_stage = self.state # !TODO change to converted by the diff
+        next_stage_lst = list(next_stage)
+        result = 0.0
+        for i in range(len(next_stage_lst)):
+            if i % 2 == 1:
+                result += next_stage_lst[i]
+        return result
 # %%
 # index = 4
 # num = 20
@@ -243,8 +251,49 @@ class Core():
 core = Core(flow)
 obs0 = core.reset()
 
-obs1 = core.step(20)[0]
-# obs2 = core.step(20)[0]
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+# ==================================================
+obs1 = core.step(min(20,core.get_ceilling()))[0]
+obs2 = core.step(min(20,core.get_ceilling()))[0]
+obs3 = core.step(min(20,core.get_ceilling()))[0]
+obs4 = core.step(min(20,core.get_ceilling()))[0]
+obs5 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs6 = core.step(min(20,core.get_ceilling()))[0]
+obs7 = core.step(min(20,core.get_ceilling()))[0]
+obs8 = core.step(min(20,core.get_ceilling()))[0]
+obs9 = core.step(min(20,core.get_ceilling()))[0]
+obs10= core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
+
+# ==================================================
+obs11 = core.step(min(20,core.get_ceilling()))[0]
+obs12 = core.step(min(20,core.get_ceilling()))[0]
+obs13 = core.step(min(20,core.get_ceilling()))[0]
+obs14 = core.step(min(20,core.get_ceilling()))[0]
+obs15 = core.step(min(20,core.get_ceilling()))[0]
+##
+obs16 = core.step(min(20,core.get_ceilling()))[0]
+obs17 = core.step(min(20,core.get_ceilling()))[0]
+obs18 = core.step(min(20,core.get_ceilling()))[0]
+obs19 = core.step(min(20,core.get_ceilling()))[0]
+obs20 = core.step(min(20,core.get_ceilling()))[0]
+# ==================================================
+
 # obs3 = core.step(20)[0]
 # obs4 = core.step(20)[0]
 # obs5 = core.step(20)[0]
@@ -263,6 +312,18 @@ obs1 = core.step(20)[0]
 # obs18 = core.step(20)[0]
 # obs19 = core.step(20)[0]
 # obs20 = core.step(20)[0]
+
+# obs1 = core.step(20)[0]
+# obs2 = core.step(20)[0]
+# obs3 = core.step(20)[0]
+# obs4 = core.step(20)[0]
+# obs5 = core.step(20)[0]
+# obs6 = core.step(20)[0]
+# obs7 = core.step(20)[0]
+# obs8 = core.step(20)[0]
+# obs9 = core.step(20)[0]
+# obs10 = core.step(20)[0]
+
 
 # obs1 = core.step(20)[0]
 # obs2 = core.step(20)[0]
