@@ -175,9 +175,6 @@ class Core():
         self.state = self.initial_state()
     def initial_state(self):
         return self.flow.iloc[Core.init_index,:]
-    # def get_obs(self):
-    #     result = Utils.from_series2pair(flow.iloc[self.index-1,:])
-        # return result 
     def get_new_obs(self, num, obs):
         return Broker.pairs_market_order_liquidating(num, obs)
     def update(self, obs, diff_obs):
@@ -189,7 +186,6 @@ class Core():
     def get_reward(self):
         return 0
     def step(self, action):
-        # obs = self.get_obs()
         self.index += 1
         state = Utils.from_series2pair(self.state)
         new_obs = self.get_new_obs(action, state)
@@ -200,7 +196,6 @@ class Core():
             updated_state = Utils.from_pair2series(updated_state)
         self.state = updated_state
         reward = self.get_reward()
-        # self.index += 1
         return self.state, reward, False, {}
     def reset(self):
         self.index = 1
@@ -231,11 +226,6 @@ class Core():
         else:
             return Utils.remove_replicate(diff_list)        
 # %%
-# index = 4
-# num = 20
-
-# obs = Utils.from_series2pair(index-1, flow)
-# new_obs = Broker.pairs_market_order_liquidating(num, obs)
 
 core = Core(flow)
 obs0 = core.reset()
