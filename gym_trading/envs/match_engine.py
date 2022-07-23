@@ -200,11 +200,17 @@ class Core():
             updated_state = Utils.from_pair2series(updated_state)
         self.state = updated_state
         reward = self.get_reward()
-        return self.state, reward, False, {}
+        ExcutedQuanity = self.get_executed_quantity()
+        return self.state, reward, False, {"ExcutedQuanity":ExcutedQuanity}
+    
+    
+    
     def reset(self):
         self.index = 1
         self.state = self.initial_state()
         return self.state
+    
+    
     def get_ceilling(self):
         next_stage = self.state
         next_stage_lst = list(next_stage)
@@ -233,6 +239,9 @@ class Core():
             if item[1]<0:
                 item[1]=0
         return updated_state
+    def get_executed_quantity(self):
+        '''It should return the real quantity of having been executed'''
+        return 0
         
 # %%
 if __name__ == "__main__":
