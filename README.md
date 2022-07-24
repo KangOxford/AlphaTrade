@@ -15,7 +15,8 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 ## `Week.12&13 Jul.11~Jul.24`
 #### Methods for Improving Learning
-* Refactor the gym_trading class <br> <img width="233" alt="Snipaste_2022-07-24_01-49-42" src="https://user-images.githubusercontent.com/37290277/180627626-744354c8-be33-4d51-a113-3a80dc15d0da.png">
+* Refactor the gym_trading class <br> <img width="248" alt="image" src="https://user-images.githubusercontent.com/37290277/180627696-4466cbfc-e49f-45cc-95c1-74998915f306.png">
+
 
 
 
