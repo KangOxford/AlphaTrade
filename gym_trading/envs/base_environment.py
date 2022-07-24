@@ -1,38 +1,34 @@
 # =============================================================================
+import random
 import numpy as np
+import pandas as pd
 from abc import ABC
 from abc import abstractmethod
 # ----------------------------------------------------------------------------
 from gym import Env
 from gym import spaces
 # ----------------------------------------------------------------------------
-# from gym_trading.envs.match_engine import MatchEngine
+from gym_trading.envs.match_engine import Core
 # =============================================================================
 
-class BaseEnvironment(Env, ABC):
+class BaseEnv(Env, ABC):
+    num_steps = 1024 # size of a flow
+    high = 1024
 
-    def __init__(self) -> None:
+    def __init__(self, Flow) -> None:
         super().__init__()
-        self.min_action = 0.0
-        self.max_action = 100.0
-        # self.min_position = 
-        high = np.array(
-            [100],
-            dtype = np.float32
-        )
-        self.action_space = spaces.Box(0, high, dtype = np.float32)
-        self.observation_space = spaces.Box
+        self.Flow = Flow
+        self.core = None
+        self.action_space = spaces.Box(0, BaseEnv.high, dtype = np.float32)
+        # self.observation_space = spaces.Box
     def setp(self, action: float = 0):
-        # return super().step()
+        # return observation, reward, done, info
         pass
     def reset(self):
         '''return the observation of the initial condition'''
-        return super().reset()
+        index_random = random.randint(0, self.Flow.shape[1]-BaseEnv.num_steps-1)
+        flow = self.Flow.iloc[index_random:index_random+BaseEnv.num_steps,:]
+        self.core = Core(flow)
+        return 0
     def _get_obs(self):
         pass
-    # def seed(self):
-    #     pass
-    # def close(self) -> None:
-    #     return super().close()
-    # def render(self):
-    #     pass
