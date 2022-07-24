@@ -13,6 +13,12 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.12&13 Jul.11~Jul.24`
+#### Methods for Improving Learning
+* Refactor the gym_trading class <br> <img width="233" alt="Snipaste_2022-07-24_01-49-42" src="https://user-images.githubusercontent.com/37290277/180627626-744354c8-be33-4d51-a113-3a80dc15d0da.png">
+
+
+
 ## `Week.11 Jul.04~Jul.10`
 #### Methods for Improving Learning
 * Limit Order Book Data from the Coinbase
