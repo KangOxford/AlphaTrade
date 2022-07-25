@@ -1,7 +1,6 @@
 # =============================================================================
 import random
 import numpy as np
-import numpy as np
 import pandas as pd
 from abc import ABC
 from abc import abstractmethod
@@ -30,17 +29,24 @@ class BaseEnv(Env, ABC):
         self.Flow = Flow
         self.core = None
         self.price_list = None
-        self.action_space = spaces.Box(0, BaseEnv.high,shape =(1,),dtype = np.float32)
+        self.action_space = spaces.Box(0, BaseEnv.high,shape =(1,),dtype = np.int16)
         self.observation_space = spaces.Dict({
-            'price':spaces.MultiDiscrete([BaseEnv.max_price for _ in range(10)], dtype=np.int64),
-            'quantity':spaces.MultiDiscrete([BaseEnv.max_quantity for _ in range(10)], dtype=np.int64)
+            'price':spaces.Box(BaseEnv.min_price,BaseEnv.max_price,shape=(10,),dtype=np.int16),
+            'quantity':spaces.Box(0,BaseEnv.max_quantity,shape=(10,), dtype=np.int64)
             })
+        # %%
+        price = spaces.Box(0,10,shape=(10,),dtype=np.int16)
+        sample = price.sample()
+        # print(sample)
+        arr = np.array([0 for _ in range(10)]).astype(np.int16)
+        arr in price
+        # %%
+        self.num_left = BaseEnv.num2liuquidate
         self.done = False
         self.running_reward = 0
         self.init_reward = 0
-        self.max_order_size = 0
         self.info = {}
-        
+    
     def setp(self, action: float = 0):
         # return observation, reward, done, info
         observation = self._get_obs(acion)
@@ -48,9 +54,25 @@ class BaseEnv(Env, ABC):
         done = self._get_done(acion)
         info = self._get_info(acion)
         return  observation, reward, done, info
+        
+    def _get_obs(self):
+        pass
+    def _get_done(self,acion):
+        return self.done
+    def _get_inventory_cost(self):
+        inventory = 
+        return BaseEnv.cost_parameter * inventory * inventory
+    def _get_reward(self,acion):
+        if not self.done:
+            return 0
+        else:
+            return self.running_reward - self._get_inventory_cost()
+    def _get_info(self,acion):
+        return self.info      
     
     def reset(self):
         '''return the observation of the initial condition'''
+        self.reset_states()
         index_random = random.randint(0, self.Flow.shape[0]-BaseEnv.num_steps-1)
         flow = self.Flow.iloc[index_random:index_random+BaseEnv.num_steps,:]
         self.core = Core(flow)
@@ -59,8 +81,6 @@ class BaseEnv(Env, ABC):
         init_price = np.array(get_price_from_stream(stream)).astype(np.int64)
         init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int64)
         self.running_reward += self.calculate_reward()
-        self.reset_states()
-        self.max_order_size = sum(init_obs)
         init_obs= {
             'price' : init_price,
             'quantity' : init_quant
@@ -69,37 +89,30 @@ class BaseEnv(Env, ABC):
     def reset_states(self):
         self.running_reward = 0
         self.done = False
+        self.num_left = BaseEnv.num2liuquidate
 
 
-    def _get_obs(self):
-        pass
-    def _get_reward(self,acion):
-        if not self.done:
-            return 0
-        else:
-            return self.running_reward
-    def _get_done(self,acion):
-        return self.done
-    def _get_info(self,acion):
-        return self.info
+
     def calculate_reward(self):
         return 1 # TODO
     def _set_init_reward(self, stream):
         num = BaseEnv.num2liuquidate
         obs = Utils.from_series2pair(stream)
         level = Broker._level_market_order_liquidating(num, obs)
-        reward,consumed = 0,0
-        for i in range(level-1):
-            reward += obs[i][0] * obs[i][1]
-            consumed += obs[i][1]
         if level == 0:
             self.init_reward = 0 
         elif level == -999:
-            consumed += obs[level-1][1]
-            reward += obs[level-1][0] * obs[level-1][1]
+            reward,consumed = 0,0
+            for i in range(len(obs)):
+                reward += obs[i][0] * obs[i][1]
+                consumed += obs[i][1]
             inventory_cost=(num-consumed)*(num-consumed)*BaseEnv.cost_parameter
             self.init_reward = reward - inventory_cost
         else:
+            reward,consumed = 0,0
+            for i in range(level-1):
+                reward += obs[i][0] * obs[i][1]
+                consumed += obs[i][1]
             reward += obs[level-1][0] * (num - consumed)
             self.init_reward = reward
     
