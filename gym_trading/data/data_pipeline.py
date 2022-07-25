@@ -68,7 +68,33 @@ if __name__ == "__main__":
     #     return price_set
     # max_quantity = get_max_quantity(Flow)
     
-    # stream =  flow.iloc[0,:]
+    
+# =============================================================================
+#     def get_min_num2liuquidate(flow):
+#         datalist = []
+#         for index in range(flow.shape[0]):
+#             data =  sum(flow.iloc[index,[2*i+1 for i in range(10)]].to_list())
+#             datalist.append(data)
+#         result = min(datalist)
+#         return result
+#     result = get_min_num2liuquidate(Flow)
+# =============================================================================
+    
+    
+    # %%
+    # num = 24
+    # from gym_trading.envs.match_engine import Broker, Utils
+    # obs = Utils.from_series2pair(stream)
+    # level = Broker._level_market_order_liquidating(num, obs)
+    # reward = 0
+    # consumed = 0
+    # for i in range(level-1):
+    #     reward += obs[i][0] * obs[i][1]
+    #     consumed += obs[i][1]
+    # reward += obs[level-1][0] * (num - consumed)
+
+        
+    # index_list = [2*i+1 for i in range(level-1)]
     
     # def get_max_price(flow):
     #     price_list = []
@@ -79,16 +105,15 @@ if __name__ == "__main__":
     #     return price_set
     # max_price = get_max_price(Flow)
     
-    def get_min_price(flow):
-        price_list = []
-        column_index = [i*2  for i in range(0,flow.shape[1]//2)]
-        for i in range(flow.shape[0]):
-            price_list.extend(flow.iloc[i,column_index].to_list())
-        price_set = min(price_list)
-        return price_set
-    min_price = get_min_price(Flow)
+    # def get_min_price(flow):
+    #     price_list = []
+    #     column_index = [i*2  for i in range(0,flow.shape[1]//2)]
+    #     for i in range(flow.shape[0]):
+    #         price_list.extend(flow.iloc[i,column_index].to_list())
+    #     price_set = min(price_list)
+    #     return price_set
+    # min_price = get_min_price(Flow)
 
-    
 
                 
     
