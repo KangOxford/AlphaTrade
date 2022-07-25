@@ -19,7 +19,7 @@ class BaseEnv(Env, ABC):
         super().__init__()
         self.Flow = Flow
         self.core = None
-        self.action_space = spaces.Box(0, BaseEnv.high, dtype = np.float32)
+        self.action_space = spaces.Box(0, BaseEnv.high,shape =(1,),dtype = np.float32)
         # self.observation_space = spaces.Box
     def setp(self, action: float = 0):
         # return observation, reward, done, info

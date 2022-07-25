@@ -1,7 +1,7 @@
 # %%
 import pandas as pd
 
-from data.data_pipeline import ExternalData
+from gym_trading.data.data_pipeline import ExternalData
 '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
 # %%
 class Utils():
