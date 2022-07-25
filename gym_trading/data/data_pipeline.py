@@ -44,7 +44,32 @@ class ExternalData():
      
 if __name__ == "__main__":
     Flow = ExternalData.get_sample_order_book_data()
-    flow = Flow.iloc[3:1000,:].reset_index().drop("index",axis=1)
+    flow = Flow.iloc[3:1027,:].reset_index().drop("index",axis=1)
     # datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
     # data = datapipeline.reset()
     # data = datapipeline.step()
+    
+    # def get_price_list(flow):
+    #     price_list = []
+    #     column_index = [i*2 for i in range(0,10)]
+    #     for i in range(flow.shape[0]):
+    #         price_list.extend(flow.iloc[i,column_index].to_list())
+    #     price_set = set(price_list)
+    #     price_list = sorted(list(price_set), reverse = True)
+    #     return price_list
+    # price_list = get_price_list(flow)
+    
+    def get_max_quantity(flow):
+        price_list = []
+        column_index = [i*2 + 1 for i in range(0,flow.shape[1]//2)]
+        for i in range(flow.shape[0]):
+            price_list.extend(flow.iloc[i,column_index].to_list())
+        price_set = max(price_list)
+        return price_set
+    max_quantity = get_max_quantity(flow)
+    
+
+                
+    
+    
+    
