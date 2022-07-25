@@ -45,20 +45,23 @@ class BaseEnv(Env, ABC):
         self.previous_obs = None
     
 # ============================  STEP  =========================================
-
-    def setp(self, action: float = 0):
+    def step(self, action):
         ''' return observation, reward, done, info '''
-        observation = self._get_obs(acion)
-        reward = self._get_reward(acion)
-        done = self._get_done(acion)
-        info = self._get_info(acion)
-        num_executed = get_num_executed(action) # TODO
-        self.running_reward += self._calculate_reward() # TODO
+        observation = self._get_obs(action)
+        num_executed = self.core.get_executed_quantity() # TODO
         self.num_left -= num_executed 
+        self.running_reward += self._get_each_running_reward() # TODO
+        # ---------------------
+        reward = self._get_reward(action)
+        done = self._get_done(action)
+        info = self._get_info(action)
+
+        
         return  observation, reward, done, info
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
-        obs = self.core.update(num, self.previous_obs) # TODO
+        obs_ = self.core.step(num)[0] # TODO series
+        obs = from_series2obs(obs_)
         self.previous_obs = obs 
         return obs
     # ------ 2/4.DONE ------
@@ -76,12 +79,13 @@ class BaseEnv(Env, ABC):
             return 0
         else:
             return self.running_reward - self._get_inventory_cost()
-    def _calculate_reward(self):
-        return 1 # TODO
+    def _get_each_running_reward(self):
+        pairs = self.core.get_executed_pairs() # TODO
+        lst_pairs = np.array(from_pairs2lst_pairs(pairs))
+        return -1 * sum(lst_pairs[0]*lst_pairs[1]) 
     # ------ 4/4.INFO ------
     def _get_info(self,acion):
         return self.info   
-   
 # =============================================================================
  
 # =============================  RESET  =======================================   
@@ -139,3 +143,6 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
+    action = 3
+    observation, reward, done, info = env.step(3)
+    print(0)

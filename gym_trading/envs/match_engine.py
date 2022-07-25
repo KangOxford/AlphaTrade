@@ -127,6 +127,8 @@ class Core():
         self._flow = -self.flow.diff()
         self.index = Core.init_index
         self.state = self.initial_state()
+        self.action = None
+        self.executed_pairs = None
     def initial_state(self):
         return self.flow.iloc[Core.init_index,:]
     def get_new_obs(self, num, obs):
@@ -140,10 +142,14 @@ class Core():
             return Utils.remove_replicate(sorted(obs))
     def get_reward(self):
         return 0
+    def get_executed_pairs(self):
+        return self.executed_pairs
     def step(self, action):
+        self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
         new_obs = self.get_new_obs(action, state)
+        self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
         updated_state = self.update(state, to_be_updated)
@@ -193,7 +199,8 @@ class Core():
         return updated_state
     def get_executed_quantity(self):
         '''It should return the real quantity of having been executed'''
-        return 0
+        result = self.action
+        return result 
         
 # %%
 if __name__ == "__main__":
