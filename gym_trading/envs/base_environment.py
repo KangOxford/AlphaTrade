@@ -17,7 +17,7 @@ from gym_trading.envs.match_engine import Broker, Utils
 
 class BaseEnv(Env, ABC):
     num_steps = 1024 # size of a flow
-    high = 1024
+    max_action = 30
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
@@ -30,7 +30,7 @@ class BaseEnv(Env, ABC):
         self.Flow = Flow
         self.core = None
         self.price_list = None
-        self.action_space = spaces.Box(0, BaseEnv.high,shape =(1,),dtype = np.int16)
+        self.action_space = spaces.Box(0, BaseEnv.max_action,shape =(1,),dtype = np.int16)
         self.observation_space = spaces.Dict({
             'price':spaces.Box(low=BaseEnv.min_price,high=BaseEnv.max_price,shape=(10,),dtype=np.int32),
             'quantity':spaces.Box(low=0,high=BaseEnv.max_quantity,shape=(10,), dtype=np.int32)
@@ -48,19 +48,17 @@ class BaseEnv(Env, ABC):
     def step(self, action):
         ''' return observation, reward, done, info '''
         observation = self._get_obs(action)
-        num_executed = self.core.get_executed_quantity() # TODO
+        num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
-        self.running_reward += self._get_each_running_reward() # TODO
+        self.running_reward += self._get_each_running_reward() 
         # ---------------------
         reward = self._get_reward(action)
         done = self._get_done(action)
         info = self._get_info(action)
-
-        
         return  observation, reward, done, info
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
-        obs_ = self.core.step(num)[0] # TODO series
+        obs_ = self.core.step(num)[0] # dtype:series
         obs = from_series2obs(obs_)
         self.previous_obs = obs 
         return obs
@@ -106,8 +104,8 @@ class BaseEnv(Env, ABC):
         self.num_left = BaseEnv.num2liuquidate
         self.num_step = 0
     def _get_init_obs(self, stream):
-        init_price = np.array(get_price_from_stream(stream)).astype(np.int64)
-        init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int64)
+        init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
+        init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)
         init_obs= {
             'price' : init_price,
             'quantity' : init_quant

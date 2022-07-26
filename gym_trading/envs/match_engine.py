@@ -87,7 +87,7 @@ class Broker():
             if i>=10: 
                 result = -999
                 break
-            num -= obs[i][1]
+            num -= obs[i][1] # TODO index out of bound error
             i+=1
             result = i
         return result
@@ -136,8 +136,10 @@ class Core():
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
         obs.extend(diff_obs)
-        if len(obs) == 0:
+        if len(obs) == 0 :
             return []
+        elif -999 in obs: 
+            return [] # TODO to implement it in right way
         else:
             return Utils.remove_replicate(sorted(obs))
     def get_reward(self):
@@ -148,7 +150,7 @@ class Core():
         self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
-        new_obs = self.get_new_obs(action, state)
+        new_obs = self.get_new_obs(action[0], state)
         self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
