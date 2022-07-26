@@ -31,6 +31,7 @@ class Utils():
             result.append(item[0])
             result.append(item[1])
         return pd.Series(data=result, index = name_lst)
+        # TODO deal with the empty data, which is object not float
 
     def remove_replicate(diff_list):
         # remove_replicate
@@ -196,8 +197,8 @@ class Core():
         for i in range(col_num):
             if i%2 == 0:
                 if Index >= 1024: ##
-                    print(Index)
-                    break ## !TODO not sure
+                    # print(Index) ## !TODO not sure
+                    break 
                 if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
                     diff_list.append([self.flow.iat[Index,i],
                                       self.flow.iat[Index,i+1]])

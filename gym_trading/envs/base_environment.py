@@ -30,7 +30,8 @@ class BaseEnv(Env, ABC):
         self.Flow = Flow
         self.core = None
         self.price_list = None
-        self.action_space = spaces.Box(0, BaseEnv.max_action,shape =(1,),dtype = np.int16)
+        # self.action_space = spaces.MultiDiscrete(BaseEnv.max_action)
+        self.action_space = spaces.Box(0, BaseEnv.max_action,shape =(1,),dtype = np.int32)
         self.observation_space = spaces.Dict({
             'price':spaces.Box(low=BaseEnv.min_price,high=BaseEnv.max_price,shape=(10,),dtype=np.int32),
             'quantity':spaces.Box(low=0,high=BaseEnv.max_quantity,shape=(10,), dtype=np.int32)
@@ -48,14 +49,16 @@ class BaseEnv(Env, ABC):
     def step(self, action):
         ''' return observation, reward, done, info '''
         # Action = action ##
-        action = np.round(action).astype(np.int16)
+        action = np.round(action).astype(np.int32)
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
         self.running_reward += self._get_each_running_reward() 
+        # self.num_step += 1 # TODO not sure the location
         # ---------------------
         reward = self._get_reward(action)
         done = self._get_done(action)
+        self.num_step += 1 # TODO not sure the location
         info = self._get_info(action)
         return  observation, reward, done, info
     # ------  1/4.OBS  ------

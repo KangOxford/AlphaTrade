@@ -25,10 +25,14 @@
 # import time
 
 # %%
+
+# clear warnings
+import warnings
+warnings.filterwarnings("ignore")
+
+
 import gym
-
 from stable_baselines3 import PPO
-
 from stable_baselines3.common.env_checker import check_env
 
 # env = gym.make("CartPole-v1")
@@ -42,16 +46,30 @@ env = BaseEnv(Flow)
 
 check_env(env)
 
-model = PPO("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=int(1e16))
 
+model = PPO("MultiInputPolicy", env, verbose=1)
+# model.learn(total_timesteps=int(1e6)) ## setiting for Console 65
+model.learn(total_timesteps=int(1e5))
+# %%
+model.save("gym_trading-v1")
+del model 
+model = PPO.load("gym_trading-v1")
+# %%
 obs = env.reset()
 running_reward = 0
-for i in range(1000):
+for i in range(int(1e6)):
+    if i//int(1e5) == i/int(1e5):
+        print("Epoch ",i)
     action, _states = model.predict(obs, deterministic=True)
     obs, reward, done, info = env.step(action)
     running_reward += reward
     if done:
       obs = env.reset()
 env.close()
-print("running_reward")
+
+
+
+
+
+
+
