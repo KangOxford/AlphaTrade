@@ -1,4 +1,5 @@
 # %%
+import numpy as np
 import pandas as pd
 
 from gym_trading.data.data_pipeline import ExternalData
@@ -83,24 +84,24 @@ class Broker():
         '''observation is one row of the flow, observed at specific time t'''   
         i = 0
         result = 0
+        Num = num
         while num>0:
             if i>=10: 
                 result = -999
                 break
-            ##
             try :
                 obs[i][1]
             except:
-                print("list index out of range")
-            ##
-            num -= obs[i][1] # TODO index out of bound error
+                break
+            num -= obs[i][1] 
             i+=1
             result = i
-        return result
+        executed_num = Num - num # TODO use the executed_num
+        return result, executed_num
     
     @classmethod
     def pairs_market_order_liquidating(cls, num, obs):
-        level = cls._level_market_order_liquidating(num, obs)
+        level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
         sum_quantity = 0
         quantity_list = []
@@ -156,7 +157,10 @@ class Core():
         self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
-        new_obs = self.get_new_obs(action[0], state)
+        if type(action) == np.ndarray:
+            new_obs = self.get_new_obs(action[0], state)
+        elif type(action) == int:
+            new_obs = self.get_new_obs(action, state)
         self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
@@ -186,19 +190,19 @@ class Core():
                 result += next_stage_lst[i]
         return result
     def diff(self, index):
-        index += 1 ## !TODO not sure
+        Index = index + 1 ## !TODO not sure
         col_num = self._flow.shape[1] 
         diff_list = [] 
         for i in range(col_num):
             if i%2 == 0:
-                if index >= 1024: ##
-                    print(index)
+                if Index >= 1024: ##
+                    print(Index)
                     break ## !TODO not sure
-                if self._flow.iat[index,i] !=0 or self._flow.iat[index,i+1] !=0:
-                    diff_list.append([self.flow.iat[index,i],
-                                      self.flow.iat[index,i+1]])
-                    diff_list.append([self.flow.iat[index-1,i],
-                                      -self.flow.iat[index-1,i+1]])
+                if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
+                    diff_list.append([self.flow.iat[Index,i],
+                                      self.flow.iat[Index,i+1]])
+                    diff_list.append([self.flow.iat[Index-1,i],
+                                      -self.flow.iat[Index-1,i+1]])
         if len(diff_list) == 0:
             return []
         else:

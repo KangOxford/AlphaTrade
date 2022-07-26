@@ -47,6 +47,8 @@ class BaseEnv(Env, ABC):
 # ============================  STEP  =========================================
     def step(self, action):
         ''' return observation, reward, done, info '''
+        # Action = action ##
+        action = np.round(action).astype(np.int16)
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
@@ -93,6 +95,7 @@ class BaseEnv(Env, ABC):
         self.reset_states()
         index_random = random.randint(0, self.Flow.shape[0]-BaseEnv.num_steps-1)
         flow = self.Flow.iloc[index_random:index_random+BaseEnv.num_steps,:]
+        flow = flow.reset_index().drop("index",axis=1)
         self.core = Core(flow)
         stream =  flow.iloc[0,:]
         self._set_init_reward(stream)
@@ -115,7 +118,7 @@ class BaseEnv(Env, ABC):
     def _set_init_reward(self, stream):
         num = BaseEnv.num2liuquidate
         obs = Utils.from_series2pair(stream)
-        level = Broker._level_market_order_liquidating(num, obs)
+        level, executed_num = Broker._level_market_order_liquidating(num, obs)
         if level == 0:
             self.init_reward = 0 
         elif level == -999:
