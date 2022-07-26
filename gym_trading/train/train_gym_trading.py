@@ -43,14 +43,15 @@ env = BaseEnv(Flow)
 check_env(env)
 
 model = PPO("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=10000)
+model.learn(total_timesteps=int(1e16))
 
 obs = env.reset()
+running_reward = 0
 for i in range(1000):
     action, _states = model.predict(obs, deterministic=True)
     obs, reward, done, info = env.step(action)
-    # env.render()
-    # time.sleep(1)
+    running_reward += reward
     if done:
       obs = env.reset()
 env.close()
+print("running_reward")

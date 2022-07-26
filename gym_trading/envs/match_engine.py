@@ -87,6 +87,12 @@ class Broker():
             if i>=10: 
                 result = -999
                 break
+            ##
+            try :
+                obs[i][1]
+            except:
+                print("list index out of range")
+            ##
             num -= obs[i][1] # TODO index out of bound error
             i+=1
             result = i
@@ -185,6 +191,9 @@ class Core():
         diff_list = [] 
         for i in range(col_num):
             if i%2 == 0:
+                if index >= 1024: ##
+                    print(index)
+                    break ## !TODO not sure
                 if self._flow.iat[index,i] !=0 or self._flow.iat[index,i+1] !=0:
                     diff_list.append([self.flow.iat[index,i],
                                       self.flow.iat[index,i+1]])

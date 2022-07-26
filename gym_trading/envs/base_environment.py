@@ -76,6 +76,7 @@ class BaseEnv(Env, ABC):
         if not self.done:
             return 0
         else:
+            print(self.running_reward - self._get_inventory_cost())
             return self.running_reward - self._get_inventory_cost()
     def _get_each_running_reward(self):
         pairs = self.core.get_executed_pairs() # TODO
