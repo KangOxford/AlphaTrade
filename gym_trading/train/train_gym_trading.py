@@ -46,26 +46,34 @@ env = BaseEnv(Flow)
 
 check_env(env)
 
-
+# %%
 model = PPO("MultiInputPolicy", env, verbose=1)
 # model.learn(total_timesteps=int(1e6)) ## setiting for Console 65
 model.learn(total_timesteps=int(1e5))
 # %%
 model.save("gym_trading-v1")
-del model 
+# del model ##
+# %%
 model = PPO.load("gym_trading-v1")
 # %%
+import time
+start = time.time()
+
+done = False
 obs = env.reset()
 running_reward = 0
 for i in range(int(1e6)):
     if i//int(1e5) == i/int(1e5):
-        print("Epoch ",i)
+        now = time.time()
+        print("Epoch {}, with training time {}".format(i,now-start))
     action, _states = model.predict(obs, deterministic=True)
     obs, reward, done, info = env.step(action)
     running_reward += reward
     if done:
-      obs = env.reset()
-env.close()
+        running_reward += reward
+        obs = env.reset()
+        break ##
+# env.close() ##
 
 
 

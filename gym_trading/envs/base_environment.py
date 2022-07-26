@@ -56,8 +56,8 @@ class BaseEnv(Env, ABC):
         self.running_reward += self._get_each_running_reward() 
         # self.num_step += 1 # TODO not sure the location
         # ---------------------
+        done = self._get_set_done(action)
         reward = self._get_reward(action)
-        done = self._get_done(action)
         self.num_step += 1 # TODO not sure the location
         info = self._get_info(action)
         return  observation, reward, done, info
@@ -68,8 +68,9 @@ class BaseEnv(Env, ABC):
         self.previous_obs = obs 
         return obs
     # ------ 2/4.DONE ------
-    def _get_done(self,acion):
+    def _get_set_done(self,acion):
         '''get & set done'''
+        print('num_left : ', self.num_left)
         if self.num_left <= 0 or self.num_step >= BaseEnv.num_steps:
             self.done = True
         return self.done
@@ -81,7 +82,9 @@ class BaseEnv(Env, ABC):
         if not self.done:
             return 0
         else:
-            print(self.running_reward - self._get_inventory_cost())
+            final = self.running_reward - self._get_inventory_cost()
+            print(">>> FINAL REWARD : ", )
+            print(">>> FINAL Advantage : ", final/361125)
             return self.running_reward - self._get_inventory_cost()
     def _get_each_running_reward(self):
         pairs = self.core.get_executed_pairs() # TODO
@@ -149,5 +152,8 @@ if __name__=="__main__":
     env = BaseEnv(Flow)
     obs = env.reset()
     action = 3
-    observation, reward, done, info = env.step(3)
-    print(0)
+    for i in range(int(1e6)):
+        observation, reward, done, info = env.step(3)
+        if done:
+            break
+    print("End of main()")
