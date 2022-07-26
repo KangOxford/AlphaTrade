@@ -156,8 +156,8 @@ class Core():
         self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
-        # new_obs = self.get_new_obs(action[0], state)
-        new_obs = self.get_new_obs(action, state)
+        new_obs = self.get_new_obs(action[0], state)
+        # new_obs = self.get_new_obs(action, state)
         self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
