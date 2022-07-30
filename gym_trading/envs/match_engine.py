@@ -158,10 +158,12 @@ class Core():
         self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
+
         if type(action) == np.ndarray:
             new_obs = self.get_new_obs(action[0], state)
         elif type(action) == int or type(action) == np.int32:
             new_obs = self.get_new_obs(action, state)
+
         self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)

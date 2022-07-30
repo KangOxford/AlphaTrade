@@ -32,6 +32,7 @@ class BaseEnv(Env, ABC):
         self.price_list = None
         # self.action_space = spaces.MultiDiscrete(BaseEnv.max_action)
         self.action_space = spaces.Box(0, BaseEnv.max_action,shape =(1,),dtype = np.int32)
+
         self.observation_space = spaces.Dict({
             'price':spaces.Box(low=BaseEnv.min_price,high=BaseEnv.max_price,shape=(10,),dtype=np.int32),
             'quantity':spaces.Box(low=0,high=BaseEnv.max_quantity,shape=(10,), dtype=np.int32)
