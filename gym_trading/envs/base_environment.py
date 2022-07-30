@@ -1,4 +1,5 @@
 # =============================================================================
+import time
 import random
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ class BaseEnv(Env, ABC):
     max_price = 31620700
     min_price = 31120200
     num2liuquidate = 300
-    cost_parameter = 0.01
+    cost_parameter = int(1e16)
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -40,7 +41,7 @@ class BaseEnv(Env, ABC):
         # ---------------------
         self.num_left = None
         self.done = False
-        self.num_step = None
+        self.num_step = 0
         self.running_reward = 0
         self.init_reward = 0
         self.info = {}
@@ -48,11 +49,9 @@ class BaseEnv(Env, ABC):
     
 # ============================  STEP  =========================================
     def step(self, action):
-        ''' return observation, reward, done, info '''
-        # Action = action ##
-        # action = np.round(action).astype(np.int32) # !TODO take care of the action sample 
+        ''' return observation, reward, done, info ''' 
         if type(action) == np.ndarray:
-            action = action.astype(np.int32)
+            action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
@@ -63,6 +62,7 @@ class BaseEnv(Env, ABC):
         reward = self._get_reward(action)
         self.num_step += 1 # TODO not sure the location
         info = self._get_info(action)
+        print("Step : ".format(self.num_step)) ##
         return  observation, reward, done, info
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
@@ -73,7 +73,7 @@ class BaseEnv(Env, ABC):
     # ------ 2/4.DONE ------
     def _get_set_done(self,acion):
         '''get & set done'''
-        print('num_left : ', self.num_left)
+        # print('num_left : ', self.num_left)
         if self.num_left <= 0 or self.num_step >= BaseEnv.num_steps:
             self.done = True
         return self.done
@@ -84,10 +84,13 @@ class BaseEnv(Env, ABC):
     def _get_reward(self,acion):
         if not self.done:
             return 0
-        else:
+        elif self.done:
             final = self.running_reward - self._get_inventory_cost()
-            print(">>> FINAL REWARD : ", )
-            print(">>> FINAL Advantage : ", final/361125)
+            print("============================")
+            print(">>> FINAL REMAINING : ",self.num_left)
+            print(">>> FINAL REWARD : ", self.running_reward)
+            print(">>> FINAL Advantage : ", (final-self.init_reward)/BaseEnv.max_price)
+            time.sleep(0.5)
             return self.running_reward - self._get_inventory_cost()
     def _get_each_running_reward(self):
         pairs = self.core.get_executed_pairs() # TODO
