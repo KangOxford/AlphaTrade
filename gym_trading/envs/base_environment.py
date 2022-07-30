@@ -40,7 +40,7 @@ class BaseEnv(Env, ABC):
         # ---------------------
         self.num_left = None
         self.done = False
-        self.num_step = False
+        self.num_step = None
         self.running_reward = 0
         self.init_reward = 0
         self.info = {}
@@ -50,7 +50,9 @@ class BaseEnv(Env, ABC):
     def step(self, action):
         ''' return observation, reward, done, info '''
         # Action = action ##
-        action = np.round(action).astype(np.int32)
+        # action = np.round(action).astype(np.int32) # !TODO take care of the action sample 
+        if type(action) == np.ndarray:
+            action = action.astype(np.int32)
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
@@ -126,6 +128,7 @@ class BaseEnv(Env, ABC):
         num = BaseEnv.num2liuquidate
         obs = Utils.from_series2pair(stream)
         level, executed_num = Broker._level_market_order_liquidating(num, obs)
+        # TODO to use the num_executed
         if level == 0:
             self.init_reward = 0 
         elif level == -999:
@@ -154,7 +157,7 @@ if __name__=="__main__":
     obs = env.reset()
     action = 3
     for i in range(int(1e6)):
-        observation, reward, done, info = env.step(3)
+        observation, reward, done, info = env.step(action)
         if done:
-            break
+            env.reset()
     print("End of main()")

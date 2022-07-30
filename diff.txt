@@ -1,0 +1,869 @@
+diff --git a/.gitignore b/.gitignore
+index 8ab5e4c..35c65aa 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,3 +1,5 @@
+ **/__pycache__
+ *.csv
+-.spyproject
+\ No newline at end of file
++.idea/
++.spyproject/
++.ipynb_checkpoints/
+\ No newline at end of file
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+deleted file mode 100644
+index 13566b8..0000000
+--- a/.idea/.gitignore
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# Default ignored files
+-/shelf/
+-/workspace.xml
+-# Editor-based HTTP Client requests
+-/httpRequests/
+-# Datasource local storage ignored files
+-/dataSources/
+-/dataSources.local.xml
+diff --git a/.idea/Dissertation.iml b/.idea/Dissertation.iml
+deleted file mode 100644
+index 8999634..0000000
+--- a/.idea/Dissertation.iml
++++ /dev/null
+@@ -1,19 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<module type="PYTHON_MODULE" version="4">
+-  <component name="NewModuleRootManager">
+-    <content url="file://$MODULE_DIR$" />
+-    <orderEntry type="jdk" jdkName="Python 3.9 (base)" jdkType="Python SDK" />
+-    <orderEntry type="sourceFolder" forTests="false" />
+-  </component>
+-  <component name="PyDocumentationSettings">
+-    <option name="format" value="PLAIN" />
+-    <option name="myDocStringFormat" value="Plain" />
+-  </component>
+-  <component name="TemplatesService">
+-    <option name="TEMPLATE_FOLDERS">
+-      <list>
+-        <option value="$MODULE_DIR$/WebApp/templates" />
+-      </list>
+-    </option>
+-  </component>
+-</module>
+\ No newline at end of file
+diff --git a/.idea/inspectionProfiles/Project_Default.xml b/.idea/inspectionProfiles/Project_Default.xml
+deleted file mode 100644
+index 3dc583b..0000000
+--- a/.idea/inspectionProfiles/Project_Default.xml
++++ /dev/null
+@@ -1,13 +0,0 @@
+-<component name="InspectionProjectProfileManager">
+-  <profile version="1.0">
+-    <option name="myName" value="Project Default" />
+-    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+-      <option name="ignoredErrors">
+-        <list>
+-          <option value="W29" />
+-          <option value="E501" />
+-        </list>
+-      </option>
+-    </inspection_tool>
+-  </profile>
+-</component>
+\ No newline at end of file
+diff --git a/.idea/inspectionProfiles/profiles_settings.xml b/.idea/inspectionProfiles/profiles_settings.xml
+deleted file mode 100644
+index 105ce2d..0000000
+--- a/.idea/inspectionProfiles/profiles_settings.xml
++++ /dev/null
+@@ -1,6 +0,0 @@
+-<component name="InspectionProjectProfileManager">
+-  <settings>
+-    <option name="USE_PROJECT_PROFILE" value="false" />
+-    <version value="1.0" />
+-  </settings>
+-</component>
+\ No newline at end of file
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+deleted file mode 100644
+index 7e83473..0000000
+--- a/.idea/misc.xml
++++ /dev/null
+@@ -1,4 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<project version="4">
+-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (base)" project-jdk-type="Python SDK" />
+-</project>
+\ No newline at end of file
+diff --git a/.idea/modules.xml b/.idea/modules.xml
+deleted file mode 100644
+index fb94c68..0000000
+--- a/.idea/modules.xml
++++ /dev/null
+@@ -1,8 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<project version="4">
+-  <component name="ProjectModuleManager">
+-    <modules>
+-      <module fileurl="file://$PROJECT_DIR$/.idea/Dissertation.iml" filepath="$PROJECT_DIR$/.idea/Dissertation.iml" />
+-    </modules>
+-  </component>
+-</project>
+\ No newline at end of file
+diff --git a/.idea/vcs.xml b/.idea/vcs.xml
+deleted file mode 100644
+index 94a25f7..0000000
+--- a/.idea/vcs.xml
++++ /dev/null
+@@ -1,6 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<project version="4">
+-  <component name="VcsDirectoryMappings">
+-    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+-  </component>
+-</project>
+\ No newline at end of file
+diff --git a/crypto-rl.ipynb b/crypto-rl.ipynb
+deleted file mode 100644
+index be9965c..0000000
+--- a/crypto-rl.ipynb
++++ /dev/null
+@@ -1,479 +0,0 @@
+-{
+- "cells": [
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "from gym_trading.utils.broker import Broker\n",
+-    "from gym_trading.utils.decorator import debugging\n",
+-    "from gym_trading.utils.order import LimitOrder, MarketOrder"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "def test_case_one():\n",
+-    "    print('\\nTest_Case_One')\n",
+-    "\n",
+-    "    test_position = Broker()\n",
+-    "    midpoint = 100.\n",
+-    "    fee = .003\n",
+-    "\n",
+-    "    order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint, step=1)\n",
+-    "    test_position.add(order=order_open)\n",
+-    "\n",
+-    "    assert(1== test_position.long_inventory.position_count)\n",
+-    "    print('LONG Unrealized_pnl: %f' % test_position.long_inventory.get_unrealized_pnl(\n",
+-    "        price=midpoint))\n",
+-    "\n",
+-    "    assert(0== test_position.short_inventory.position_count)\n",
+-    "    assert(0.== test_position.short_inventory.get_unrealized_pnl(\n",
+-    "        price=midpoint))\n",
+-    "\n",
+-    "    order_close = MarketOrder(ccy='BTC-USD', side='long',\n",
+-    "                                price=midpoint + (midpoint * fee * 5), step=100)\n",
+-    "\n",
+-    "    test_position.remove(order=order_close)\n",
+-    "    assert(0==test_position.long_inventory.position_count)\n",
+-    "    print('LONG Unrealized_pnl: %f' % test_position.long_inventory.get_unrealized_pnl(\n",
+-    "        price=midpoint))\n",
+-    "\n",
+-    "    assert(test_position.short_inventory.position_count== 0)\n",
+-    "    assert(\n",
+-    "        test_position.short_inventory.get_unrealized_pnl(price=midpoint)== 0.)\n",
+-    "    print('LONG Realized_pnl: %f' % test_position.realized_pnl)\n",
+-    "\n",
+-    "def test_case_two():\n",
+-    "    print('\\nTest_Case_Two')\n",
+-    "\n",
+-    "    test_position = Broker()\n",
+-    "    midpoint = 100.\n",
+-    "    fee = .003\n",
+-    "\n",
+-    "    order_open = MarketOrder(ccy='BTC-USD', side='short', price=midpoint, step=1)\n",
+-    "    test_position.add(order=order_open)\n",
+-    "    assert(1== test_position.short_inventory.position_count)\n",
+-    "    assert(0 ==test_position.long_inventory.position_count)\n",
+-    "    assert(0. ==test_position.long_inventory.get_unrealized_pnl(\n",
+-    "        price=midpoint))\n",
+-    "    print(\n",
+-    "        'SHORT Unrealized_pnl: %f' % test_position.short_inventory.get_unrealized_pnl(\n",
+-    "            price=midpoint))\n",
+-    "\n",
+-    "    order_close = MarketOrder(ccy='BTC-USD', side='short',\n",
+-    "                                price=midpoint - (midpoint * fee * 15), step=100)\n",
+-    "    test_position.remove(order=order_close)\n",
+-    "    assert(0 ==test_position.short_inventory.position_count)\n",
+-    "    assert(0 ==test_position.long_inventory.position_count)\n",
+-    "    assert(0. ==test_position.long_inventory.get_unrealized_pnl(\n",
+-    "        price=midpoint))\n",
+-    "    print(\n",
+-    "        'SHORT Unrealized_pnl: %f' % test_position.short_inventory.get_unrealized_pnl(\n",
+-    "            price=midpoint))\n",
+-    "    print('SHORT Realized_pnl: %f' % test_position.realized_pnl)\n",
+-    "\n",
+-    "def test_case_three():\n",
+-    "    print('\\nTest_Case_Three')\n",
+-    "\n",
+-    "    test_position = Broker(5)\n",
+-    "    midpoint = 100.\n",
+-    "\n",
+-    "    for i in range(10):\n",
+-    "        order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint - i, step=i)\n",
+-    "        test_position.add(order=order_open)\n",
+-    "\n",
+-    "    assert(5 == test_position.long_inventory.position_count)\n",
+-    "    assert(0 == test_position.short_inventory.position_count)\n",
+-    "    print('Confirm we have 5 positions: %i' % test_position.long_inventory.position_count)\n",
+-    "\n",
+-    "    for i in range(10):\n",
+-    "        order_open = MarketOrder(ccy='BTC-USD', side='long', price=midpoint + i, step=i)\n",
+-    "        test_position.remove(order=order_open)\n",
+-    "\n",
+-    "    assert(0 == test_position.long_inventory.position_count)\n",
+-    "    assert(0 == test_position.short_inventory.position_count)\n",
+-    "\n"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_case_one()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_case_two()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_case_three()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "def test_long_pnl():\n",
+-    "    test_position = Broker()\n",
+-    "    step = 0\n",
+-    "    bid_price = 101.\n",
+-    "    ask_price = 102.\n",
+-    "    buy_volume = 100\n",
+-    "    sell_volume = 100\n",
+-    "    pnl = 0.\n",
+-    "\n",
+-    "    def walk_forward(pnl, step, bid_price, ask_price, buy_volume, sell_volume, down=True):\n",
+-    "        for i in range(50):\n",
+-    "            step += 1\n",
+-    "            if down:\n",
+-    "                bid_price *= 0.99\n",
+-    "                ask_price *= 0.99\n",
+-    "            else:\n",
+-    "                bid_price *= 1.01\n",
+-    "                ask_price *= 1.01\n",
+-    "\n",
+-    "            pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "                test_position.step_limit_order_pnl(\n",
+-    "                    bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "                    sell_volume=sell_volume, step=step)\n",
+-    "            pnl += pnl\n",
+-    "            if i % 10 == 0:\n",
+-    "                print('bid_price={:.2f} | ask_price={:.2f}'.format(bid_price,\n",
+-    "                                                                    ask_price))\n",
+-    "        return step, bid_price, ask_price, buy_volume, sell_volume, pnl\n",
+-    "\n",
+-    "    test_position.add(\n",
+-    "        order=LimitOrder(ccy='BTC-USD', side='long', price=100., step=step,\n",
+-    "                            queue_ahead=1000))\n",
+-    "\n",
+-    "    step, _, _, buy_volume, sell_volume, pnl = walk_forward(pnl, step, bid_price,\n",
+-    "                                                            ask_price, buy_volume,\n",
+-    "                                                            sell_volume, down=True)\n",
+-    "    assert(1== test_position.long_inventory_count)\n",
+-    "\n",
+-    "    test_position.add(\n",
+-    "        order=LimitOrder(ccy='BTC-USD', side='short', price=105., step=step,\n",
+-    "                            queue_ahead=0))\n",
+-    "    _, _, _, _, _, pnl = walk_forward(pnl, step, bid_price, ask_price, buy_volume,\n",
+-    "                                        sell_volume, down=False)\n",
+-    "    realized_pnl = round(test_position.realized_pnl, 3)\n",
+-    "\n",
+-    "    assert(0.05== realized_pnl,\n",
+-    "                        \"Expected Realized PnL of 0.5 and got {}\".format(realized_pnl))\n",
+-    "    assert(0==\n",
+-    "                        test_position.short_inventory_count +\n",
+-    "                        test_position.long_inventory_count)\n",
+-    "    print(\"PnL: {}\".format(pnl))\n",
+-    "\n",
+-    "def test_avg_exe():\n",
+-    "    test_position = Broker()\n",
+-    "\n",
+-    "    # perform a partial fill on the first order\n",
+-    "    step = 0\n",
+-    "    bid_price = 101.\n",
+-    "    ask_price = 102.\n",
+-    "    buy_volume = 500\n",
+-    "    sell_volume = 500\n",
+-    "\n",
+-    "    test_position.add(\n",
+-    "        order=LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,\n",
+-    "                            queue_ahead=0))\n",
+-    "\n",
+-    "    print(\"taking first step...\")\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "    assert(500== test_position.long_inventory.order.executed)\n",
+-    "    assert(0== test_position.long_inventory_count)\n",
+-    "\n",
+-    "    # if order gets filled with a bid below the order's price, the order should NOT\n",
+-    "    # receive any price improvement during the execution.\n",
+-    "    bid_price = 99.\n",
+-    "    ask_price = 100.\n",
+-    "    test_position.add(\n",
+-    "        order=LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,\n",
+-    "                            queue_ahead=0))\n",
+-    "\n",
+-    "    print(\"taking second step...\")\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "    assert(1== test_position.long_inventory_count)\n",
+-    "    assert(100.== test_position.long_inventory.average_price)\n",
+-    "    print(\"PnL: {}\".format(pnl))\n",
+-    "\n",
+-    "def test_lob_queuing():\n",
+-    "    test_position = Broker()\n",
+-    "\n",
+-    "    # perform a partial fill on the first order\n",
+-    "    step = 0\n",
+-    "    bid_price = 102.\n",
+-    "    ask_price = 103.\n",
+-    "    buy_volume = 500\n",
+-    "    sell_volume = 500\n",
+-    "    queue_ahead = 800\n",
+-    "\n",
+-    "    order_open = LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,\n",
+-    "                            queue_ahead=queue_ahead)\n",
+-    "    test_position.add(order=order_open)\n",
+-    "\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "\n",
+-    "    print(\"#1 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    assert(300== test_position.long_inventory.order.queue_ahead)\n",
+-    "    assert(0== test_position.long_inventory.order.executed)\n",
+-    "    assert(0== test_position.long_inventory_count)\n",
+-    "\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "\n",
+-    "    print(\"#2 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    assert(200==test_position.long_inventory.order.executed)\n",
+-    "    assert(0== test_position.long_inventory_count)\n",
+-    "\n",
+-    "    # if order gets filled with a bid below the order's price, the order should NOT\n",
+-    "    # receive any price improvement during the execution.\n",
+-    "    bid_price = 100.\n",
+-    "    ask_price = 102.\n",
+-    "    order_open = LimitOrder(ccy='BTC-USD', side='long', price=bid_price, step=step,\n",
+-    "                            queue_ahead=queue_ahead)\n",
+-    "    test_position.add(order=order_open)\n",
+-    "    print(\"#3 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    assert(0== test_position.long_inventory_count)\n",
+-    "\n",
+-    "    bid_price = 100.\n",
+-    "    for i in range(5):\n",
+-    "        step += 1\n",
+-    "        pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "            test_position.step_limit_order_pnl(\n",
+-    "                bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "                sell_volume=sell_volume, step=step)\n",
+-    "        pnl += pnl\n",
+-    "\n",
+-    "    assert(1== test_position.long_inventory_count)\n",
+-    "    assert(100.40== round(test_position.long_inventory.average_price, 2))\n",
+-    "    print(\"PnL: {}\".format(pnl))\n",
+-    "\n",
+-    "def test_queues_ahead_features():\n",
+-    "    test_position = Broker()\n",
+-    "\n",
+-    "    # perform a partial fill on the first order\n",
+-    "    step = 0\n",
+-    "    bid_price = 100.\n",
+-    "    ask_price = 200.\n",
+-    "    buy_volume = 0\n",
+-    "    sell_volume = 0\n",
+-    "\n",
+-    "    order_open_long = LimitOrder(ccy='BTC-USD', side='long', price=bid_price,\n",
+-    "                                    step=step, queue_ahead=0)\n",
+-    "    order_open_short = LimitOrder(ccy='BTC-USD', side='short', price=ask_price,\n",
+-    "                                    step=step, queue_ahead=2000)\n",
+-    "    print('opening long position = {}'.format(order_open_long))\n",
+-    "    test_position.add(order=order_open_long)\n",
+-    "    print('opening short position = {}'.format(order_open_short))\n",
+-    "    test_position.add(order=order_open_short)\n",
+-    "\n",
+-    "    print('\\ntaking first step...')\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "\n",
+-    "    print(\"#1 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    print(\n",
+-    "        \"#1 short_inventory.order = \\n{}\".format(test_position.short_inventory.order))\n",
+-    "    bid_queue, ask_queue = test_position.get_queues_ahead_features()\n",
+-    "    print(\"#1 get_queues_ahead_features:\\nbid_queue={} || ask_queue={}\".format(\n",
+-    "        bid_queue, ask_queue))\n",
+-    "    assert(0.== bid_queue)\n",
+-    "    assert(-0.67== round(ask_queue, 2))\n",
+-    "\n",
+-    "    print('\\ntaking second step...')\n",
+-    "    buy_volume = 500\n",
+-    "    sell_volume = 500\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "\n",
+-    "    print(\"#2 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    print(\n",
+-    "        \"#2 short_inventory.order = \\n{}\".format(test_position.short_inventory.order))\n",
+-    "    bid_queue, ask_queue = test_position.get_queues_ahead_features()\n",
+-    "    print(\"#2 get_queues_ahead_features:\\nbid_queue={} || ask_queue={}\".format(\n",
+-    "        bid_queue, ask_queue))\n",
+-    "    assert(0.5== bid_queue)\n",
+-    "    assert(-0.6== round(ask_queue, 2))\n",
+-    "\n",
+-    "    print('\\ntaking third step...')\n",
+-    "    buy_volume = 500\n",
+-    "    sell_volume = 499\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "\n",
+-    "    print(\"#3 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    print(\n",
+-    "        \"#3 short_inventory.order = \\n{}\".format(test_position.short_inventory.order))\n",
+-    "    bid_queue, ask_queue = test_position.get_queues_ahead_features()\n",
+-    "    print(\"#3 get_queues_ahead_features:\\nbid_queue={} || ask_queue={}\".format(\n",
+-    "        bid_queue, ask_queue))\n",
+-    "    assert(0.999== bid_queue)\n",
+-    "    assert(-0.5== round(ask_queue, 2))\n",
+-    "\n",
+-    "    print('\\ntaking fourth step...')\n",
+-    "    buy_volume = 500\n",
+-    "    sell_volume = 500\n",
+-    "    step += 1\n",
+-    "    pnl, is_long_order_filled, is_short_order_filled = \\\n",
+-    "        test_position.step_limit_order_pnl(\n",
+-    "            bid_price=bid_price, ask_price=ask_price, buy_volume=buy_volume,\n",
+-    "            sell_volume=sell_volume, step=step)\n",
+-    "    pnl += pnl\n",
+-    "\n",
+-    "    print(\"#4 long_inventory.order = \\n{}\".format(test_position.long_inventory.order))\n",
+-    "    print(\n",
+-    "        \"#4 short_inventory.order = \\n{}\".format(test_position.short_inventory.order))\n",
+-    "    bid_queue, ask_queue = test_position.get_queues_ahead_features()\n",
+-    "    print(\"#4 get_queues_ahead_features:\\nbid_queue={} || ask_queue={}\".format(\n",
+-    "        bid_queue, ask_queue))\n",
+-    "    assert(0.0== bid_queue)\n",
+-    "    assert(-0.33== round(ask_queue, 2))\n",
+-    "    print(\"PnL: {}\".format(pnl))\n",
+-    "\n"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_queues_ahead_features()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_lob_queuing()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_avg_exe()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "test_long_pnl()"
+-   ]
+-  },
+-  {
+-   "cell_type": "code",
+-   "execution_count": null,
+-   "metadata": {},
+-   "outputs": [],
+-   "source": [
+-    "import pandas as pd\n",
+-    "import numpy as np\n",
+-    "import gym\n",
+-    "import gym_trading\n",
+-    "from gym_trading.utils.decorator import print_time\n",
+-    "def test_time_event_env():\n",
+-    "    config = dict(\n",
+-    "        id=gym_trading.envs.TrendFollowing.id,\n",
+-    "        symbol='LTC-USD',\n",
+-    "        fitting_file='demo_LTC-USD_20190926.csv.xz',\n",
+-    "        testing_file='demo_LTC-USD_20190926.csv.xz',\n",
+-    "        max_position=10,\n",
+-    "        window_size=5,\n",
+-    "        seed=1,\n",
+-    "        action_repeats=5,\n",
+-    "        training=False,\n",
+-    "        format_3d=True,\n",
+-    "        reward_type='default',\n",
+-    "        ema_alpha=None,\n",
+-    "    )\n",
+-    "    print(f\"**********\\n{config}\\n**********\")\n",
+-    "\n",
+-    "    env = gym.make(**config)\n",
+-    "    done = gym_trading.envs.test_env_loop(env=env)\n",
+-    "    _ = env.reset()\n",
+-    "    assert(True== done)\n",
+-    "test_time_event_env()"
+-   ]
+-  }
+- ],
+- "metadata": {
+-  "kernelspec": {
+-   "display_name": "Python 3.9.13 64-bit",
+-   "language": "python",
+-   "name": "python3"
+-  },
+-  "language_info": {
+-   "name": "python",
+-   "version": "3.9.13"
+-  },
+-  "orig_nbformat": 4,
+-  "vscode": {
+-   "interpreter": {
+-    "hash": "b0fa6594d8f4cbf19f97940f81e996739fb7646882a419484c72d19e05852a7e"
+-   }
+-  }
+- },
+- "nbformat": 4,
+- "nbformat_minor": 2
+-}
+diff --git a/gym_trading/envs/base_environment.py b/gym_trading/envs/base_environment.py
+index 3ca2fa1..e59d1a5 100644
+--- a/gym_trading/envs/base_environment.py
++++ b/gym_trading/envs/base_environment.py
+@@ -30,7 +30,9 @@ class BaseEnv(Env, ABC):
+         self.Flow = Flow
+         self.core = None
+         self.price_list = None
++        # self.action_space = spaces.MultiDiscrete(BaseEnv.max_action)
+         self.action_space = spaces.Box(0, BaseEnv.max_action,shape =(1,),dtype = np.int32)
++
+         self.observation_space = spaces.Dict({
+             'price':spaces.Box(low=BaseEnv.min_price,high=BaseEnv.max_price,shape=(10,),dtype=np.int32),
+             'quantity':spaces.Box(low=0,high=BaseEnv.max_quantity,shape=(10,), dtype=np.int32)
+@@ -38,7 +40,7 @@ class BaseEnv(Env, ABC):
+         # ---------------------
+         self.num_left = None
+         self.done = False
+-        self.num_step = None
++        self.num_step = False
+         self.running_reward = 0
+         self.init_reward = 0
+         self.info = {}
+@@ -47,16 +49,17 @@ class BaseEnv(Env, ABC):
+ # ============================  STEP  =========================================
+     def step(self, action):
+         ''' return observation, reward, done, info '''
+-        if type(action) == np.ndarray:
+-            action = action.astype(np.int32)
++        # Action = action ##
++        action = np.round(action).astype(np.int32)
+         observation = self._get_obs(action)
+         num_executed = self.core.get_executed_quantity() 
+         self.num_left -= num_executed 
+         self.running_reward += self._get_each_running_reward() 
++        # self.num_step += 1 # TODO not sure the location
+         # ---------------------
+-        self.num_step += 1
+         done = self._get_set_done(action)
+         reward = self._get_reward(action)
++        self.num_step += 1 # TODO not sure the location
+         info = self._get_info(action)
+         return  observation, reward, done, info
+     # ------  1/4.OBS  ------
+@@ -68,6 +71,7 @@ class BaseEnv(Env, ABC):
+     # ------ 2/4.DONE ------
+     def _get_set_done(self,acion):
+         '''get & set done'''
++        print('num_left : ', self.num_left)
+         if self.num_left <= 0 or self.num_step >= BaseEnv.num_steps:
+             self.done = True
+         return self.done
+@@ -79,7 +83,9 @@ class BaseEnv(Env, ABC):
+         if not self.done:
+             return 0
+         else:
+-            print("FINAL REWARD ",self.running_reward - self._get_inventory_cost())
++            final = self.running_reward - self._get_inventory_cost()
++            print(">>> FINAL REWARD : ", )
++            print(">>> FINAL Advantage : ", final/361125)
+             return self.running_reward - self._get_inventory_cost()
+     def _get_each_running_reward(self):
+         pairs = self.core.get_executed_pairs() # TODO
+@@ -119,8 +125,7 @@ class BaseEnv(Env, ABC):
+     def _set_init_reward(self, stream):
+         num = BaseEnv.num2liuquidate
+         obs = Utils.from_series2pair(stream)
+-        level, num_executed = Broker._level_market_order_liquidating(num, obs) 
+-        # TODO to use the num_executed
++        level, executed_num = Broker._level_market_order_liquidating(num, obs)
+         if level == 0:
+             self.init_reward = 0 
+         elif level == -999:
+@@ -147,7 +152,9 @@ if __name__=="__main__":
+     Flow = ExternalData.get_sample_order_book_data()
+     env = BaseEnv(Flow)
+     obs = env.reset()
++    action = 3
+     for i in range(int(1e6)):
+         observation, reward, done, info = env.step(3)
+         if done:
+-            env.reset()
+\ No newline at end of file
++            break
++    print("End of main()")
+\ No newline at end of file
+diff --git a/gym_trading/envs/match_engine.py b/gym_trading/envs/match_engine.py
+index 1e2b9b6..74f5c61 100644
+--- a/gym_trading/envs/match_engine.py
++++ b/gym_trading/envs/match_engine.py
+@@ -31,6 +31,7 @@ class Utils():
+             result.append(item[0])
+             result.append(item[1])
+         return pd.Series(data=result, index = name_lst)
++        # TODO deal with the empty data, which is object not float
+ 
+     def remove_replicate(diff_list):
+         # remove_replicate
+@@ -89,20 +90,19 @@ class Broker():
+             if i>=10: 
+                 result = -999
+                 break
+-            ##
+             try :
+-                num -= obs[i][1] # TODO index out of bound error
++                obs[i][1]
+             except:
+                 break
+-            ##
++            num -= obs[i][1] 
+             i+=1
+-        result = i
+-        num_executed = Num - num
+-        return result, num_executed
++            result = i
++        executed_num = Num - num # TODO use the executed_num
++        return result, executed_num
+     
+     @classmethod
+     def pairs_market_order_liquidating(cls, num, obs):
+-        level, num_executed = cls._level_market_order_liquidating(num, obs)
++        level, executed_num = cls._level_market_order_liquidating(num, obs)
+         # TODO need the num <=609 the sum of prices at all leveles
+         sum_quantity = 0
+         quantity_list = []
+@@ -158,10 +158,12 @@ class Core():
+         self.action = action
+         self.index += 1
+         state = Utils.from_series2pair(self.state)
++
+         if type(action) == np.ndarray:
+             new_obs = self.get_new_obs(action[0], state)
+-        elif type(action) == np.int32 or type(action) == int:
++        elif type(action) == int or type(action) == np.int32:
+             new_obs = self.get_new_obs(action, state)
++
+         self.executed_pairs = new_obs
+         diff_obs = self.diff(self.index-1)
+         to_be_updated = self.update(diff_obs, new_obs)
+@@ -191,14 +193,14 @@ class Core():
+                 result += next_stage_lst[i]
+         return result
+     def diff(self, index):
+-        Index = index +1 ## !TODO not sure
++        Index = index + 1 ## !TODO not sure
+         col_num = self._flow.shape[1] 
+         diff_list = [] 
+         for i in range(col_num):
+             if i%2 == 0:
+                 if Index >= 1024: ##
+-                    print(Index)
+-                    break ## !TODO not sure
++                    # print(Index) ## !TODO not sure
++                    break 
+                 if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
+                     diff_list.append([self.flow.iat[Index,i],
+                                       self.flow.iat[Index,i+1]])
+diff --git a/gym_trading/train/train_gym_trading.py b/gym_trading/train/train_gym_trading.py
+index d219c50..026dbc0 100644
+--- a/gym_trading/train/train_gym_trading.py
++++ b/gym_trading/train/train_gym_trading.py
+@@ -1,34 +1,83 @@
+-# %% =============================================================================
+-import  time 
++# =============================================================================
++# # %% 
++# # =============================================================================
++# import torch
++# # import torch.nn as nn
++# # import torch.nn.functional as F
++# # ----------------------------------------------------------------------------
++# from gym_trading.envs import base_environment
++# # =============================================================================
++# 
++# max_episode = int(1e6)
++# 
++# 
++# # >>> 01.Initializes a trading environment.
++# env = base_environment.BaseEnv()
++# 
++# for i_episode in range(1, max_episode + 1):
++#     episode_reward = 0
++#     observation = env.reset()
++#     running_reward = torch.tensor(0.0)
++#     for t in range(env.num_steps):
++#         pass
++# 
++# =============================================================================
++# import time
++
++# %%
++
++# clear warnings
++import warnings
++warnings.filterwarnings("ignore")
++
++
+ import gym
+ from stable_baselines3 import PPO
+ from stable_baselines3.common.env_checker import check_env
++
++# env = gym.make("CartPole-v1")
+ from gym_trading.envs.base_environment import BaseEnv
+ from gym_trading.data.data_pipeline import ExternalData
+ Flow = ExternalData.get_sample_order_book_data()
+ 
+-# env = gym.make("GymTrading-v1") ## TODO
++# env = gym.make("GymTrading-v1",Flow) ## TODO
+ env = BaseEnv(Flow)
+-check_env(env)
+ 
+-model = PPO("MultiInputPolicy", env, verbose=1)
+-model.learn(total_timesteps=int(1e6))
+ 
+-# model.save("gym_trading-v1")
+-# model=PPO.load("gym_trading-v1")
++check_env(env)
+ 
+-# %% =============================================================================
++# %%
++model = PPO("MultiInputPolicy", env, verbose=1)
++# model.learn(total_timesteps=int(1e6)) ## setiting for Console 65
++model.learn(total_timesteps=int(1e5))
++# %%
++model.save("gym_trading-v1")
++# del model ##
++# %%
++model = PPO.load("gym_trading-v1")
++# %%
++import time
+ start = time.time()
+-obs = env.reset()
++
+ done = False
++obs = env.reset()
+ running_reward = 0
+ for i in range(int(1e6)):
+-    if i//int(1e5)==i/int(1e5):
+-        print("Epoch {}, training time {}".format(i, time.time()-start))
++    if i//int(1e5) == i/int(1e5):
++        now = time.time()
++        print("Epoch {}, with training time {}".format(i,now-start))
+     action, _states = model.predict(obs, deterministic=True)
+     obs, reward, done, info = env.step(action)
+     running_reward += reward
+     if done:
+-        running_reward += reward ##
++        running_reward += reward
+         obs = env.reset()
+-        break
++        break ##
++# env.close() ##
++
++
++
++
++
++
++
