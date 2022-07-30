@@ -13,6 +13,13 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.14 Jul.25~Jul.31`
+#### Revise the experiment
+Three things to do this week
+* Find out deeper limit order data of AMZN and check our data with the present data online to see if the quantity of AMZN is right.
+* Set reward to the agent each step.
+* Try multiple agents with one liuquidating and others generating.
+
 ## `Week.12&13 Jul.11~Jul.24`
 #### Methods for Improving Learning
 * Refactor the gym_trading class <br> <img width="248" alt="image" src="https://user-images.githubusercontent.com/37290277/180627696-4466cbfc-e49f-45cc-95c1-74998915f306.png">
