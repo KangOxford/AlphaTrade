@@ -15,7 +15,7 @@ env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
 check_env(env)
 model = PPO("MultiInputPolicy", env, verbose=1)
-model.learn(total_timesteps=int(1e8))
+model.learn(total_timesteps=int(1e8), n_eval_episodes = int(1e5))
 
 model.save("gym_trading-v1") 
 

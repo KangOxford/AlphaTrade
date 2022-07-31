@@ -17,17 +17,20 @@ from gym_trading.envs.match_engine import Broker, Utils
 
 
 class BaseEnv(Env, ABC):
-    num_steps = 1024 # size of a flow
+    """A stock trading environment for OpenAI gym"""
+    metadata = {'render.modes': ['human']}
+    
     max_action = 30
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
     num2liuquidate = 300
-    cost_parameter = int(1e16)
+    cost_parameter = int(1e8)
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
         super().__init__()
+        self._max_episode_steps = 1024 # size of a flow
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -41,8 +44,9 @@ class BaseEnv(Env, ABC):
         # ---------------------
         self.num_left = None
         self.done = False
-        self.num_step = 0
+        self.current_step = 0
         self.running_reward = 0
+        self.final_reward = 0
         self.init_reward = 0
         self.info = {}
         self.previous_obs = None
@@ -56,13 +60,12 @@ class BaseEnv(Env, ABC):
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
         self.running_reward += self._get_each_running_reward() 
-        # self.num_step += 1 # TODO not sure the location
+        self.current_step += 1 # Take care of the location
         # ---------------------
         done = self._get_set_done(action)
         reward = self._get_reward(action)
-        self.num_step += 1 # TODO not sure the location
         info = self._get_info(action)
-        print("Step : ".format(self.num_step)) ##
+        # print("Step : ".format(self.current_step)) ### need to be here
         return  observation, reward, done, info
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
@@ -74,7 +77,7 @@ class BaseEnv(Env, ABC):
     def _get_set_done(self,acion):
         '''get & set done'''
         # print('num_left : ', self.num_left)
-        if self.num_left <= 0 or self.num_step >= BaseEnv.num_steps:
+        if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
         return self.done
     # ------ 3/4.REWARD  ------
@@ -82,16 +85,12 @@ class BaseEnv(Env, ABC):
         inventory = self.num_left
         return BaseEnv.cost_parameter * inventory * inventory
     def _get_reward(self,acion):
+        self.render() ## to be deleted
         if not self.done:
             return 0
         elif self.done:
-            final = self.running_reward - self._get_inventory_cost()
-            print("============================")
-            print(">>> FINAL REMAINING : ",self.num_left)
-            print(">>> FINAL REWARD : ", self.running_reward)
-            print(">>> FINAL Advantage : ", (final-self.init_reward)/BaseEnv.max_price)
-            time.sleep(0.5)
-            return self.running_reward - self._get_inventory_cost()
+            self.final_reward = self.running_reward - self._get_inventory_cost()
+            return self.final_reward
     def _get_each_running_reward(self):
         pairs = self.core.get_executed_pairs() # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
@@ -105,8 +104,8 @@ class BaseEnv(Env, ABC):
     def reset(self):
         '''return the observation of the initial condition'''
         self.reset_states()
-        index_random = random.randint(0, self.Flow.shape[0]-BaseEnv.num_steps-1)
-        flow = self.Flow.iloc[index_random:index_random+BaseEnv.num_steps,:]
+        index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
+        flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
         flow = flow.reset_index().drop("index",axis=1)
         self.core = Core(flow)
         stream =  flow.iloc[0,:]
@@ -116,9 +115,10 @@ class BaseEnv(Env, ABC):
         return init_obs
     def reset_states(self):
         self.running_reward = 0
+        self.final_reward = 0
         self.done = False
         self.num_left = BaseEnv.num2liuquidate
-        self.num_step = 0
+        self.current_step = 0
     def _get_init_obs(self, stream):
         init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
         init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)
@@ -148,8 +148,21 @@ class BaseEnv(Env, ABC):
                 consumed += obs[i][1]
             reward += obs[level-1][0] * (num - consumed)
             self.init_reward = reward
+        if self.init_reward < 0: ##
+            print("###")
 # =============================================================================
-
+    
+    def render(self, mode = 'human'):
+        print('-'*30)
+        print(f'Step: {self.current_step}')
+        if self.done:
+            print("============================")
+            print(">>> FINAL REMAINING : ",self.num_left)
+            print(">>> Running REWARD : ", self.running_reward)
+            print(">>> FINAL REWARD : ", self.final_reward)
+            print(">>> INIT  REWARD : ", self.init_reward)
+            print(">>> FINAL Advantage : ", (self.final_reward-self.init_reward)/BaseEnv.max_price)
+            time.sleep(4)
 
 
     
@@ -161,6 +174,7 @@ if __name__=="__main__":
     action = 3
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
+        env.render()
         if done:
             env.reset()
     print("End of main()")
