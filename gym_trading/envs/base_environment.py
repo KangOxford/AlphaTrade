@@ -114,6 +114,7 @@ class BaseEnv(Env, ABC):
         self.core = Core(flow) ## TODO refactor, reset the self.core
         # (1) check the self.core is updated or not
         # (2) if self.core is updated by _set_init_reward, then avoid to instance core twice
+        # (3) try to implement the self.core.reset to avoid reading flow again
         
         init_obs = self._get_init_obs(stream)
         self.previous_obs = init_obs
@@ -143,6 +144,9 @@ class BaseEnv(Env, ABC):
             num_left = num-executed_num
             returned_obs = self.core.step(executed_num)[0] 
             self.reset_obs = from_series2obs(returned_obs)
+            # TODO the returned_obs has not been utilized
+            
+            
             while True:
                 observation = self._get_obs(num_left)
                 num_executed = self.core.get_executed_quantity() 
@@ -150,6 +154,8 @@ class BaseEnv(Env, ABC):
                 
                 num_left -= num_executed
                 self.reset_obs = observation
+                # TODO calculate the reward
+        
                 if num_left <=0:
                     break
                 # TODO what to do if all steped but still remains unexecuted
