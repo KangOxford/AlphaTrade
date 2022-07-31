@@ -50,6 +50,7 @@ class BaseEnv(Env, ABC):
         self.init_reward = 0
         self.info = {}
         self.previous_obs = None
+        self.reset_obs = None
     
 # ============================  STEP  =========================================
     def step(self, action):
@@ -108,8 +109,12 @@ class BaseEnv(Env, ABC):
         flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
         flow = flow.reset_index().drop("index",axis=1)
         self.core = Core(flow)
-        stream =  flow.iloc[0,:]
-        self._set_init_reward(stream)
+
+        self._set_init_reward(flow.iloc[0,:])
+        self.core = Core(flow) ## TODO refactor, reset the self.core
+        # (1) check the self.core is updated or not
+        # (2) if self.core is updated by _set_init_reward, then avoid to instance core twice
+        
         init_obs = self._get_init_obs(stream)
         self.previous_obs = init_obs
         return init_obs
@@ -135,12 +140,21 @@ class BaseEnv(Env, ABC):
         if level == 0:
             self.init_reward = 0 
         elif level == -999:
-            reward,consumed = 0,0
-            for i in range(len(obs)):
-                reward += obs[i][0] * obs[i][1]
-                consumed += obs[i][1]
-            inventory_cost=(num-consumed)*(num-consumed)*BaseEnv.cost_parameter
-            self.init_reward = reward - inventory_cost
+            num_left = num-executed_num
+            returned_obs = self.core.step(executed_num)[0] 
+            self.reset_obs = from_series2obs(returned_obs)
+            while True:
+                observation = self._get_obs(num_left)
+                num_executed = self.core.get_executed_quantity() 
+                # TODO the result of the two lines above does not match.
+                
+                num_left -= num_executed
+                self.reset_obs = observation
+                if num_left <=0:
+                    break
+                # TODO what to do if all steped but still remains unexecuted
+            self.reset_obs = None
+            self.
         else:
             reward,consumed = 0,0
             for i in range(level-1):
