@@ -26,7 +26,7 @@ class BaseEnv(Env, ABC):
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
-    num2liuquidate = 300
+    num2liquidate = 300
     cost_parameter = int(1e8)
     
 # ============================  INIT  =========================================
@@ -49,6 +49,7 @@ class BaseEnv(Env, ABC):
         self.done = False
         self.current_step = 0
         self.running_reward = 0
+        self.memory = None # revenue
         self.final_reward = 0
         self.init_reward = 0
         self.info = {}
@@ -65,9 +66,16 @@ class BaseEnv(Env, ABC):
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
+        # assert num_executed == 3
+        print('±'*20+str(self.core.executed_pairs))
+        if self.core.executed_pairs == []:
+            flow = self.core.flow ##
+            print("")
         if self.core.executed_pairs == [-999]:
-            pass ## TODO TO Debug
-        self.running_reward += self._get_each_running_reward() 
+            print('±') ## TODO TO Debug
+        step_reward =  self._get_each_running_reward() 
+        self.running_reward += step_reward
+        self.memory.append(step_reward)
         self.current_step += 1 # Take care of the location
         # ---------------------
         done = self._get_set_done(action)
@@ -101,6 +109,7 @@ class BaseEnv(Env, ABC):
     def _get_each_running_reward(self):
         pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
+        # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
         return -1 * sum(lst_pairs[0]*lst_pairs[1]) 
     # ------ 4/4.INFO ------
     def _get_info(self,acion):
@@ -129,10 +138,11 @@ class BaseEnv(Env, ABC):
     def reset_states(self):
         # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
         # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
+        self.memory = []
         self.running_reward = 0
         self.final_reward = 0
         self.done = False
-        self.num_left = BaseEnv.num2liuquidate
+        self.num_left = BaseEnv.num2liquidate
         self.current_step = 0
     def _get_init_obs(self, stream):
         init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
@@ -143,7 +153,7 @@ class BaseEnv(Env, ABC):
             }
         return init_obs        
     def _set_init_reward(self, stream):
-        num = BaseEnv.num2liuquidate
+        num = BaseEnv.num2liquidate
         obs = Utils.from_series2pair(stream)
         level, executed_num = Broker._level_market_order_liquidating(num, obs)
         # TODO to use the num_executed
@@ -180,19 +190,19 @@ class BaseEnv(Env, ABC):
     def render(self, mode = 'human'):
         print('-'*30)
         print(f'Step: {self.current_step}')
+        print(f'StepAvarage: {self.memory[-1]/(3)/BaseEnv.max_price}')
+        print(f'TotalAvarage: {sum(self.memory)/(BaseEnv.num2liquidate - self.num_left)/BaseEnv.max_price}')
         if self.done:
             print("============================")
             print(">>> FINAL REMAINING : "+str(format(self.num_left, ',d')))
             print(">>> Running REWARD : "+str(format(self.running_reward, ',d')))
             print(">>> FINAL REWARD : "+str(format(self.final_reward,',d')))
             print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
-            print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liuquidate,',d')))
-            print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liuquidate,',d')))
+            print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liquidate,',d')))
+            print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liquidate,',d')))
             print(">>> Base Point (Upper): "+str(format(10000 *(BaseEnv.max_price / BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> Base Point (Init): "+str(format(10000 *(self.init_reward/BaseEnv.num2liuquidate/ BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> Base Point (RL): "+str(format(10000 *(self.running_reward/BaseEnv.num2liuquidate/ BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> Base Point (RL+Inven): "+str(format(10000 *(self.final_reward/BaseEnv.num2liuquidate/ BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> FINAL Advantage : "+str(format((self.final_reward-self.init_reward)/BaseEnv.max_price)))
+            print(">>> Base Point (Init): "+str(format(10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> Base Point (RL): "+str(format(10000 *(self.running_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
             time.sleep(4)
 
 
