@@ -64,6 +64,8 @@ class BaseEnv(Env, ABC):
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
+        if self.core.executed_pairs == [-999]:
+            pass ##
         self.running_reward += self._get_each_running_reward() 
         self.current_step += 1 # Take care of the location
         # ---------------------
@@ -146,6 +148,26 @@ class BaseEnv(Env, ABC):
             self.init_reward = 0 
         elif level == -999:
             num_left = num-executed_num
+            
+            index = 1
+            while True:
+                diff_obs = self.core.diff(index-1)
+                index += 1
+                # quantity_ = [(lambda x: max(x[1],0))(x) for x in diff_obs]
+                # # remain problem if x<0, meaning withdraw order
+                # price_ = [(lambda x: x[0])(x) for x in diff_obs]
+                # reward_ = [(lambda x,y:x*y)(x,y) for x,y in zip(price_,quantity_)]
+                # reward = sum(reward_)
+                # executed_num = sum(quantity_)
+
+
+            
+            flow = self.core.flow
+            
+            
+            
+            
+            
             returned_obs = self.core.step(executed_num)[0] 
             self.reset_obs = from_series2obs(returned_obs)
             # TODO the returned_obs has not been utilized
