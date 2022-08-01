@@ -55,8 +55,10 @@ class BaseEnv(Env, ABC):
 # ============================  STEP  =========================================
     def step(self, action):
         ''' return observation, reward, done, info ''' 
-        if type(action) == np.ndarray:
-            action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
+        # if type(action) == np.ndarray:
+        #     action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
+        action = np.squeeze(action).astype(np.int32)
+        # TO check, perhpas here remians problem
         observation = self._get_obs(action)
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
