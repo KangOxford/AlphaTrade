@@ -1,4 +1,5 @@
 # %%
+import copy
 import numpy as np
 import pandas as pd
 
@@ -82,26 +83,32 @@ class Utils():
 class Broker():
     @classmethod
     def _level_market_order_liquidating(cls, num, obs):
+        num = copy.deepcopy(num)
         '''observation is one row of the flow, observed at specific time t'''   
         i = 0
         result = 0
-        Num = num
+        Num = copy.copy(num)
         while num>0:
             if i>=10: 
                 result = -999
                 break
             try :
-                obs[i][1]
+                num -= obs[i][1] 
+                if num <=0:
+                    num = 0
+                    break
             except:
                 break
-            num -= obs[i][1] 
             i+=1
             result = i
         executed_num = Num - num # TODO use the executed_num
+        # result return the price level, 
+        # begin with level 1, then end with level 10
         return result, executed_num
     
     @classmethod
     def pairs_market_order_liquidating(cls, num, obs):
+        num = copy.deepcopy(num)
         level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
         sum_quantity = 0
@@ -119,6 +126,7 @@ class Broker():
                 [obs[level-1][0],-num+quantity_list[level-2]])
         if level == 1:
             result.append([obs[0][0],-num])
+            # result.append([obs[0][0],executed_num])
         if level == 0:
             pass
         if level == -999:

@@ -32,7 +32,8 @@ class BaseEnv(Env, ABC):
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
         super().__init__()
-        self._max_episode_steps = 1024 # size of a flow
+        self._max_episode_steps = 10240 # to test in 10 min
+        # self._max_episode_steps = 1024 # size of a flow
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -65,7 +66,7 @@ class BaseEnv(Env, ABC):
         num_executed = self.core.get_executed_quantity() 
         self.num_left -= num_executed 
         if self.core.executed_pairs == [-999]:
-            pass ##
+            pass ## TODO TO Debug
         self.running_reward += self._get_each_running_reward() 
         self.current_step += 1 # Take care of the location
         # ---------------------
@@ -92,7 +93,6 @@ class BaseEnv(Env, ABC):
         inventory = self.num_left
         return BaseEnv.cost_parameter * inventory * inventory
     def _get_reward(self,acion):
-        self.render() ## to be deleted
         if not self.done:
             return 0
         elif self.done:
@@ -117,7 +117,8 @@ class BaseEnv(Env, ABC):
         self.core = Core(flow)
 
         self._set_init_reward(flow.iloc[0,:])
-        self.core.reset() ## TODO refactor, reset the self.core
+        self.core = Core(flow)
+        # self.core.reset() ## TODO refactor, reset the self.core
         # (1) check the self.core is updated or not
         # (2) if self.core is updated by _set_init_reward, then avoid to instance core twice
         # (3) try to implement the self.core.reset to avoid reading flow again
@@ -126,6 +127,8 @@ class BaseEnv(Env, ABC):
         self.previous_obs = init_obs
         return init_obs
     def reset_states(self):
+        # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
+        # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
         self.running_reward = 0
         self.final_reward = 0
         self.done = False
@@ -148,45 +151,21 @@ class BaseEnv(Env, ABC):
             self.init_reward = 0 
         elif level == -999:
             num_left = num-executed_num
-            
-            index = 1
+            index = 1 # TODO not sure to check it
             while True:
                 diff_obs = self.core.diff(index-1)
                 index += 1
-                # quantity_ = [(lambda x: max(x[1],0))(x) for x in diff_obs]
-                # # remain problem if x<0, meaning withdraw order
-                # price_ = [(lambda x: x[0])(x) for x in diff_obs]
-                # reward_ = [(lambda x,y:x*y)(x,y) for x,y in zip(price_,quantity_)]
-                # reward = sum(reward_)
-                # executed_num = sum(quantity_)
-
-
-            
-            flow = self.core.flow
-            
-            
-            
-            
-            
-            returned_obs = self.core.step(executed_num)[0] 
-            self.reset_obs = from_series2obs(returned_obs)
-            # TODO the returned_obs has not been utilized
-            
-            
-            while True:
-                observation = self._get_obs(num_left)
-                num_executed = self.core.get_executed_quantity() 
-                # TODO the result of the two lines above does not match.
-                
-                num_left -= num_executed
-                self.reset_obs = observation
-                # TODO calculate the reward
-        
-                if num_left <=0:
+                # to use Broker here
+                result = Broker.pairs_market_order_liquidating(num_left, diff_obs)
+                Quantity = [(lambda x: -1*x[1])(x) for x in result]
+                # remain problem if x<0, meaning withdraw order
+                Price = [(lambda x: x[0])(x) for x in result]
+                Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]
+                reward = sum(Reward)
+                executed_num = sum(Quantity)
+                num_left -= executed_num
+                if num_left <=0: 
                     break
-                # TODO what to do if all steped but still remains unexecuted
-            self.reset_obs = None
-            
         else:
             reward,consumed = 0,0
             for i in range(level-1):
@@ -194,8 +173,8 @@ class BaseEnv(Env, ABC):
                 consumed += obs[i][1]
             reward += obs[level-1][0] * (num - consumed)
             self.init_reward = reward
-        if self.init_reward < 0: ##
-            print("###")
+        assert self.init_reward >= 0
+
 # =============================================================================
     
     def render(self, mode = 'human'):
@@ -203,11 +182,17 @@ class BaseEnv(Env, ABC):
         print(f'Step: {self.current_step}')
         if self.done:
             print("============================")
-            print(">>> FINAL REMAINING : ",self.num_left)
-            print(">>> Running REWARD : ", self.running_reward)
-            print(">>> FINAL REWARD : ", self.final_reward)
-            print(">>> INIT  REWARD : ", self.init_reward)
-            print(">>> FINAL Advantage : ", (self.final_reward-self.init_reward)/BaseEnv.max_price)
+            print(">>> FINAL REMAINING : "+str(format(self.num_left, ',d')))
+            print(">>> Running REWARD : "+str(format(self.running_reward, ',d')))
+            print(">>> FINAL REWARD : "+str(format(self.final_reward,',d')))
+            print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
+            print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liuquidate,',d')))
+            print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liuquidate,',d')))
+            print(">>> Base Point (Upper): "+str(format(10000 *(BaseEnv.max_price / BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> Base Point (Init): "+str(format(10000 *(self.init_reward/BaseEnv.num2liuquidate/ BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> Base Point (RL): "+str(format(10000 *(self.running_reward/BaseEnv.num2liuquidate/ BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> Base Point (RL+Inven): "+str(format(10000 *(self.final_reward/BaseEnv.num2liuquidate/ BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> FINAL Advantage : "+str(format((self.final_reward-self.init_reward)/BaseEnv.max_price)))
             time.sleep(4)
 
 
