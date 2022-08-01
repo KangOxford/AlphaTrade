@@ -177,10 +177,16 @@ class Core():
         return self.state, reward, False, {"ExcutedQuanity":ExcutedQuanity}
     
     
+    # def reset(self):
+    #     self.index = 1
+    #     self.state = self.initial_state()
+    #     return self.state
     
     def reset(self):
-        self.index = 1
+        self.index = Core.init_index
         self.state = self.initial_state()
+        self.action = None
+        self.executed_pairs = None
         return self.state
     
     

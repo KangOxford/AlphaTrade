@@ -113,7 +113,7 @@ class BaseEnv(Env, ABC):
         self.core = Core(flow)
 
         self._set_init_reward(flow.iloc[0,:])
-        self.core = Core(flow) ## TODO refactor, reset the self.core
+        self.core.reset() ## TODO refactor, reset the self.core
         # (1) check the self.core is updated or not
         # (2) if self.core is updated by _set_init_reward, then avoid to instance core twice
         # (3) try to implement the self.core.reset to avoid reading flow again
@@ -162,7 +162,7 @@ class BaseEnv(Env, ABC):
                     break
                 # TODO what to do if all steped but still remains unexecuted
             self.reset_obs = None
-            self.
+            
         else:
             reward,consumed = 0,0
             for i in range(level-1):
