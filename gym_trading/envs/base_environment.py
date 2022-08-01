@@ -1,6 +1,7 @@
 # =============================================================================
 import time
 import random
+import warnings
 import numpy as np
 import pandas as pd
 from abc import ABC
@@ -12,6 +13,7 @@ from gym import spaces
 from gym_trading.utils import * 
 from gym_trading.envs.match_engine import Core
 from gym_trading.envs.match_engine import Broker, Utils
+warnings.filterwarnings("ignore")
 # =============================================================================
 
 
@@ -95,7 +97,7 @@ class BaseEnv(Env, ABC):
             self.final_reward = self.running_reward - self._get_inventory_cost()
             return self.final_reward
     def _get_each_running_reward(self):
-        pairs = self.core.get_executed_pairs() # TODO
+        pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
         return -1 * sum(lst_pairs[0]*lst_pairs[1]) 
     # ------ 4/4.INFO ------
@@ -118,7 +120,7 @@ class BaseEnv(Env, ABC):
         # (2) if self.core is updated by _set_init_reward, then avoid to instance core twice
         # (3) try to implement the self.core.reset to avoid reading flow again
         
-        init_obs = self._get_init_obs(stream)
+        init_obs = self._get_init_obs(flow.iloc[0,:])
         self.previous_obs = init_obs
         return init_obs
     def reset_states(self):

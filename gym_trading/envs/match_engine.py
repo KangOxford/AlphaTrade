@@ -136,6 +136,7 @@ class Core():
         self.index = Core.init_index
         self.state = self.initial_state()
         self.action = None
+        self.reward = None
         self.executed_pairs = None
     def initial_state(self):
         return self.flow.iloc[Core.init_index,:]
@@ -150,19 +151,16 @@ class Core():
             return [] # TODO to implement it in right way
         else:
             return Utils.remove_replicate(sorted(obs))
-    def get_reward(self):
-        return 0
-    def get_executed_pairs(self):
-        return self.executed_pairs
+    # def get_reward(self):return 0
+    # def get_executed_pairs(self): return self.executed_pairs
     def step(self, action):
         self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
 
-        if type(action) == np.ndarray:
-            new_obs = self.get_new_obs(action[0], state)
-        elif type(action) == int or type(action) == np.int32:
-            new_obs = self.get_new_obs(action, state)
+        # assert type(action) == np.ndarray or type(action) == np.int32 ## to be deleted
+        assert type(action) == np.ndarray or int
+        new_obs = self.get_new_obs(action, state)
 
         self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
@@ -172,7 +170,7 @@ class Core():
             updated_state = self.check_positive(updated_state)
             updated_state = Utils.from_pair2series(updated_state)
         self.state = updated_state
-        reward = self.get_reward()
+        reward = self.reward
         ExcutedQuanity = self.get_executed_quantity()
         return self.state, reward, False, {"ExcutedQuanity":ExcutedQuanity}
     
