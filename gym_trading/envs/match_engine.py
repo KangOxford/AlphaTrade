@@ -106,9 +106,9 @@ class Broker():
     
     @classmethod
     def pairs_market_order_liquidating(cls, num, obs):
-        # num, obs = action, state
+        # num, obs = action, state ##
         num = copy.deepcopy(num)
-        # level, executed_num = Broker._level_market_order_liquidating(num, obs)
+        # level, executed_num = Broker._level_market_order_liquidating(num, obs)##
         level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
         sum_quantity = 0
@@ -125,8 +125,8 @@ class Broker():
             result.append(
                 [obs[level-1][0],-num+quantity_list[level-2]])
         if level == 1:
-            result.append([obs[0][0],-num])
-            # result.append([obs[0][0],executed_num])
+            # result.append([obs[0][0],-num]) # to check it should be wrong
+            result.append([obs[0][0],executed_num])
         if level == 0:
             pass
         if level == -999:
@@ -158,19 +158,26 @@ class Core():
             return [] # TODO to implement it in right way
         else:
             return Utils.remove_replicate(sorted(obs))
-    # def get_reward(self):return 0
-    # def get_executed_pairs(self): return self.executed_pairs
     def step(self, action):
         self.action = action
         self.index += 1
         state = Utils.from_series2pair(self.state)
 
         assert type(action) == np.ndarray or int
-        new_obs, self.executed_quantity = Broker.pairs_market_order_liquidating(action, state)
+        remove_zero_quantity = lambda x:[item for index, item in enumerate(x) if item[1]!=0]
+        state = remove_zero_quantity(state)
+        
+        new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, state)
+        self.executed_quantity =executed_quantity
         # get_new_obs
         
-
-        self.executed_pairs = new_obs
+        if executed_quantity != self.action and executed_quantity!=0:
+            assert len(new_obs) == 1
+            return 0
+        else:
+            self.executed_pairs = new_obs ## TODO ERROR
+        # TODO get the executed_pairs
+        
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
         updated_state = self.update(state, to_be_updated)

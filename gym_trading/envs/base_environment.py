@@ -51,6 +51,8 @@ class BaseEnv(Env, ABC):
         self.running_reward = 0
         self.memory = None # revenue
         self.memory_obs = None # observation 
+        self.memory_executed = None
+        self.memory_numleft = None
         self.final_reward = 0
         self.init_reward = 0
         self.info = {}
@@ -74,12 +76,23 @@ class BaseEnv(Env, ABC):
         self.running_reward += step_reward
         self.memory.append(step_reward)
         self.memory_obs.append(observation)
+        self.memory_executed.append(num_executed)
+        self.memory_numleft.append(self.num_left)
         self.current_step += 1 # Take care of the location
         # ---------------------
         done = self._get_set_done(action)
         reward = self._get_reward(action)
         info = self._get_info(action)
-        # print("Step : ".format(self.current_step)) ### need to be here
+        # if self.current_step == 101:
+        #     num_left = self.num_left
+        #     memory_obs = self.memory_obs
+        #     memory_executed = self.memory_executed
+        #     memory_numleft = self.memory_numleft
+        #     memory = self.memory
+        #     len(self.memory)
+        #     current_step = self.current_step
+        #     raise Exception(" ")
+        
         return  observation, reward, done, info
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
@@ -105,6 +118,11 @@ class BaseEnv(Env, ABC):
             self.final_reward = self.running_reward - self._get_inventory_cost()
             return self.final_reward
     def _get_each_running_reward(self):
+        try:
+            if self.memory_executed[-1] != 3:
+                return 0 ## TODO debug here
+        except:
+            pass
         pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
         # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
@@ -140,6 +158,8 @@ class BaseEnv(Env, ABC):
         # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
         self.memory = []
         self.memory_obs = []
+        self.memory_executed = []
+        self.memory_numleft = []
         self.running_reward = 0
         self.final_reward = 0
         self.done = False
@@ -212,9 +232,22 @@ class BaseEnv(Env, ABC):
             except:
                 memory_obs = self.memory_obs
                 memory = self.memory
-                len(self.memory)
+                num_left = self.num_left
+                memory_executed = self.memory_executed
+                assert sum(memory_executed) == BaseEv.num2liquidate
+                memory_numleft = self.memory_numleft
                 current_step = self.current_step
-                raise Exception("Error for the RL Base Point")
+                # raise Exception("Error for the RL Base Point")
+            try: assert RLbp >= 0, "Error for the RL Base Point"
+            except:
+                memory_obs = self.memory_obs
+                memory = self.memory
+                num_left = self.num_left
+                memory_executed = self.memory_executed
+                assert sum(memory_executed) == BaseEnv.num2liquidate
+                memory_numleft = self.memory_numleft
+                current_step = self.current_step
+                # raise Exception("Error for the RL Base Point")                
             # time.sleep(4)
 
 
