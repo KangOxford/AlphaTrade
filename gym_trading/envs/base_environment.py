@@ -64,15 +64,15 @@ class BaseEnv(Env, ABC):
         action = np.squeeze(action).astype(np.int32)
         # TO check, perhpas here remians problem
         observation = self._get_obs(action)
-        num_executed = self.core.get_executed_quantity() 
+        num_executed = self.core.executed_quantity
         self.num_left -= num_executed 
         # assert num_executed == 3
         print('±'*20+str(self.core.executed_pairs))
         if self.core.executed_pairs == []:
             flow = self.core.flow ##
-            print("")
+            print("!"*20)
         if self.core.executed_pairs == [-999]:
-            print('±') ## TODO TO Debug
+            print('@'*20) ## TODO TO Debug
         step_reward =  self._get_each_running_reward() 
         self.running_reward += step_reward
         self.memory.append(step_reward)
@@ -167,7 +167,9 @@ class BaseEnv(Env, ABC):
                 index += 1
                 # to use Broker here
                 result = Broker.pairs_market_order_liquidating(num_left, diff_obs)
-                Quantity = [(lambda x: -1*x[1])(x) for x in result]
+                try : Quantity = [(lambda x: -1*x[1])(x) for x in result]
+                except:
+                    print(" ")
                 # remain problem if x<0, meaning withdraw order
                 Price = [(lambda x: x[0])(x) for x in result]
                 Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]

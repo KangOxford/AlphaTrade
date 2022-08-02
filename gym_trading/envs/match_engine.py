@@ -87,17 +87,16 @@ class Broker():
         '''observation is one row of the flow, observed at specific time t'''   
         i = 0
         result = 0
-        Num = copy.copy(num)
+        Num = copy.deepcopy(num)
         while num>0:
             if i>=10: 
                 result = -999
                 break
             try :
                 num -= obs[i][1] 
-                if num <=0:
-                    num = 0
-                    break
+                num = max(num-obs[i][1], 0)
             except:
+                print(" Error "*20)
                 break
             i+=1
             result = i
@@ -108,7 +107,9 @@ class Broker():
     
     @classmethod
     def pairs_market_order_liquidating(cls, num, obs):
+        # num, obs = action, state
         num = copy.deepcopy(num)
+        # level, executed_num = Broker._level_market_order_liquidating(num, obs)
         level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
         sum_quantity = 0
@@ -131,7 +132,7 @@ class Broker():
             pass
         if level == -999:
             result.append(-999)
-        return result
+        return result, executed_num
 
 
 
@@ -146,10 +147,9 @@ class Core():
         self.action = None
         self.reward = None
         self.executed_pairs = None
+        self.executed_quantity = None
     def initial_state(self):
         return self.flow.iloc[Core.init_index,:]
-    def get_new_obs(self, num, obs):
-        return Broker.pairs_market_order_liquidating(num, obs)
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
         obs.extend(diff_obs)
@@ -166,9 +166,10 @@ class Core():
         self.index += 1
         state = Utils.from_series2pair(self.state)
 
-        # assert type(action) == np.ndarray or type(action) == np.int32 ## to be deleted
         assert type(action) == np.ndarray or int
-        new_obs = self.get_new_obs(action, state)
+        new_obs, self.executed_quantity = Broker.pairs_market_order_liquidating(action, state)
+        # get_new_obs
+        
 
         self.executed_pairs = new_obs
         diff_obs = self.diff(self.index-1)
@@ -177,10 +178,10 @@ class Core():
         if type(updated_state) == list:
             updated_state = self.check_positive(updated_state)
             updated_state = Utils.from_pair2series(updated_state)
+            
         self.state = updated_state
         reward = self.reward
-        ExcutedQuanity = self.get_executed_quantity()
-        return self.state, reward, False, {"ExcutedQuanity":ExcutedQuanity}
+        return self.state, reward, False, {}
     
     
     # def reset(self):
@@ -227,10 +228,6 @@ class Core():
             if item[1]<0:
                 item[1]=0
         return updated_state
-    def get_executed_quantity(self):
-        '''It should return the real quantity of having been executed'''
-        result = self.action
-        return result 
         
 # %%
 if __name__ == "__main__":
