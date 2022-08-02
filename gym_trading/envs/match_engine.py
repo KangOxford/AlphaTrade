@@ -83,6 +83,7 @@ class Utils():
 class Broker():
     @classmethod
     def _level_market_order_liquidating(cls, num, obs):
+        # num,obs = num_left, diff_obs ##
         num = copy.deepcopy(num)
         '''observation is one row of the flow, observed at specific time t'''   
         i = 0
@@ -93,10 +94,8 @@ class Broker():
                 result = -999
                 break
             try :
-                num -= obs[i][1] 
                 num = max(num-obs[i][1], 0)
             except:
-                print(" Error "*20)
                 break
             i+=1
             result = i
@@ -183,11 +182,6 @@ class Core():
         reward = self.reward
         return self.state, reward, False, {}
     
-    
-    # def reset(self):
-    #     self.index = 1
-    #     self.state = self.initial_state()
-    #     return self.state
     
     def reset(self):
         self.index = Core.init_index
