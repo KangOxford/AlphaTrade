@@ -1,4 +1,4 @@
-# Dissertation
+# Neural Limit Order Book
 
 **`Reinforcement learning in optimal execution`** 
 
