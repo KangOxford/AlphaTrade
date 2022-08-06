@@ -1,4 +1,4 @@
-# Neu<ins>RL</ins>ob : Neural Limit Order Book
+# Neu<ins>rL</ins>OB : Neural Limit Order Book
 
 **`Reinforcement learning in optimal execution`** 
 
