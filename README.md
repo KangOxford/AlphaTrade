@@ -13,6 +13,10 @@ Supervised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.15 Aug.01~Aug.07`
+#### Revise the experiment
+[Debugging Log](https://square-cactus-589.notion.site/NeuralLOB-ba30e3408cdf43bcba29ede0d3905f87)
+
 ## `Week.14 Jul.25~Jul.31`
 #### Revise the experiment
 Three things to do this week
