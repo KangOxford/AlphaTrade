@@ -48,9 +48,10 @@ class BaseEnv(Env, ABC):
         self.num_left = None
         self.done = False
         self.current_step = 0
-        self.running_reward = 0
-        self.memory = None # revenue
+        self.memory_revenue = 0
+        self.memory_reward = None # revenue
         self.memory_obs = None # observation 
+        self.memory_executed_pairs = None
         self.memory_executed = None
         self.memory_numleft = None
         self.final_reward = 0
@@ -73,9 +74,10 @@ class BaseEnv(Env, ABC):
         if self.core.executed_pairs == [-999]:
             print('@Error'*20) ## TODO TO Debug
         step_reward =  self._get_each_running_reward() 
-        self.running_reward += step_reward
-        self.memory.append(step_reward)
+        self.memory_revenue += step_reward
+        self.memory_reward.append(step_reward)
         self.memory_obs.append(observation)
+        self.memory_executed_pairs.append(self.core.executed_pairs)
         self.memory_executed.append(num_executed)
         self.memory_numleft.append(self.num_left)
         self.current_step += 1 # Take care of the location
@@ -88,8 +90,8 @@ class BaseEnv(Env, ABC):
         #     memory_obs = self.memory_obs
         #     memory_executed = self.memory_executed
         #     memory_numleft = self.memory_numleft
-        #     memory = self.memory
-        #     len(self.memory)
+        #     memory = self.memory_reward
+        #     len(self.memory_reward)
         #     current_step = self.current_step
         #     raise Exception(" ")
         
@@ -115,18 +117,20 @@ class BaseEnv(Env, ABC):
         if not self.done:
             return 0
         elif self.done:
-            self.final_reward = self.running_reward - self._get_inventory_cost()
+            self.final_reward = self.memory_revenue - self._get_inventory_cost()
             return self.final_reward
     def _get_each_running_reward(self):
-        try:
-            if self.memory_executed[-1] != 3:
-                return 0 ## TODO debug here
-        except:
-            pass
+        if len(self.memory_executed) >= 1: ## to be deleted
+            assert self.memory_executed[-1] == 3 ## to be deleted
         pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
         # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
-        return -1 * sum(lst_pairs[0]*lst_pairs[1]) 
+        result = sum(lst_pairs[0]*lst_pairs[1]) 
+        
+        if not result >= 0:
+            print()
+        assert result >= 0
+        return result
     # ------ 4/4.INFO ------
     def _get_info(self,acion):
         return self.info   
@@ -156,11 +160,12 @@ class BaseEnv(Env, ABC):
     def reset_states(self):
         # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
         # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
-        self.memory = []
+        self.memory_reward = []
         self.memory_obs = []
         self.memory_executed = []
+        self.memory_executed_pairs = []
         self.memory_numleft = []
-        self.running_reward = 0
+        self.memory_revenue = 0
         self.final_reward = 0
         self.done = False
         self.num_left = BaseEnv.num2liquidate
@@ -176,25 +181,28 @@ class BaseEnv(Env, ABC):
     def _set_init_reward(self, stream):
         num = BaseEnv.num2liquidate
         obs = Utils.from_series2pair(stream)
-        level, executed_num = Broker._level_market_order_liquidating(num, obs)
+        level, Executed_num = Broker._level_market_order_liquidating(num, obs)
+        assert Executed_num >= 0 and Executed_num <= num
         # TODO to use the num_executed
         if level == 0:
             self.init_reward = 0 
         elif level == -999:
-            num_left = num-executed_num
+            num_left = num-Executed_num
             index = 1 # TODO not sure to check it
             while True:
                 diff_obs = self.core.diff(index-1)
                 [diff_obs.pop(i) for i,x in enumerate(diff_obs) if x[1]<=0]
                 # if no new comming message then continue to wait for new comer
                 index += 1
+                if len(diff_obs) == 0:continue
                 result,_ = Broker.pairs_market_order_liquidating(num_left, diff_obs)
-                Quantity = [(lambda x: -1*x[1])(x) for x in result]
+                Quantity = [(lambda x: x[1])(x) for x in result]
                 # if x<0, meaning withdraw order
                 Price = [(lambda x: x[0])(x) for x in result]
                 Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]
                 reward = sum(Reward)
                 executed_num = sum(Quantity)
+                assert executed_num >= 0 and executed_num <= num_left
                 num_left -= executed_num
                 if num_left <=0: 
                     break
@@ -211,27 +219,29 @@ class BaseEnv(Env, ABC):
     
     def render(self, mode = 'human'):
         print('-'*30)
-        print(f'Step: {self.current_step}')
+        print(f'Step: {self.current_step}, Revenue: {self.memory_revenue}')
+        try:print("Executed_pairs: ",self.memory_executed_pairs[-1])
+        except: pass
         if self.done:
-            RLbp = 10000 *(self.running_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+            RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
             try: assert self.num_left >= 0, "Error for the negetive left quantity"
             except: 
                 raise Exception("Error for the negetive left quantity")
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> Running REWARD(RL) : "+str(format(self.running_reward, ',d')))
+            print(">>> Running REWARD(RL) : "+str(format(self.memory_revenue, ',d')))
             print(">>> FINAL REWARD(RL) : "+str(format(self.final_reward,',d')))
             print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
             print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liquidate,',d')))
             print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liquidate,',d')))
             print(">>> Base Point (Bound): "+str(format(10000 *(BaseEnv.max_price / BaseEnv.min_price -1)))) #(o/oo)
             print(">>> Base Point (Init): "+str(format(10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> Base Point (RL): "+str(format(10000 *(self.running_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> Base Point (RL): "+str(format(10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 memory_obs = self.memory_obs
-                memory = self.memory
+                memory = self.memory_reward
                 num_left = self.num_left
                 memory_executed = self.memory_executed
                 assert sum(memory_executed) == BaseEv.num2liquidate
@@ -241,7 +251,7 @@ class BaseEnv(Env, ABC):
             try: assert RLbp >= 0, "Error for the RL Base Point"
             except:
                 memory_obs = self.memory_obs
-                memory = self.memory
+                memory = self.memory_reward
                 num_left = self.num_left
                 memory_executed = self.memory_executed
                 assert sum(memory_executed) == BaseEnv.num2liquidate
