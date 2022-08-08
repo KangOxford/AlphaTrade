@@ -26,8 +26,23 @@ Three things to do this week
 
 ## `Week.12&13 Jul.11~Jul.24`
 #### Methods for Improving Learning
-* Refactor the gym_trading class <br> <img width="248" alt="image" src="https://user-images.githubusercontent.com/37290277/180627696-4466cbfc-e49f-45cc-95c1-74998915f306.png">
+* Refactor the gym_trading class <br> 
 
+<!--<img width="248" alt="image" src="https://user-images.githubusercontent.com/37290277/180627696-4466cbfc-e49f-45cc-95c1-74998915f306.png">-->
+
+```
+ gym_trading
+ ├─agent
+ │ └─ppo
+ ├─data
+ │ └─data_pipeline
+ ├─envs
+ │ ├─base_environment
+ │ └─match_engine
+ ├─train
+ │ ├─test_trading
+ │ └─train_gym_trading
+```
 
 
 
