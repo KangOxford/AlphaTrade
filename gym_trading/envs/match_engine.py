@@ -173,9 +173,15 @@ class Core():
         
         if executed_quantity != self.action and executed_quantity!=0:
             assert len(new_obs) == 1
-            return 0
         else:
+            for item in new_obs:
+                assert item[1] <= 0 
             self.executed_pairs = new_obs ## TODO ERROR
+            ''' e.g. [[31161600, -3], [31160000, -4], [31152200, -13]] 
+            all the second element should be negative, as it is the excuted and should be
+            removed from the limit order book
+            '''
+    
         # TODO get the executed_pairs
         
         diff_obs = self.diff(self.index-1)
