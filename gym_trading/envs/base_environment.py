@@ -71,19 +71,8 @@ class BaseEnv(Env, ABC):
         observation = self._get_obs(action)
         num_executed = self.core.executed_quantity
         
-        if self.num_left == 4:
-            print(4)
-        if self.num_left == 2: ##
-            print(2) ##
-        if self.num_left == 1:
-            print(1)
         self.num_left -= num_executed 
         assert self.num_left >=0, "num_left cannot be negative"
-        
-        # try: assert self.num_left >=0, "num_left cannot be negative" ##
-        # except:  ##
-        #     pass ##
-        # # TODO num_left cannot be negative
         
         if self.core.executed_pairs == [-999]:
             print('@Error'*20) ## TODO TO Debug
@@ -236,14 +225,18 @@ class BaseEnv(Env, ABC):
     def render(self, mode = 'human'):
         print('-'*30)
         print(f'Step: {self.current_step}, Revenue: {self.memory_revenue}')
-        try:print("Num_left {}, Executed_pairs: {}".format(self.num_left,self.memory_executed_pairs[-1]))
-        except: pass
+        print("Num_left: {}".format(self.num_left))
+        print("Executed_pairs: {}".format(self.memory_executed_pairs[-1]))
         if self.done:
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
             try: assert self.num_left >= 0, "Error for the negetive left quantity"
             except: 
                 raise Exception("Error for the negetive left quantity")
+            BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
+            BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+            BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+            BasePointDiff = BasePointRL - BasePointInit
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
             print(">>> Running REWARD(RL) : "+str(format(self.memory_revenue, ',d')))
@@ -251,9 +244,11 @@ class BaseEnv(Env, ABC):
             print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
             print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liquidate,',d')))
             print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liquidate,',d')))
-            print(">>> Base Point (Bound): "+str(format(10000 *(BaseEnv.max_price / BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> Base Point (Init): "+str(format(10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
-            print(">>> Base Point (RL): "+str(format(10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)))) #(o/oo)
+            print(">>> Base Point (Bound): "+str(format(BasePointBound))) #(o/oo)
+            print(">>> Base Point (Init): "+str(format(BasePointInit))) #(o/oo)
+            print(">>> Base Point (RL): "+str(format(BasePointRL))) #(o/oo)
+            print(">>> Base Point (Diff): "+str(format(BasePointDiff))) #(o/oo)
+            time.sleep(3) ## to be deleted
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 memory_obs = self.memory_obs
