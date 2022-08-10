@@ -67,10 +67,24 @@ class BaseEnv(Env, ABC):
         #     action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
         action = np.squeeze(action).astype(np.int32)
         # TO check, perhpas here remians problem
+        action = min(action, self.num_left)
         observation = self._get_obs(action)
         num_executed = self.core.executed_quantity
+        
+        if self.num_left == 4:
+            print(4)
+        if self.num_left == 2: ##
+            print(2) ##
+        if self.num_left == 1:
+            print(1)
         self.num_left -= num_executed 
-        # assert num_executed == 3
+        assert self.num_left >=0, "num_left cannot be negative"
+        
+        # try: assert self.num_left >=0, "num_left cannot be negative" ##
+        # except:  ##
+        #     pass ##
+        # # TODO num_left cannot be negative
+        
         if self.core.executed_pairs == [-999]:
             print('@Error'*20) ## TODO TO Debug
         step_reward =  self._get_each_running_reward() 
@@ -82,9 +96,9 @@ class BaseEnv(Env, ABC):
         self.memory_numleft.append(self.num_left)
         self.current_step += 1 # Take care of the location
         # ---------------------
-        done = self._get_set_done(action)
-        reward = self._get_reward(action)
-        info = self._get_info(action)
+        done = self._get_set_done()
+        reward = self._get_reward()
+        info = self._get_info()
         # if self.current_step == 101:
         #     num_left = self.num_left
         #     memory_obs = self.memory_obs
@@ -103,7 +117,7 @@ class BaseEnv(Env, ABC):
         self.previous_obs = obs 
         return obs
     # ------ 2/4.DONE ------
-    def _get_set_done(self,acion):
+    def _get_set_done(self):
         '''get & set done'''
         # print('num_left : ', self.num_left)
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
@@ -113,26 +127,28 @@ class BaseEnv(Env, ABC):
     def _get_inventory_cost(self):
         inventory = self.num_left
         return BaseEnv.cost_parameter * inventory * inventory
-    def _get_reward(self,acion):
+    def _get_reward(self):
         if not self.done:
             return 0
         elif self.done:
             self.final_reward = self.memory_revenue - self._get_inventory_cost()
             return self.final_reward
     def _get_each_running_reward(self):
-        if len(self.memory_executed) >= 1: ## to be deleted
-            assert self.memory_executed[-1] == 3 ## to be deleted
+        # if len(self.memory_executed) >= 1: ## to be deleted
+        #     if not self.memory_executed[-1] == 3: ##
+        #         memory_executed =  self.memory_executed ##
+        #         print(0) ##
+        #     # if the executed num is not 3, it means that the obs are almost all 0
+        #     # and there is nothing to get executed
+        #     assert self.memory_executed[-1] == 3 ## to be deleted
         pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
         # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
-        result = sum(lst_pairs[0]*lst_pairs[1]) 
-        
-        if not result >= 0:
-            print()
+        result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
         assert result >= 0
         return result
     # ------ 4/4.INFO ------
-    def _get_info(self,acion):
+    def _get_info(self):
         return self.info   
 # =============================================================================
  
@@ -195,14 +211,14 @@ class BaseEnv(Env, ABC):
                 # if no new comming message then continue to wait for new comer
                 index += 1
                 if len(diff_obs) == 0:continue
-                result,_ = Broker.pairs_market_order_liquidating(num_left, diff_obs)
+                result, executed_num = Broker.pairs_market_order_liquidating(num_left, diff_obs)
                 Quantity = [(lambda x: x[1])(x) for x in result]
                 # if x<0, meaning withdraw order
                 Price = [(lambda x: x[0])(x) for x in result]
                 Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]
                 reward = sum(Reward)
-                executed_num = sum(Quantity)
-                assert executed_num >= 0 and executed_num <= num_left
+                assert executed_num >= 0 
+                assert executed_num <= num_left
                 num_left -= executed_num
                 if num_left <=0: 
                     break
@@ -220,7 +236,7 @@ class BaseEnv(Env, ABC):
     def render(self, mode = 'human'):
         print('-'*30)
         print(f'Step: {self.current_step}, Revenue: {self.memory_revenue}')
-        try:print("Executed_pairs: ",self.memory_executed_pairs[-1])
+        try:print("Num_left {}, Executed_pairs: {}".format(self.num_left,self.memory_executed_pairs[-1]))
         except: pass
         if self.done:
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)

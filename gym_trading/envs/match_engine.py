@@ -102,13 +102,14 @@ class Broker():
         executed_num = Num - num # TODO use the executed_num
         # result return the price level, 
         # begin with level 1, then end with level 10
+        assert executed_num>=0
         return result, executed_num
     
     @classmethod
     def pairs_market_order_liquidating(cls, num, obs):
         # num, obs = action, state ##
         num = copy.deepcopy(num)
-        # level, executed_num = Broker._level_market_order_liquidating(num, obs)##
+        # level, executed_num = Broker._level_market_order_liquidating(num_left, diff_obs)##
         level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
         sum_quantity = 0
@@ -120,19 +121,20 @@ class Broker():
         result = []
         if level>1:
             for i in range(level-1):
-                result.append(
-                    [obs[i][0],-obs[i][1]])
-            result.append(
-                [obs[level-1][0],-num+quantity_list[level-2]])
+                result.append([obs[i][0],-obs[i][1]])
+            result.append([obs[level-1][0],-num+quantity_list[level-2]])
+            for item in result:
+                assert item[1]<=0 ##
         if level == 1:
             # result.append([obs[0][0],-num]) # to check it should be wrong
             result.append([obs[0][0],-executed_num])
             '''-executed_num, to be negative means the quantity is removed from the lob
             '''
         if level == 0:
-            pass
+            result = []
         if level == -999:
             result.append(-999)
+        assert executed_num>=0
         return result, executed_num
 
 
@@ -169,23 +171,28 @@ class Core():
         remove_zero_quantity = lambda x:[item for index, item in enumerate(x) if item[1]!=0]
         state = remove_zero_quantity(state)
         
+        # action = min(action,self.num_left) ##
+        
         new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, state)
-        self.executed_quantity =executed_quantity
+        self.executed_quantity = executed_quantity
         # get_new_obs
         
-        if executed_quantity != self.action and executed_quantity!=0:
-            assert len(new_obs) == 1
-        else:
-            for item in new_obs:
-                if not item[1] <= 0 :
-                    print()
-                assert item[1] <= 0 
-            self.executed_pairs = new_obs ## TODO ERROR
-            ''' e.g. [[31161600, -3], [31160000, -4], [31152200, -13]] 
-            all the second element should be negative, as it is the excuted and should be
-            removed from the limit order book
-            '''
-        # TODO get the executed_pairs
+
+        for item in new_obs:
+            assert item[1] <= 0 
+        self.executed_pairs = new_obs ## TODO ERROR
+        ''' e.g. [[31161600, -3], [31160000, -4], [31152200, -13]] 
+        all the second element should be negative, as it is the excuted and should be
+        removed from the limit order book
+        '''
+        
+        if sum([-1*item[-1] for item in new_obs]) != executed_quantity:
+            '''the left is the sum of the quantity from new_obs'''
+            num, obs = executed_quantity, [[item[0],-1*item[1]] for item in new_obs]
+            result, executed_num = Broker.pairs_market_order_liquidating(num, obs)
+            assert executed_num == executed_quantity
+            self.executed_pairs = result
+        # get the executed_pairs
         
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
@@ -276,3 +283,57 @@ if __name__ == "__main__":
     obs20 = core.step(min(20,core.get_ceilling()))[0]
     # ==================================================
 
+
+    # ==================================================
+    obs21 = core.step(0)[0]
+    obs22 = core.step(10)[0]
+    obs23 = core.step(20)[0]
+    obs24 = core.step(30)[0]
+    obs25 = core.step(30)[0]
+    obs26 = core.step(300)[0]
+    obs27 = core.step(30)[0]
+    obs28 = core.step(30)[0]
+    obs29 = core.step(30)[0]
+    obs30 = core.step(30)[0]
+    # ==================================================
+    
+    
+    # ==================================================
+    obs21 = core.step(0)[0]
+    obs22 = core.step(10)[0]
+    obs23 = core.step(20)[0]
+    obs24 = core.step(30)[0]
+    obs25 = core.step(30)[0]
+    # obs26 = core.step(300)[0]
+    obs27 = core.step(30)[0]
+    obs28 = core.step(30)[0]
+    obs29 = core.step(30)[0]
+    obs30 = core.step(30)[0]
+    # ==================================================
+    
+    # ==================================================
+    obs21 = core.step(0)[0]
+    obs22 = core.step(10)[0]
+    obs23 = core.step(20)[0]
+    obs24 = core.step(30)[0]
+    obs25 = core.step(30)[0]
+    # obs26 = core.step(300)[0]
+    obs27 = core.step(30)[0]
+    obs28 = core.step(30)[0]
+    obs29 = core.step(30)[0]
+    obs30 = core.step(30)[0]
+    # ==================================================
+    
+    # ==================================================
+    obs21 = core.step(0)[0]
+    obs22 = core.step(10)[0]
+    obs23 = core.step(20)[0]
+    obs24 = core.step(30)[0]
+    obs25 = core.step(30)[0]
+    # obs26 = core.step(300)[0]
+    obs27 = core.step(30)[0]
+    obs28 = core.step(30)[0]
+    obs29 = core.step(30)[0]
+    obs30 = core.step(30)[0]
+    # ==================================================
+    
