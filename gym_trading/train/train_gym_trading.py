@@ -6,8 +6,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from gym_trading.envs.base_environment import BaseEnv
 from gym_trading.data.data_pipeline import ExternalData
-# from gym_trading.utils import timing
-from time import time
+
 
 
 warnings.filterwarnings("ignore")
@@ -21,10 +20,9 @@ check_env(env)
 model = PPO("MultiInputPolicy", env, verbose=1)
 
 
-start = time()
-model.learn(total_timesteps=int(1e8), n_eval_episodes = int(1e5))
-duration = time() - start
-print(duration)
+
+%time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
+
 
 
 model.save("gym_trading-v1") 
