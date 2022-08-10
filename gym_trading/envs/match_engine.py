@@ -126,7 +126,9 @@ class Broker():
                 [obs[level-1][0],-num+quantity_list[level-2]])
         if level == 1:
             # result.append([obs[0][0],-num]) # to check it should be wrong
-            result.append([obs[0][0],executed_num])
+            result.append([obs[0][0],-executed_num])
+            '''-executed_num, to be negative means the quantity is removed from the lob
+            '''
         if level == 0:
             pass
         if level == -999:
@@ -175,13 +177,14 @@ class Core():
             assert len(new_obs) == 1
         else:
             for item in new_obs:
+                if not item[1] <= 0 :
+                    print()
                 assert item[1] <= 0 
             self.executed_pairs = new_obs ## TODO ERROR
             ''' e.g. [[31161600, -3], [31160000, -4], [31152200, -13]] 
             all the second element should be negative, as it is the excuted and should be
             removed from the limit order book
             '''
-    
         # TODO get the executed_pairs
         
         diff_obs = self.diff(self.index-1)
