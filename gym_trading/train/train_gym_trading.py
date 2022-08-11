@@ -21,7 +21,9 @@ model = PPO("MultiInputPolicy", env, verbose=1)
 
 
 
-%time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
+# %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
+# model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
+model.learn(total_timesteps=int(3e4))
 
 
 
