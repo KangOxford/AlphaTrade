@@ -60,3 +60,8 @@ def get_result(name):
 Init = get_result('Init')
 Diff = get_result('Diff')
 RL = [x+y for x,y in zip(Init,Diff)]
+
+import numpy as np
+np.mean(Init)
+np.mean(Diff)
+np.mean(RL)

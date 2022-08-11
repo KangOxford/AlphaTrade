@@ -88,15 +88,6 @@ class BaseEnv(Env, ABC):
         done = self._get_set_done()
         reward = self._get_reward()
         info = self._get_info()
-        # if self.current_step == 101:
-        #     num_left = self.num_left
-        #     memory_obs = self.memory_obs
-        #     memory_executed = self.memory_executed
-        #     memory_numleft = self.memory_numleft
-        #     memory = self.memory_revenues
-        #     len(self.memory_revenues)
-        #     current_step = self.current_step
-        #     raise Exception(" ")
         
         return  observation, reward, done, info
     # ------  1/4.OBS  ------
@@ -108,20 +99,30 @@ class BaseEnv(Env, ABC):
     # ------ 2/4.DONE ------
     def _get_set_done(self):
         '''get & set done'''
-        # print('num_left : ', self.num_left)
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
         return self.done
     # ------ 3/4.REWARD  ------
+    
     def _get_inventory_cost(self):
         inventory = self.num_left
         return BaseEnv.cost_parameter * inventory * inventory
+
     def _get_reward(self):
         if not self.done:
             return 0
         elif self.done:
-            self.final_reward = self.memory_revenue - self._get_inventory_cost()
-            return self.final_reward
+            self.final_reward = self.memory_revenue - self._get_inventory_cost() 
+            final_advantage = (self.final_reward - self.init_reward) / self.init_reward
+            return final_advantage
+        
+    # def _get_reward(self):
+    #     if not self.done:
+    #         return 0
+    #     elif self.done:
+    #         self.final_reward = self.memory_revenue - self._get_inventory_cost()
+    #         return self.final_reward
+    
     def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
@@ -224,13 +225,13 @@ class BaseEnv(Env, ABC):
         if self.done:
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-            try: assert self.num_left >= 0, "Error for the negetive left quantity"
-            except: 
-                raise Exception("Error for the negetive left quantity")
             BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
             BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             BasePointDiff = BasePointRL - BasePointInit
+            try: assert self.num_left >= 0, "Error for the negetive left quantity"
+            except: 
+                raise Exception("Error for the negetive left quantity")
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
             print(">>> Running REWARD(RL) : "+str(format(self.memory_revenue, ',d')))
@@ -245,25 +246,10 @@ class BaseEnv(Env, ABC):
             # time.sleep(3) ## to be deleted
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
-                memory_obs = self.memory_obs
-                memory = self.memory_revenues
-                num_left = self.num_left
-                memory_executed = self.memory_executed
-                assert sum(memory_executed) == BaseEv.num2liquidate
-                memory_numleft = self.memory_numleft
-                current_step = self.current_step
-                # raise Exception("Error for the RL Base Point")
+                raise Exception("Error for the RL Base Point")
             try: assert RLbp >= 0, "Error for the RL Base Point"
             except:
-                memory_obs = self.memory_obs
-                memory = self.memory_revenues
-                num_left = self.num_left
-                memory_executed = self.memory_executed
-                assert sum(memory_executed) == BaseEnv.num2liquidate
-                memory_numleft = self.memory_numleft
-                current_step = self.current_step
-                # raise Exception("Error for the RL Base Point")                
-            # time.sleep(4)
+                raise Exception("Error for the RL Base Point")                
 
 
     
