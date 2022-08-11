@@ -223,10 +223,11 @@ class BaseEnv(Env, ABC):
 # =============================================================================
     
     def render(self, mode = 'human'):
-        print('-'*30)
-        print(f'Step: {self.current_step}, Revenue: {self.memory_revenue}')
-        print("Num_left: {}".format(self.num_left))
-        print("Executed_pairs: {}".format(self.memory_executed_pairs[-1]))
+        # # to be added
+        # print('-'*30)
+        # print(f'Step: {self.current_step}, Revenue: {self.memory_revenue}')
+        # print("Num_left: {}".format(self.num_left))
+        # print("Executed_pairs: {}".format(self.memory_executed_pairs[-1]))
         if self.done:
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
@@ -248,7 +249,7 @@ class BaseEnv(Env, ABC):
             print(">>> Base Point (Init): "+str(format(BasePointInit))) #(o/oo)
             print(">>> Base Point (RL): "+str(format(BasePointRL))) #(o/oo)
             print(">>> Base Point (Diff): "+str(format(BasePointDiff))) #(o/oo)
-            time.sleep(3) ## to be deleted
+            # time.sleep(3) ## to be deleted
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 memory_obs = self.memory_obs
