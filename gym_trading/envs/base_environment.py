@@ -49,7 +49,7 @@ class BaseEnv(Env, ABC):
         self.done = False
         self.current_step = 0
         self.memory_revenue = 0
-        self.memory_reward = None # revenue
+        self.memory_revenues = None # revenue
         self.memory_obs = None # observation 
         self.memory_executed_pairs = None
         self.memory_executed = None
@@ -76,9 +76,9 @@ class BaseEnv(Env, ABC):
         
         if self.core.executed_pairs == [-999]:
             print('@Error'*20) ## TODO TO Debug
-        step_reward =  self._get_each_running_reward() 
-        self.memory_revenue += step_reward
-        self.memory_reward.append(step_reward)
+        step_revenue =  self._get_each_running_revenue() 
+        self.memory_revenue += step_revenue
+        self.memory_revenues.append(step_revenue)
         self.memory_obs.append(observation)
         self.memory_executed_pairs.append(self.core.executed_pairs)
         self.memory_executed.append(num_executed)
@@ -93,8 +93,8 @@ class BaseEnv(Env, ABC):
         #     memory_obs = self.memory_obs
         #     memory_executed = self.memory_executed
         #     memory_numleft = self.memory_numleft
-        #     memory = self.memory_reward
-        #     len(self.memory_reward)
+        #     memory = self.memory_revenues
+        #     len(self.memory_revenues)
         #     current_step = self.current_step
         #     raise Exception(" ")
         
@@ -122,14 +122,7 @@ class BaseEnv(Env, ABC):
         elif self.done:
             self.final_reward = self.memory_revenue - self._get_inventory_cost()
             return self.final_reward
-    def _get_each_running_reward(self):
-        # if len(self.memory_executed) >= 1: ## to be deleted
-        #     if not self.memory_executed[-1] == 3: ##
-        #         memory_executed =  self.memory_executed ##
-        #         print(0) ##
-        #     # if the executed num is not 3, it means that the obs are almost all 0
-        #     # and there is nothing to get executed
-        #     assert self.memory_executed[-1] == 3 ## to be deleted
+    def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs # TODO
         lst_pairs = np.array(from_pairs2lst_pairs(pairs))
         # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
@@ -165,7 +158,7 @@ class BaseEnv(Env, ABC):
     def reset_states(self):
         # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
         # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
-        self.memory_reward = []
+        self.memory_revenues = []
         self.memory_obs = []
         self.memory_executed = []
         self.memory_executed_pairs = []
@@ -253,7 +246,7 @@ class BaseEnv(Env, ABC):
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 memory_obs = self.memory_obs
-                memory = self.memory_reward
+                memory = self.memory_revenues
                 num_left = self.num_left
                 memory_executed = self.memory_executed
                 assert sum(memory_executed) == BaseEv.num2liquidate
@@ -263,7 +256,7 @@ class BaseEnv(Env, ABC):
             try: assert RLbp >= 0, "Error for the RL Base Point"
             except:
                 memory_obs = self.memory_obs
-                memory = self.memory_reward
+                memory = self.memory_revenues
                 num_left = self.num_left
                 memory_executed = self.memory_executed
                 assert sum(memory_executed) == BaseEnv.num2liquidate
