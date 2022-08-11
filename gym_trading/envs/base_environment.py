@@ -26,6 +26,7 @@ class BaseEnv(Env, ABC):
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
+    scaling = 30000000
     num2liquidate = 300
     cost_parameter = int(1e8)
     
@@ -56,6 +57,7 @@ class BaseEnv(Env, ABC):
         self.memory_numleft = None
         self.final_reward = 0
         self.init_reward = 0
+        self.init_reward_bp = 0
         self.info = {}
         self.previous_obs = None
         self.reset_obs = None
@@ -110,11 +112,22 @@ class BaseEnv(Env, ABC):
 
     def _get_reward(self):
         if not self.done:
-            return 0
+            if self.memory_executed[-1] == 0:
+                return 0 # noting get executed at this time step
+            else:
+                result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
+                return result
         elif self.done:
-            self.final_reward = self.memory_revenue - self._get_inventory_cost() 
-            final_advantage = (self.final_reward - self.init_reward) / self.init_reward
-            return final_advantage
+            self.final_reward = self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1] - self._get_inventory_cost() 
+            return self.final_reward
+        
+    # def _get_reward(self):
+    #     if not self.done:
+    #         return 0
+    #     elif self.done:
+    #         self.final_reward = self.memory_revenue - self._get_inventory_cost() 
+    #         final_advantage = (self.final_reward - self.init_reward) / self.init_reward
+    #         return final_advantage
         
     # def _get_reward(self):
     #     if not self.done:
@@ -185,6 +198,7 @@ class BaseEnv(Env, ABC):
         # TODO to use the num_executed
         if level == 0:
             self.init_reward = 0 
+            self.init_reward_bp = 0
         elif level == -999:
             num_left = num-Executed_num
             index = 1 # TODO not sure to check it
@@ -212,6 +226,7 @@ class BaseEnv(Env, ABC):
                 consumed += obs[i][1]
             reward += obs[level-1][0] * (num - consumed)
             self.init_reward = reward
+            self.init_reward_bp = int(self.init_reward/BaseEnv.num2liquidate)
         assert self.init_reward >= 0
 
 # =============================================================================
@@ -234,8 +249,6 @@ class BaseEnv(Env, ABC):
                 raise Exception("Error for the negetive left quantity")
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> Running REWARD(RL) : "+str(format(self.memory_revenue, ',d')))
-            print(">>> FINAL REWARD(RL) : "+str(format(self.final_reward,',d')))
             print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
             print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liquidate,',d')))
             print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liquidate,',d')))

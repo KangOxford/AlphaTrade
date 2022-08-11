@@ -17,7 +17,7 @@ env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
 
 check_env(env)
-model = PPO("MultiInputPolicy", env, verbose=1, tensorboard_log="./ppo_gymtrading_tensorboard3/")
+model = PPO("MultiInputPolicy", env, verbose=1, tensorboard_log="./ppo_gymtrading_tensorboard4/")
 
 
 
