@@ -222,6 +222,7 @@ class Core():
             if i % 2 == 1:
                 result += next_stage_lst[i]
         return result
+    
     def diff(self, index):
         Index = index + 1 ## !TODO not sure
         col_num = self._flow.shape[1] 
