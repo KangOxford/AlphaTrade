@@ -48,3 +48,5 @@ np.mean(Diff)
 #[Out]# -1.4351415405102463
 np.mean(RL)
 #[Out]# 77.98518493033858
+runfile('/Users/kang/GitHub/NeuralLOB/gym_trading/train/train_gym_trading.py', wdir='/Users/kang/GitHub/NeuralLOB/gym_trading/train')
+runfile('/Users/kang/GitHub/NeuralLOB/gym_trading/train/train_gym_trading.py', wdir='/Users/kang/GitHub/NeuralLOB/gym_trading/train')
