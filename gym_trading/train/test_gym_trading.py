@@ -45,7 +45,8 @@ for i in range(int(1e6)):
 
 def get_result(name):
     import re  
-    fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test.log")   
+    # fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test.log")   
+    fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test1.html")   
     lst = []
     for line in fp.readlines():
         try:
