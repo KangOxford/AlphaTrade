@@ -118,7 +118,9 @@ class BaseEnv(Env, ABC):
                 result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
                 return result
         elif self.done:
-            self.final_reward = self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1] - self._get_inventory_cost() 
+            self.final_reward = (self.memory_revenues[-1] - \
+                                 self.init_reward_bp*self.memory_executed[-1] \
+                                     - self._get_inventory_cost())/BaseEnv.scaling 
             return self.final_reward
         
     # def _get_reward(self):

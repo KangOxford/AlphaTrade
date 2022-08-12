@@ -17,17 +17,21 @@ env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
 
 check_env(env)
-model = PPO("MultiInputPolicy", env, verbose=1, tensorboard_log="./ppo_gymtrading_tensorboard4/")
+model = PPO("MultiInputPolicy", env, verbose=1, tensorboard_log="./ppo_gymtrading_tensorboard8/")
 
 
 
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
-model.learn(total_timesteps=int(5e5), tb_log_name="first_run")
-model.learn(total_timesteps=int(5e5), tb_log_name="second_run", reset_num_timesteps=False)
-model.learn(total_timesteps=int(5e5), tb_log_name="third_run", reset_num_timesteps=False)
-model.learn(total_timesteps=int(5e5), tb_log_name="fourth_run", reset_num_timesteps=False)
-model.learn(total_timesteps=int(5e5), tb_log_name="fifth_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="first_run")
+model.learn(total_timesteps=int(2e6), tb_log_name="second_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="third_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="fourth_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="fifth_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="sixth_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="seventh_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="eighth_run", reset_num_timesteps=False)
+model.learn(total_timesteps=int(2e6), tb_log_name="ninth_run", reset_num_timesteps=False)
 
 
 
