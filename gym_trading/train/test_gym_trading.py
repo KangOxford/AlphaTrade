@@ -29,6 +29,20 @@ for i in range(int(1e8)):
         obs = env.reset()
         break 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 obs = env.reset()
 done = False
 for i in range(int(1e6)):
@@ -45,8 +59,9 @@ for i in range(int(1e6)):
 
 def get_result(name):
     import re  
+    fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test1.log")   
     # fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test.log")   
-    fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test1.html")   
+    # fp = open("/Users/kang/GitHub/NeuralLOB/gym_trading/train/test1.html")   
     lst = []
     for line in fp.readlines():
         try:
@@ -63,6 +78,6 @@ Diff = get_result('Diff')
 RL = [x+y for x,y in zip(Init,Diff)]
 
 import numpy as np
-np.mean(Init)
-np.mean(Diff)
-np.mean(RL)
+print(np.mean(Init))
+print(np.mean(Diff))
+print(np.mean(RL))

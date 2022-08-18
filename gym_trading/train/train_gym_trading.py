@@ -1,5 +1,6 @@
 # %% ==========================================================================
 # clear warnings
+from email import policy
 import warnings
 import gym
 from stable_baselines3 import PPO
@@ -14,6 +15,16 @@ Flow = ExternalData.get_sample_order_book_data()
 
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 # env = gym.DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)])
+
+
+{
+
+- pretrain
+    - define the fixed delta policy
+    - pretrain
+    - combine the policy
+
+}
 
 
 check_env(env)
