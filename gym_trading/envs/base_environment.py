@@ -5,8 +5,6 @@ import warnings
 import numpy as np
 # import cudf 
 import pandas as pd
-from abc import ABC
-from abc import abstractmethod
 # -----------------------------------------------------------------------------
 from gym import Env
 from gym import spaces
@@ -19,7 +17,7 @@ warnings.filterwarnings("ignore")
 
 
 
-class BaseEnv(Env, ABC):
+class BaseEnv(Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
@@ -34,8 +32,8 @@ class BaseEnv(Env, ABC):
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
         super().__init__()
-        self._max_episode_steps = 10240 # to test in 10 min
-        # self._max_episode_steps = 1024 # size of a flow
+        # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
+        self._max_episode_steps = 1024 # to test in 1 min, short horizon
         self.Flow = Flow
         self.core = None
         self.price_list = None
