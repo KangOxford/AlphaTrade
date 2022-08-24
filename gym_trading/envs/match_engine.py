@@ -113,18 +113,23 @@ class Broker():
         # level, executed_num = Broker._level_market_order_liquidating(num_left, diff_obs)##
         level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
-        sum_quantity = 0
-        quantity_list = []
-        for i in range(len(obs)):
-            sum_quantity+=obs[i][1]
-            quantity_list.append(sum_quantity)
+        
+        # sum_quantity = 0
+        # quantity_list = []
+        # for i in range(level):
+        #     sum_quantity+=obs[i][1]
+        #     quantity_list.append(sum_quantity)
         
         result = []
         if level>1:
             for i in range(level-1):
                 result.append([obs[i][0],-obs[i][1]])
-            result.append([obs[level-1][0],-num+quantity_list[level-2]])
+            num_left = num + sum([item[1] for item in result])
+            assert num_left <= 
+            # result.append([obs[-1][0],min(, -num+quantity_list[-1]]))
             for item in result:
+                if not item[1] <= 0:
+                    print()
                 assert item[1]<=0 ##
         if level == 1:
             # result.append([obs[0][0],-num]) # to check it should be wrong

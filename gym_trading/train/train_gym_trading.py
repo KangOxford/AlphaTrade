@@ -14,16 +14,17 @@ Flow = ExternalData.get_sample_order_book_data()
 num_cpu = 10 
 # env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 venv = DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu)
-monitor_venv = Monitor(DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu))
+# monitor_venv = Monitor(DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu))
+monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
 # check_env(env)
 # %%
 model = PPO("MultiInputPolicy", 
-            venv, 
+            monitor_venv, 
             verbose=1, 
             tensorboard_log="/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard8/")
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
-model.learn(total_timesteps=int(1e10), tb_log_name="Short_Horizon")
+model.learn(total_timesteps=int(1e10), tb_log_name="Short_Horizon_run")
 model.save("gym_trading-v1") 
 
 
