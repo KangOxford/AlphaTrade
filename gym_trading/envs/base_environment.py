@@ -272,7 +272,7 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 3
+    action = 30
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
         env.render()
