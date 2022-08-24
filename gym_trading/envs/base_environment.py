@@ -27,7 +27,7 @@ class BaseEnv(Env):
     min_price = 31120200
     scaling = 30000000
     num2liquidate = 300
-    cost_parameter = int(1e11)
+    cost_parameter = int(1e9)
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -118,6 +118,7 @@ class BaseEnv(Env):
             BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             BasePointDiff = BasePointRL - BasePointInit
+            assert BasePointRL <= BasePointBound
             self.final_reward = BasePointDiff
             return self.final_reward
         
