@@ -27,7 +27,7 @@ class BaseEnv(Env):
     min_price = 31120200
     scaling = 30000000
     num2liquidate = 300
-    cost_parameter = int(1e9)
+    cost_parameter = int(1e11)
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
