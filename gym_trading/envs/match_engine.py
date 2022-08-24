@@ -141,7 +141,7 @@ class Broker():
 class Core():
     init_index = 0
     def __init__(self, flow):
-        self._max_episode_steps = 256
+        self._max_episode_steps = 128
         self.flow = flow
         self._flow = -self.flow.diff()
         self.index = Core.init_index

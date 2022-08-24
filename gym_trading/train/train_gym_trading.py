@@ -21,7 +21,7 @@ monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow
 model = SAC("MultiInputPolicy", 
             monitor_venv, 
             verbose=1, 
-            tensorboard_log="/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard8/")
+            tensorboard_log="/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard9/")
 
 # model = PPO("MultiInputPolicy", 
 #             monitor_venv, 
@@ -30,7 +30,7 @@ model = SAC("MultiInputPolicy",
 
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
-model.learn(total_timesteps=int(1e10), tb_log_name="SAC_ShortHorizon256_LargeReward9Penalty11")
+model.learn(total_timesteps=int(1e10), tb_log_name="SparseReward_SAC_ShortHorizon128")
 model.save("gym_trading-v1") 
 
 # %% test the train result

@@ -33,7 +33,7 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-        self._max_episode_steps = 256 # to test in 1 min, short horizon
+        self._max_episode_steps = 128 # to test in 1/8 min, short horizon
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -110,19 +110,32 @@ class BaseEnv(Env):
         return BaseEnv.cost_parameter * inventory * inventory
 
     def _get_reward(self):
-        if not self.done:
-            if self.memory_executed[-1] == 0:
-                return 0 # noting get executed at this time step
-            else:
-                result = self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1]
-                # result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
-                return result
+        if not self.done: return 0
         elif self.done:
-            self.final_reward = (self.memory_revenues[-1] - \
-                                 self.init_reward_bp*self.memory_executed[-1] \
-                                     - self._get_inventory_cost())/BaseEnv.scaling 
+            RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+            Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
+            BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
+            BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+            BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+            BasePointDiff = BasePointRL - BasePointInit
+            self.final_reward = BasePointDiff
             return self.final_reward
         
+    # def _get_reward(self):
+    #     if not self.done:
+    #         if self.memory_executed[-1] == 0:
+    #             return 0 # noting get executed at this time step
+    #         else:
+    #             result = self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1]
+    #             # result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
+    #             return result
+    #     elif self.done:
+    #         self.final_reward = (self.memory_revenues[-1] - \
+    #                              self.init_reward_bp*self.memory_executed[-1] \
+    #                                  - self._get_inventory_cost())/BaseEnv.scaling 
+    #         return self.final_reward
+    
+    
     # def _get_reward(self):
     #     if not self.done:
     #         return 0
