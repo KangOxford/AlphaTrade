@@ -33,7 +33,7 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-        self._max_episode_steps = 1024 # to test in 1 min, short horizon
+        self._max_episode_steps = 256 # to test in 1 min, short horizon
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -273,7 +273,7 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 30
+    action = 3
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
         env.render()

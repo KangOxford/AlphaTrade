@@ -140,6 +140,7 @@ class Broker():
 class Core():
     init_index = 0
     def __init__(self, flow):
+        self._max_episode_steps = 256
         self.flow = flow
         self._flow = -self.flow.diff()
         self.index = Core.init_index
@@ -226,7 +227,7 @@ class Core():
         diff_list = [] 
         for i in range(col_num):
             if i%2 == 0:
-                if Index >= 1024: ##
+                if Index >= self._max_episode_steps: ##
                     # print(Index) ## !TODO not sure
                     break 
                 if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
