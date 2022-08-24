@@ -129,11 +129,9 @@ class Broker():
         if level == 0:
             result = []
         if level == -999:
-            result.append(-999)
+            minus_list = [[item[0],-1*item[1]] for item in obs]
+            result.extend(minus_list)
         assert executed_num>=0
-        try: sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
-        except:
-            print()
         assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
         return result, executed_num
 

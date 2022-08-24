@@ -21,7 +21,7 @@ class BaseEnv(Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
-    max_action = 30
+    max_action = 300
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
@@ -273,7 +273,7 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 3
+    action = 300
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
         env.render()
