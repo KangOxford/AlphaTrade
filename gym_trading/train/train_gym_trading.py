@@ -24,7 +24,7 @@ model = PPO("MultiInputPolicy",
             tensorboard_log="/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard8/")
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
-model.learn(total_timesteps=int(1e10), tb_log_name="ShortHorizon")
+model.learn(total_timesteps=int(1e10), tb_log_name="ShortHorizon_LargeRewardPenalty")
 model.save("gym_trading-v1") 
 
 

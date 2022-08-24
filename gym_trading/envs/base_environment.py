@@ -27,7 +27,7 @@ class BaseEnv(Env):
     min_price = 31120200
     scaling = 30000000
     num2liquidate = 300
-    cost_parameter = int(1e8)
+    cost_parameter = int(1e9)
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -114,7 +114,8 @@ class BaseEnv(Env):
             if self.memory_executed[-1] == 0:
                 return 0 # noting get executed at this time step
             else:
-                result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
+                result = self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1]
+                # result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
                 return result
         elif self.done:
             self.final_reward = (self.memory_revenues[-1] - \
