@@ -131,6 +131,9 @@ class Broker():
         if level == -999:
             result.append(-999)
         assert executed_num>=0
+        try: sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
+        except:
+            print()
         assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
         return result, executed_num
 
