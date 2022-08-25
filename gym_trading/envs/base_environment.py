@@ -110,7 +110,7 @@ class BaseEnv(Env):
         return BaseEnv.cost_parameter * inventory * inventory
 
     def _get_reward(self):
-        if not self.done: return 0
+        if not self.done: return -0.5
         elif self.done:
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
