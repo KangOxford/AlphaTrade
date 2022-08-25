@@ -21,7 +21,8 @@ class BaseEnv(Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
-    max_action = 300
+    max_action = 70
+    # max_action = 300
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
@@ -63,7 +64,7 @@ class BaseEnv(Env):
         self.reset_obs = None
     
 # ============================  STEP  =========================================
-    def step(self, action):
+    def core_step(self, action):
         print(">>>> STEP : ", self.current_step) ##
         ''' return observation, reward, done, info ''' 
         # if type(action) == np.ndarray:
@@ -72,13 +73,26 @@ class BaseEnv(Env):
         # TO check, perhpas here remians problem
         action = min(action, self.num_left)
         observation = self._get_obs(action)
-        num_executed = self.core.executed_quantity
+        num_executed = self.core.executed_quantity  
+        return observation, num_executed
+    def step(self, action):
+        observation, num_executed =  core_step(self, action)
         
+# ============================        
+        if self.core.executed_pairs == [-999]:
+            print('@Error'*20) ## TODO TO Debug
+# if level == -999:
+#     minus_list = [[item[0],-1*item[1]] for item in obs]
+#     result.extend(minus_list)
+# assert executed_num>=0
+# assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
+# return result, executed_num
+ # ============================           
+            
         self.num_left -= num_executed 
         assert self.num_left >=0, "num_left cannot be negative"
         
-        if self.core.executed_pairs == [-999]:
-            print('@Error'*20) ## TODO TO Debug
+        
         step_revenue =  self._get_each_running_revenue() 
         self.memory_revenue += step_revenue
         self.memory_revenues.append(step_revenue)
@@ -175,6 +189,10 @@ class BaseEnv(Env):
         flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
         flow = flow.reset_index().drop("index",axis=1)
         self.core = Core(flow)
+        
+        self._set_init_reward() # refactor the two lines below
+        # self._set_init_reward(flow.iloc[0,:])
+        # self.core = Core(flow)
 
         self._set_init_reward(flow.iloc[0,:])
         self.core = Core(flow)
@@ -210,47 +228,55 @@ class BaseEnv(Env):
             'price' : init_price,
             'quantity' : init_quant
             }
-        return init_obs        
-    def _set_init_reward(self, stream):
-        num = BaseEnv.num2liquidate
-        obs = Utils.from_series2pair(stream)
-        level, Executed_num = Broker._level_market_order_liquidating(num, obs)
-        assert Executed_num >= 0 and Executed_num <= num
-        # TODO to use the num_executed
-        if level == 0:
-            self.init_reward = 0 
-            self.init_reward_bp = 0
-        elif level == -999:
-            num_left = num-Executed_num
-            index = 1 # TODO not sure to check it
-            while True:
-                if index >=3000:
-                    print('debug') ##
-                diff_obs = self.core.diff(index-1)
-                [diff_obs.pop(i) for i,x in enumerate(diff_obs) if x[1]<=0]
-                # if no new comming message then continue to wait for new comer
-                index += 1
-                if len(diff_obs) == 0:continue
-                result, executed_num = Broker.pairs_market_order_liquidating(num_left, diff_obs)
-                Quantity = [(lambda x: x[1])(x) for x in result]
-                # if x<0, meaning withdraw order
-                Price = [(lambda x: x[0])(x) for x in result]
-                Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]
-                reward = sum(Reward)
-                assert executed_num >= 0 
-                assert executed_num <= num_left
-                num_left -= executed_num
-                if num_left <=0: 
-                    break
-        else:
-            reward,consumed = 0,0
-            for i in range(level-1):
-                reward += obs[i][0] * obs[i][1]
-                consumed += obs[i][1]
-            reward += obs[level-1][0] * (num - consumed)
-            self.init_reward = reward
-            self.init_reward_bp = int(self.init_reward/BaseEnv.num2liquidate)
-        assert self.init_reward >= 0
+        return init_obs   
+    def _set_init_reward(self):
+        # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
+        num2liquidate = BaseEnv.num2liquidate
+        max_action = BaseEnv.max_action
+        while True:
+            
+        print()
+        
+    # def _set_init_reward(self, stream):
+    #     num = BaseEnv.num2liquidate
+    #     obs = Utils.from_series2pair(stream)
+    #     level, Executed_num = Broker._level_market_order_liquidating(num, obs)
+    #     assert Executed_num >= 0 and Executed_num <= num
+    #     # TODO to use the num_executed
+    #     if level == 0:
+    #         self.init_reward = 0 
+    #         self.init_reward_bp = 0
+    #     elif level == -999:
+    #         num_left = num-Executed_num
+    #         index = 1 # TODO not sure to check it
+    #         while True:
+    #             if index >=3000:
+    #                 print('debug') ##
+    #             diff_obs = self.core.diff(index-1)
+    #             [diff_obs.pop(i) for i,x in enumerate(diff_obs) if x[1]<=0]
+    #             # if no new comming message then continue to wait for new comer
+    #             index += 1
+    #             if len(diff_obs) == 0:continue
+    #             result, executed_num = Broker.pairs_market_order_liquidating(num_left, diff_obs)
+    #             Quantity = [(lambda x: x[1])(x) for x in result]
+    #             # if x<0, meaning withdraw order
+    #             Price = [(lambda x: x[0])(x) for x in result]
+    #             Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]
+    #             reward = sum(Reward)
+    #             assert executed_num >= 0 
+    #             assert executed_num <= num_left
+    #             num_left -= executed_num
+    #             if num_left <=0: 
+    #                 break
+    #     else:
+    #         reward,consumed = 0,0
+    #         for i in range(level-1):
+    #             reward += obs[i][0] * obs[i][1]
+    #             consumed += obs[i][1]
+    #         reward += obs[level-1][0] * (num - consumed)
+    #         self.init_reward = reward
+    #         self.init_reward_bp = int(self.init_reward/BaseEnv.num2liquidate)
+    #     assert self.init_reward >= 0
 
 # =============================================================================
     
