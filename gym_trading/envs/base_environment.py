@@ -78,17 +78,7 @@ class BaseEnv(Env):
     def step(self, action):
         observation, num_executed =  core_step(self, action)
         
-# ============================        
-        if self.core.executed_pairs == [-999]:
-            print('@Error'*20) ## TODO TO Debug
-# if level == -999:
-#     minus_list = [[item[0],-1*item[1]] for item in obs]
-#     result.extend(minus_list)
-# assert executed_num>=0
-# assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
-# return result, executed_num
- # ============================           
-            
+        
         self.num_left -= num_executed 
         assert self.num_left >=0, "num_left cannot be negative"
         
@@ -233,8 +223,9 @@ class BaseEnv(Env):
         # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
-        while True:
-            
+        while num2liquidate >= 0:
+            observation, num_executed =  core_step(self, max_action)
+            num2liquidate -= num_executed
         print()
         
     # def _set_init_reward(self, stream):
