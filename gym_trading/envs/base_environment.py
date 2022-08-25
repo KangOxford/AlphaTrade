@@ -65,7 +65,7 @@ class BaseEnv(Env):
     
 # ============================  STEP  =========================================
     def core_step(self, action):
-        print(">>>> STEP : ", self.current_step) ##
+        print(">>>> CORE STEP ") ##
         ''' return observation, reward, done, info ''' 
         # if type(action) == np.ndarray:
         #     action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
@@ -76,7 +76,8 @@ class BaseEnv(Env):
         num_executed = self.core.executed_quantity  
         return observation, num_executed
     def step(self, action):
-        observation, num_executed =  core_step(self, action)
+        print(">>>> STEP : ", self.current_step) ##
+        observation, num_executed =  self.core_step(self, action)
         
         
         self.num_left -= num_executed 
@@ -181,6 +182,7 @@ class BaseEnv(Env):
         self.core = Core(flow)
         
         self._set_init_reward() # refactor the two lines below
+        self.core = Core(flow) # to do : check whether we need this step
         # self._set_init_reward(flow.iloc[0,:])
         # self.core = Core(flow)
 
@@ -223,9 +225,12 @@ class BaseEnv(Env):
         # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
-        while num2liquidate >= 0:
-            observation, num_executed =  core_step(self, max_action)
+        while num2liquidate > 0:
+            print(f" {max_action}, {num2liquidate}")
+            _, num_executed =  self.core_step(min(max_action,num2liquidate))
             num2liquidate -= num_executed
+            print(f"{num_executed}, {max_action}, {num2liquidate}")
+            print("\n")
         print()
         
     # def _set_init_reward(self, stream):
