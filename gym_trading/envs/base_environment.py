@@ -77,7 +77,7 @@ class BaseEnv(Env):
         return observation, num_executed
     def step(self, action):
         print(">>>> STEP : ", self.current_step) ##
-        observation, num_executed =  self.core_step(self, action)
+        observation, num_executed =  self.core_step(action)
         
         
         self.num_left -= num_executed 
@@ -181,18 +181,9 @@ class BaseEnv(Env):
         flow = flow.reset_index().drop("index",axis=1)
         self.core = Core(flow)
         
-        self._set_init_reward() # refactor the two lines below
-        self.core.reset() # to do : turn the line below into the reset
-        self.core = Core(flow) # to do : check whether we need this step
-        # self._set_init_reward(flow.iloc[0,:])
-        # self.core = Core(flow)
-
-        self._set_init_reward(flow.iloc[0,:])
-        self.core = Core(flow)
-        # self.core.reset() ## TODO refactor, reset the self.core
-        # (1) check the self.core is updated or not
-        # (2) if self.core is updated by _set_init_reward, then avoid to instance core twice
-        # (3) try to implement the self.core.reset to avoid reading flow again
+        self.core.reset()
+        self._set_init_reward() 
+        self.core.reset() 
         
         init_obs = self._get_init_obs(flow.iloc[0,:])
         self.previous_obs = init_obs
