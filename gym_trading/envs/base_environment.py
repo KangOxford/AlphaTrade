@@ -27,7 +27,8 @@ class BaseEnv(Env):
     min_price = 31120200
     scaling = 30000000
     num2liquidate = 300
-    cost_parameter = int(1e9)
+    # cost_parameter = int(1e9)
+    cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -47,7 +48,7 @@ class BaseEnv(Env):
         # ---------------------
         self.num_left = None
         self.done = False
-        self.current_step = 0
+        self.current_step = None
         self.memory_revenue = 0
         self.memory_revenues = None # revenue
         self.memory_obs = None # observation 
@@ -63,6 +64,7 @@ class BaseEnv(Env):
     
 # ============================  STEP  =========================================
     def step(self, action):
+        print(">>>> STEP : ", self.current_step) ##
         ''' return observation, reward, done, info ''' 
         # if type(action) == np.ndarray:
         #     action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
@@ -112,6 +114,7 @@ class BaseEnv(Env):
     def _get_reward(self):
         if not self.done: return -0.5
         elif self.done:
+            print("=============== Finished ===============") ##
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
             BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
@@ -188,6 +191,8 @@ class BaseEnv(Env):
     def reset_states(self):
         # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
         # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
+        self.current_step = 0 
+        print(">> reset current step") ## to be deleted 
         self.memory_revenues = []
         self.memory_obs = []
         self.memory_executed = []
@@ -219,6 +224,8 @@ class BaseEnv(Env):
             num_left = num-Executed_num
             index = 1 # TODO not sure to check it
             while True:
+                if index >=3000:
+                    print('debug') ##
                 diff_obs = self.core.diff(index-1)
                 [diff_obs.pop(i) for i,x in enumerate(diff_obs) if x[1]<=0]
                 # if no new comming message then continue to wait for new comer
