@@ -141,17 +141,18 @@ class Broker():
 class Core():
     init_index = 0
     def __init__(self, flow):
-        self._max_episode_steps = 128
+        # these wont be changed during step
+        self._max_episode_steps = 128 
         self.flow = flow
         self._flow = -self.flow.diff()
-        self.index = Core.init_index
-        self.state = self.initial_state()
+        # these will be changed during step
+        self.index = None
+        self.state = None
         self.action = None
         self.reward = None
         self.executed_pairs = None
         self.executed_quantity = None
-    def initial_state(self):
-        return self.flow.iloc[Core.init_index,:]
+
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
         obs.extend(diff_obs)
@@ -204,12 +205,12 @@ class Core():
         reward = self.reward
         return self.state, reward, False, {}
     
-    
     def reset(self):
         self.index = Core.init_index
-        self.state = self.initial_state()
+        self.state = self.flow.iloc[Core.init_index,:] #initial_state
         self.action = None
         self.executed_pairs = None
+        self.executed_quantity
         return self.state
     
     

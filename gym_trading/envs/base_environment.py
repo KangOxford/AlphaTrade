@@ -182,6 +182,7 @@ class BaseEnv(Env):
         self.core = Core(flow)
         
         self._set_init_reward() # refactor the two lines below
+        self.core.reset() # to do : turn the line below into the reset
         self.core = Core(flow) # to do : check whether we need this step
         # self._set_init_reward(flow.iloc[0,:])
         # self.core = Core(flow)
@@ -226,12 +227,8 @@ class BaseEnv(Env):
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
         while num2liquidate > 0:
-            print(f" {max_action}, {num2liquidate}")
             _, num_executed =  self.core_step(min(max_action,num2liquidate))
             num2liquidate -= num_executed
-            print(f"{num_executed}, {max_action}, {num2liquidate}")
-            print("\n")
-        print()
         
     # def _set_init_reward(self, stream):
     #     num = BaseEnv.num2liquidate
