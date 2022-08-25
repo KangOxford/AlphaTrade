@@ -119,7 +119,7 @@ class BaseEnv(Env):
     def _get_reward(self):
         if not self.done: return -0.5
         elif self.done:
-            print("=============== Finished ===============") ##
+            # print("=============== Finished ===============") ##
             RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
             Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
             BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
@@ -194,7 +194,7 @@ class BaseEnv(Env):
         # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
         # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
         self.current_step = 0 
-        print(">> reset current step") ## to be deleted 
+        # print(">> reset current step") ## to be deleted 
         self.memory_revenues = []
         self.memory_obs = []
         self.memory_executed = []
