@@ -65,7 +65,7 @@ class BaseEnv(Env):
     
 # ============================  STEP  =========================================
     def core_step(self, action):
-        print(">>>> CORE STEP ") ##
+        # print(">>>> CORE STEP ") ##
         ''' return observation, reward, done, info ''' 
         # if type(action) == np.ndarray:
         #     action = action.astype(np.int32)[0] # e.g. (3,) then we take the first element
@@ -76,7 +76,7 @@ class BaseEnv(Env):
         num_executed = self.core.executed_quantity  
         return observation, num_executed
     def step(self, action):
-        print(">>>> STEP : ", self.current_step) ##
+        # print(">>>> STEP : ", self.current_step) ##
         observation, num_executed =  self.core_step(action)
         
         

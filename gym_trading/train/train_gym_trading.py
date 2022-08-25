@@ -27,7 +27,7 @@ model = PPO("MultiInputPolicy",
             env, 
             # monitor_venv, 
             verbose=1, 
-            tensorboard_log="/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard20/")
+            tensorboard_log="/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard21/")
 
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
