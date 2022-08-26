@@ -36,7 +36,7 @@ model = PPO("MultiInputPolicy",
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
 model.learn(total_timesteps=int(1e6), tb_log_name="SparseReward_SAC_ShortHorizon128_init")
 model.learn(total_timesteps=int(1e10), tb_log_name="SparseReward_SAC_ShortHorizon128_stable", reset_num_timesteps=None)
-model.save("gym_trading-v1") 
+model.save("gym_trading-v1")
 
 # %% test the train result
 import time
@@ -64,7 +64,8 @@ for i in range(int(1e3)):
 # %% get the result
 def get_result(name):
     import re  
-    fp = open("/Users/kang/Desktop/FINALREMAINING(RL)")   
+    fp = open("/Users/kang/GitHub/NeuralLOB/FINALREMAINING(RL)")   
+    # fp = open("/Users/kang/Desktop/FINALREMAINING(RL)")   
     lst = []
     for line in fp.readlines():
         try:
@@ -86,5 +87,6 @@ print("RL, ",np.mean(RL))
 
 
 # %%
+
 
     
