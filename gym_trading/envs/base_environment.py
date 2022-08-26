@@ -212,9 +212,12 @@ class BaseEnv(Env):
             reward = -1 * sum(Reward)    
             self.init_reward += reward
             print("num2liquidate left, ", num2liquidate) ##
-        print(">>>>> Finished liquidate_init_position +++++++++++")    
-        # return num2liquidate # num2liquidate that are left 
-        assert num2liquidate == 0 # means all stocks have been sold
+            if self.core.done:# still left stocks after selling all in the core.flow
+                inventory = num2liquidate
+                self.init_reward -= BaseEnv.cost_parameter * inventory * inventory
+                break
+        # print(">>>>> Finished liquidate_init_position +++++++++++")    
+        # assert num2liquidate == 0 # means all stocks have been sold
         # for i in range(20):
         #     print("Tick: ", i)
         #     time.sleep(1)

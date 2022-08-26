@@ -208,8 +208,8 @@ class Core():
         return self.state, reward, self.done, {}
     
     def check_done(self):
-        if self.core.index < self._max_episode_steps: return False
-        elif self.core.index == self._max_episode_steps: return True
+        if self.index < self._max_episode_steps: return False
+        elif self.index == self._max_episode_steps: return True
     
     def reset(self):
         self.index = Core.init_index
