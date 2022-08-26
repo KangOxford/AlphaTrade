@@ -34,8 +34,8 @@ model = PPO("MultiInputPolicy",
 
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
-model.learn(total_timesteps=int(1e6), tb_log_name="SparseReward_SAC_ShortHorizon128_init")
-model.learn(total_timesteps=int(1e10), tb_log_name="SparseReward_SAC_ShortHorizon128_stable", reset_num_timesteps=None)
+model.learn(total_timesteps=int(1e7), tb_log_name="SparseReward_SAC_ShortHorizon128_init")
+model.learn(total_timesteps=int(1e12), tb_log_name="SparseReward_SAC_ShortHorizon128_stable", reset_num_timesteps=None)
 model.save("gym_trading-v1")
 
 # %% test the train result
