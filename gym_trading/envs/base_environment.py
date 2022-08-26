@@ -13,7 +13,6 @@ from gym_trading.utils import *
 from gym_trading.envs.match_engine import Core
 from gym_trading.envs.match_engine import Broker, Utils
 from gym_trading.utils import exit_after
-from gym_trading.utils import timeout
 warnings.filterwarnings("ignore")
 # =============================================================================
 
@@ -77,6 +76,7 @@ class BaseEnv(Env):
         observation = self._get_obs(action)
         num_executed = self.core.executed_quantity  
         return observation, num_executed
+    
     def step(self, action):
         # print(">>>> STEP : ", self.current_step) ##
         observation, num_executed =  self.core_step(action)
@@ -132,35 +132,6 @@ class BaseEnv(Env):
             self.final_reward = BasePointDiff
             return self.final_reward
         
-    # def _get_reward(self):
-    #     if not self.done:
-    #         if self.memory_executed[-1] == 0:
-    #             return 0 # noting get executed at this time step
-    #         else:
-    #             result = self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1]
-    #             # result = (self.memory_revenues[-1] - self.init_reward_bp*self.memory_executed[-1])/BaseEnv.scaling
-    #             return result
-    #     elif self.done:
-    #         self.final_reward = (self.memory_revenues[-1] - \
-    #                              self.init_reward_bp*self.memory_executed[-1] \
-    #                                  - self._get_inventory_cost())/BaseEnv.scaling 
-    #         return self.final_reward
-    
-    
-    # def _get_reward(self):
-    #     if not self.done:
-    #         return 0
-    #     elif self.done:
-    #         self.final_reward = self.memory_revenue - self._get_inventory_cost() 
-    #         final_advantage = (self.final_reward - self.init_reward) / self.init_reward
-    #         return final_advantage
-        
-    # def _get_reward(self):
-    #     if not self.done:
-    #         return 0
-    #     elif self.done:
-    #         self.final_reward = self.memory_revenue - self._get_inventory_cost()
-    #         return self.final_reward
     
     def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs # TODO
@@ -203,6 +174,8 @@ class BaseEnv(Env):
         self.memory_executed_pairs = []
         self.memory_numleft = []
         self.memory_revenue = 0
+        self.init_reward = 0 
+        self.init_reward_bp = 0
         self.final_reward = 0
         self.done = False
         self.num_left = BaseEnv.num2liquidate
@@ -218,24 +191,34 @@ class BaseEnv(Env):
     
     @exit_after
     def liquidate_init_position(self):
+
         # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
+        print(">>>>> start liquidate_init_position") ##
         while num2liquidate > 0:
-            _, num_executed =  self.core_step(min(max_action,num2liquidate))
+            _, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation, num_executed for return
             num2liquidate -= num_executed
-        for i in range(20):
-            print("Tick: ", i)
-            time.sleep(1)
             
+            executed_pairs = self.core.executed_pairs
+            Quantity = [(lambda x: x[1])(x) for x in executed_pairs]# if x<0, meaning withdraw order
+            assert -1 * sum(Quantity) == num_executed # the exected_pairs in the core is for each step
+            Price = [(lambda x: x[0])(x) for x in executed_pairs]
+            Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
+            reward = -1 * sum(Reward)    
+            self.init_reward += reward
+            print("num2liquidate left, ", num2liquidate) ##
+            
+        # return num2liquidate # num2liquidate that are left 
+        assert num2liquidate == 0 # means all stocks have been sold
+        # for i in range(20):
+        #     print("Tick: ", i)
+        #     time.sleep(1)
     def _set_init_reward(self):
-        
-        # start= time.time()
         self.liquidate_init_position()
-        # if (time.time() - start)//BaseEnv.timeout >=1:
-        #     raise TimeoutError
-        
-        print()
+        self.init_reward_bp = int(self.init_reward/BaseEnv.num2liquidate)
+        print("_set_init_reward FINISHED")
+
         
     # def _set_init_reward(self, stream):
     #     num = BaseEnv.num2liquidate
@@ -320,7 +303,7 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 300
+    action = 50
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
         env.render()
