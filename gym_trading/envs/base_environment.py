@@ -22,13 +22,14 @@ class BaseEnv(Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
-    max_action = 70
+    # max_action = 70
     # max_action = 300
+    max_action = 1000
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
     scaling = 30000000
-    num2liquidate = 300
+    num2liquidate = 30000
     # cost_parameter = int(1e9)
     # cost_parameter = 0 # for debugging
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
@@ -37,7 +38,7 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-        self._max_episode_steps = 10240 # to test in 1 min, short horizon
+        self._max_episode_steps = 102400 # to test in 1 min, short horizon
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -261,7 +262,7 @@ if __name__=="__main__":
     step_list = []
     left_list = []
     for i in range(int(1e6)):
-        if i//15 == i/15: observation, reward, done, info = env.step(action)
+        if i//2 == i/2: observation, reward, done, info = env.step(action)
         # if i//3 == i/3: observation, reward, done, info = env.step(action)
         else: observation, reward, done, info = env.step(0)
         env.render()
