@@ -32,7 +32,6 @@ class BaseEnv(Env):
     num2liquidate = 300
     # cost_parameter = int(1e9)
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
-    timeout = 300
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -217,7 +216,7 @@ class BaseEnv(Env):
             }
         return init_obs   
     
-    
+    @exit_after
     def liquidate_init_position(self):
         # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
@@ -225,12 +224,18 @@ class BaseEnv(Env):
         while num2liquidate > 0:
             _, num_executed =  self.core_step(min(max_action,num2liquidate))
             num2liquidate -= num_executed
+        for i in range(20):
+            print("Tick: ", i)
+            time.sleep(1)
+            
     def _set_init_reward(self):
         
-        start= time.time()
+        # start= time.time()
         self.liquidate_init_position()
-        if (time.time() - start)//BaseEnv.timeout >=1:
-            raise TimeoutError
+        # if (time.time() - start)//BaseEnv.timeout >=1:
+        #     raise TimeoutError
+        
+        print()
         
     # def _set_init_reward(self, stream):
     #     num = BaseEnv.num2liquidate
