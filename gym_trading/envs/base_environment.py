@@ -191,17 +191,10 @@ class BaseEnv(Env):
     
     @exit_after
     def liquidate_init_position(self):
-
-        # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
-        print("\n>>>>> start liquidate_init_position ==========") ##
         while num2liquidate > 0:
-            observation, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation, num_executed for return
-            observation_price = observation['price']
-            observation_quantity = observation['quantity']
-            print(observation_price)
-            print(observation_quantity)
+            observation, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation(only for debug), num_executed for return
             num2liquidate -= num_executed
             
             executed_pairs = self.core.executed_pairs
@@ -211,20 +204,13 @@ class BaseEnv(Env):
             Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
             reward = -1 * sum(Reward)    
             self.init_reward += reward
-            print("num2liquidate left, ", num2liquidate) ##
             if self.core.done:# still left stocks after selling all in the core.flow
                 inventory = num2liquidate
                 self.init_reward -= BaseEnv.cost_parameter * inventory * inventory
                 break
-        # print(">>>>> Finished liquidate_init_position +++++++++++")    
-        # assert num2liquidate == 0 # means all stocks have been sold
-        # for i in range(20):
-        #     print("Tick: ", i)
-        #     time.sleep(1)
     def _set_init_reward(self):
         self.liquidate_init_position()
         self.init_reward_bp = int(self.init_reward/BaseEnv.num2liquidate)
-        print("_set_init_reward FINISHED")
 
         
     # def _set_init_reward(self, stream):
@@ -288,20 +274,20 @@ class BaseEnv(Env):
                 raise Exception("Error for the negetive left quantity")
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
+            print(">>> INIT  REWARD : "+str(format(self.init_reward,',f')))
             print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liquidate,',d')))
             print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liquidate,',d')))
             print(">>> Base Point (Bound): "+str(format(BasePointBound))) #(o/oo)
             print(">>> Base Point (Init): "+str(format(BasePointInit))) #(o/oo)
             print(">>> Base Point (RL): "+str(format(BasePointRL))) #(o/oo)
             print(">>> Base Point (Diff): "+str(format(BasePointDiff))) #(o/oo)
-            # time.sleep(3) ## to be deleted
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 raise Exception("Error for the RL Base Point")
-            try: assert RLbp >= 0, "Error for the RL Base Point"
-            except:
-                raise Exception("Error for the RL Base Point")                
+            # try: assert RLbp >= 0, "Error for the RL Base Point"
+            # except:
+            #     raise Exception("Error for the RL Base Point")        
+            ## commented due to in one core.flow perhpas not all stocks are sold. the left is calculated as penalty
 
 
     
@@ -313,7 +299,7 @@ if __name__=="__main__":
     action = 50
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
-        # env.render()
+        env.render()
         if done:
             print(">"*20+" timestep: "+str(i))
             env.reset()
