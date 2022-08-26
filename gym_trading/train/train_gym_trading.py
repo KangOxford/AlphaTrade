@@ -22,9 +22,16 @@ monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow
 model = SAC("MultiInputPolicy", 
             # env, 
             monitor_venv, 
+            # learning_rate = 3e-6, # smaller as init is 3e-4
+            learning_rate = 3e-2, # smaller as init is 3e-4
+            # learning_rate = 3e-3, # smaller as init is 3e-4
+            # learning_rate = 3e-4, # bigger as init is 3e-4
+            # learning_rate = 1e-3, # bigger as init is 3e-4
+            # learning_rate = 2e-3, # bigger as init is 3e-4
             verbose=1, 
             tensorboard_log=
-            "/Users/kang/GitHub/NeuralLOB/sac_gymtrading_tensorboard22/")
+            "/Users/kang/GitHub/NeuralLOB/sac_gymtrading_tensorboard22/"
+            )
 
 # model = PPO("MultiInputPolicy", 
 #             env, 

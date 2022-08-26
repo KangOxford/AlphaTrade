@@ -37,7 +37,7 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-        self._max_episode_steps = 128 # to test in 1/8 min, short horizon
+        self._max_episode_steps = 256 # to test in 1/4 min, short horizon
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -123,12 +123,7 @@ class BaseEnv(Env):
         # if not self.done: return -0.5 # set to encourage explore, accelarating turning into selling with no stock left
         elif self.done:
             # print("=============== Finished ===============") ##
-            RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-            Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-            BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-            BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-            BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-            BasePointDiff = BasePointRL - BasePointInit
+            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             assert BasePointRL <= BasePointBound
             self.final_reward = BasePointDiff
             # print(f"BasePointDiff: {BasePointDiff}, num_left : {self.num_left}")
@@ -150,11 +145,14 @@ class BaseEnv(Env):
         BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
         BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
         BasePointDiff = BasePointRL - BasePointInit        
-        return BasePointBound, BasePointInit, BasePointRL, BasePointDiff
+        return RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff
     def _get_info(self):
         if self.done:
-            BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
-            self.info = {"Diff" : BasePointDiff}
+            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
+            self.info = {"Diff" : BasePointDiff,
+                         "Step" : self.current_step,
+                         "Left" : self.num_left
+                         }
         return self.info   
 # =============================================================================
  
@@ -229,13 +227,8 @@ class BaseEnv(Env):
 # =============================================================================
     
     def render(self, mode = 'human'):
-        # # to be added
-        # print('-'*30)
-        # print(f'Step: {self.current_step}, Revenue: {self.memory_revenue}')
-        # print("Num_left: {}".format(self.num_left))
-        # print("Executed_pairs: {}".format(self.memory_executed_pairs[-1]))
         if self.done:
-            BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
+            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             try: assert self.num_left >= 0, "Error for the negetive left quantity"
             except: 
                 raise Exception("Error for the negetive left quantity")
@@ -254,10 +247,7 @@ class BaseEnv(Env):
             try: assert  self.init_reward >= -1 * BaseEnv.cost_parameter * BaseEnv.num2liquidate * BaseEnv.num2liquidate
             except:
                 raise Exception("Error for the Init Lower Bound")            
-            # try: assert RLbp >= 0, "Error for the RL Base Point"
-            # except:
-            #     raise Exception("Error for the RL Base Point")        
-            ## commented due to in one core.flow perhpas not all stocks are sold. the left is calculated as penalty
+
 
 
     
@@ -266,14 +256,18 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 15
+    action = 5
     diff_list = []
+    step_list = []
+    left_list = []
     for i in range(int(1e6)):
-        if i//4 == i/4: observation, reward, done, info = env.step(action)
+        if i//3 == i/3: observation, reward, done, info = env.step(action)
         else: observation, reward, done, info = env.step(0)
         env.render()
         if done:
             diff_list.append(info['Diff'])
+            step_list.append(info['Step'])
+            left_list.append(info['Left'])
             print(">"*20+" timestep: "+str(i))
             env.reset()
-    print(f"End of main(), Diff is {np.mean(diff_list)}")
+    print(f"End of main(), Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")

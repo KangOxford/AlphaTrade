@@ -142,7 +142,7 @@ class Core():
     init_index = 0
     def __init__(self, flow):
         # these wont be changed during step
-        self._max_episode_steps = 128 
+        self._max_episode_steps = 256 
         self.flow = flow
         self._flow = -self.flow.diff()
         # these will be changed during step
