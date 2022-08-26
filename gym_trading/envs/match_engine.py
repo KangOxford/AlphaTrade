@@ -152,6 +152,7 @@ class Core():
         self.reward = None
         self.executed_pairs = None
         self.executed_quantity = None
+        self.done = None
 
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
@@ -203,7 +204,12 @@ class Core():
             
         self.state = updated_state
         reward = self.reward
-        return self.state, reward, False, {}
+        self.done = self.check_done()
+        return self.state, reward, self.done, {}
+    
+    def check_done(self):
+        if self.core.index < self._max_episode_steps: return False
+        elif self.core.index == self._max_episode_steps: return True
     
     def reset(self):
         self.index = Core.init_index
@@ -211,6 +217,7 @@ class Core():
         self.action = None
         self.executed_pairs = None
         self.executed_quantity
+        self.done = False
         return self.state
     
     

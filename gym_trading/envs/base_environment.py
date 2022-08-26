@@ -195,9 +195,13 @@ class BaseEnv(Env):
         # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
-        print(">>>>> start liquidate_init_position") ##
+        print("\n>>>>> start liquidate_init_position ==========") ##
         while num2liquidate > 0:
-            _, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation, num_executed for return
+            observation, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation, num_executed for return
+            observation_price = observation['price']
+            observation_quantity = observation['quantity']
+            print(observation_price)
+            print(observation_quantity)
             num2liquidate -= num_executed
             
             executed_pairs = self.core.executed_pairs
@@ -208,7 +212,7 @@ class BaseEnv(Env):
             reward = -1 * sum(Reward)    
             self.init_reward += reward
             print("num2liquidate left, ", num2liquidate) ##
-            
+        print(">>>>> Finished liquidate_init_position +++++++++++")    
         # return num2liquidate # num2liquidate that are left 
         assert num2liquidate == 0 # means all stocks have been sold
         # for i in range(20):
@@ -306,7 +310,7 @@ if __name__=="__main__":
     action = 50
     for i in range(int(1e6)):
         observation, reward, done, info = env.step(action)
-        env.render()
+        # env.render()
         if done:
             print(">"*20+" timestep: "+str(i))
             env.reset()
