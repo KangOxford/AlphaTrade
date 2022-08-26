@@ -9,6 +9,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_trading.envs.base_environment import BaseEnv
 from gym_trading.data.data_pipeline import ExternalData
+
 warnings.filterwarnings("ignore")
 Flow = ExternalData.get_sample_order_book_data()
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
@@ -31,7 +32,7 @@ model = PPO("MultiInputPolicy",
 
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
-model.learn(total_timesteps=int(1e10), tb_log_name="SparseReward_PPO_ShortHorizon128")
+model.learn(total_timesteps=int(1e10), tb_log_name="SparseReward_SAC_ShortHorizon128")
 model.save("gym_trading-v1") 
 
 # %% test the train result
@@ -81,7 +82,77 @@ print("Init, ",np.mean(Init))
 print("RL, ",np.mean(RL))
 
 
+# %%
+
+import signal
+
+def handler(signum, frame):
+    print("Forever is over!")
+    raise Exception("end of time")
+signal.signal(signal.SIGALRM, handler)
+signal.alarm(10)
+def loop_forever():
+    import time
+    while 1:
+        print("sec")
+        time.sleep(1)
+         
+try:
+    loop_forever()
+except Exception, exc: 
+    print(exc)
+
+# %%
 
 
 
+    
+def exit_after(s):
+    '''
+    use as decorator to exit process if 
+    function takes longer than s seconds
+    '''
+    # from __future__ import print_function
+    import sys
+    import threading
+    from time import sleep
+    try:
+        import thread
+    except ImportError:
+        import _thread as thread
+    def quit_function(fn_name):
+        # print to stderr, unbuffered in Python 2.
+        print('{0} took too long'.format(fn_name), file=sys.stderr)
+        sys.stderr.flush() # Python 3 stderr is likely buffered.
+        thread.interrupt_main() # raises KeyboardInterrupt
+    def outer(fn):
+        def inner(*args, **kwargs):
+            timer = threading.Timer(s, quit_function, args=[fn.__name__])
+            timer.start()
+            try:
+                result = fn(*args, **kwargs)
+            finally:
+                timer.cancel()
+            return result
+        return inner
+    return outer
 
+@exit_after(5)
+def countdown(n):
+    print('countdown started', flush=True)
+    for i in range(n, -1, -1):
+        print(i, end=', ', flush=True)
+        sleep(1)
+    print('countdown finished')
+    
+    
+countdown(10)
+    
+    
+    
+    
+    
+    
+    
+    
+    

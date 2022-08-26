@@ -12,6 +12,8 @@ from gym import spaces
 from gym_trading.utils import * 
 from gym_trading.envs.match_engine import Core
 from gym_trading.envs.match_engine import Broker, Utils
+from gym_trading.utils import exit_after
+from gym_trading.utils import timeout
 warnings.filterwarnings("ignore")
 # =============================================================================
 
@@ -30,6 +32,7 @@ class BaseEnv(Env):
     num2liquidate = 300
     # cost_parameter = int(1e9)
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
+    timeout = 300
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -213,13 +216,21 @@ class BaseEnv(Env):
             'quantity' : init_quant
             }
         return init_obs   
-    def _set_init_reward(self):
+    
+    
+    def liquidate_init_position(self):
         # epochs = BaseEnv.num2liquidate//BaseEnv.max_action +1
         num2liquidate = BaseEnv.num2liquidate
         max_action = BaseEnv.max_action
         while num2liquidate > 0:
             _, num_executed =  self.core_step(min(max_action,num2liquidate))
             num2liquidate -= num_executed
+    def _set_init_reward(self):
+        
+        start= time.time()
+        self.liquidate_init_position()
+        if (time.time() - start)//BaseEnv.timeout >=1:
+            raise TimeoutError
         
     # def _set_init_reward(self, stream):
     #     num = BaseEnv.num2liquidate
