@@ -117,7 +117,8 @@ class BaseEnv(Env):
         return BaseEnv.cost_parameter * inventory * inventory
 
     def _get_reward(self):
-        if not self.done: return 0 # set to be real
+        # if not self.done: return 0 # set to be real
+        if not self.done: return -0.1 # set to encourage explore but try to find the price peak
         # if not self.done: return -0.5 # set to encourage explore
         elif self.done:
             # print("=============== Finished ===============") ##
