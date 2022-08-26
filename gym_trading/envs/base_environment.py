@@ -30,7 +30,8 @@ class BaseEnv(Env):
     scaling = 30000000
     num2liquidate = 300
     # cost_parameter = int(1e9)
-    cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
+    cost_parameter = 0 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
+    # cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
@@ -117,8 +118,8 @@ class BaseEnv(Env):
         return BaseEnv.cost_parameter * inventory * inventory
 
     def _get_reward(self):
-        # if not self.done: return 0 # set to be real
-        if not self.done: return -0.1 # set to encourage explore but try to find the price peak
+        if not self.done: return 0 # set to be real
+        # if not self.done: return -0.1 # set to encourage explore but try to find the price peak
         # if not self.done: return -0.5 # set to encourage explore
         elif self.done:
             # print("=============== Finished ===============") ##
