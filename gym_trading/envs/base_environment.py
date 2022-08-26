@@ -241,6 +241,9 @@ class BaseEnv(Env):
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 raise Exception("Error for the RL Base Point")
+            try: assert  self.init_reward >= -1 * BaseEnv.cost_parameter * BaseEnv.num2liquidate * BaseEnv.num2liquidate
+            except:
+                raise Exception("Error for the Init Lower Bound")            
             # try: assert RLbp >= 0, "Error for the RL Base Point"
             # except:
             #     raise Exception("Error for the RL Base Point")        
