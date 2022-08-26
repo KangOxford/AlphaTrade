@@ -143,7 +143,18 @@ class BaseEnv(Env):
         assert result >= 0
         return result
     # ------ 4/4.INFO ------
+    def calculate_info(self):
+        RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+        Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
+        BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
+        BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+        BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+        BasePointDiff = BasePointRL - BasePointInit        
+        return BasePointBound, BasePointInit, BasePointRL, BasePointDiff
     def _get_info(self):
+        if self.done:
+            BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
+            self.info = {"Diff" : BasePointDiff}
         return self.info   
 # =============================================================================
  
@@ -224,12 +235,7 @@ class BaseEnv(Env):
         # print("Num_left: {}".format(self.num_left))
         # print("Executed_pairs: {}".format(self.memory_executed_pairs[-1]))
         if self.done:
-            RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-            Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-            BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-            BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-            BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-            BasePointDiff = BasePointRL - BasePointInit
+            BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             try: assert self.num_left >= 0, "Error for the negetive left quantity"
             except: 
                 raise Exception("Error for the negetive left quantity")
@@ -260,11 +266,14 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 50
+    action = 15
+    diff_list = []
     for i in range(int(1e6)):
-        observation, reward, done, info = env.step(action)
+        if i//4 == i/4: observation, reward, done, info = env.step(action)
+        else: observation, reward, done, info = env.step(0)
         env.render()
         if done:
+            diff_list.append(info['Diff'])
             print(">"*20+" timestep: "+str(i))
             env.reset()
-    print("End of main()")
+    print(f"End of main(), Diff is {np.mean(diff_list)}")

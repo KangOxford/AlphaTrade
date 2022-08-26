@@ -15,28 +15,29 @@ Flow = ExternalData.get_sample_order_book_data()
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 check_env(env)
 
-# num_cpu = 10 
-# venv = DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu)
-# monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
+num_cpu = 10 
+venv = DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu)
+monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
 # %%
-# model = SAC("MultiInputPolicy", 
-#             monitor_venv, 
-#             verbose=1, 
-#             tensorboard_log=
-#             "/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard9/")
-
-model = PPO("MultiInputPolicy", 
-            env, 
-            # monitor_venv, 
+model = SAC("MultiInputPolicy", 
+            # env, 
+            monitor_venv, 
             verbose=1, 
             tensorboard_log=
-            "/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard22/")
+            "/Users/kang/GitHub/NeuralLOB/sac_gymtrading_tensorboard22/")
+
+# model = PPO("MultiInputPolicy", 
+#             env, 
+#             # monitor_venv, 
+#             verbose=1, 
+#             tensorboard_log=
+#             "/Users/kang/GitHub/NeuralLOB/ppo_gymtrading_tensorboard22/")
 
 # %time model.learn(total_timesteps=int(1e7), n_eval_episodes = int(1e5))
 # model.learn(total_timesteps=int(3e6), n_eval_episodes = int(1e5))
 model.learn(total_timesteps=int(1e7), tb_log_name="SparseReward_SAC_ShortHorizon128_init")
 model.learn(total_timesteps=int(1e12), tb_log_name="SparseReward_SAC_ShortHorizon128_stable", reset_num_timesteps=None)
-model.save("gym_trading-v1")
+model.save("sac_gym_trading-v1")
 
 # %% test the train result
 import time
