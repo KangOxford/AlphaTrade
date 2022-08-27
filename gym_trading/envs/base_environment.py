@@ -28,7 +28,7 @@ class BaseEnv(Env):
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
-    scaling = 30000000
+    scaling = 30000000s
     num2liquidate = 30000
     # cost_parameter = int(1e9)
     # cost_parameter = 0 # for debugging
@@ -152,7 +152,8 @@ class BaseEnv(Env):
             RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             self.info = {"Diff" : BasePointDiff,
                          "Step" : self.current_step,
-                         "Left" : self.num_left
+                         "Left" : self.num_left,
+                         "Perf" : (self.memory_revenue/self.init_reward -1 ) * 100 # performance o/o
                          }
         return self.info   
 # =============================================================================
@@ -242,6 +243,11 @@ class BaseEnv(Env):
             print(">>> Base Point (Init): "+str(format(BasePointInit))) #(o/oo)
             print(">>> Base Point (RL): "+str(format(BasePointRL))) #(o/oo)
             print(">>> Base Point (Diff): "+str(format(BasePointDiff))) #(o/oo)
+            print(">>> Value (Init): "+str(format(self.init_reward,',f'))) #(o/oo)
+            print(">>> Value (RL)  : "+str(format(self.memory_revenue,',f'))) #(o/oo)
+            print(">>> Value (Perf): "+str(format( (self.memory_revenue/self.init_reward - 1)*100,',f'))) #(o/oo)
+            print(">>> Number (Diff): "+str(format( (self.memory_revenue-self.init_reward)/BaseEnv.min_price,',f'))) #(o/oo)
+
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 raise Exception("Error for the RL Base Point")
@@ -261,6 +267,7 @@ if __name__=="__main__":
     diff_list = []
     step_list = []
     left_list = []
+    perf_list = []
     for i in range(int(1e6)):
         if i//2 == i/2: observation, reward, done, info = env.step(action)
         # if i//3 == i/3: observation, reward, done, info = env.step(action)
@@ -270,6 +277,7 @@ if __name__=="__main__":
             diff_list.append(info['Diff'])
             step_list.append(info['Step'])
             left_list.append(info['Left'])
+            perf_list.append(info['Perf'])
             print(">"*20+" timestep: "+str(i))
             env.reset()
-    print(f"End of main(), Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
+    print(f"End of main(), Perf is {np.mean(perf_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
