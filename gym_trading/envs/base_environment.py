@@ -28,7 +28,7 @@ class BaseEnv(Env):
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
-    scaling = 30000000s
+    scaling = 30000000
     num2liquidate = 30000
     # cost_parameter = int(1e9)
     # cost_parameter = 0 # for debugging

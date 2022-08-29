@@ -10,3 +10,4 @@
 # git clone https://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@github.com/KangOxford/Dissertation.git
 git config --global user.email "kang.li@maths.ox.ac.uk"
 git config --global user.name "KangOxford"
+pip install sb3-contrib
