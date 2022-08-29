@@ -7,6 +7,9 @@ import pandas as pd
 from gym_trading.data.data_pipeline import ExternalData
 '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
 # %%
+class Flag():
+    max_episode_steps= 1024
+    
 class Utils():
     def from_series2pair(stream):
         num = stream.shape[0]
@@ -142,7 +145,7 @@ class Core():
     init_index = 0
     def __init__(self, flow):
         # these wont be changed during step
-        self._max_episode_steps = 102400 
+        self._max_episode_steps = Flag.max_episode_steps 
         self.flow = flow
         self._flow = -self.flow.diff()
         # these will be changed during step
@@ -268,36 +271,6 @@ if __name__ == "__main__":
     obs3 = core.step(min(20,core.get_ceilling()))[0]
     obs4 = core.step(min(20,core.get_ceilling()))[0]
     obs5 = core.step(min(20,core.get_ceilling()))[0]
-    ##
-    obs6 = core.step(min(20,core.get_ceilling()))[0]
-    obs7 = core.step(min(20,core.get_ceilling()))[0]
-    obs8 = core.step(min(20,core.get_ceilling()))[0]
-    obs9 = core.step(min(20,core.get_ceilling()))[0]
-    obs10= core.step(min(20,core.get_ceilling()))[0]
-    # ==================================================
-    
-    
-    # ==================================================
-    obs11 = core.step(min(20,core.get_ceilling()))[0]
-    obs12 = core.step(min(20,core.get_ceilling()))[0]
-    obs13 = core.step(min(20,core.get_ceilling()))[0]
-    obs14 = core.step(min(20,core.get_ceilling()))[0]
-    obs15 = core.step(min(20,core.get_ceilling()))[0]
-    # # ##
-    obs16 = core.step(min(20,core.get_ceilling()))[0]
-    obs17 = core.step(min(20,core.get_ceilling()))[0]   
-    obs18 = core.step(min(20,core.get_ceilling()))[0]
-    obs19 = core.step(min(20,core.get_ceilling()))[0]
-    obs20 = core.step(min(20,core.get_ceilling()))[0]
-    # ==================================================
-
-
-    # ==================================================
-    obs21 = core.step(0)[0]
-    obs22 = core.step(10)[0]
-    obs23 = core.step(20)[0]
-    obs24 = core.step(30)[0]
-    obs25 = core.step(30)[0]
     obs26 = core.step(300)[0]
     obs27 = core.step(30)[0]
     obs28 = core.step(30)[0]
@@ -305,43 +278,5 @@ if __name__ == "__main__":
     obs30 = core.step(30)[0]
     # ==================================================
     
-    
-    # ==================================================
-    obs21 = core.step(0)[0]
-    obs22 = core.step(10)[0]
-    obs23 = core.step(20)[0]
-    obs24 = core.step(30)[0]
-    obs25 = core.step(30)[0]
-    # obs26 = core.step(300)[0]
-    obs27 = core.step(30)[0]
-    obs28 = core.step(30)[0]
-    obs29 = core.step(30)[0]
-    obs30 = core.step(30)[0]
-    # ==================================================
-    
-    # ==================================================
-    obs21 = core.step(0)[0]
-    obs22 = core.step(10)[0]
-    obs23 = core.step(20)[0]
-    obs24 = core.step(30)[0]
-    obs25 = core.step(30)[0]
-    # obs26 = core.step(300)[0]
-    obs27 = core.step(30)[0]
-    obs28 = core.step(30)[0]
-    obs29 = core.step(30)[0]
-    obs30 = core.step(30)[0]
-    # ==================================================
-    
-    # ==================================================
-    obs21 = core.step(0)[0]
-    obs22 = core.step(10)[0]
-    obs23 = core.step(20)[0]
-    obs24 = core.step(30)[0]
-    obs25 = core.step(30)[0]
-    # obs26 = core.step(300)[0]
-    obs27 = core.step(30)[0]
-    obs28 = core.step(30)[0]
-    obs29 = core.step(30)[0]
-    obs30 = core.step(30)[0]
-    # ==================================================
+
     

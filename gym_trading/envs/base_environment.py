@@ -11,6 +11,7 @@ from gym import spaces
 # -----------------------------------------------------------------------------
 from gym_trading.utils import * 
 from gym_trading.envs.match_engine import Core
+from gym_trading.envs.match_engine import Flag
 from gym_trading.envs.match_engine import Broker, Utils
 from gym_trading.utils import exit_after
 warnings.filterwarnings("ignore")
@@ -22,23 +23,19 @@ class BaseEnv(Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
-    # max_action = 70
-    # max_action = 300
-    max_action = 1000
+    max_action = 300
     max_quantity = 6000
     max_price = 31620700
     min_price = 31120200
     scaling = 30000000
-    num2liquidate = 30000
-    # cost_parameter = int(1e9)
-    # cost_parameter = 0 # for debugging
+    num2liquidate = 300
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
         super().__init__()
         # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-        self._max_episode_steps = 102400 # to test in 1 min, short horizon
+        self._max_episode_steps = Flag.max_episode_steps # to test in 1/4 min, short horizon
         self.Flow = Flow
         self.core = None
         self.price_list = None
@@ -148,7 +145,7 @@ class BaseEnv(Env):
             self.info = {"Diff" : BasePointDiff,
                          "Step" : self.current_step,
                          "Left" : self.num_left,
-                         "Perf" : (self.memory_revenue/self.init_reward -1 ) * 100 # performance o/o
+                         "Performance" : (self.memory_revenue/self.init_reward -1 ) * 100 # Performanceormance o/o
                          }
         return self.info   
 # =============================================================================
@@ -240,7 +237,7 @@ class BaseEnv(Env):
             print(">>> Base Point (Diff): "+str(format(BasePointDiff))) #(o/oo)
             print(">>> Value (Init): "+str(format(self.init_reward,',f'))) #(o/oo)
             print(">>> Value (RL)  : "+str(format(self.memory_revenue,',f'))) #(o/oo)
-            print(">>> Value (Perf): "+str(format( (self.memory_revenue/self.init_reward - 1)*100,',f'))) #(o/oo)
+            print(">>> Value (Performance): "+str(format( (self.memory_revenue/self.init_reward - 1)*100,',f'))) #(o/oo)
             print(">>> Number (Diff): "+str(format( (self.memory_revenue-self.init_reward)/BaseEnv.min_price,',f'))) #(o/oo)
 
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
@@ -262,7 +259,7 @@ if __name__=="__main__":
     diff_list = []
     step_list = []
     left_list = []
-    perf_list = []
+    Performance_list = []
     for i in range(int(1e6)):
         if i//2 == i/2: observation, reward, done, info = env.step(action)
         # if i//3 == i/3: observation, reward, done, info = env.step(action)
@@ -272,7 +269,7 @@ if __name__=="__main__":
             diff_list.append(info['Diff'])
             step_list.append(info['Step'])
             left_list.append(info['Left'])
-            perf_list.append(info['Perf'])
+            Performance_list.append(info['Performance'])
             print(">"*20+" timestep: "+str(i))
             env.reset()
-    print(f"End of main(), Perf is {np.mean(perf_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
+    print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")

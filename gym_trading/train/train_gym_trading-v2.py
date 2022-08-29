@@ -12,8 +12,8 @@ from gym_trading.data.data_pipeline import ExternalData
 
 warnings.filterwarnings("ignore")
 Flow = ExternalData.get_sample_order_book_data()
-env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
-check_env(env)
+env = gym.make("GymTrading-v1",Flow = Flow) 
+# check_env(env)
 
 num_cpu = 10 
 venv = DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu)
@@ -21,14 +21,14 @@ monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow
 # %%
 model = RecurrentPPO(
     "MlpLstmPolicy", 
-    "CartPole-v1", 
+    venv, 
     verbose=1,
     tensorboard_log=
     "/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/")
 
-model.learn(total_timesteps=int(1e7), tb_log_name="SparseReward_SAC_ShortHorizon128_init")
-model.learn(total_timesteps=int(1e12), tb_log_name="SparseReward_SAC_ShortHorizon128_stable", reset_num_timesteps=None)
-model.save("sac_gym_trading-v1")
+model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_init")
+model.learn(total_timesteps=int(1e12), tb_log_name="RNN_PPO_stable", reset_num_timesteps=None)
+model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
 
 # %% test the train result
 import time
