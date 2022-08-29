@@ -119,15 +119,10 @@ class BaseEnv(Env):
         return BaseEnv.cost_parameter * inventory * inventory
 
     def _get_reward(self):
-        if not self.done: return 0 # set to be real
-        # if not self.done: return -0.1 # set to encourage explore but try to find the price peak
-        # if not self.done: return -0.5 # set to encourage explore, accelarating turning into selling with no stock left
+        if not self.done: 
+            return self.memory_revenues[-1]
         elif self.done:
-            # print("=============== Finished ===============") ##
-            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
-            assert BasePointRL <= BasePointBound
-            self.final_reward = BasePointDiff
-            # print(f"BasePointDiff: {BasePointDiff}, num_left : {self.num_left}")
+            self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost()
             return self.final_reward
         
     
