@@ -16,12 +16,12 @@ Flow = ExternalData.get_sample_order_book_data()
 env = gym.make("GymTrading-v1",Flow = Flow) 
 check_env(env)
 
-# num_cpu = 10 
-# venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
+num_cpu = 10 
+venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
 # %%
 model = RecurrentPPO(
     "MlpLstmPolicy", 
-    env, 
+    venv, 
     verbose=1,
     tensorboard_log=
     "/Users/kang/GitHub/NeuralLOB/venv_rnn/")
