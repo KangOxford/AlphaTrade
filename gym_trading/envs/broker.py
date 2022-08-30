@@ -13,7 +13,7 @@ class Flag():
     min_price = 31120200
     min_quantity = 0
     scaling = 30000000
-    num2liquidate = 300
+    num2liquidate = 3000
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
 class Broker():

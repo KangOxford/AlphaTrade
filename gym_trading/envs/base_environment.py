@@ -43,6 +43,7 @@ class BaseEnv(Env):
         self.current_step = None
         self.memory_revenue = 0
         self.memory_revenues = None # revenue
+        self.memory_reward = None # total accumulative reward
         self.memory_obs = None # observation 
         self.memory_executed_pairs = None
         self.memory_executed = None
@@ -77,7 +78,7 @@ class BaseEnv(Env):
         
         
         step_revenue =  self._get_each_running_revenue() 
-        self.memory_revenue += step_revenue
+        self.memory_revenue += step_revenue # todo to delete
         self.memory_revenues.append(step_revenue)
         self.memory_obs.append(observation)
         self.memory_numleft.append(self.num_left)
@@ -85,6 +86,7 @@ class BaseEnv(Env):
         # ---------------------
         done = self._get_set_done()
         reward = self._get_reward()
+        self.memory_reward += reward 
         info = self._get_info()
         observation = dict_to_nparray(observation)
         
@@ -107,6 +109,7 @@ class BaseEnv(Env):
         inventory = self.num_left
         return Flag.cost_parameter * inventory * inventory
 
+
     def _get_reward(self):
         if not self.done: 
             return self.memory_revenues[-1]
@@ -121,8 +124,8 @@ class BaseEnv(Env):
         # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
         result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
         assert result >= 0
-        result -= self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline
-        result /= Flag.lobster_scaling # add this line the make it as the real price
+        result = result - self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline
+        result = result / Flag.lobster_scaling # add this line the make it as the real price
         return result
     
     # ------ 4/4.INFO ------
@@ -175,6 +178,7 @@ class BaseEnv(Env):
         self.memory_executed_pairs = []
         self.memory_numleft = []
         self.memory_revenue = 0
+        self.memory_reward = 0
         self.init_reward = 0 
         self.init_reward_bp = 0
         self.final_reward = 0
@@ -221,7 +225,7 @@ class BaseEnv(Env):
     def _set_init_reward(self):
         # self.liquidate_init_position() # policy #1 : choose to sell all at init time
         self.liquidate_twap() # policy #2 : choose to sell averagely across time
-        self.init_reward_bp = int(self.init_reward/Flag.num2liquidate)
+        self.init_reward_bp = self.init_reward/Flag.num2liquidate
 
 
 # =============================================================================
@@ -233,7 +237,7 @@ class BaseEnv(Env):
                 raise Exception("Error for the negetive left quantity")
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> INIT  REWARD : "+str(format(self.init_reward,',f')))
+            print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
             print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate,',d')))
             print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate,',d')))
             print(">>> Base Point (Bound): "+str(format(BasePointBound))) #(o/oo)
@@ -255,13 +259,17 @@ class BaseEnv(Env):
         if self.done:
             RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             print("="*15 + " BEGIN " + "="*15)
+            print(">>> Epoch   Length  : "+str(format(self.current_step, ',d')))
+            print(">>> Horizon Length  : "+str(format(Flag.max_episode_steps , ',d')))
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> INIT  REWARD : "+str(format(self.init_reward,',f')))
-            print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate,',d')))
-            print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate,',d')))
             print("-"*30)
-            print(">>> TOTAL REWARD : "+str(format(self.final_reward * Flag.lobster_scaling + self.init_reward + self._get_inventory_cost(),',f')))
-            print(">>> FINAL REWARD : "+str(format(self.final_reward,',f')))
+            print(">>> INIT  REWARD : "+str(format(self.init_reward/Flag.lobster_scaling,',.2f')))
+            print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
+            print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
+            print("-"*30)
+            print(">>> TOTAL REWARD : "+str(format(self.memory_reward  + self.init_reward /  Flag.lobster_scaling,',.2f'))) # (no inventory) considered
+            pairs = self.memory_executed_pairs
+            print(f">>> Advantage    : $ {self.memory_reward}, for selling {Flag.num2liquidate} shares of stocks at price {int(get_avarage_price(pairs)/Flag.lobster_scaling)}")
             print("="*15 + "  END  " + "="*15)
             print()
             
@@ -278,7 +286,7 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 1
+    action = 3
     diff_list = []
     step_list = []
     left_list = []

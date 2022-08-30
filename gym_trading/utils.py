@@ -175,7 +175,15 @@ class Utils():
             if present_flow[j][1] == 0:
                 result.remove(present_flow[j])
         return result
-    
+
+def get_avarage_price(pairs):
+    sum_product, sum_quantity = 0, 0 
+    for item in pairs:
+        for value in item:
+            sum_product += value[0] * value[1]
+            sum_quantity+= value[1]
+    avarage_price = sum_product / sum_quantity
+    return avarage_price
 
 
 
