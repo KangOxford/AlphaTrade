@@ -1,9 +1,9 @@
 # %% ==========================================================================
 # clear warnings
-from email import policy
 import warnings
 import gym
 from sb3_contrib import RecurrentPPO
+# from stable_baselines3 import RecurrentPPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -13,15 +13,15 @@ from gym_trading.data.data_pipeline import ExternalData
 warnings.filterwarnings("ignore")
 Flow = ExternalData.get_sample_order_book_data()
 env = gym.make("GymTrading-v1",Flow = Flow) 
-# check_env(env)
+check_env(env)
 
-num_cpu = 10 
-venv = DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu)
-monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
+# num_cpu = 10 
+# venv = DummyVecEnv([lambda: gym.make("GymTrading-v1",Flow = Flow)] * num_cpu)
+# monitor_venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
 # %%
 model = RecurrentPPO(
     "MlpLstmPolicy", 
-    venv, 
+    env, 
     verbose=1,
     tensorboard_log=
     "/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/")

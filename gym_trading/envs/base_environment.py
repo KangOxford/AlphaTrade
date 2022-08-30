@@ -96,7 +96,7 @@ class BaseEnv(Env):
         reward = self._get_reward()
         info = self._get_info()
         
-        return  observation, reward, done, info
+        return  observation, float(reward), done, info
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
         obs_ = self.core.step(num)[0] # dtype:series
