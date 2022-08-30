@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 class Flag():
+    lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     max_episode_steps= 1024 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
     max_action = 300
     max_quantity = 6000

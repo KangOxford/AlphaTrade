@@ -68,6 +68,8 @@ class BaseEnv(Env):
     
     def step(self, action):
         observation, num_executed =  self.core_step(action)
+        self.memory_executed_pairs.append(self.core.executed_pairs)
+        self.memory_executed.append(num_executed)
         
         
         self.num_left -= num_executed 
@@ -78,8 +80,6 @@ class BaseEnv(Env):
         self.memory_revenue += step_revenue
         self.memory_revenues.append(step_revenue)
         self.memory_obs.append(observation)
-        self.memory_executed_pairs.append(self.core.executed_pairs)
-        self.memory_executed.append(num_executed)
         self.memory_numleft.append(self.num_left)
         self.current_step += 1 # Take care of the location
         # ---------------------
@@ -121,6 +121,8 @@ class BaseEnv(Env):
         # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
         result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
         assert result >= 0
+        result -= self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline
+        result /= Flag.lobster_scaling # add this line the make it as the real price
         return result
     # ------ 4/4.INFO ------
     def calculate_info(self):
