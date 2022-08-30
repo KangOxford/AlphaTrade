@@ -124,6 +124,7 @@ class BaseEnv(Env):
         result -= self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline
         result /= Flag.lobster_scaling # add this line the make it as the real price
         return result
+    
     # ------ 4/4.INFO ------
     def calculate_info(self):
         RLbp = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
@@ -189,7 +190,7 @@ class BaseEnv(Env):
             }
         return init_obs   
     
-    def liquidate_base(self, action):
+    def liquidate_base_func(self, action):
         num2liquidate = Flag.num2liquidate
         max_action = Flag.max_action
         while num2liquidate > 0:
@@ -210,43 +211,13 @@ class BaseEnv(Env):
             
     @exit_after
     def liquidate_init_position(self):
-        num2liquidate = Flag.num2liquidate
-        max_action = Flag.max_action
-        while num2liquidate > 0:
-            observation, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation(only for debug), num_executed for return
-            num2liquidate -= num_executed
-            
-            executed_pairs = self.core.executed_pairs
-            Quantity = [(lambda x: x[1])(x) for x in executed_pairs]# if x<0, meaning withdraw order
-            assert -1 * sum(Quantity) == num_executed # the exected_pairs in the core is for each step
-            Price = [(lambda x: x[0])(x) for x in executed_pairs]
-            Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
-            reward = -1 * sum(Reward)    
-            self.init_reward += reward
-            if self.core.done:# still left stocks after selling all in the core.flow
-                inventory = num2liquidate
-                self.init_reward -= Flag.cost_parameter * inventory * inventory
-                break
+        self.liquidate_base_func(Flag.max_action)
+        
     @exit_after 
     def liquidate_twap(self):
-        num2liquidate = Flag.num2liquidate
-        max_action = Flag.max_action 
         avarage_action = Flag.num2liquidate//Flag.max_episode_steps + 1
-        while num2liquidate > 0:
-            observation, num_executed =  self.core_step(min(average_action, num2liquidate)) # observation(only for debug), num_executed for return
-            num2liquidate -= num_executed
-            executed_pairs = self.core.executed_pairs
-            Quantity = [(lambda x: x[1])(x) for x in executed_pairs]# if x<0, meaning withdraw order
-            assert -1 * sum(Quantity) == num_executed # the exected_pairs in the core is for each step
-            Price = [(lambda x: x[0])(x) for x in executed_pairs]
-            Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
-            reward = -1 * sum(Reward)    
-            self.init_reward += reward
-            if self.core.done:# still left stocks after selling all in the core.flow
-                inventory = num2liquidate
-                self.init_reward -= Flag.cost_parameter * inventory * inventory
-                break
-            
+        self.liquidate_base_func(avarage_action)
+
     def _set_init_reward(self):
         # self.liquidate_init_position() # policy #1 : choose to sell all at init time
         self.liquidate_twap() # policy #2 : choose to sell averagely across time
@@ -254,8 +225,7 @@ class BaseEnv(Env):
 
 
 # =============================================================================
-    
-    def render(self, mode = 'human'):
+    def render_v1(self):
         if self.done:
             RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             try: assert self.num_left >= 0, "Error for the negetive left quantity"
@@ -280,7 +250,25 @@ class BaseEnv(Env):
                 raise Exception("Error for the RL Base Point")
             try: assert  self.init_reward >= -1 * Flag.cost_parameter * Flag.num2liquidate * Flag.num2liquidate
             except:
-                raise Exception("Error for the Init Lower Bound")            
+                raise Exception("Error for the Init Lower Bound")   
+    def render_v2(self):
+        if self.done:
+            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
+            print("="*15 + " BEGIN " + "="*15)
+            print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
+            print(">>> INIT  REWARD : "+str(format(self.init_reward,',f')))
+            print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate,',d')))
+            print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate,',d')))
+            print("-"*30)
+            print(">>> TOTAL REWARD : "+str(format(self.final_reward * Flag.lobster_scaling + self.init_reward + self._get_inventory_cost(),',f')))
+            print(">>> FINAL REWARD : "+str(format(self.final_reward,',f')))
+            print("="*15 + "  END  " + "="*15)
+            print()
+            
+            
+    def render(self, mode = 'human'):
+        # self.render_v1()
+        self.render_v2()
 
 
 
@@ -305,6 +293,6 @@ if __name__=="__main__":
             step_list.append(info['Step'])
             left_list.append(info['Left'])
             Performance_list.append(info['Performance'])
-            print(">"*20+" timestep: "+str(i))
+            # print(">"*20+" timestep: "+str(i))
             env.reset()
     print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
