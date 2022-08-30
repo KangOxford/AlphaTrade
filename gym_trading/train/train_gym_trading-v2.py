@@ -21,7 +21,7 @@ venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * nu
 # %%
 model = RecurrentPPO(
     "MlpLstmPolicy", 
-    venv, 
+    env, 
     verbose=1,
     tensorboard_log=
     "/Users/kang/GitHub/NeuralLOB/venv_rnn/")
