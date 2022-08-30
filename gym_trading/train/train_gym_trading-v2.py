@@ -29,6 +29,7 @@ model = RecurrentPPO(
 model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_init")
 model.learn(total_timesteps=int(1e12), tb_log_name="RNN_PPO_stable", reset_num_timesteps=None)
 model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
+# tensorboard --logdir /Users/kang/GitHub/NeuralLOB/tensorboard_rnn/RNN_PPO_init_13
 
 # %% test the train result
 import time

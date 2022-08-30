@@ -11,9 +11,8 @@ from gym import spaces
 # -----------------------------------------------------------------------------
 from gym_trading.utils import * 
 from gym_trading.envs.match_engine import Core
-from gym_trading.envs.match_engine import Flag
-from gym_trading.envs.match_engine import Broker, Utils
-from gym_trading.utils import exit_after
+from gym_trading.envs.broker import Flag, Broker
+from gym_trading.utils import Utils, exit_after
 warnings.filterwarnings("ignore")
 # =============================================================================
 
@@ -23,29 +22,21 @@ class BaseEnv(Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
-    max_action = 300
-    max_quantity = 6000
-    max_price = 31620700
-    min_price = 31120200
-    scaling = 30000000
-    num2liquidate = 300
-    cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
-    
 # ============================  INIT  =========================================
     def __init__(self, Flow) -> None:
         super().__init__()
-        # self._max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-        self._max_episode_steps = Flag.max_episode_steps # to test in 1/4 min, short horizon
+        self._max_episode_steps = Flag.max_episode_steps 
         self.Flow = Flow
         self.core = None
         self.price_list = None
-        # self.action_space = spaces.MultiDiscrete(BaseEnv.max_action)
-        self.action_space = spaces.Box(0, BaseEnv.max_action,shape =(1,),dtype = np.int32)
-
-        self.observation_space = spaces.Dict({
-            'price':spaces.Box(low=BaseEnv.min_price,high=BaseEnv.max_price,shape=(10,),dtype=np.int32),
-            'quantity':spaces.Box(low=0,high=BaseEnv.max_quantity,shape=(10,), dtype=np.int32)
-            })
+        self.action_space = spaces.Box(0, Flag.max_action,shape =(1,),dtype = np.int32)
+        self.observation_space = \
+        spaces.Box(
+            low = np.array([Flag.min_price] * 10 + [Flag.min_quantity]*10).reshape((2,10)),
+            high = np.array([Flag.max_price] * 10 + [Flag.max_quantity]*10).reshape((2,10)),
+            shape = (2,10),
+            dtype = np.int32,
+        )
         # ---------------------
         self.num_left = None
         self.done = False
@@ -95,6 +86,7 @@ class BaseEnv(Env):
         done = self._get_set_done()
         reward = self._get_reward()
         info = self._get_info()
+        observation = dict_to_nparray(observation)
         
         return  observation, float(reward), done, info
     # ------  1/4.OBS  ------
@@ -113,7 +105,7 @@ class BaseEnv(Env):
     
     def _get_inventory_cost(self):
         inventory = self.num_left
-        return BaseEnv.cost_parameter * inventory * inventory
+        return Flag.cost_parameter * inventory * inventory
 
     def _get_reward(self):
         if not self.done: 
@@ -132,11 +124,11 @@ class BaseEnv(Env):
         return result
     # ------ 4/4.INFO ------
     def calculate_info(self):
-        RLbp = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-        Boundbp = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-        BasePointBound = 10000 *(BaseEnv.max_price / BaseEnv.min_price -1)
-        BasePointInit = 10000 *(self.init_reward/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
-        BasePointRL = 10000 *(self.memory_revenue/BaseEnv.num2liquidate/ BaseEnv.min_price -1)
+        RLbp = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
+        Boundbp = 10000 *(Flag.max_price / Flag.min_price -1)
+        BasePointBound = 10000 *(Flag.max_price / Flag.min_price -1)
+        BasePointInit = 10000 *(self.init_reward/Flag.num2liquidate/ Flag.min_price -1)
+        BasePointRL = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
         BasePointDiff = BasePointRL - BasePointInit        
         return RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff
     def _get_info(self):
@@ -167,10 +159,11 @@ class BaseEnv(Env):
         self.previous_obs = init_obs
         self.memory_obs.append(init_obs) # index 0th observation
         # print(">>>"*10+"env.reset done")
+        init_obs = dict_to_nparray(init_obs)
         return init_obs
     def reset_states(self):
-        # BaseEnv.max_price = max(self.core.flow.iloc[:,0])
-        # BaseEnv.min_price = min(self.core.flow.iloc[:,18])
+        # Flag.max_price = max(self.core.flow.iloc[:,0])
+        # Flag.min_price = min(self.core.flow.iloc[:,18])
         self.current_step = 0 
         # print(">> reset current step") ## to be deleted 
         self.memory_revenues = []
@@ -183,7 +176,7 @@ class BaseEnv(Env):
         self.init_reward_bp = 0
         self.final_reward = 0
         self.done = False
-        self.num_left = BaseEnv.num2liquidate
+        self.num_left = Flag.num2liquidate
         self.current_step = 0
     def _get_init_obs(self, stream):
         init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
@@ -196,8 +189,8 @@ class BaseEnv(Env):
     
     @exit_after
     def liquidate_init_position(self):
-        num2liquidate = BaseEnv.num2liquidate
-        max_action = BaseEnv.max_action
+        num2liquidate = Flag.num2liquidate
+        max_action = Flag.max_action
         while num2liquidate > 0:
             observation, num_executed =  self.core_step(min(max_action,num2liquidate)) # observation(only for debug), num_executed for return
             num2liquidate -= num_executed
@@ -211,11 +204,11 @@ class BaseEnv(Env):
             self.init_reward += reward
             if self.core.done:# still left stocks after selling all in the core.flow
                 inventory = num2liquidate
-                self.init_reward -= BaseEnv.cost_parameter * inventory * inventory
+                self.init_reward -= Flag.cost_parameter * inventory * inventory
                 break
     def _set_init_reward(self):
         self.liquidate_init_position()
-        self.init_reward_bp = int(self.init_reward/BaseEnv.num2liquidate)
+        self.init_reward_bp = int(self.init_reward/Flag.num2liquidate)
 
 
 # =============================================================================
@@ -229,8 +222,8 @@ class BaseEnv(Env):
             print("="*30)
             print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
             print(">>> INIT  REWARD : "+str(format(self.init_reward,',f')))
-            print(">>> Upper REWARD : "+str(format(BaseEnv.max_price * BaseEnv.num2liquidate,',d')))
-            print(">>> Lower REWARD : "+str(format(BaseEnv.min_price * BaseEnv.num2liquidate,',d')))
+            print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate,',d')))
+            print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate,',d')))
             print(">>> Base Point (Bound): "+str(format(BasePointBound))) #(o/oo)
             print(">>> Base Point (Init): "+str(format(BasePointInit))) #(o/oo)
             print(">>> Base Point (RL): "+str(format(BasePointRL))) #(o/oo)
@@ -238,12 +231,12 @@ class BaseEnv(Env):
             print(">>> Value (Init): "+str(format(self.init_reward,',f'))) #(o/oo)
             print(">>> Value (RL)  : "+str(format(self.memory_revenue,',f'))) #(o/oo)
             print(">>> Value (Performance): "+str(format( (self.memory_revenue/self.init_reward - 1)*100,',f'))) #(o/oo)
-            print(">>> Number (Diff): "+str(format( (self.memory_revenue-self.init_reward)/BaseEnv.min_price,',f'))) #(o/oo)
+            print(">>> Number (Diff): "+str(format( (self.memory_revenue-self.init_reward)/Flag.min_price,',f'))) #(o/oo)
 
             try: assert RLbp <= Boundbp, "Error for the RL Base Point"
             except:
                 raise Exception("Error for the RL Base Point")
-            try: assert  self.init_reward >= -1 * BaseEnv.cost_parameter * BaseEnv.num2liquidate * BaseEnv.num2liquidate
+            try: assert  self.init_reward >= -1 * Flag.cost_parameter * Flag.num2liquidate * Flag.num2liquidate
             except:
                 raise Exception("Error for the Init Lower Bound")            
 

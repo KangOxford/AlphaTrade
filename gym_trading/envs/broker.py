@@ -1,0 +1,73 @@
+# %%
+import copy
+import numpy as np
+# import cudf
+import pandas as pd
+
+class Flag():
+    max_episode_steps= 1024 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
+    max_action = 300
+    max_quantity = 6000
+    max_price = 31620700
+    min_price = 31120200
+    min_quantity = 0
+    scaling = 30000000
+    num2liquidate = 300
+    cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
+    
+class Broker():
+    @classmethod
+    def _level_market_order_liquidating(cls, num, obs):
+        # num,obs = num_left, diff_obs ##
+        num = copy.deepcopy(num)
+        '''observation is one row of the flow, observed at specific time t'''   
+        i = 0
+        result = 0
+        Num = copy.deepcopy(num)
+        while num>0:
+            if i>=10: 
+                result = -999
+                break
+            try :
+                num = max(num-obs[i][1], 0)
+            except:
+                break
+            i+=1
+            result = i
+        executed_num = Num - num # TODO use the executed_num
+        # result return the price level, 
+        # begin with level 1, then end with level 10
+        assert executed_num>=0
+        return result, executed_num
+    
+    @classmethod
+    def pairs_market_order_liquidating(cls, num, obs):
+        # num, obs = action, state ##
+        num = copy.deepcopy(num)
+        # level, executed_num = Broker._level_market_order_liquidating(num_left, diff_obs)##
+        level, executed_num = cls._level_market_order_liquidating(num, obs)
+        # TODO need the num <=609 the sum of prices at all leveles
+        
+        result = []
+        if level>1:
+            for i in range(level-1):
+                result.append([obs[i][0],-obs[i][1]])
+            num_left = num + sum([item[1] for item in result])
+            result.append([obs[level-1][0], -1 * (min(num_left, obs[level-1][1]))]) # apppend the last item 
+            for item in result: assert item[1]<=0 ##
+        if level == 1:
+            # result.append([obs[0][0],-num]) # to check it should be wrong
+            result.append([obs[0][0],-executed_num])
+            '''-executed_num, to be negative means the quantity is removed from the lob
+            '''
+        if level == 0:
+            result = []
+        if level == -999:
+            minus_list = [[item[0],-1*item[1]] for item in obs]
+            result.extend(minus_list)
+        assert executed_num>=0
+        assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
+        return result, executed_num
+
+if __name__ == "__main__":
+    pass
