@@ -109,6 +109,16 @@ class BaseEnv(Env):
         inventory = self.num_left
         return Flag.cost_parameter * inventory * inventory
 
+    def _get_each_running_revenue(self):
+        pairs = self.core.executed_pairs # TODO
+        lst_pairs = np.array(from_pairs2lst_pairs(pairs))
+        # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
+        result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
+        assert result >= 0
+        scaled_result = result / Flag.lobster_scaling # add this line the make it as the real price
+        advatage_result = scaled_result - self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline, 
+        # self.memory_executed[-1] is last one executed quantity
+        return advatage_result
 
     def _get_reward(self):
         if not self.done: 
@@ -118,15 +128,6 @@ class BaseEnv(Env):
             return self.final_reward
         
     
-    def _get_each_running_revenue(self):
-        pairs = self.core.executed_pairs # TODO
-        lst_pairs = np.array(from_pairs2lst_pairs(pairs))
-        # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
-        result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
-        assert result >= 0
-        result = result - self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline
-        result = result / Flag.lobster_scaling # add this line the make it as the real price
-        return result
     
     # ------ 4/4.INFO ------
     def calculate_info(self):
@@ -212,6 +213,7 @@ class BaseEnv(Env):
                 inventory = num2liquidate
                 self.init_reward -= Flag.cost_parameter * inventory * inventory
                 break
+        self.init_reward /= Flag.lobster_scaling # add this line to convert it to the dollar measure
             
     @exit_after
     def liquidate_init_position(self):
@@ -254,20 +256,21 @@ class BaseEnv(Env):
                 raise Exception("Error for the RL Base Point")
             try: assert  self.init_reward >= -1 * Flag.cost_parameter * Flag.num2liquidate * Flag.num2liquidate
             except:
-                raise Exception("Error for the Init Lower Bound")   
+                raise Exception("Error for the Init Lower Bound") 
+                
     def render_v2(self):
         if self.done:
             RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             print("="*15 + " BEGIN " + "="*15)
+            print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
             print(">>> Epoch   Length  : "+str(format(self.current_step, ',d')))
             print(">>> Horizon Length  : "+str(format(Flag.max_episode_steps , ',d')))
-            print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
             print("-"*30)
-            print(">>> INIT  REWARD : "+str(format(self.init_reward/Flag.lobster_scaling,',.2f')))
+            print(">>> INIT  REWARD : "+str(format(self.init_reward,',.2f')))
             print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
             print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
             print("-"*30)
-            print(">>> TOTAL REWARD : "+str(format(self.memory_reward  + self.init_reward /  Flag.lobster_scaling,',.2f'))) # (no inventory) considered
+            print(">>> TOTAL REWARD : "+str(format(self.memory_reward  + self.init_reward,',.2f'))) # (no inventory) considered
             pairs = self.memory_executed_pairs
             print(f">>> Advantage    : $ {self.memory_reward}, for selling {Flag.num2liquidate} shares of stocks at price {int(get_avarage_price(pairs)/Flag.lobster_scaling)}")
             print("="*15 + "  END  " + "="*15)
