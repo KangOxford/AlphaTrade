@@ -189,6 +189,25 @@ class BaseEnv(Env):
             }
         return init_obs   
     
+    def liquidate_base(self, action):
+        num2liquidate = Flag.num2liquidate
+        max_action = Flag.max_action
+        while num2liquidate > 0:
+            observation, num_executed =  self.core_step(min(action, num2liquidate)) # observation(only for debug), num_executed for return
+            num2liquidate -= num_executed
+            
+            executed_pairs = self.core.executed_pairs
+            Quantity = [(lambda x: x[1])(x) for x in executed_pairs]# if x<0, meaning withdraw order
+            assert -1 * sum(Quantity) == num_executed # the exected_pairs in the core is for each step
+            Price = [(lambda x: x[0])(x) for x in executed_pairs]
+            Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
+            reward = -1 * sum(Reward)    
+            self.init_reward += reward
+            if self.core.done:# still left stocks after selling all in the core.flow
+                inventory = num2liquidate
+                self.init_reward -= Flag.cost_parameter * inventory * inventory
+                break
+            
     @exit_after
     def liquidate_init_position(self):
         num2liquidate = Flag.num2liquidate
@@ -208,8 +227,29 @@ class BaseEnv(Env):
                 inventory = num2liquidate
                 self.init_reward -= Flag.cost_parameter * inventory * inventory
                 break
+    @exit_after 
+    def liquidate_twap(self):
+        num2liquidate = Flag.num2liquidate
+        max_action = Flag.max_action 
+        avarage_action = Flag.num2liquidate//Flag.max_episode_steps + 1
+        while num2liquidate > 0:
+            observation, num_executed =  self.core_step(min(average_action, num2liquidate)) # observation(only for debug), num_executed for return
+            num2liquidate -= num_executed
+            executed_pairs = self.core.executed_pairs
+            Quantity = [(lambda x: x[1])(x) for x in executed_pairs]# if x<0, meaning withdraw order
+            assert -1 * sum(Quantity) == num_executed # the exected_pairs in the core is for each step
+            Price = [(lambda x: x[0])(x) for x in executed_pairs]
+            Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
+            reward = -1 * sum(Reward)    
+            self.init_reward += reward
+            if self.core.done:# still left stocks after selling all in the core.flow
+                inventory = num2liquidate
+                self.init_reward -= Flag.cost_parameter * inventory * inventory
+                break
+            
     def _set_init_reward(self):
-        self.liquidate_init_position()
+        # self.liquidate_init_position() # policy #1 : choose to sell all at init time
+        self.liquidate_twap() # policy #2 : choose to sell averagely across time
         self.init_reward_bp = int(self.init_reward/Flag.num2liquidate)
 
 
