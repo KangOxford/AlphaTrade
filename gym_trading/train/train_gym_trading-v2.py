@@ -85,7 +85,7 @@ for i in range(int(1e3)):
     running_reward = 0
     for i in range(int(1e8)):
         if i//int(1e5) == i/int(1e5):
-            print("Epoch {}, training time {}".format(Epoch,(time.time()-start)/60))
+            print("Epoch {}, testing time {}".format(Epoch,(time.time()-start)/60))
         action, _states = model.predict(obs)
         obs, reward, done, info = env.step(action)
         # env.render()
@@ -94,12 +94,13 @@ for i in range(int(1e3)):
             obs = env.reset()
             Epoch += 1
             break 
-
 import pandas as pd
 df = pd.DataFrame(info_list)
+string = time.ctime().replace(" ","-").replace(":","-")
 df.to_csv("info_df"+string+".csv")
-# %% analyse the result
 
+
+#  analyse the result
 df1=df[(df.Advantage <= 100) & (df.Advantage>=-100)]
 grouped = df1.groupby(df.Left)    
 df2=grouped.mean()
@@ -107,8 +108,32 @@ df3 = df2.set_index("Left").drop(["Step"],axis =1)
 fig = df3.plot().get_figure()
 fig.savefig(string+'.png', dpi=300)
 
+# %% test the twap result
+start = time.time()
+env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
-
+info_list = []
+Epoch = 0
+for i in range(int(1e3)):
+    obs = env.reset()
+    # ;print(obs)
+    done = False
+    running_reward = 0
+    for i in range(int(1e8)):
+        if i//int(1e5) == i/int(1e5):
+            print("Epoch {}, training time {}".format(Epoch,(time.time()-start)/60))
+        action = Flag.num2liquidate//Flag.max_episode_steps + 1
+        obs, reward, done, info = env.step(action)
+        # env.render()
+        if done:
+            info_list.append(info)
+            obs = env.reset()
+            Epoch += 1
+            break 
+import pandas as pd
+df = pd.DataFrame(info_list)
+string = time.ctime().replace(" ","-").replace(":","-")
+df.to_csv("info_df"+string+".csv")
 
 
 
