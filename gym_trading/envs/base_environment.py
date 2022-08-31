@@ -289,15 +289,16 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = 3
+    action = Flag.num2liquidate//Flag.max_episode_steps + 1
     diff_list = []
     step_list = []
     left_list = []
     Performance_list = []
     for i in range(int(1e6)):
-        if i//2 == i/2: observation, reward, done, info = env.step(action)
+        observation, reward, done, info = env.step(action)
+        # if i//2 == i/2: observation, reward, done, info = env.step(action)
         # if i//3 == i/3: observation, reward, done, info = env.step(action)
-        else: observation, reward, done, info = env.step(0)
+        # else: observation, reward, done, info = env.step(0)
         env.render()
         if done:
             diff_list.append(info['Diff'])
