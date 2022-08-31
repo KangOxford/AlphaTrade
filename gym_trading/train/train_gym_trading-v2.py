@@ -69,9 +69,11 @@ model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1"
 
 # %% test the train result
 import time
+import datetime
 start = time.time()
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
+info_list = []
 for i in range(int(1e3)):
     obs = env.reset()
     # ;print(obs)
@@ -83,9 +85,8 @@ for i in range(int(1e3)):
         action, _states = model.predict(obs)
         obs, reward, done, info = env.step(action)
         env.render()
-        running_reward += reward 
         if done:
-            running_reward += reward
+            info_list.append(info)
             obs = env.reset()
             break 
 
