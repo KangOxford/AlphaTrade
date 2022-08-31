@@ -40,16 +40,30 @@ def linear_schedule(initial_value):
 
     return func
 
+def cubical_schedule(initial_value):
+    if isinstance(initial_value, str):initial_value = float(initial_value)
+    def func(progress):return progress * progress * progress * initial_value
+    return func
+
 model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    # n_steps = Flag.max_episode_steps, #n_steps: The number of steps to run for each environment per update
-    learning_rate = linear_schedule(3e-4),
+    learning_rate = cubical_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
-model.learn(total_timesteps=int(3e6), tb_log_name="RNN_PPO_init")
+model.learn(total_timesteps=int(5e8), tb_log_name="RNN_PPO_init")
 model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
+
+# model = RecurrentPPO(
+#     "MlpLstmPolicy", 
+#     venv, 
+#     verbose=1,
+#     # n_steps = Flag.max_episode_steps, #n_steps: The number of steps to run for each environment per update
+#     learning_rate = linear_schedule(3e-4),
+#     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
+# model.learn(total_timesteps=int(3e6), tb_log_name="RNN_PPO_init")
+# model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
 
 # tensorboard --logdir /Users/kang/GitHub/NeuralLOB/venv_rnn/
 
