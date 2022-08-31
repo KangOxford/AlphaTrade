@@ -54,9 +54,9 @@ model = RecurrentPPO(
     learning_rate = biquadrate_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
-model.learn(total_timesteps=int(5e8), tb_log_name="RNN_PPO_init")
+model.learn(total_timesteps=int(3e6), tb_log_name="RNN_PPO_improve")
 string = time.ctime().replace(" ","-").replace(":","-")
-model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1"+string)
+model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1-"+string)
 
 # model = RecurrentPPO(
 #     "MlpLstmPolicy", 
@@ -136,22 +136,26 @@ df = pd.DataFrame(info_list)
 string = time.ctime().replace(" ","-").replace(":","-")
 df.to_csv("info_df"+string+".csv")
 
+
+
+# %% difference between to algorithms
 #  analyse the result
 def analyse_df(df):
     df1=df[(df.Advantage <= 100) & (df.Advantage>=-100)]
     grouped = df1.groupby(df.Left)    
     df2=grouped.mean()
     df3 = df2.set_index("Left").drop(["Step"],axis =1)
+    df3.drop(["Unnamed: 0"],axis =1,inplace = True)
     return df3
 def plot_df(df3):
     fig = df3.plot().get_figure()
     string = time.ctime().replace(" ","-").replace(":","-")
     fig.savefig(string+'.png', dpi=300)
-
-# %% difference between to algorithms
+    
 df_rl = pd.read_csv("info_dfWed-Aug-31-23-31-26-2022.csv")
 df_twap = pd.read_csv("info_dfWed-Aug-31-23-36-23-2022.csv")
 df_rl, df_twap =  analyse_df(df_rl), analyse_df(df_twap)
+
 Index = list(set(list(df_rl.index)).intersection(set(list(df_twap.index))))
 result = pd.DataFrame((df_rl["Advantage"].loc[Index] - df_twap["Advantage"].loc[Index])/df_twap["Advantage"].loc[Index] * 100)
 result.plot()
