@@ -1,6 +1,7 @@
 # %% ==========================================================================
 # clear warnings
 import warnings
+import time
 import gym
 from sb3_contrib import RecurrentPPO
 # from stable_baselines3 import RecurrentPPO
@@ -21,6 +22,7 @@ check_env(env)
 num_cpu = 10 
 venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
 # %%
+
 def linear_schedule(initial_value):
     """
     Linear learning rate schedule.
@@ -53,7 +55,8 @@ model = RecurrentPPO(
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
 model.learn(total_timesteps=int(5e8), tb_log_name="RNN_PPO_init")
-model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
+string = time.ctime().replace(" ","-").replace(":","-")
+model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1"+string)
 
 # model = RecurrentPPO(
 #     "MlpLstmPolicy", 
@@ -68,8 +71,8 @@ model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1"
 # tensorboard --logdir /Users/kang/GitHub/NeuralLOB/venv_rnn/
 
 # %% test the train result
-import time
-import datetime
+
+
 start = time.time()
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
@@ -81,7 +84,7 @@ for i in range(int(1e3)):
     running_reward = 0
     for i in range(int(1e8)):
         if i//int(1e5) == i/int(1e5):
-            print("Epoch {}, training time {}".format(i,time.time()-start))
+            print("Epoch {}, training time {}".format(i,(time.time()-start)/60))
         action, _states = model.predict(obs)
         obs, reward, done, info = env.step(action)
         env.render()
