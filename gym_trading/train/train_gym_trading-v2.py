@@ -19,12 +19,31 @@ check_env(env)
 num_cpu = 10 
 venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
 # %%
+def linear_schedule(initial_value):
+    """
+    Linear learning rate schedule.
+    :param initial_value: (float or str)
+    :return: (function)
+    """
+    if isinstance(initial_value, str):
+        initial_value = float(initial_value)
+
+    def func(progress):
+        """
+        Progress will decrease from 1 (beginning) to 0
+        :param progress: (float)
+        :return: (float)
+        """
+        return progress * initial_value
+
+    return func
+
 model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    tensorboard_log=
-    "/Users/kang/GitHub/NeuralLOB/venv_rnn/")
+    learning_rate = linear_schedule(1e-4),
+    tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
 model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_init")
 model.learn(total_timesteps=int(1e12), tb_log_name="RNN_PPO_stable", reset_num_timesteps=None)
