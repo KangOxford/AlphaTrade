@@ -48,7 +48,7 @@ model = RecurrentPPO(
     learning_rate = linear_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
-model.learn(total_timesteps=int(1e10), tb_log_name="RNN_PPO_init")
+model.learn(total_timesteps=int(3e6), tb_log_name="RNN_PPO_init")
 model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
 
 # tensorboard --logdir /Users/kang/GitHub/NeuralLOB/venv_rnn/
