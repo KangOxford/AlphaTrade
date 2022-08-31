@@ -138,7 +138,8 @@ class BaseEnv(Env):
         BasePointRL = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
         BasePointDiff = BasePointRL - BasePointInit        
         return RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff
-    def _get_info(self):
+    
+    def _get_info_v1(self):
         if self.done:
             RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
             self.info = {"Diff" : BasePointDiff,
@@ -146,7 +147,17 @@ class BaseEnv(Env):
                          "Left" : self.num_left,
                          "Performance" : (self.memory_revenue/self.init_reward -1 ) * 100 # Performanceormance o/o
                          }
-        return self.info   
+        return self.info 
+    def _get_info_v2(self):
+        if self.done:
+            self.info = {
+                         "Step" : self.current_step,
+                         "Left" : self.num_left,
+                         "Advantage" : self.memory_reward
+                         }
+        return self.info 
+    def _get_info(self):
+        self._get_info_v2()
 # =============================================================================
  
 # =============================  RESET  =======================================   
