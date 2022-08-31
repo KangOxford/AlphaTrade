@@ -72,11 +72,12 @@ model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1"
 
 # %% test the train result
 
-
+model = RecurrentPPO.load("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1Wed-Aug-31-19-58-55-2022.zip")
 start = time.time()
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
 info_list = []
+Epoch = 0
 for i in range(int(1e3)):
     obs = env.reset()
     # ;print(obs)
@@ -84,42 +85,59 @@ for i in range(int(1e3)):
     running_reward = 0
     for i in range(int(1e8)):
         if i//int(1e5) == i/int(1e5):
-            print("Epoch {}, training time {}".format(i,(time.time()-start)/60))
+            print("Epoch {}, training time {}".format(Epoch,(time.time()-start)/60))
         action, _states = model.predict(obs)
         obs, reward, done, info = env.step(action)
-        env.render()
+        # env.render()
         if done:
             info_list.append(info)
             obs = env.reset()
+            Epoch += 1
             break 
 
+import pandas as pd
+df = pd.DataFrame(info_list)
+df.to_csv("info_df"+string+".csv")
+# %% analyse the result
 
-# %% get the result
-def get_result(name):
-    import re  
-    fp = open("/Users/kang/GitHub/NeuralLOB/FINALREMAINING(RL)")   
-    # fp = open("/Users/kang/Desktop/FINALREMAINING(RL)")   
-    lst = []
-    for line in fp.readlines():
-        try:
-            m = re.search(name, line)
-            result = line[m.end()+3:-1]
-            lst.append(float(result))
-        except:
-            pass
-    fp.close()
-    return lst
-
-Init = get_result('Init')
-Diff = get_result('Diff')
-RL = [x+y for x,y in zip(Init,Diff)]
-import numpy as np
-print("Diff, ",np.mean(Diff))
-print("Init, ",np.mean(Init))
-print("RL, ",np.mean(RL))
+df1=df[(df.Advantage <= 100) & (df.Advantage>=-100)]
+grouped = df1.groupby(df.Left)    
+df2=grouped.mean()
+df3 = df2.set_index("Left").drop(["Step"],axis =1)
+fig = df3.plot().get_figure()
+fig.savefig(string+'.png', dpi=300)
 
 
-# %%
 
 
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
