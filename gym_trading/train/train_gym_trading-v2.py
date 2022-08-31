@@ -40,16 +40,16 @@ def linear_schedule(initial_value):
 
     return func
 
-def cubical_schedule(initial_value):
+def biquadrate_schedule(initial_value):
     if isinstance(initial_value, str):initial_value = float(initial_value)
-    def func(progress):return progress * progress * progress * initial_value
+    def func(progress):return progress * progress * progress * progress * initial_value
     return func
 
 model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    learning_rate = cubical_schedule(3e-4),
+    learning_rate = biquadrate_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
 model.learn(total_timesteps=int(5e8), tb_log_name="RNN_PPO_init")
