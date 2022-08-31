@@ -213,7 +213,7 @@ class BaseEnv(Env):
                 inventory = num2liquidate
                 self.init_reward -= Flag.cost_parameter * inventory * inventory
                 break
-        self.init_reward /= Flag.lobster_scaling # add this line to convert it to the dollar measure
+        self.init_reward /= Flag.lobster_scaling # add this line to convert it to the dollar measure # self.core.executed_sum
             
     @exit_after
     def liquidate_init_position(self):
@@ -294,7 +294,7 @@ if __name__=="__main__":
     step_list = []
     left_list = []
     Performance_list = []
-    for i in range(int(1e6)):
+    for i in range(int(1e8)):
         observation, reward, done, info = env.step(action)
         # if i//2 == i/2: observation, reward, done, info = env.step(action)
         # if i//3 == i/3: observation, reward, done, info = env.step(action)

@@ -23,6 +23,7 @@ class Core():
         self.reward = None
         self.executed_pairs = None
         self.executed_quantity = None
+        self.executed_sum = None
         self.done = None
 
     def update(self, obs, diff_obs):
@@ -76,6 +77,7 @@ class Core():
         self.state = updated_state
         reward = self.reward
         self.done = self.check_done()
+        self.executed_sum += self.executed_quantity # add this line to check if all liquidated
         return self.state, reward, self.done, {}
     
     def check_done(self):
@@ -87,8 +89,9 @@ class Core():
         self.state = self.flow.iloc[Core.init_index,:] #initial_state
         self.action = None
         self.executed_pairs = None
-        self.executed_quantity
+        self.executed_quantity = None
         self.done = False
+        self.executed_sum = 0
         return self.state
     
     
