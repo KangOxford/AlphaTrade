@@ -7,6 +7,8 @@ from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
+
+from gym_trading.envs.broker import Flag
 from gym_trading.envs.base_environment import BaseEnv
 from gym_trading.data.data_pipeline import ExternalData
 
@@ -42,11 +44,11 @@ model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    learning_rate = linear_schedule(1e-4),
+    n_steps = Flag.max_episode_steps, #n_steps: The number of steps to run for each environment per update
+    learning_rate = linear_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
-model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_init")
-model.learn(total_timesteps=int(1e12), tb_log_name="RNN_PPO_stable", reset_num_timesteps=None)
+model.learn(total_timesteps=int(1e10), tb_log_name="RNN_PPO_init")
 model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
 
 # tensorboard --logdir /Users/kang/GitHub/NeuralLOB/venv_rnn/
