@@ -44,7 +44,7 @@ model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    n_steps = Flag.max_episode_steps, #n_steps: The number of steps to run for each environment per update
+    # n_steps = Flag.max_episode_steps, #n_steps: The number of steps to run for each environment per update
     learning_rate = linear_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn/")
 
