@@ -13,6 +13,15 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.16 Aug`
+
+* learn it at least 1e9 steps
+* remove dictionary oprations in the gym_traing
+* core.skip set it to 1 second
+* add other days into the dataset
+* change to gpu version
+* split training and testing
+
 ## `Week.15 Aug.01~Aug.07`
 #### Revise the experiment
 [Debugging Log](https://square-cactus-589.notion.site/NeuralLOB-ba30e3408cdf43bcba29ede0d3905f87)
