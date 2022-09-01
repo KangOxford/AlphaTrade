@@ -20,6 +20,7 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 * core.skip set it to 1 second
 * add other days into the dataset
 * change to gpu version
+* split training and testing
 
 ## `Week.15 Aug.01~Aug.07`
 #### Revise the experiment
