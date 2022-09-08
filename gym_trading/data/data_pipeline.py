@@ -2,7 +2,7 @@
 import os.path
 import pandas as pd
 class Debug():
-    database = True
+    if_return_list = True
 
 class DataPipeline():
     def __init__(self, data):
@@ -34,17 +34,29 @@ class ExternalData():
                 name_lst.append("bid"+str(i+1))
                 name_lst.append("bid"+str(i+1)+"_quantity")
             return name_lst
-        if Debug.database:
-            path = 
-        if not Debug.database: 
+        if Debug.if_return_list:
+            Flow_list = []
+            mypath = "/Users/kang/Data/Whole_Book"
+            from os import listdir
+            from os.path import isfile, join
+            onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+            ### rm /Users/kang/Data/Whole_Book/.DS_Store
+            for path in onlyfiles:
+                df = pd.read_csv(path,names = namelist())
+                column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+                Flow = df.iloc[:,column_numbers]
+                Flow_list.append(Flow)
+            return Flow_list
+        if not Debug.if_return_list: 
             path = "/Users/kang/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
             if not os.path.exists(path):
                 url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
-                path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]        
-        df = pd.read_csv(path,names = namelist())
-        column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
-        Flow = df.iloc[:,column_numbers]
-        return Flow
+                path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]   
+                
+            df = pd.read_csv(path,names = namelist())
+            column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+            Flow = df.iloc[:,column_numbers]
+            return Flow
      
 if __name__ == "__main__":
     Flow = ExternalData.get_sample_order_book_data()
