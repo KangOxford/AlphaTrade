@@ -12,15 +12,19 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
  <br> 
 
 <H1> Part III, Improving Learning</H1>
+## `Week.17 Sep`
+
+* replace gradient descent with evolution algorithms, due to the long horizon
+* better reports with [wandb.ai](https://wandb.ai/site/reports)
 
 ## `Week.16 Aug`
 
 * learn it at least 1e9 steps
 * remove dictionary oprations in the gym_traing
 * core.skip set it to 1 second
-* add other days into the dataset
+* `Done` add other days into the dataset
 * change to gpu version
-* split training and testing
+* `Done` split training and testing
 
 ## `Week.15 Aug.01~Aug.07`
 #### Revise the experiment
