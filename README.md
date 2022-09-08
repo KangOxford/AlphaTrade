@@ -12,6 +12,7 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
  <br> 
 
 <H1> Part III, Improving Learning</H1>
+
 ## `Week.17 Sep`
 
 * replace gradient descent with evolution algorithms, due to the long horizon
@@ -19,6 +20,7 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 ## `Week.16 Aug`
 
+* [Weekly Report](https://github.com/KangOxford/NeuralLOB/blob/main/docs/FinanceRL_Report_Aug__2022%20(5).pdf) 
 * learn it at least 1e9 steps
 * remove dictionary oprations in the gym_traing
 * core.skip set it to 1 second
