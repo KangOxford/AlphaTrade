@@ -26,7 +26,7 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         self._max_episode_steps = Flag.max_episode_steps 
-        self.type_of_Flow_is_list = True if type(Flow) == list else Flase
+        self.type_of_Flow_is_list = True if type(Flow) == list else False
         if not self.type_of_Flow_is_list:
             self.Flow = Flow
         if self.type_of_Flow_is_list:

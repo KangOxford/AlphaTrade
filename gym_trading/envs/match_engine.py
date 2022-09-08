@@ -70,6 +70,7 @@ class Core():
         diff_obs = self.diff(self.index-1)
         to_be_updated = self.update(diff_obs, new_obs)
         updated_state = self.update(state, to_be_updated)
+        
         if type(updated_state) == list:
             updated_state = self.check_positive(updated_state)
             updated_state = Utils.from_pair2series(updated_state)

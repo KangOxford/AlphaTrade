@@ -40,7 +40,8 @@ class ExternalData():
             from os import listdir
             from os.path import isfile, join
             onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-            ### rm /Users/kang/Data/Whole_Book/.DS_Store
+            ### rm /Users/kang/Data/Learning/Training/.DS_Store
+            ### rm /Users/kang/Data/Learning/Testing/.DS_Store
             for path in onlyfiles:
                 df = pd.read_csv(mypath + path,names = namelist())
                 column_numbers=[i for i in range(40) if i%4==2 or i%4==3]

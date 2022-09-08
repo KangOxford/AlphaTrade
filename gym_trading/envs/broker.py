@@ -16,6 +16,7 @@ class Flag():
     num2liquidate = 500
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     skip = 1 # default = 1 from step No.n to step No.n+1
+    # skip = 20 # for 1 second on average
     
 class Broker():
     @classmethod
