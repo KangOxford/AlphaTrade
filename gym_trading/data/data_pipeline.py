@@ -36,13 +36,13 @@ class ExternalData():
             return name_lst
         if Debug.if_return_list:
             Flow_list = []
-            mypath = "/Users/kang/Data/Whole_Book"
+            mypath = "/Users/kang/Data/Whole_Book/"
             from os import listdir
             from os.path import isfile, join
             onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
             ### rm /Users/kang/Data/Whole_Book/.DS_Store
             for path in onlyfiles:
-                df = pd.read_csv(path,names = namelist())
+                df = pd.read_csv(mypath + path,names = namelist())
                 column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
                 Flow = df.iloc[:,column_numbers]
                 Flow_list.append(Flow)

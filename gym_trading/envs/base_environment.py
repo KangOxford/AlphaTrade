@@ -26,7 +26,11 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         self._max_episode_steps = Flag.max_episode_steps 
-        self.Flow = Flow
+        if type(Flow) == pd.DataFrame:
+            self.Flow = Flow
+        if type(Flow) == list:
+            self.Flow_list = Flow
+        # above four lines is used for choosing the Flow or Flow_list
         self.core = None
         self.price_list = None
         self.action_space = spaces.Box(0, Flag.max_action,shape =(1,),dtype = np.int32)
@@ -164,9 +168,16 @@ class BaseEnv(Env):
     def reset(self):
         '''return the observation of the initial condition'''
         self.reset_states()
-        index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
-        flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
-        flow = flow.reset_index().drop("index",axis=1)
+        if self.Flow is not None:
+            index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
+            flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
+            flow = flow.reset_index().drop("index",axis=1)
+        elif self.Flow_list is not None:
+            index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
+            Flow = self.Flow_list[index_random_for_list]
+            index_random = random.randint(0, Flow.shape[0]-self._max_episode_steps-1)
+            flow = Flow.iloc[index_random:index_random+self._max_episode_steps,:]
+            flow = flow.reset_index().drop("index",axis=1)
         self.core = Core(flow)
         
         self.core.reset()
