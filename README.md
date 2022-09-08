@@ -15,7 +15,7 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 ## `Week.17 Sep`
 
-* replace gradient descent with evolution algorithms, due to the long horizon
+* replace gradient descent with [evolution algorithms](https://github.com/nnaisense/evotorch), due to the long horizon
 * better reports with [wandb.ai](https://wandb.ai/site/reports)
 
 ## `Week.16 Aug`
