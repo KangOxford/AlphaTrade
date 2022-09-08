@@ -12,6 +12,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_trading.envs.broker import Flag
 from gym_trading.envs.base_environment import BaseEnv
 from gym_trading.data.data_pipeline import ExternalData
+from gym_trading.data.data_pipeline import Debug
+Debug.if_return_list = True # if True then return Flow_list
 
 warnings.filterwarnings("ignore")
 Flow = ExternalData.get_sample_order_book_data()

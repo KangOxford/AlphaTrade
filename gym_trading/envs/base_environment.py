@@ -26,9 +26,10 @@ class BaseEnv(Env):
     def __init__(self, Flow) -> None:
         super().__init__()
         self._max_episode_steps = Flag.max_episode_steps 
-        if type(Flow) == pd.DataFrame:
+        self.type_of_Flow_is_list = True if type(Flow) == list else Flase
+        if not self.type_of_Flow_is_list:
             self.Flow = Flow
-        if type(Flow) == list:
+        if self.type_of_Flow_is_list:
             self.Flow_list = Flow
         # above four lines is used for choosing the Flow or Flow_list
         self.core = None
@@ -168,11 +169,11 @@ class BaseEnv(Env):
     def reset(self):
         '''return the observation of the initial condition'''
         self.reset_states()
-        if self.Flow is not None:
+        if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
             flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
             flow = flow.reset_index().drop("index",axis=1)
-        elif self.Flow_list is not None:
+        else:
             index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
             Flow = self.Flow_list[index_random_for_list]
             index_random = random.randint(0, Flow.shape[0]-self._max_episode_steps-1)
