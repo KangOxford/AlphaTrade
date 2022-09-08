@@ -20,7 +20,7 @@ env = gym.make("GymTrading-v1",Flow = Flow)
 check_env(env)
 
 num_cpu = 10 
-venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1",Flow = Flow))] * num_cpu)
+venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1", Flow = Flow))] * num_cpu)
 # %%
 
 def linear_schedule(initial_value):

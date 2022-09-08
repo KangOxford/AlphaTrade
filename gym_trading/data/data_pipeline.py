@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import os.path
 import pandas as pd
-
+class Debug():
+    database = True
 
 class DataPipeline():
     def __init__(self, data):
@@ -33,10 +34,13 @@ class ExternalData():
                 name_lst.append("bid"+str(i+1))
                 name_lst.append("bid"+str(i+1)+"_quantity")
             return name_lst
-        path = "/Users/kang/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
-        if not os.path.exists(path):
-            url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
-            path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]        
+        if Debug.database:
+            path = 
+        if not Debug.database: 
+            path = "/Users/kang/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
+            if not os.path.exists(path):
+                url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
+                path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]        
         df = pd.read_csv(path,names = namelist())
         column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
         Flow = df.iloc[:,column_numbers]
