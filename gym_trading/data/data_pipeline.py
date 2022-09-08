@@ -2,7 +2,7 @@
 import os.path
 import pandas as pd
 class Debug():
-    if_return_list = True
+    if_return_single_flie = True
 
 class DataPipeline():
     def __init__(self, data):
@@ -34,7 +34,7 @@ class ExternalData():
                 name_lst.append("bid"+str(i+1))
                 name_lst.append("bid"+str(i+1)+"_quantity")
             return name_lst
-        if Debug.if_return_list:
+        if not Debug.if_return_single_flie:
             Flow_list = []
             mypath = "/Users/kang/Data/Whole_Book/"
             from os import listdir
@@ -47,7 +47,7 @@ class ExternalData():
                 Flow = df.iloc[:,column_numbers]
                 Flow_list.append(Flow)
             return Flow_list
-        if not Debug.if_return_list: 
+        if Debug.if_return_single_flie: 
             path = "/Users/kang/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
             if not os.path.exists(path):
                 url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
