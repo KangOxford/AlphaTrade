@@ -96,6 +96,7 @@ class BaseEnv(Env):
         observation = dict_to_nparray(observation)
         
         return  observation, float(reward), done, info
+        # return of the  STEP
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
         obs_ = self.core.step(num)[0] # dtype:series
@@ -309,6 +310,7 @@ class BaseEnv(Env):
     
 if __name__=="__main__":
     from gym_trading.data.data_pipeline import ExternalData
+    from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = False # if True then return Flow_list # Flase if you want to debug
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
