@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from gym_trading.envs.broker import Flag
 
 def get_price_list(flow):
     price_list = []
@@ -44,8 +45,8 @@ def from_pairs2lst_pairs(pairs):
         except: pass
     return lst
 def from_series2obs(series):
-    price_level = 10
-    min_price = 31120200 # TODO refered from BaseEnv
+    price_level = Flag.price_level
+    min_price = Flag.min_price 
     dictionary = {
         'price':np.array([min_price for _ in range(price_level)]).astype(np.int32),
         'quantity':np.array([0 for _ in range(price_level)]).astype(np.int32)

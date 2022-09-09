@@ -15,7 +15,8 @@ import warnings; warnings.filterwarnings("ignore") # clear warnings
 
 Flow = ExternalData.get_sample_order_book_data()
 
-env = gym.make("GymTrading-v1",Flow = Flow); check_env(env)
+env = gym.make("GymTrading-v1",Flow = Flow)
+# check_env(env)
 
 num_cpu = 10; venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1", Flow = Flow))] * num_cpu)
 # %%
@@ -46,7 +47,8 @@ def biquadrate_schedule(initial_value):
 
 model = RecurrentPPO(
     "MlpLstmPolicy", 
-    venv, 
+    # venv, 
+    env, 
     verbose=1,
     learning_rate = biquadrate_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v3/")
@@ -65,7 +67,7 @@ model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn-v3/rnn_ppo_gym_trading-
 # model.learn(total_timesteps=int(3e6), tb_log_name="RNN_PPO_init")
 # model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn/rnn_ppo_gym_trading-v1")
 
-# tensorboard --logdir /Users/kang/GitHub/NeuralLOB/venv_rnn/
+# tensorboard --logdir /Users/kang/GitHub/NeuralLOB/venv_rnn-v3/
 
 
 

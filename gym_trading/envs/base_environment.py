@@ -94,6 +94,9 @@ class BaseEnv(Env):
         self.memory_reward += reward 
         info = self._get_info()
         observation = dict_to_nparray(observation)
+        # ---------------------
+        if self.current_step == 1023:
+            print(self.num_left, done)
         
         return  observation, float(reward), done, info
         # return of the  STEP
@@ -314,6 +317,7 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
+    # action = Flag.num2liquidate//Flag.max_episode_steps 
     action = Flag.num2liquidate//Flag.max_episode_steps + 1
     diff_list = []
     step_list = []
@@ -326,10 +330,10 @@ if __name__=="__main__":
         # else: observation, reward, done, info = env.step(0)
         env.render()
         if done:
-            diff_list.append(info['Diff'])
+            # diff_list.append(info['Diff'])
             step_list.append(info['Step'])
             left_list.append(info['Left'])
-            Performance_list.append(info['Performance'])
+            # Performance_list.append(info['Performance'])
             # print(">"*20+" timestep: "+str(i))
             env.reset()
     print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
