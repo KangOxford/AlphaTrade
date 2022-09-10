@@ -17,7 +17,7 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 * replace gradient descent with [evolution algorithms](https://github.com/nnaisense/evotorch), due to the long horizon
 * better reports with [wandb.ai](https://wandb.ai/site/reports)
-
+* convert it into pure numpy and then pure torch
 ## `Week.16 Aug`
 
 * [Weekly Report](https://github.com/KangOxford/NeuralLOB/blob/main/docs/FinanceRL_Report_Aug__2022%20(5).pdf) 
