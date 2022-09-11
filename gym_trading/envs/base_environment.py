@@ -97,6 +97,7 @@ class BaseEnv(Env):
         # ---------------------
         if self.current_step == 1023:
             print(self.num_left, done)
+        print("current_step, if_done : ", self.current_step, self.done)
         
         return  observation, float(reward), done, info
         # return of the  STEP
@@ -172,6 +173,7 @@ class BaseEnv(Env):
 # =============================  RESET  =======================================   
     def reset(self):
         '''return the observation of the initial condition'''
+        print(">>> reset") ## to be deleted
         self.reset_states()
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
@@ -198,8 +200,6 @@ class BaseEnv(Env):
     def reset_states(self):
         # Flag.max_price = max(self.core.flow.iloc[:,0])
         # Flag.min_price = min(self.core.flow.iloc[:,18])
-        self.current_step = 0 
-        # print(">> reset current step") ## to be deleted 
         self.memory_revenues = []
         self.memory_obs = []
         self.memory_executed = []
@@ -213,6 +213,7 @@ class BaseEnv(Env):
         self.done = False
         self.num_left = Flag.num2liquidate
         self.current_step = 0
+        print(">> reset current step") ## to be deleted 
     def _get_init_obs(self, stream):
         init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
         init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)
@@ -252,8 +253,8 @@ class BaseEnv(Env):
         self.liquidate_base_func(avarage_action)
 
     def _set_init_reward(self):
-        # self.liquidate_init_position() # policy #1 : choose to sell all at init time
-        self.liquidate_twap() # policy #2 : choose to sell averagely across time
+        self.liquidate_init_position() # policy #1 : choose to sell all at init time
+        # self.liquidate_twap() # policy #2 : choose to sell averagely across time
         self.init_reward_bp = self.init_reward/Flag.num2liquidate
 
 

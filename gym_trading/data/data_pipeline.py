@@ -43,6 +43,7 @@ class ExternalData():
             ### rm /Users/kang/Data/Learning/Training/.DS_Store
             ### rm /Users/kang/Data/Learning/Testing/.DS_Store
             for path in onlyfiles:
+                # if (mypath + path)[-9:]  == ".DS_Store":  import os; command = "rm " + (mypath + path); os.system(command)
                 df = pd.read_csv(mypath + path,names = namelist())
                 column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
                 Flow = df.iloc[:,column_numbers]
