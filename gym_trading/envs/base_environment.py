@@ -95,13 +95,13 @@ class BaseEnv(Env):
         info = self._get_info()
         observation = dict_to_nparray(observation)
         # ---------------------
-        if self.current_step == 1024:
-            print(self.num_left, done)
-        print("current_step, if_done : ", self.current_step, self.done)
-        if done:
-            import inspect;import types;from typing import cast
-            this_function_name = cast(types.FrameType, inspect.currentframe()).f_code.co_name
-            print(this_function_name+"  :  Done")
+        # if self.current_step == 1024:
+        #     print(self.num_left, done)
+        # print("current_step, if_done : ", self.current_step, self.done)
+        # if done:
+        #     import inspect;import types;from typing import cast
+        #     this_function_name = cast(types.FrameType, inspect.currentframe()).f_code.co_name
+        #     print(this_function_name+"  :  Done")
         
         return  observation, float(reward), done, info
         # return of the  STEP
@@ -178,7 +178,7 @@ class BaseEnv(Env):
 # =============================  RESET  =======================================   
     def reset(self):
         '''return the observation of the initial condition'''
-        print(">>> reset") ## to be deleted
+        # print(">>> reset") ## to be deleted
         self.reset_states()
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
@@ -218,7 +218,7 @@ class BaseEnv(Env):
         self.done = False
         self.num_left = Flag.num2liquidate
         self.current_step = 0
-        print(">> reset current step") ## to be deleted 
+        # print(">> reset current step") ## to be deleted 
     def _get_init_obs(self, stream):
         init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
         init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)

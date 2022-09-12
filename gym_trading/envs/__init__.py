@@ -1,5 +1,5 @@
 from gym.envs.registration import register
-from broker import Flag
+from gym_trading.envs.broker import Flag
 
 register(
     id = "GymTrading-v1",
