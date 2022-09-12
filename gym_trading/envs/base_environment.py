@@ -95,9 +95,13 @@ class BaseEnv(Env):
         info = self._get_info()
         observation = dict_to_nparray(observation)
         # ---------------------
-        if self.current_step == 1023:
+        if self.current_step == 1024:
             print(self.num_left, done)
         print("current_step, if_done : ", self.current_step, self.done)
+        if done:
+            import inspect;import types;from typing import cast
+            this_function_name = cast(types.FrameType, inspect.currentframe()).f_code.co_name
+            print(this_function_name+"  :  Done")
         
         return  observation, float(reward), done, info
         # return of the  STEP
@@ -112,6 +116,7 @@ class BaseEnv(Env):
         '''get & set done'''
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
+            print("""DONEEEEEEE DONE""")
         return self.done
     # ------ 3/4.REWARD  ------
     
