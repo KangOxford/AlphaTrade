@@ -116,7 +116,7 @@ class BaseEnv(Env):
         '''get & set done'''
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
-            print("""DONEEEEEEE DONE""")
+            # print("""DONEEEEEEE DONE""")
         return self.done
     # ------ 3/4.REWARD  ------
     
@@ -258,8 +258,8 @@ class BaseEnv(Env):
         self.liquidate_base_func(avarage_action)
 
     def _set_init_reward(self):
-        # self.liquidate_init_position() # policy #1 : choose to sell all at init time
-        self.liquidate_twap() # policy #2 : choose to sell averagely across time
+        self.liquidate_init_position() # policy #1 : choose to sell all at init time
+        # self.liquidate_twap() # policy #2 : choose to sell averagely across time
         self.init_reward_bp = self.init_reward/Flag.num2liquidate
 
 
