@@ -9,7 +9,9 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_trading.envs.broker import Flag
 from gym_trading.envs.base_environment import BaseEnv
 from gym_trading.data.data_pipeline import ExternalData
-from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = False # if True then return Flow_list # Flase if you want to debug
+from gym_trading.data.data_pipeline import Debug; 
+Debug.if_return_single_flie = False # if True then return Flow_list # Flase if you want to debug
+Debug.if_whole_data = True # load the whole dataset
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 
 

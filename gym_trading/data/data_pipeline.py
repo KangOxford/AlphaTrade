@@ -3,6 +3,7 @@ import os.path
 import pandas as pd
 class Debug():
     if_return_single_flie = True
+    if_whole_data = False
 
 class DataPipeline():
     def __init__(self, data):
@@ -36,7 +37,7 @@ class ExternalData():
             return name_lst
         if not Debug.if_return_single_flie:
             Flow_list = []
-            mypath = "/Users/kang/Data/Learning/Training/"
+            mypath = "/Users/kang/Data/Learning/Training/" if not Debug.if_whole_data else "/Users/kang/Data/Learning_full/Training/"
             from os import listdir
             from os.path import isfile, join
             onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
