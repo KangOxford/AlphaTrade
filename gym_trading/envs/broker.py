@@ -7,12 +7,12 @@ import pandas as pd
 class Flag():
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     # ------ long horizon ------
-    # max_episode_steps= 2048 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-    # num2liquidate = 1000
+    max_episode_steps= 2048 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
+    num2liquidate = 1000
     # ------ long horizon ------
     # ------ short horizon ------
-    max_episode_steps= 256 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-    num2liquidate = 100 # short horizon
+    # max_episode_steps= 256 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
+    # num2liquidate = 100 # short horizon
     # ------ short horizon ------
     max_action = 300
     max_quantity = 300 # TODO is it the same function with max_action?
