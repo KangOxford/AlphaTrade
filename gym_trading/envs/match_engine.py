@@ -15,7 +15,8 @@ class Core():
         # these wont be changed during step
         self._max_episode_steps = Flag.max_episode_steps 
         self.flow = flow
-        self._flow = -self.flow.diff()
+        # self._flow = -self.flow.diff()
+        self._flow  = -np.diff(self.flow, axis = 0)
         # these will be changed during step
         self.index = None
         self.state = None
@@ -87,7 +88,8 @@ class Core():
     
     def reset(self):
         self.index = Core.init_index
-        self.state = self.flow.iloc[Core.init_index,:] #initial_state
+        self.state = self.flow[Core.init_index,:] #initial_state
+        # self.state = self.flow.iloc[Core.init_index,:] #initial_state
         self.action = None
         self.executed_pairs = None
         self.executed_quantity = None
@@ -114,11 +116,16 @@ class Core():
                 if Index >= self._max_episode_steps: ##
                     # print(Index) ## !TODO not sure
                     break 
-                if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
-                    diff_list.append([self.flow.iat[Index,i],
-                                      self.flow.iat[Index,i+1]])
-                    diff_list.append([self.flow.iat[Index-1,i],
-                                      -self.flow.iat[Index-1,i+1]])
+                if self._flow[Index,i] !=0 or self._flow[Index,i+1] !=0:
+                    diff_list.append([self.flow[Index,i],
+                                      self.flow[Index,i+1]])
+                    diff_list.append([self.flow[Index-1,i],
+                                      -self.flow[Index-1,i+1]])
+                # if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
+                #     diff_list.append([self.flow.iat[Index,i],
+                #                       self.flow.iat[Index,i+1]])
+                #     diff_list.append([self.flow.iat[Index-1,i],
+                #                       -self.flow.iat[Index-1,i+1]])
         if len(diff_list) == 0:
             return []
         else:

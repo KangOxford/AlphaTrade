@@ -28,9 +28,11 @@ class BaseEnv(Env):
         self._max_episode_steps = Flag.max_episode_steps 
         self.type_of_Flow_is_list = True if type(Flow) == list else False
         if not self.type_of_Flow_is_list:
-            self.Flow = Flow
+            self.Flow = Flow.to_numpy() # changing Flow from DataFrame into numpy.array
+            # self.Flow = Flow
         if self.type_of_Flow_is_list:
-            self.Flow_list = Flow
+            self.Flow_list = [flow.to_numpy() for flow in Flow] # changing Flow from DataFrame into numpy.array
+            # self.Flow_list = Flow
         # above four lines is used for choosing the Flow or Flow_list
         self.core = None
         self.price_list = None
@@ -57,7 +59,6 @@ class BaseEnv(Env):
         self.init_reward = 0
         self.init_reward_bp = 0
         self.info = {}
-        self.previous_obs = None
         self.reset_obs = None
     
 # ============================  STEP  =========================================
@@ -93,30 +94,28 @@ class BaseEnv(Env):
         reward = self._get_reward()
         self.memory_reward += reward 
         info = self._get_info()
-        observation = dict_to_nparray(observation)
-        # ---------------------
-        # if self.current_step == 1024:
-        #     print(self.num_left, done)
-        # print("current_step, if_done : ", self.current_step, self.done)
-        # if done:
-        #     import inspect;import types;from typing import cast
-        #     this_function_name = cast(types.FrameType, inspect.currentframe()).f_code.co_name
-        #     print(this_function_name+"  :  Done")
+
         
         return  observation, float(reward), done, info
         # return of the  STEP
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
+        def from_series_to_numpy(obs_):
+            price = obs_.iloc[[2*i for i in range(len(obs_)//2)]]
+            quantity = obs_.iloc[[2*i+1 for i in range(len(obs_)//2)]]
+            obs = np.array([price,quantity])
+            return obs
         obs_ = self.core.step(num)[0] # dtype:series
-        obs = from_series2obs(obs_)
-        self.previous_obs = obs 
+        # assert len(obs_) == 20 ## to be 
+        obs = from_series_to_numpy(obs_)
+        # if obs.shape[1]!=10:
+        #     breakpoint()
         return obs
     # ------ 2/4.DONE ------
     def _get_set_done(self):
         '''get & set done'''
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
-            # print("""DONEEEEEEE DONE""")
         return self.done
     # ------ 3/4.REWARD  ------
     
@@ -182,8 +181,9 @@ class BaseEnv(Env):
         self.reset_states()
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
-            flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
-            flow = flow.reset_index().drop("index",axis=1)
+            flow = self.Flow[index_random:index_random+self._max_episode_steps,:]
+            # flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
+            # flow = flow.reset_index().drop("index",axis=1)
         else:
             index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
             Flow = self.Flow_list[index_random_for_list]
@@ -196,11 +196,11 @@ class BaseEnv(Env):
         self._set_init_reward() 
         self.core.reset() 
         
-        init_obs = self._get_init_obs(flow.iloc[0,:])
-        self.previous_obs = init_obs
+        init_obs = self._get_init_obs(flow[0,:])
+        # init_obs = self._get_init_obs(flow.iloc[0,:])
         self.memory_obs.append(init_obs) # index 0th observation
         # print(">>>"*10+"env.reset done")
-        init_obs = dict_to_nparray(init_obs)
+        # init_obs = dict_to_nparray(init_obs)
         return init_obs
     def reset_states(self):
         # Flag.max_price = max(self.core.flow.iloc[:,0])
@@ -219,13 +219,16 @@ class BaseEnv(Env):
         self.num_left = Flag.num2liquidate
         self.current_step = 0
         # print(">> reset current step") ## to be deleted 
+    # def _get_init_obs(self, stream):
+    #     init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
+    #     init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)
+    #     init_obs= {
+    #         'price' : init_price,
+    #         'quantity' : init_quant
+    #         }
+    #     return init_obs   
     def _get_init_obs(self, stream):
-        init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
-        init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)
-        init_obs= {
-            'price' : init_price,
-            'quantity' : init_quant
-            }
+        init_obs = np.array([[stream[2*i] for i in range(len(stream)//2)], [stream[2*i+1] for i in range(len(stream)//2)]])
         return init_obs   
     
     def liquidate_base_func(self, action):
@@ -332,7 +335,7 @@ class BaseEnv(Env):
     
 if __name__=="__main__":
     from gym_trading.data.data_pipeline import ExternalData
-    from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = False # if True then return Flow_list # Flase if you want to debug
+    from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = True # if False then return Flow_list # True if you want to debug
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()

@@ -3,3 +3,10 @@
 .idea/
 .spyproject/
 .ipynb_checkpoints/
+venv_rnn-v4/
+venv_rnn-v3/
+venv_rnn/
+.DS_Store
+tf_result/
+tensorboard_rnn/
+tensorboard/

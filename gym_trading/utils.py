@@ -29,11 +29,13 @@ def get_max_quantity(flow):
 
 def get_quantity_from_stream(stream):
     column_index = [i*2 + 1 for i in range(0,stream.shape[0]//2)]
-    return stream.iloc[column_index].to_list()
+    return stream[column_index]
+    # return stream.iloc[column_index].to_list()
 
 def get_price_from_stream(stream):
     column_index = [i*2 for i in range(0,stream.shape[0]//2)]
-    return stream.iloc[column_index].to_list()
+    return stream[column_index]
+    # return stream.iloc[column_index].to_list()
 
 def from_pairs2lst_pairs(pairs):
     lst = [[],[]]
