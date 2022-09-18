@@ -76,25 +76,18 @@ class Core():
         
         if type(updated_state) == list:
             # updated_state = self.check_positive(updated_state) # todo delete check_positive
-            def check_negetive_and_remove_zero(updated_state):
+            def check_positive_and_remove_zero(updated_state):
                 result= []
                 for index, item in enumerate(updated_state):
-                    if item[1] > 0: # todo check here if it should be negative
+                    if item[1] < 0: # todo check here if it should be negative
                         result.append(item)
-                return result
-            def convert_to_positive(updated_state):
-                # todo remove convert to positive
-                result = []
-                for item in updated_state:
-                    result.append([item[0], -item[1]])
                 return result
             def keep_dimension(updated_state,size):
                 updated_state = sorted(updated_state, reverse = True)
                 updated_state = updated_state[:size]
                 return updated_state
                 
-            updated_state = check_negetive_and_remove_zero(updated_state)
-            updated_state = convert_to_positive(updated_state)
+            updated_state = check_positive_and_remove_zero(updated_state)
             updated_state = keep_dimension(updated_state,self.flow.shape[1]//2)
             updated_state = Utils.from_pair2series(updated_state)
             
