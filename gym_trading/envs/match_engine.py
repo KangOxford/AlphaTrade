@@ -68,7 +68,8 @@ class Core():
             self.executed_pairs = result
         # get the executed_pairs
         
-        diff_obs = self.diff(self.index-1)
+        # diff_obs = self.diff(self.index-1)
+        diff_obs = self.get_difference(Flag.skip)
         to_be_updated = self.update(diff_obs, new_obs)
         updated_state = self.update(state, to_be_updated)
         
@@ -97,29 +98,31 @@ class Core():
         else: return Utils.remove_replicate(sorted(diff_list))  
         # raise NotImplementedError
     
-    def diff(self, index):
-        Index = index + 1 ## !TODO not sure
-        col_num = self._flow.shape[1] 
-        diff_list = [] 
-        for i in range(col_num):
-            if i%2 == 0:
-                if Index >= self._max_episode_steps: ##
-                    # print(Index) ## !TODO not sure TODO should implement in right way
-                    break 
-                if self._flow[Index,i] !=0 or self._flow[Index,i+1] !=0:
-                    diff_list.append([self.flow[Index,i],
-                                      self.flow[Index,i+1]])
-                    diff_list.append([self.flow[Index-1,i],
-                                      -self.flow[Index-1,i+1]])
-                # if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
-                #     diff_list.append([self.flow.iat[Index,i],
-                #                       self.flow.iat[Index,i+1]])
-                #     diff_list.append([self.flow.iat[Index-1,i],
-                #                       -self.flow.iat[Index-1,i+1]])
-        if len(diff_list) == 0:
-            return []
-        else:
-            return Utils.remove_replicate(sorted(diff_list))  
+# =============================================================================
+#     def diff(self, index):
+#         Index = index + 1 ## !TODO not sure
+#         col_num = self._flow.shape[1] 
+#         diff_list = [] 
+#         for i in range(col_num):
+#             if i%2 == 0:
+#                 if Index >= self._max_episode_steps: ##
+#                     # print(Index) ## !TODO not sure TODO should implement in right way
+#                     break 
+#                 if self._flow[Index,i] !=0 or self._flow[Index,i+1] !=0:
+#                     diff_list.append([self.flow[Index,i],
+#                                       self.flow[Index,i+1]])
+#                     diff_list.append([self.flow[Index-1,i],
+#                                       -self.flow[Index-1,i+1]])
+#                 # if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
+#                 #     diff_list.append([self.flow.iat[Index,i],
+#                 #                       self.flow.iat[Index,i+1]])
+#                 #     diff_list.append([self.flow.iat[Index-1,i],
+#                 #                       -self.flow.iat[Index-1,i+1]])
+#         if len(diff_list) == 0:
+#             return []
+#         else:
+#             return Utils.remove_replicate(sorted(diff_list))  
+# =============================================================================
     
     def check_done(self):
         if self.index < self._max_episode_steps: return False
