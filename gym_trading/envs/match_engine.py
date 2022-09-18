@@ -75,7 +75,27 @@ class Core():
         updated_state = self.update(state, to_be_updated)
         
         if type(updated_state) == list:
-            updated_state = self.check_positive(updated_state)
+            # updated_state = self.check_positive(updated_state) # todo delete check_positive
+            def check_negetive_and_remove_zero(updated_state):
+                result= []
+                for index, item in enumerate(updated_state):
+                    if item[1] > 0: # todo check here if it should be negative
+                        result.append(item)
+                return result
+            def convert_to_positive(updated_state):
+                # todo remove convert to positive
+                result = []
+                for item in updated_state:
+                    result.append([item[0], -item[1]])
+                return result
+            def keep_dimension(updated_state,size):
+                updated_state = sorted(updated_state, reverse = True)
+                updated_state = updated_state[:size]
+                return updated_state
+                
+            updated_state = check_negetive_and_remove_zero(updated_state)
+            updated_state = convert_to_positive(updated_state)
+            updated_state = keep_dimension(updated_state,self.flow.shape[1]//2)
             updated_state = Utils.from_pair2series(updated_state)
             
         self.state = updated_state
@@ -97,33 +117,9 @@ class Core():
                         ])
         if len(diff_list) == 0: return []
         else: return Utils.remove_replicate(sorted(diff_list))  
-        # raise NotImplementedError
-    
-# =============================================================================
-#     def diff(self, index):
-#         Index = index + 1 ## !TODO not sure
-#         col_num = self._flow.shape[1] 
-#         diff_list = [] 
-#         for i in range(col_num):
-#             if i%2 == 0:
-#                 if Index >= self._max_episode_steps: ##
-#                     # print(Index) ## !TODO not sure TODO should implement in right way
-#                     break 
-#                 if self._flow[Index,i] !=0 or self._flow[Index,i+1] !=0:
-#                     diff_list.append([self.flow[Index,i],
-#                                       self.flow[Index,i+1]])
-#                     diff_list.append([self.flow[Index-1,i],
-#                                       -self.flow[Index-1,i+1]])
-#                 # if self._flow.iat[Index,i] !=0 or self._flow.iat[Index,i+1] !=0:
-#                 #     diff_list.append([self.flow.iat[Index,i],
-#                 #                       self.flow.iat[Index,i+1]])
-#                 #     diff_list.append([self.flow.iat[Index-1,i],
-#                 #                       -self.flow.iat[Index-1,i+1]])
-#         if len(diff_list) == 0:
-#             return []
-#         else:
-#             return Utils.remove_replicate(sorted(diff_list))  
-# =============================================================================
+        # else: 
+        #     result = Utils.remove_replicate(sorted(diff_list))  # tbd
+        #     return result 
     
     def check_done(self):
         if self.index < self._max_episode_steps: return False

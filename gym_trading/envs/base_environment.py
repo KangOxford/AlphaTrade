@@ -94,7 +94,8 @@ class BaseEnv(Env):
         reward = self._get_reward()
         self.memory_reward += reward 
         info = self._get_info()
-        
+        # ---------------------
+        # self.set_default_observation() # set default observation 
 
 # ===================check observation=====================================
         if observation.shape != (10,2):
@@ -116,9 +117,9 @@ class BaseEnv(Env):
         # if obs.shape[1]!=10:
         #     breakpoint()
         return obs
-    def set_default_observation(self):
-        if observation.shape != (10,2):
-            return 0
+    # def set_default_observation(self):
+    #     if observation.shape != (10,2):
+    #         return 0
     # ------ 2/4.DONE ------
     def _get_set_done(self):
         '''get & set done'''
