@@ -11,7 +11,7 @@ from gym_trading.envs.base_environment import BaseEnv
 from gym_trading.data.data_pipeline import ExternalData
 from gym_trading.data.data_pipeline import Debug; 
 Debug.if_return_single_flie = False # if True then return Flow_list # Flase if you want to debug
-Debug.if_whole_data = True # load the whole dataset
+Debug.if_whole_data = False # load the whole dataset
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 
 
@@ -94,42 +94,42 @@ start = time.time()
 env = gym.make("GymTrading-v1",Flow = Flow) ## TODO
 
 
-reward_list = []
-obs = env.reset()
-done = False
-for i in range(int(1e8)):
-    print(i)
-    action, _states = model.predict(obs)
-    obs, reward, done, info = env.step(action)
-    rewar_list.append(reward)
-    if done:
-        obs = env.reset()
-        break 
+# reward_list = []
+# obs = env.reset()
+# done = False
+# for i in range(int(1e8)):
+#     print(i)
+#     action, _states = model.predict(obs)
+#     obs, reward, done, info = env.step(action)
+#     rewar_list.append(reward)
+#     if done:
+#         obs = env.reset()
+#         break 
 
 
-for i in range(int(1e3)):
-    obs = env.reset()
-    # ;print(obs)
-    done = False
-    running_reward = 0
-    for i in range(int(1e8)):
-        if i//int(1e5) == i/int(1e5):
-            print("Epoch {}, testing time {}".format(Epoch,(time.time()-start)/60))
-        action, _states = model.predict(obs)
-        obs, reward, done, info = env.step(action)
-        # env.render()
-        rewar_list.append(reward)
-        if done:
-            info_list.append(info)
-            obs = env.reset()
-        rewar_list.append(reward)
-            Epoch += 1
-            break 
+# for i in range(int(1e3)):
+#     obs = env.reset()
+#     # ;print(obs)
+#     done = False
+#     running_reward = 0
+#     for i in range(int(1e8)):
+#         if i//int(1e5) == i/int(1e5):
+#             print("Epoch {}, testing time {}".format(Epoch,(time.time()-start)/60))
+#         action, _states = model.predict(obs)
+#         obs, reward, done, info = env.step(action)
+#         # env.render()
+#         rewar_list.append(reward)
+#         if done:
+#             info_list.append(info)
+#             obs = env.reset()
+#         rewar_list.append(reward)
+#             Epoch += 1
+#             break 
         
-import pandas as pd
-df = pd.DataFrame(info_list)
-string = time.ctime().replace(" ","-").replace(":","-")
-df.to_csv("info_df"+string+".csv")
+# import pandas as pd
+# df = pd.DataFrame(info_list)
+# string = time.ctime().replace(" ","-").replace(":","-")
+# df.to_csv("info_df"+string+".csv")
 
 
 # #  analyse the result

@@ -94,7 +94,12 @@ class BaseEnv(Env):
         reward = self._get_reward()
         self.memory_reward += reward 
         info = self._get_info()
+        
 
+# ===================check observation=====================================
+        if observation.shape != (10,2):
+            breakpoint()
+# =============================================================================
         
         return  observation, float(reward), done, info
         # return of the  STEP
@@ -111,6 +116,9 @@ class BaseEnv(Env):
         # if obs.shape[1]!=10:
         #     breakpoint()
         return obs
+    def set_default_observation(self):
+        if observation.shape != (10,2):
+            return 0
     # ------ 2/4.DONE ------
     def _get_set_done(self):
         '''get & set done'''
@@ -181,15 +189,17 @@ class BaseEnv(Env):
         self.reset_states()
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
-            flow = self.Flow[index_random:index_random+self._max_episode_steps,:]
+            flow = self.Flow[index_random:index_random + self._max_episode_steps * Flag.skip ,:]
             # flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
             # flow = flow.reset_index().drop("index",axis=1)
         else:
             index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
             Flow = self.Flow_list[index_random_for_list]
             index_random = random.randint(0, Flow.shape[0]-self._max_episode_steps-1)
-            flow = Flow.iloc[index_random:index_random+self._max_episode_steps,:]
-            flow = flow.reset_index().drop("index",axis=1)
+            flow = Flow[index_random:index_random+self._max_episode_steps * Flag.skip,:]
+            # flow = Flow.iloc[index_random:index_random+self._max_episode_steps * Flag.skip,:]
+            # flow = flow.reset_index().drop("index",axis=1)
+        print("(base_environment) the length of flow is ",len(flow)) # tbd
         self.core = Core(flow)
         
         self.core.reset()
@@ -319,9 +329,10 @@ class BaseEnv(Env):
             print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
             print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
             print("-"*30)
-            print(">>> TOTAL REWARD : "+str(format(self.memory_reward  + self.init_reward,',.2f'))) # (no inventory) considered
+            print(">>> TOTAL REWARD : "+str(format(self.memory_reward  + self.init_reward,',.2f'))) # (no inventory) considered ## todo some error
             pairs = self.memory_executed_pairs
-            print(f">>> Advantage    : $ {self.memory_reward}, for selling {Flag.num2liquidate} shares of stocks at price {int(get_avarage_price(pairs)/Flag.lobster_scaling)}")
+            try:    print(f">>> Advantage    : $ {self.memory_reward}, for selling {Flag.num2liquidate} shares of stocks at price {int(get_avarage_price(pairs)/Flag.lobster_scaling)}")
+            except: pass
             print("="*15 + "  END  " + "="*15)
             print()
             
@@ -334,28 +345,73 @@ class BaseEnv(Env):
 
     
 if __name__=="__main__":
+# =========================== RANDOM ======================================
     from gym_trading.data.data_pipeline import ExternalData
     from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = True # if False then return Flow_list # True if you want to debug
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    # action = Flag.num2liquidate//Flag.max_episode_steps 
-    action = Flag.num2liquidate//Flag.max_episode_steps + 1
+    action = random.randint(0, Flag.max_action)
     diff_list = []
     step_list = []
     left_list = []
     Performance_list = []
     for i in range(int(1e8)):
         observation, reward, done, info = env.step(action)
-        # if i//2 == i/2: observation, reward, done, info = env.step(action)
-        # if i//3 == i/3: observation, reward, done, info = env.step(action)
-        # else: observation, reward, done, info = env.step(0)
         env.render()
         if done:
-            # diff_list.append(info['Diff'])
             step_list.append(info['Step'])
             left_list.append(info['Left'])
-            # Performance_list.append(info['Performance'])
-            # print(">"*20+" timestep: "+str(i))
             env.reset()
     print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
+# =============================================================================
+
+# =========================== ZERO ======================================
+    # from gym_trading.data.data_pipeline import ExternalData
+    # from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = True # if False then return Flow_list # True if you want to debug
+    # Flow = ExternalData.get_sample_order_book_data()
+    # env = BaseEnv(Flow)
+    # obs = env.reset()
+    # action = 0
+    # diff_list = []
+    # step_list = []
+    # left_list = []
+    # Performance_list = []
+    # for i in range(int(1e8)):
+    #     observation, reward, done, info = env.step(action)
+    #     env.render()
+    #     if done:
+    #         step_list.append(info['Step'])
+    #         left_list.append(info['Left'])
+    #         env.reset()
+    # print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
+# =============================================================================
+
+# ======================   TWAP =======================================
+#     from gym_trading.data.data_pipeline import ExternalData
+#     from gym_trading.data.data_pipeline import Debug; Debug.if_return_single_flie = True # if False then return Flow_list # True if you want to debug
+#     Flow = ExternalData.get_sample_order_book_data()
+#     env = BaseEnv(Flow)
+#     obs = env.reset()
+#     # action = Flag.num2liquidate//Flag.max_episode_steps 
+#     action = Flag.num2liquidate//Flag.max_episode_steps + 1
+#     diff_list = []
+#     step_list = []
+#     left_list = []
+#     Performance_list = []
+#     for i in range(int(1e8)):
+#         observation, reward, done, info = env.step(action)
+#         # if i//2 == i/2: observation, reward, done, info = env.step(action)
+#         # if i//3 == i/3: observation, reward, done, info = env.step(action)
+#         # else: observation, reward, done, info = env.step(0)
+#         env.render()
+#         if done:
+#             # diff_list.append(info['Diff'])
+#             step_list.append(info['Step'])
+#             left_list.append(info['Left'])
+#             # Performance_list.append(info['Performance'])
+#             # print(">"*20+" timestep: "+str(i))
+#             env.reset()
+#     print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
+# 
+# =============================================================================

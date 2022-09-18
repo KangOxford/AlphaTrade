@@ -26,7 +26,8 @@ class Flag():
     min_quantity = 0
     scaling = 30000000
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
-    skip = 1 # default = 1 from step No.n to step No.n+1
+    # skip = 1 # default = 1 from step No.n to step No.n+1
+    skip = 20 # default = 1 from step No.n to step No.n+1
     price_level = 10
     # skip = 20 # for 1 second on average
     

@@ -38,7 +38,8 @@ class Core():
             return Utils.remove_replicate(sorted(obs))
     def step(self, action):
         self.action = action
-        self.index += 1
+        self.index += Flag.skip # default = 1
+        print("(match_engine) current index is ",self.index) ## tbd
         state = Utils.from_series2pair(self.state)
 
         assert type(action) == np.ndarray or int
@@ -129,7 +130,7 @@ class Core():
         elif self.index == self._max_episode_steps: return True
     
     def reset(self):
-        self.index = Core.init_index
+        self.index = Core.init_index # default = 0
         self.state = self.flow[Core.init_index,:] #initial_state
         # self.state = self.flow.iloc[Core.init_index,:] #initial_state
         self.action = None
