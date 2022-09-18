@@ -79,7 +79,7 @@ class Core():
             def check_positive_and_remove_zero(updated_state):
                 result= []
                 for index, item in enumerate(updated_state):
-                    if item[1] < 0: # todo check here if it should be negative
+                    if item[1] > 0: # todo check here if it should be negative
                         result.append(item)
                 return result
             def keep_dimension(updated_state,size):
