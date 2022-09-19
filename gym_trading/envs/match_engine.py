@@ -39,6 +39,7 @@ class Core():
         else:
             return Utils.remove_replicate(sorted(obs))
     def step(self, action):
+        print("=" * 10 + " New Epoch " + "=" * 10)
         print("(match_engine) current index is ",self.index) ## tbd
         self.action = action
         self_state = self.state # tbd
@@ -95,7 +96,11 @@ class Core():
             def check_positive_and_remove_zero(updated_state):
                 result= []
                 for index, item in enumerate(updated_state):
-                    if item[1] < 0: # todo check here if it should be negative # checking? here it should be negative
+                    if item[1] > 0: # todo check here if it should be negative # checking? here it should be negative
+                        '''e.g. if item == [31120200, -35] and item[1] == -35 < 0, 
+                        it means the order has been withdrawned, and we can directly
+                        remove it from the order book.
+                        '''
                         result.append(item)
                 return result
             def keep_dimension(updated_state,size):
