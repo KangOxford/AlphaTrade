@@ -109,75 +109,74 @@ def dict_to_nparray(observation: dict) -> np.ndarray:
     price, quantity = observation['price'], observation['quantity']
     return np.array([price,quantity])
 
-class Utils():
-    def from_series2pair(stream):
-        num = stream.shape[0]
-        previous_list = list(stream)
-        previous_flow = []
-        for i in range(num):
-            if i%2==0:
-                previous_flow.append(
-                    [previous_list[i],previous_list[i+1]]
-                    ) 
-        return previous_flow
+def from_series2pair(stream):
+    num = stream.shape[0]
+    previous_list = list(stream)
+    previous_flow = []
+    for i in range(num):
+        if i%2==0:
+            previous_flow.append(
+                [previous_list[i],previous_list[i+1]]
+                ) 
+    return previous_flow
 
-    def from_pair2series(stream):
-        def namelist():
-            name_lst = []
-            for i in range(len(stream)):
-                name_lst.append("bid"+str(i+1))
-                name_lst.append("bid"+str(i+1)+"_quantity")
-            return name_lst
-        name_lst = namelist()
-        stream = sorted(stream,reverse=True)
-        result = []
-        for item in stream:
-            result.append(item[0])
-            result.append(item[1])
-        return pd.Series(data=result, index = name_lst)
-        # TODO deal with the empty data, which is object not float
+def from_pair2series(stream):
+    def namelist():
+        name_lst = []
+        for i in range(len(stream)):
+            name_lst.append("bid"+str(i+1))
+            name_lst.append("bid"+str(i+1)+"_quantity")
+        return name_lst
+    name_lst = namelist()
+    stream = sorted(stream,reverse=True)
+    result = []
+    for item in stream:
+        result.append(item[0])
+        result.append(item[1])
+    return pd.Series(data=result, index = name_lst)
+    # TODO deal with the empty data, which is object not float
 
-    def remove_replicate(diff_list):
-        # remove_replicate
-        # diff_list = sorted(diff_list) ## !TODO not sure
-        diff_list_keys = []
-        for item in diff_list:
-            diff_list_keys.append(item[0])
-        set_diff_list_keys = sorted(set(diff_list_keys))
-        
-        index_list = []
-        for item in set_diff_list_keys:
-            index_list.append(diff_list_keys.index(item))
-        index_list = sorted(index_list)
-        
-        present_flow = []
-        for i in range(len(index_list)-1):
-            index = index_list[i]
-            if diff_list[index][0] == diff_list[index+1][0] :
-                present_flow.append([
-                    diff_list[index][0], 
-                    diff_list[index][1]+diff_list[index+1][1]
-                    ]) 
-            elif diff_list[index][0] != diff_list[index+1][0] :
-                present_flow.append([
-                    diff_list[index][0],
-                    diff_list[index][1]
-                    ])
-        if index_list[-1] == len(diff_list)-1:
+def remove_replicate(diff_list):
+    # remove_replicate
+    # diff_list = sorted(diff_list) ## !TODO not sure
+    diff_list_keys = []
+    for item in diff_list:
+        diff_list_keys.append(item[0])
+    set_diff_list_keys = sorted(set(diff_list_keys))
+    
+    index_list = []
+    for item in set_diff_list_keys:
+        index_list.append(diff_list_keys.index(item))
+    index_list = sorted(index_list)
+    
+    present_flow = []
+    for i in range(len(index_list)-1):
+        index = index_list[i]
+        if diff_list[index][0] == diff_list[index+1][0] :
             present_flow.append([
-                diff_list[-1][0],
-                diff_list[-1][1]
+                diff_list[index][0], 
+                diff_list[index][1]+diff_list[index+1][1]
+                ]) 
+        elif diff_list[index][0] != diff_list[index+1][0] :
+            present_flow.append([
+                diff_list[index][0],
+                diff_list[index][1]
                 ])
-        elif index_list[-1] != len(diff_list)-1:
-            present_flow.append([
-                diff_list[-2][0], 
-                diff_list[-2][1]+diff_list[-1][1]
-                ])     
-        result = present_flow.copy()
-        for j in range(len(present_flow)):
-            if present_flow[j][1] == 0:
-                result.remove(present_flow[j])
-        return result
+    if index_list[-1] == len(diff_list)-1:
+        present_flow.append([
+            diff_list[-1][0],
+            diff_list[-1][1]
+            ])
+    elif index_list[-1] != len(diff_list)-1:
+        present_flow.append([
+            diff_list[-2][0], 
+            diff_list[-2][1]+diff_list[-1][1]
+            ])     
+    result = present_flow.copy()
+    for j in range(len(present_flow)):
+        if present_flow[j][1] == 0:
+            result.remove(present_flow[j])
+    return result
 
 def get_avarage_price(pairs):
     sum_product, sum_quantity = 0, 0 
@@ -188,8 +187,11 @@ def get_avarage_price(pairs):
     avarage_price = sum_product / sum_quantity
     return avarage_price
 
-
-
+def change_to_gym_state(stream): 
+    if stream.shape == (20,):
+        return np.array([[stream[2*i] for i in range(len(stream)//2)], [stream[2*i+1] for i in range(len(stream)//2)]])
+    else:
+        raise NotImplementedError
     
 if __name__=="__main__":
     pairs = [[123,1],[133324,1],[132312,3]]##

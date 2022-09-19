@@ -103,8 +103,6 @@ if __name__ == "__main__":
     
     # %%
     # num = 24
-    # from gym_trading.envs.match_engine import Broker, Utils
-    # obs = Utils.from_series2pair(stream)
     # level = Broker._level_market_order_liquidating(num, obs)
     # reward = 0
     # consumed = 0

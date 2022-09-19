@@ -12,7 +12,7 @@ from gym import spaces
 from gym_trading.utils import * 
 from gym_trading.envs.match_engine import Core
 from gym_trading.envs.broker import Flag, Broker
-from gym_trading.utils import Utils, exit_after
+from gym_trading.utils import exit_after
 warnings.filterwarnings("ignore")
 # =============================================================================
 

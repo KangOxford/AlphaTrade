@@ -4,7 +4,7 @@ import numpy as np
 # import cudf
 import pandas as pd
 
-from gym_trading.utils import Utils
+from gym_trading import utils
 from gym_trading.envs.broker import Flag, Broker
 from gym_trading.data.data_pipeline import ExternalData
 '''One Match Engine is corresponds to one specific Limit Order Book DataSet'''
@@ -37,13 +37,13 @@ class Core():
             raise NotImplementedError
             # return [] # TODO to implement it in right way
         else:
-            return Utils.remove_replicate(sorted(obs))
+            return utils.remove_replicate(sorted(obs))
     def step(self, action):
         print("=" * 10 + " New Epoch " + "=" * 10)
         print("(match_engine) current index is ",self.index) ## tbd
         self.action = action
         self_state = self.state # tbd
-        state = Utils.from_series2pair(self.state)
+        state = utils.from_series2pair(self.state)
 
         assert type(action) == np.ndarray or int
         remove_zero_quantity = lambda x:[item for index, item in enumerate(x) if item[1]!=0]
@@ -119,11 +119,11 @@ class Core():
             
             updated_state_1 = check_positive_and_remove_zero(updated_state) # tbd
             # updated_state = keep_dimension(updated_state,self.flow.shape[1]//2) # tbd
-            updated_state_2 = Utils.from_pair2series(updated_state_1) # tbd
+            updated_state_2 = utils.from_pair2series(updated_state_1) # tbd
             
             updated_state = check_positive_and_remove_zero(updated_state) 
             updated_state = keep_dimension(updated_state,self.flow.shape[1]//2)
-            updated_state = Utils.from_pair2series(updated_state)
+            updated_state = utils.from_pair2series(updated_state)
             
         self.state = updated_state
         reward = self.reward
@@ -145,7 +145,7 @@ class Core():
                         [self.flow[Index,2*i], -self.flow[Index,2*i+1]]
                         ])
         if len(diff_list) == 0: return []
-        else: return Utils.remove_replicate(sorted(diff_list))  
+        else: return utils.remove_replicate(sorted(diff_list))  
         '''e.g.
         If Index == 3 in the single_file_debug mode, the the incomming difference order 
         from data should be [[31120200, -35], [31155000, 28]], which means withdrawing 
@@ -165,6 +165,8 @@ class Core():
         self.executed_quantity = None
         self.done = False
         self.executed_sum = 0
+        # --------------
+        self.state = utils.change_to_gym_state(self.state)
         return self.state
     
     
