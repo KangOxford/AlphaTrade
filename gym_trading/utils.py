@@ -137,13 +137,14 @@ def from_pair2series(stream):
     # TODO deal with the empty data, which is object not float
 
 def remove_replicate(diff_list):
-    # remove_replicate
-    # diff_list = sorted(diff_list) ## !TODO not sure
-    diff_list_keys = []
-    for item in diff_list:
-        diff_list_keys.append(item[0])
-    set_diff_list_keys = sorted(set(diff_list_keys))
+    # remove_replicate and remove zero quantity
     
+    diff_list = arg_sort(diff_list)
+    
+    diff_list_keys = []
+    for item in diff_list[0,:]:
+        diff_list_keys.append(item)
+    set_diff_list_keys = sorted(set(diff_list_keys), reverse = True)
     index_list = []
     for item in set_diff_list_keys:
         index_list.append(diff_list_keys.index(item))
@@ -152,30 +153,35 @@ def remove_replicate(diff_list):
     present_flow = []
     for i in range(len(index_list)-1):
         index = index_list[i]
-        if diff_list[index][0] == diff_list[index+1][0] :
+        if diff_list[0][index] == diff_list[0][index+1] :
             present_flow.append([
-                diff_list[index][0], 
-                diff_list[index][1]+diff_list[index+1][1]
+                diff_list[0][index], 
+                diff_list[1][index]+diff_list[1][index+1]
                 ]) 
-        elif diff_list[index][0] != diff_list[index+1][0] :
+        elif diff_list[0][index] != diff_list[0][index+1] :
             present_flow.append([
-                diff_list[index][0],
-                diff_list[index][1]
+                diff_list[0][index],
+                diff_list[1][index]
                 ])
-    if index_list[-1] == len(diff_list)-1:
+            
+    if index_list[-1] == diff_list.shape[1]-1:
         present_flow.append([
-            diff_list[-1][0],
-            diff_list[-1][1]
+            diff_list[0][-1],
+            diff_list[1][-1]
             ])
-    elif index_list[-1] != len(diff_list)-1:
+    else:
         present_flow.append([
-            diff_list[-2][0], 
-            diff_list[-2][1]+diff_list[-1][1]
+            diff_list[0][-2], 
+            diff_list[1][-2]+diff_list[1][-1]
             ])     
+        
     result = present_flow.copy()
     for j in range(len(present_flow)):
         if present_flow[j][1] == 0:
             result.remove(present_flow[j])
+            # remove zero quantity
+    # -----------
+    result = np.array(result).T # change to satisfy the gym dimension requirements
     return result
 
 def get_avarage_price(pairs):
@@ -193,6 +199,82 @@ def change_to_gym_state(stream):
     else:
         raise NotImplementedError
     
+
+def remove_zero_quantity(x):
+    for i in range(x.shape[1]):
+        if x[1][i] == 0:
+            return x[:,:i]
+    return x
+    '''e.g. 1
+    x == np.array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+            31140000, 31130000, 31120300, 31120200],
+           [       3,        4,       16,        2,        2,      506,
+                   4,        2,        0,        0]])
+    return array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+            31140000, 31130000],
+           [       3,        4,       16,        2,        2,      506,
+                   4,        2]])
+    e.g. 2
+    x == np.array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+            31140000, 31130000, 31120300, 31120200],
+           [       3,        4,       16,        2,        2,      506,
+                   4,        2,        1,        0]])
+    return array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+            31140000, 31130000, 31120300],
+           [       3,        4,       16,        2,        2,      506,
+                   4,        2,       1]])
+    '''
+    
+def check_positive_and_remove_zero(updated_state):
+    index_list = []
+    for i in range(updated_state.shape[1]):
+        if updated_state[1,i]>0: # todo check here if it should be negative # checking? here it should be negative
+            index_list.append(i)
+            '''e.g. if item == [31120200, -35] and item[1] == -35 < 0, 
+            it means the order has been withdrawned, and we can directly
+            remove it from the order book.
+            '''
+    return updated_state[:,index_list]
+ 
+
+def keep_dimension(updated_state,size):
+    if updated_state.shape[1] > size: updated_state = updated_state[:size]
+    if updated_state.shape[1] < size: 
+        # updated_state.extend([[Flag.min_price,0] for i in range(size - len(updated_state))])
+        to_be_extended = np.array([[Flag.min_price,0] for i in range(size - updated_state.shape[1])]).T
+        updated_state = np.hstack((updated_state, to_be_extended))
+        # todo not sure
+    return updated_state
+           
+
+def list_to_gym_state(diff_list):
+    container = np.zeros((len(diff_list[0]), len(diff_list)), dtype = np.int64)
+    for i in range(container.shape[1]):
+        container[:,i] = diff_list[i]
+    return container
+
+def check_if_sorted(obs):
+    # print("check_if_sorted called") #tbd
+    # if not (obs == arg_sort(obs))[0].all(): return arg_sort(obs)
+    # else: return obs
+    
+    assert (obs == arg_sort(obs))[0].all(), "price in obs is ont in the ascending order" 
+    
+    # only check whether the price is in ascending order
+    # assert (obs == -np.sort(-obs)).all(), "price in obs is ont in the ascending order" 
+    # todo check it 
+
+def check_get_difference_and_update(condition ,right_answer, my_answer): 
+    ''''If there is a new order in the data, but the action does not produce 
+    a new order instruction, then the new state should be consistent 
+    with the next state in the data
+    '''
+    right_answer = change_to_gym_state(right_answer) # it should be this one
+    assert (my_answer == right_answer).all(), "error in the update in match_engine.core"
+
+def arg_sort(x):
+    return x[:,x[0, :].argsort()[::-1]]
+                    
 if __name__=="__main__":
     pairs = [[123,1],[133324,1],[132312,3]]##
     # series = observation[0]

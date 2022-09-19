@@ -45,7 +45,7 @@ class Broker():
                 result = -999
                 break
             try :
-                num = max(num-obs[i][1], 0)
+                num = max(num-obs[1][i], 0)
             except:
                 break
             i+=1
@@ -58,18 +58,16 @@ class Broker():
     
     @classmethod
     def pairs_market_order_liquidating(cls, num, obs):
-        # num, obs = action, state ##
         num = copy.deepcopy(num)
-        # level, executed_num = Broker._level_market_order_liquidating(num_left, diff_obs)##
         level, executed_num = cls._level_market_order_liquidating(num, obs)
         # TODO need the num <=609 the sum of prices at all leveles
         
         result = []
         if level>1:
             for i in range(level-1):
-                result.append([obs[i][0],-obs[i][1]])
+                result.append([obs[0][i],-obs[1][i]])
             num_left = num + sum([item[1] for item in result])
-            result.append([obs[level-1][0], -1 * (min(num_left, obs[level-1][1]))]) # apppend the last item 
+            result.append([obs[0][level-1], -1 * (min(num_left, obs[1][level-1]))]) # apppend the last item 
             for item in result: assert item[1]<=0 ##
         if level == 1:
             # result.append([obs[0][0],-num]) # to check it should be wrong
@@ -83,6 +81,10 @@ class Broker():
             result.extend(minus_list)
         assert executed_num>=0
         assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
+        # -------------------------
+        result = np.array(result).T
+        # result = np.array(result)
+        
         return result, executed_num
 
 if __name__ == "__main__":

@@ -30,28 +30,47 @@ class Core():
 
     def update(self, obs, diff_obs):
         '''update at time index based on the observation of index-1'''
-        obs.extend(diff_obs)
-        if len(obs) == 0 :
-            return []
+        if  diff_obs.shape != (0,) and obs.shape != (0,): 
+            try:obs = np.hstack((obs.astype(np.int64),diff_obs.astype(np.int64))) 
+            except:breakpoint()
+        '''e.g.
+        obs = array([[1239,    1]])
+        diff_obs = array([[19723,     2]])
+        np.vstack((obs,diff_obs)) = 
+        array([[ 1239,     1],
+               [19723,     2]])
+        '''
+        if obs.shape[0] == 0 : # obs.shape = (0,)
+            result =  []
         elif -999 in obs: 
             raise NotImplementedError
             # return [] # TODO to implement it in right way
         else:
-            return utils.remove_replicate(sorted(obs))
+            # utils.check_if_sorted(obs)
+            result = utils.remove_replicate(obs)
+        return np.array(result)
+            
     def step(self, action):
         print("=" * 10 + " New Epoch " + "=" * 10)
         print("(match_engine) current index is ",self.index) ## tbd
         self.action = action
+        
         self_state = self.state # tbd
-        state = utils.from_series2pair(self.state)
-
         assert type(action) == np.ndarray or int
-        remove_zero_quantity = lambda x:[item for index, item in enumerate(x) if item[1]!=0]
-        state = remove_zero_quantity(state)
+        state = utils.remove_zero_quantity(self.state)
+        '''e.g.
+        array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+                31140000, 31130000, 30000000, 30000000],
+               [       3,        4,       16,        2,        2,      506,
+                       4,        2,       0,       0]])
+        this step is to remove the last two useless pairs(price, quantity)
+        '''
         
         # action = min(action,self.num_left) ##
         
         new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, state)
+        # new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, self_state) # tbd
+        print("new_obs ",new_obs)
         self.executed_quantity = executed_quantity
         # get_new_obs which are new orders, not the new state
         
@@ -72,8 +91,6 @@ class Core():
             self.executed_pairs = result
         # get the executed_pairs
         
-        # diff_obs = self.diff(self.index-1)
-        state = sorted(state, reverse = True) # state is the original observation 1/3
         
         self_index = self.index # tbd
         diff_obs = self.get_difference(Flag.skip) # get incomming orders from data 2/3
@@ -81,33 +98,18 @@ class Core():
         
         updated_state = self.update(state, to_be_updated) # updated state, state combined with incomming orders 3/3
         
-        # def check_get_difference_and_update(): 
-        if len(diff_obs)!= 0: # diff_obs: get incomming orders from data 2/3
-        # if len(to_be_updated)!= 0:
-            right_answer = self.flow[self.index,:] # it should be this one
-            right_answer_m1 = self.flow[self.index-1,:]
-            right_answer_p1 = self.flow[self.index+1,:]
-            my_answer = sorted(updated_state,reverse=True)
-            # breakpoint()
-            print() #tbd
+
+
+        updated_state = utils.check_positive_and_remove_zero(updated_state) 
+        updated_state = utils.keep_dimension(updated_state,self.flow.shape[1]//2)
         
+        
+        utils.check_get_difference_and_update(True, self.flow[self.index + 1,:], updated_state) 
+        # input: condition = diff_obs.shape[0] != 0, right answer = self.flow[self.index,:], my_answer = updated_state
+
         if type(updated_state) == list:
             # updated_state = self.check_positive(updated_state) # todo delete check_positive
-            def check_positive_and_remove_zero(updated_state):
-                result= []
-                for index, item in enumerate(updated_state):
-                    if item[1] > 0: # todo check here if it should be negative # checking? here it should be negative
-                        '''e.g. if item == [31120200, -35] and item[1] == -35 < 0, 
-                        it means the order has been withdrawned, and we can directly
-                        remove it from the order book.
-                        '''
-                        result.append(item)
-                return result
-            def keep_dimension(updated_state,size):
-                updated_state = sorted(updated_state, reverse = True)
-                if len(updated_state) > size: updated_state = updated_state[:size]
-                if len(updated_state) < size: updated_state.extend([[Flag.min_price,0] for i in range(size - len(updated_state))])
-                return updated_state
+
                 
             print("action chosen in this step ",self.action) # tbd
             print("core.index in this step ", self.index) # tbd
@@ -117,13 +119,10 @@ class Core():
             except: pass
             print('diff_obs ', diff_obs) # tbd
             
-            updated_state_1 = check_positive_and_remove_zero(updated_state) # tbd
-            # updated_state = keep_dimension(updated_state,self.flow.shape[1]//2) # tbd
-            updated_state_2 = utils.from_pair2series(updated_state_1) # tbd
+            # updated_state_1 = check_positive_and_remove_zero(updated_state) # tbd
+            # # updated_state = keep_dimension(updated_state,self.flow.shape[1]//2) # tbd
+            # updated_state_2 = utils.from_pair2series(updated_state_1) # tbd
             
-            updated_state = check_positive_and_remove_zero(updated_state) 
-            updated_state = keep_dimension(updated_state,self.flow.shape[1]//2)
-            updated_state = utils.from_pair2series(updated_state)
             
         self.state = updated_state
         reward = self.reward
@@ -144,8 +143,12 @@ class Core():
                         [self.flow[Index+1,2*i], self.flow[Index+1,2*i+1]], 
                         [self.flow[Index,2*i], -self.flow[Index,2*i+1]]
                         ])
-        if len(diff_list) == 0: return []
-        else: return utils.remove_replicate(sorted(diff_list))  
+        if len(diff_list) == 0: result =  []
+        else: 
+            result = utils.list_to_gym_state(diff_list)
+            utils.check_if_sorted(result) 
+            result = utils.remove_replicate(result) # the diff_list should be sorted here # todo write a check func
+        return np.array(result)
         '''e.g.
         If Index == 3 in the single_file_debug mode, the the incomming difference order 
         from data should be [[31120200, -35], [31155000, 28]], which means withdrawing 
@@ -195,8 +198,8 @@ if __name__ == "__main__":
     obs0 = core.reset()
     
     
-    for i in range(10):
-        obs = core.step(0)
+    # for i in range(10):
+    #     obs = core.step(0)
         
     for i in range(10):
         obs = core.step(1)
