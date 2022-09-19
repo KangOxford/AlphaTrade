@@ -118,31 +118,31 @@ if __name__ == "__main__":
 
 
     # %%    
-    def get_max_price(flow):
-        price_list = []
-        column_index = [i*2  for i in range(0,flow.shape[1]//2)]
-        for i in range(flow.shape[0]):
-            price_list.extend(flow.iloc[i,column_index].to_list())
-        price_set = max(price_list)
-        return price_set
-    max_price = get_max_price(Flow)
+    # def get_max_price(flow):
+    #     price_list = []
+    #     column_index = [i*2  for i in range(0,flow.shape[1]//2)]
+    #     for i in range(flow.shape[0]):
+    #         price_list.extend(flow.iloc[i,column_index].to_list())
+    #     price_set = max(price_list)
+    #     return price_set
+    # max_price = get_max_price(Flow)
     
-    def get_min_price(flow):
-        price_list = []
-        column_index = [i*2  for i in range(0,flow.shape[1]//2)]
-        for i in range(flow.shape[0]):
-            price_list.extend(flow.iloc[i,column_index].to_list())
-        price_set = min(price_list)
-        return price_set
-    min_price = get_min_price(Flow)
+    # def get_min_price(flow):
+    #     price_list = []
+    #     column_index = [i*2  for i in range(0,flow.shape[1]//2)]
+    #     for i in range(flow.shape[0]):
+    #         price_list.extend(flow.iloc[i,column_index].to_list())
+    #     price_set = min(price_list)
+    #     return price_set
+    # min_price = get_min_price(Flow)
     
-    max_price = 0 
-    for i in range(len(Flow_list)):
-        max_price = max(max_price, get_max_price(Flow_list[i]))
+    # max_price = 0 
+    # for i in range(len(Flow_list)):
+    #     max_price = max(max_price, get_max_price(Flow_list[i]))
 
-    min_price = 0 
-    for i in range(len(Flow_list)):
-        min_price = max(min_price, get_min_price(Flow_list[i]))
+    # min_price = 0 
+    # for i in range(len(Flow_list)):
+    #     min_price = max(min_price, get_min_price(Flow_list[i]))
 
                 
     
