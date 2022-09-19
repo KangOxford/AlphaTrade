@@ -70,26 +70,29 @@ class Core():
         
         new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, state)
         # new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, self_state) # tbd
-        print("new_obs ",new_obs)
+        print("new_obs:")
+        print(new_obs)
         self.executed_quantity = executed_quantity
         # get_new_obs which are new orders, not the new state
         
 
-        for item in new_obs:
-            assert item[1] <= 0 
-        self.executed_pairs = new_obs ## TODO ERROR
-        ''' e.g. [[31161600, -3], [31160000, -4], [31152200, -13]] 
-        all the second element should be negative, as it is the excuted and should be
-        removed from the limit order book
-        '''
-        
-        if sum([-1*item[-1] for item in new_obs]) != executed_quantity:
-            '''the left is the sum of the quantity from new_obs'''
-            num, obs = executed_quantity, [[item[0],-1*item[1]] for item in new_obs]
-            result, executed_num = Broker.pairs_market_order_liquidating(num, obs)
-            assert executed_num == executed_quantity
-            self.executed_pairs = result
-        # get the executed_pairs
+        if new_obs.shape != (0,):
+            # new_obs[1,:] 
+            for i in range(new_obs.shape[1]):
+                assert new_obs[1] <= 0 
+            self.executed_pairs = new_obs ## TODO ERROR
+            ''' e.g. [[31161600, -3], [31160000, -4], [31152200, -13]] 
+            all the second element should be negative, as it is the excuted and should be
+            removed from the limit order book
+            '''
+            
+            if -new_obs[1,:].sum() != executed_quantity:
+                '''the left is the sum of the quantity from new_obs'''
+                num, obs = executed_quantity, [[item[0],-1*item[1]] for item in new_obs]
+                result, executed_num = Broker.pairs_market_order_liquidating(num, obs)
+                assert executed_num == executed_quantity
+                self.executed_pairs = result
+            # get the executed_pairs
         
         
         self_index = self.index # tbd
@@ -203,9 +206,11 @@ if __name__ == "__main__":
         
     for i in range(10):
         obs = core.step(1)
+    
+    
     # ==================================================
-    obs125= core.step(min(20,core.get_ceilling()))
-    obs126 = core.step(300)
+    # obs125= core.step(min(20,core.get_ceilling()))
+    # obs126 = core.step(300)
     # ==================================================
     
 
