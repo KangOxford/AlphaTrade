@@ -106,8 +106,9 @@ class Core():
         updated_state = utils.check_positive_and_remove_zero(updated_state) 
         updated_state = utils.keep_dimension(updated_state,self.flow.shape[1]//2)
         
-        
-        utils.check_get_difference_and_update(True, self.flow[self.index + 1,:], updated_state) 
+        condition = True if action == 0 else False
+        # condition = True if action.shape != (0,) else False
+        utils.check_get_difference_and_update(condition, self.flow[self.index + 1,:], updated_state) 
         # input: condition = diff_obs.shape[0] != 0, right answer = self.flow[self.index,:], my_answer = updated_state
 
         if type(updated_state) == list:

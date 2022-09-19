@@ -269,8 +269,11 @@ def check_get_difference_and_update(condition ,right_answer, my_answer):
     a new order instruction, then the new state should be consistent 
     with the next state in the data
     '''
-    right_answer = change_to_gym_state(right_answer) # it should be this one
-    assert (my_answer == right_answer).all(), "error in the update in match_engine.core"
+    if condition:
+        right_answer = change_to_gym_state(right_answer) # it should be this one
+        assert (my_answer == right_answer).all(), "error in the update in match_engine.core"
+    else:
+        pass # todo not implemented 
 
 def arg_sort(x):
     return x[:,x[0, :].argsort()[::-1]]
