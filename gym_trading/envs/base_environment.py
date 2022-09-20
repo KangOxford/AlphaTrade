@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore")
 
 
 class BaseEnv(Env):
-    """A stock trading environment for OpenAI gym"""
+    """A stock trading environment based on OpenAI gym"""
     metadata = {'render.modes': ['human']}
     
 # ============================  INIT  =========================================
@@ -123,6 +123,7 @@ class BaseEnv(Env):
     # def set_default_observation(self):
     #     if observation.shape != (10,2):
     #         return 0
+    
     # ------ 2/4.DONE ------
     def _get_set_done(self):
         '''get & set done'''
@@ -142,9 +143,6 @@ class BaseEnv(Env):
 
     def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs.copy() # TODO
-        # lst_pairs = np.array(from_pairs2lst_pairs(pairs))
-        # # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
-        # result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
         result = -1 * (pairs[0,:] * pairs[1,:]).sum()
         assert result >= 0
         scaled_result = result / Flag.lobster_scaling # add this line the make it as the real price
@@ -200,15 +198,11 @@ class BaseEnv(Env):
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
             flow = self.Flow[index_random:index_random + (self._max_episode_steps+1) * Flag.skip ,:]
-            # flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
-            # flow = flow.reset_index().drop("index",axis=1)
         else:
             index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
             Flow = self.Flow_list[index_random_for_list]
             index_random = random.randint(0, Flow.shape[0]-self._max_episode_steps-1)
             flow = Flow[index_random:index_random+(self._max_episode_steps+1) * Flag.skip,:]
-            # flow = Flow.iloc[index_random:index_random+self._max_episode_steps * Flag.skip,:]
-            # flow = flow.reset_index().drop("index",axis=1)
         print("(base_environment) the length of flow is ",len(flow)) # tbd
         self.core = Core(flow)
         
@@ -219,8 +213,6 @@ class BaseEnv(Env):
         init_obs = self._get_init_obs(flow[0,:])
         # init_obs = self._get_init_obs(flow.iloc[0,:])
         self.memory_obs.append(init_obs) # index 0th observation
-        # print(">>>"*10+"env.reset done")
-        # init_obs = dict_to_nparray(init_obs)
         return init_obs
     def reset_states(self):
         self.memory_revenues = []
@@ -236,15 +228,6 @@ class BaseEnv(Env):
         self.done = False
         self.num_left = Flag.num2liquidate
         self.current_step = 0
-        # print(">> reset current step") ## to be deleted 
-    # def _get_init_obs(self, stream):
-    #     init_price = np.array(get_price_from_stream(stream)).astype(np.int32)
-    #     init_quant = np.array(get_quantity_from_stream(stream)).astype(np.int32)
-    #     init_obs= {
-    #         'price' : init_price,
-    #         'quantity' : init_quant
-    #         }
-    #     return init_obs   
     def _get_init_obs(self, stream):
         init_obs = np.array([[stream[2*i] for i in range(len(stream)//2)], [stream[2*i+1] for i in range(len(stream)//2)]])
         return init_obs   
@@ -300,59 +283,11 @@ class BaseEnv(Env):
         # self.liquidate_zero() # policy #4 : choose to debug
         
         self.init_reward_bp = self.init_reward/Flag.num2liquidate
-
-
-# =============================================================================
-    def render_v1(self):
-        if self.done:
-            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
-            try: assert self.num_left >= 0, "Error for the negetive left quantity"
-            except: 
-                raise Exception("Error for the negetive left quantity")
-            print("="*30)
-            print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> INIT  REWARD : "+str(format(self.init_reward,',d')))
-            print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate,',d')))
-            print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate,',d')))
-            print(">>> Base Point (Bound): "+str(format(BasePointBound))) #(o/oo)
-            print(">>> Base Point (Init): "+str(format(BasePointInit))) #(o/oo)
-            print(">>> Base Point (RL): "+str(format(BasePointRL))) #(o/oo)
-            print(">>> Base Point (Diff): "+str(format(BasePointDiff))) #(o/oo)
-            print(">>> Value (Init): "+str(format(self.init_reward,',f'))) #(o/oo)
-            print(">>> Value (RL)  : "+str(format(self.memory_revenue,',f'))) #(o/oo)
-            print(">>> Value (Performance): "+str(format( (self.memory_revenue/self.init_reward - 1)*100,',f'))) #(o/oo)
-            print(">>> Number (Diff): "+str(format( (self.memory_revenue-self.init_reward)/Flag.min_price,',f'))) #(o/oo)
-
-            try: assert RLbp <= Boundbp, "Error for the RL Base Point"
-            except:
-                raise Exception("Error for the RL Base Point")
-            try: assert  self.init_reward >= -1 * Flag.cost_parameter * Flag.num2liquidate * Flag.num2liquidate
-            except:
-                raise Exception("Error for the Init Lower Bound") 
-                
-    def render_v2(self):
-        if self.done:
-            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
-            print("="*15 + " BEGIN " + "="*15)
-            print(">>> FINAL REMAINING(RL) : "+str(format(self.num_left, ',d')))
-            print(">>> Epoch   Length  : "+str(format(self.current_step, ',d')))
-            print(">>> Horizon Length  : "+str(format(Flag.max_episode_steps , ',d')))
-            print("-"*30)
-            print(">>> INIT  REWARD : "+str(format(self.init_reward,',.2f')))
-            print(">>> Upper REWARD : "+str(format(Flag.max_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
-            print(">>> Lower REWARD : "+str(format(Flag.min_price * Flag.num2liquidate/Flag.lobster_scaling,',.2f')))
-            print("-"*30)
-            print(">>> TOTAL REWARD : "+str(format(self.memory_reward  + self.init_reward,',.2f'))) # (no inventory) considered ## todo some error
-            pairs = self.memory_executed_pairs
-            try:    print(f">>> Advantage    : $ {self.memory_reward}, for selling {Flag.num2liquidate} shares of stocks at price {int(get_avarage_price(pairs)/Flag.lobster_scaling)}")
-            except: pass
-            print("="*15 + "  END  " + "="*15)
-            print()
             
             
     def render(self, mode = 'human'):
-        # self.render_v1()
-        self.render_v2()
+        Print("==="*10 + " Base_Environment Render " + "==="*10)
+
 
 
 
