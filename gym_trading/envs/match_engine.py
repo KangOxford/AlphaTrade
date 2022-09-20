@@ -191,17 +191,17 @@ if __name__ == "__main__":
     Flow = ExternalData.get_sample_order_book_data()
     flow = Flow.iloc[0:Flag.max_episode_steps,:].reset_index().drop("index",axis=1)
     flow = flow.to_numpy()
-
     core = Core(flow)
+    
     obs0 = core.reset()
-    
-    
     for i in range(10):
         obs = core.step(1)
-
+        
+    obs0 = core.reset()
     for i in range(10):
         obs = core.step(0)
         
+    obs0 = core.reset()
     
     
     # ==================================================
