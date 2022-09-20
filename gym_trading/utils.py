@@ -37,15 +37,16 @@ def get_price_from_stream(stream):
     return stream[column_index]
     # return stream.iloc[column_index].to_list()
 
-def from_pairs2lst_pairs(pairs):
-    lst = [[],[]]
-    for pair in pairs:
-        # if type(pair) == int: pair = np.expand_dims(pair,axis=0)
-        try:
-            lst[0].append(pair[0])
-            lst[1].append(pair[1])
-        except: pass
-    return lst
+# def from_pairs2lst_pairs(pairs):
+#     lst = [[],[]]
+#     for pair in pairs:
+#         # if type(pair) == int: pair = np.expand_dims(pair,axis=0)
+#         try:
+#             lst[0].append(pair[0])
+#             lst[1].append(pair[1])
+#         except: pass
+#     return lst
+
 def from_series2obs(series):
     price_level = Flag.price_level
     min_price = Flag.min_price 
@@ -227,6 +228,8 @@ def remove_zero_quantity(x):
     
 def check_positive_and_remove_zero(updated_state):
     index_list = []
+    try: updated_state.shape[1]
+    except:breakpoint()
     for i in range(updated_state.shape[1]):
         if updated_state[1,i]>0: # todo check here if it should be negative # checking? here it should be negative
             index_list.append(i)

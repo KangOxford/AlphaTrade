@@ -74,6 +74,7 @@ class BaseEnv(Env):
         return observation, num_executed
     
     def step(self, action):
+        print("============================  STEP {} (BaseEnv)  ================================".format(self.current_step)) # tbd
         observation, num_executed =  self.core_step(action)
         self.memory_executed_pairs.append(self.core.executed_pairs)
         self.memory_executed.append(num_executed)
@@ -97,18 +98,20 @@ class BaseEnv(Env):
         # ---------------------
         # self.set_default_observation() # set default observation 
 
-# ===================check observation=====================================
-        if observation.shape != (10,2):
-            breakpoint()
-# =============================================================================
+        #  -------- check observation  --------
+        if observation.shape != (2,10):
+            observation = observation.reshape((2,10))
+            # if observation.shape != (2,10):
+            #     breakpoint()
+        # -------------------------------------
         
         return  observation, float(reward), done, info
         # return of the  STEP
     # ------  1/4.OBS  ------
     def _get_obs(self, num):
         def from_series_to_numpy(obs_):
-            price = obs_.iloc[[2*i for i in range(len(obs_)//2)]]
-            quantity = obs_.iloc[[2*i+1 for i in range(len(obs_)//2)]]
+            price = obs_[[2*i for i in range(len(obs_)//2)]]
+            quantity = obs_[[2*i+1 for i in range(len(obs_)//2)]]
             obs = np.array([price,quantity])
             return obs
         obs_ = self.core.step(num)[0] # dtype:series
@@ -125,18 +128,24 @@ class BaseEnv(Env):
         '''get & set done'''
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
+            print(">>>" * 10+ " DONE " + "<<<"*10)
         return self.done
     # ------ 3/4.REWARD  ------
     
     def _get_inventory_cost(self):
         inventory = self.num_left
         return Flag.cost_parameter * inventory * inventory
+    
+    def _low_dimension_penalty(self):
+        obs = self.obs
+        return 0
 
     def _get_each_running_revenue(self):
-        pairs = self.core.executed_pairs # TODO
-        lst_pairs = np.array(from_pairs2lst_pairs(pairs))
-        # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
-        result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
+        pairs = self.core.executed_pairs.copy() # TODO
+        # lst_pairs = np.array(from_pairs2lst_pairs(pairs))
+        # # lst_pairs = np.squeeze(lst_pairs).astype(np.int32)
+        # result = sum(lst_pairs[0]* -1 *lst_pairs[1]) 
+        result = -1 * (pairs[0,:] * pairs[1,:]).sum()
         assert result >= 0
         scaled_result = result / Flag.lobster_scaling # add this line the make it as the real price
         advatage_result = scaled_result - self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline, 
@@ -145,9 +154,9 @@ class BaseEnv(Env):
 
     def _get_reward(self):
         if not self.done: 
-            return self.memory_revenues[-1]
+            return self.memory_revenues[-1] - self._low_dimension_penalty()
         elif self.done:
-            self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost()
+            self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost() - self._low_dimension_penalty()
             return self.final_reward
         
     
@@ -190,14 +199,14 @@ class BaseEnv(Env):
         self.reset_states()
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
-            flow = self.Flow[index_random:index_random + self._max_episode_steps * Flag.skip ,:]
+            flow = self.Flow[index_random:index_random + (self._max_episode_steps+1) * Flag.skip ,:]
             # flow = self.Flow.iloc[index_random:index_random+self._max_episode_steps,:]
             # flow = flow.reset_index().drop("index",axis=1)
         else:
             index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
             Flow = self.Flow_list[index_random_for_list]
             index_random = random.randint(0, Flow.shape[0]-self._max_episode_steps-1)
-            flow = Flow[index_random:index_random+self._max_episode_steps * Flag.skip,:]
+            flow = Flow[index_random:index_random+(self._max_episode_steps+1) * Flag.skip,:]
             # flow = Flow.iloc[index_random:index_random+self._max_episode_steps * Flag.skip,:]
             # flow = flow.reset_index().drop("index",axis=1)
         print("(base_environment) the length of flow is ",len(flow)) # tbd
@@ -214,8 +223,6 @@ class BaseEnv(Env):
         # init_obs = dict_to_nparray(init_obs)
         return init_obs
     def reset_states(self):
-        # Flag.max_price = max(self.core.flow.iloc[:,0])
-        # Flag.min_price = min(self.core.flow.iloc[:,18])
         self.memory_revenues = []
         self.memory_obs = []
         self.memory_executed = []
@@ -289,8 +296,8 @@ class BaseEnv(Env):
     def _set_init_reward(self):
         # self.liquidate_init_position() # policy #1 : choose to sell all at init time
         # self.liquidate_twap() # policy #2 : choose to sell averagely across time
-        # self.liquidate_vanilla() # policy #3 : choose to sell nothing
-        self.liquidate_zero() # policy #4 : choose to debug
+        self.liquidate_vanilla() # policy #3 : choose to sell nothing
+        # self.liquidate_zero() # policy #4 : choose to debug
         
         self.init_reward_bp = self.init_reward/Flag.num2liquidate
 
@@ -357,12 +364,12 @@ if __name__=="__main__":
     Flow = ExternalData.get_sample_order_book_data()
     env = BaseEnv(Flow)
     obs = env.reset()
-    action = random.randint(0, Flag.max_action)
     diff_list = []
     step_list = []
     left_list = []
     Performance_list = []
     for i in range(int(1e8)):
+        action = random.randint(0, Flag.max_action)
         observation, reward, done, info = env.step(action)
         env.render()
         if done:
