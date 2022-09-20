@@ -254,7 +254,7 @@ def list_to_gym_state(diff_list):
     return container
 
 def check_if_sorted(obs):
-    # print("check_if_sorted called") #tbd
+    print("check_if_sorted called") #tbd
     # if not (obs == arg_sort(obs))[0].all(): return arg_sort(obs)
     # else: return obs
     
@@ -263,17 +263,40 @@ def check_if_sorted(obs):
     # only check whether the price is in ascending order
     # assert (obs == -np.sort(-obs)).all(), "price in obs is ont in the ascending order" 
     # todo check it 
+    
+def set_sorted(obs): return arg_sort(obs) # todo whether need to delete the check_if_sorted
 
-def check_get_difference_and_update(condition ,right_answer, my_answer): 
+def check_get_difference_and_update_0(skip, action, right_answer, my_answer): 
     ''''If there is a new order in the data, but the action does not produce 
     a new order instruction, then the new state should be consistent 
     with the next state in the data
     '''
-    if condition:
+    if action == 0 and skip == 1:
         right_answer = change_to_gym_state(right_answer) # it should be this one
         assert (my_answer == right_answer).all(), "error in the update in match_engine.core"
-    else:
-        pass # todo not implemented 
+    else: pass
+    
+def check_get_difference_and_update_1(skip, action, index, my_answer):
+    state1 = np.array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+                        31140000, 31130000, 31120300, 31120200],
+                       [       2,        4,       16,        2,        2,      506,
+                               4,        2,       35,       35]])
+    state2 = np.array([[31161600, 31160000, 31152200, 31151000, 31150100, 31150000,
+                        31140000, 31130000, 31120300, 31120200],
+                       [       1,        4,       16,        2,        2,      506,
+                               4,        2,       35,       35]])
+    state3 = np.array([[31160000, 31152200, 31151000, 31150100, 31150000, 31140000,
+                        31130000, 31120300, 31120200, 30000000],
+                       [       4,       16,        2,        2,      506,        4,
+                               2,       35,       35,        0]])
+    state4 = np.array([[31160000, 31155000, 31152200, 31151000, 31150100, 31150000,
+                        31140000, 31130000, 31120300, 30000000],
+                       [       3,       28,       16,        2,        2,      506,
+                               4,        2,       35,        0]])
+    state_list = [state1, state2, state3, state4]
+    if action == 1 and index<=3 and skip == 1:
+        (state_list[index] == my_answer).all()
+    else: pass
 
 def arg_sort(x):
     return x[:,x[0, :].argsort()[::-1]]
