@@ -110,7 +110,7 @@ class Core():
         print(to_be_updated)#tbd
         
         updated_state = utils.check_positive_and_remove_zero(updated_state) 
-        updated_state = utils.keep_dimension(updated_state,self.flow.shape[1]//2)
+        updated_state = utils.keep_dimension(updated_state,Flag.price_level)
         
         print('-'*20+"\n"+ "(match_engine) updated_state")#tbd
         print(updated_state)#tbd

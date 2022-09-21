@@ -249,10 +249,13 @@ def keep_dimension(updated_state,size):
         else: updated_state = to_be_extended
         return updated_state
         # todo not sure
-    if updated_state.shape == (0,):     updated_state = extend_dimension(updated_state, Flag.price_level)
+    if updated_state.shape[1] == size : return updated_state
+    elif updated_state.size == 0:       updated_state = extend_dimension(updated_state, Flag.price_level)
     elif updated_state.shape[1] > size: updated_state = updated_state[:size]
     elif updated_state.shape[1] < size: updated_state = extend_dimension(updated_state, size - updated_state.shape[1])
-    else: raise NotADirectoryError
+    else: 
+        print("(updated_state.size == 0): ",(updated_state.size == 0))
+        raise NotImplementedError
     return updated_state
            
 

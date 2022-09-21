@@ -22,7 +22,7 @@ def random_strategy(Env):
             if str(Env) == "OptimalLiquidation":
                 step_list.append(info['Step'])
                 left_list.append(info['Left'])
-            breakpoint() # tbd
+            # breakpoint() # tbd
             env.reset()
     print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
 # =============================================================================
