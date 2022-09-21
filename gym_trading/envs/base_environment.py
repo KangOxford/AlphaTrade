@@ -60,6 +60,7 @@ class BaseEnv(Env):
         self.init_reward_bp = 0
         self.info = {}
         self.reset_obs = None
+        self.observation = None
     
 # ============================  STEP  =========================================
     def core_step(self, action):
@@ -69,13 +70,14 @@ class BaseEnv(Env):
         action = np.squeeze(action).astype(np.int32)
         # TO check, perhpas here remians problem
         action = min(action, self.num_left)
-        observation = self._get_obs(action)
+        observation = self.core.step(action)[0] # dtype:np.array (2,10); self.core.step(action) with shape of 4, observation, reward, done, info
         num_executed = self.core.executed_quantity  
         return observation, num_executed
     
     def step(self, action):
         print("============================  STEP {} (BaseEnv)  ================================".format(self.current_step)) # tbd
         observation, num_executed =  self.core_step(action)
+        self.observation = observation
         self.memory_executed_pairs.append(self.core.executed_pairs)
         self.memory_executed.append(num_executed)
         
@@ -104,7 +106,6 @@ class BaseEnv(Env):
             # if observation.shape != (2,10):
             #     breakpoint()
         # -------------------------------------
-        
         return  observation, float(reward), done, info
         # return of the  STEP
     # ------  1/4.OBS  ------
@@ -115,11 +116,8 @@ class BaseEnv(Env):
             obs = np.array([price,quantity])
             return obs
         obs_ = self.core.step(num)[0] # dtype:series
-        # assert len(obs_) == 20 ## to be 
-        obs = from_series_to_numpy(obs_)
-        # if obs.shape[1]!=10:
-        #     breakpoint()
         return obs
+    
     # def set_default_observation(self):
     #     if observation.shape != (10,2):
     #         return 0
@@ -133,16 +131,16 @@ class BaseEnv(Env):
         return self.done
     # ------ 3/4.REWARD  ------
     
-    def _get_inventory_cost(self):
-        inventory = self.num_left
-        return Flag.cost_parameter * inventory * inventory
+    def _get_inventory_cost(self): return Flag.cost_parameter * self.num_left * self.num_left # self.num_left is inventory
     
     def _low_dimension_penalty(self):
-        obs = self.obs
-        return 0
+        num = sum(self.observation[1,:] == 0) # The number of price-quantity pairs in observation with a quantity of 0
+        return Flag.low_dimension_penalty_parameter * num * num
 
     def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs.copy() # TODO
+        try: pairs[0,:] 
+        except: breakpoint()
         result = -1 * (pairs[0,:] * pairs[1,:]).sum()
         assert result >= 0
         scaled_result = result / Flag.lobster_scaling # add this line the make it as the real price
@@ -156,38 +154,10 @@ class BaseEnv(Env):
         elif self.done:
             self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost() - self._low_dimension_penalty()
             return self.final_reward
-        
-    
     
     # ------ 4/4.INFO ------
-    def calculate_info(self):
-        RLbp = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
-        Boundbp = 10000 *(Flag.max_price / Flag.min_price -1)
-        BasePointBound = 10000 *(Flag.max_price / Flag.min_price -1)
-        BasePointInit = 10000 *(self.init_reward/Flag.num2liquidate/ Flag.min_price -1)
-        BasePointRL = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
-        BasePointDiff = BasePointRL - BasePointInit        
-        return RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff
-    
-    def _get_info_v1(self):
-        if self.done:
-            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
-            self.info = {"Diff" : BasePointDiff,
-                         "Step" : self.current_step,
-                         "Left" : self.num_left,
-                         "Performance" : (self.memory_revenue/self.init_reward -1 ) * 100 # Performanceormance o/o
-                         }
-        return self.info 
-    def _get_info_v2(self):
-        if self.done:
-            self.info = {
-                         "Step" : self.current_step,
-                         "Left" : self.num_left,
-                         "Advantage" : self.memory_reward
-                         }
-        return self.info 
     def _get_info(self):
-        return self._get_info_v2()
+        return {}
 # =============================================================================
  
 # =============================  RESET  =======================================   
@@ -228,6 +198,7 @@ class BaseEnv(Env):
         self.done = False
         self.num_left = Flag.num2liquidate
         self.current_step = 0
+        self.observation = np.array([])
     def _get_init_obs(self, stream):
         init_obs = np.array([[stream[2*i] for i in range(len(stream)//2)], [stream[2*i+1] for i in range(len(stream)//2)]])
         return init_obs   

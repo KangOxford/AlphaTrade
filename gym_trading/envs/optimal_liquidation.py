@@ -40,7 +40,6 @@ class OptimalLiquidation(BaseEnv):
             try: assert  self.init_reward >= -1 * Flag.cost_parameter * Flag.num2liquidate * Flag.num2liquidate
             except:
                 raise Exception("Error for the Init Lower Bound") 
-                
     def render_v2(self):
         if self.done:
             RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
@@ -62,3 +61,31 @@ class OptimalLiquidation(BaseEnv):
     def render(self, mode = "human"):
         self.render_v2()
         
+    # ===============================  Info  =======================================
+    def calculate_info(self):
+        RLbp = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
+        Boundbp = 10000 *(Flag.max_price / Flag.min_price -1)
+        BasePointBound = 10000 *(Flag.max_price / Flag.min_price -1)
+        BasePointInit = 10000 *(self.init_reward/Flag.num2liquidate/ Flag.min_price -1)
+        BasePointRL = 10000 *(self.memory_revenue/Flag.num2liquidate/ Flag.min_price -1)
+        BasePointDiff = BasePointRL - BasePointInit        
+        return RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff
+    def _get_info_v1(self):
+        if self.done:
+            RLbp, Boundbp, BasePointBound, BasePointInit, BasePointRL, BasePointDiff = self.calculate_info()
+            self.info = {"Diff" : BasePointDiff,
+                         "Step" : self.current_step,
+                         "Left" : self.num_left,
+                         "Performance" : (self.memory_revenue/self.init_reward -1 ) * 100 # Performanceormance o/o
+                         }
+        return self.info 
+    def _get_info_v2(self):
+        if self.done:
+            self.info = {
+                         "Step" : self.current_step,
+                         "Left" : self.num_left,
+                         "Advantage" : self.memory_reward
+                         }
+        return self.info 
+    def _get_info(self):
+        return self._get_info_v2()        

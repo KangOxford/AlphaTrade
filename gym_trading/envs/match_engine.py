@@ -69,10 +69,10 @@ class Core():
         
         new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, state)
         # new_obs, executed_quantity = Broker.pairs_market_order_liquidating(action, self_state) # tbd
-        print("self.action")
+        print('-'*20+"\n"+ "(match_engine) self.action") #tbd
         print(self.action) #tbd
         
-        print("new_obs:")
+        print('-'*20+"\n"+ "(match_engine) new_obs:") #tbd
         print(new_obs) #tbd
         self.executed_quantity = executed_quantity
         # get_new_obs which are new orders, not the new state
@@ -105,12 +105,16 @@ class Core():
         updated_state = self.update(state, to_be_updated) # updated state, state combined with incomming orders 3/3
         
         if updated_state.shape == (0,):breakpoint()
-        print("state") #tbd
+        print('-'*20+"\n"+ "(match_engine) state") #tbd
         print(state) #tbd
-        print("to_be_updated")#tbd
+        print('-'*20+"\n"+ "(match_engine) to_be_updated")#tbd
         print(to_be_updated)#tbd
+        
         updated_state = utils.check_positive_and_remove_zero(updated_state) 
         updated_state = utils.keep_dimension(updated_state,self.flow.shape[1]//2)
+        
+        print('-'*20+"\n"+ "(match_engine) updated_state")#tbd
+        print(updated_state)#tbd
         
         # utils.check_get_difference_and_update_0(Flag.skip, self.action, self.flow[self.index + 1,:], updated_state) 
         # utils.check_get_difference_and_update_1(Flag.skip, self.action, self.index, updated_state) 
