@@ -216,6 +216,7 @@ class BaseEnv(Env):
         '''
         num2liquidate = Flag.num2liquidate
         max_action = Flag.max_action
+        # count = 0 #tbd
         while num2liquidate > 0:
             observation, num_executed =  self.core_step(min(action, num2liquidate)) # observation(only for debug), num_executed for return
             num2liquidate -= num_executed
@@ -230,10 +231,16 @@ class BaseEnv(Env):
             # get reward
             
             self.init_reward += reward
+            # self_init_reward = self.init_reward #tbd
+            # self_core_done = self.core.done #tbd
             if self.core.done:# still left stocks after selling all in the core.flow
                 inventory = num2liquidate
                 self.init_reward -= Flag.cost_parameter * inventory * inventory
                 break
+            # count += 1 #tbd
+            # if count >= 1000: #tbd
+            #     breakpoint() #tbd
+            #     print()
         self.init_reward /= Flag.lobster_scaling # add this line to convert it to the dollar measure # self.core.executed_sum
      
     @exit_after    

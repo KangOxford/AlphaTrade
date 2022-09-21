@@ -163,7 +163,7 @@ class Core():
     
     def check_done(self):
         if self.index < self._max_episode_steps: return False
-        elif self.index == self._max_episode_steps: return True
+        elif self.index >= self._max_episode_steps: return True
     
     def reset(self):
         self.index = Core.init_index # default = 0
