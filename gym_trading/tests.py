@@ -14,7 +14,7 @@ def random_strategy(Env):
     step_list = []
     left_list = []
     Performance_list = []
-    done_count = 0#tbd
+    # done_count = 0#tbd
     for i in range(int(1e8)):
         action = random.randint(0, Flag.max_action)
         observation, reward, done, info = env.step(action)
@@ -23,8 +23,8 @@ def random_strategy(Env):
             if str(Env) == "OptimalLiquidation":
                 step_list.append(info['Step'])
                 left_list.append(info['Left'])
-            done_count += 1
-            if done_count == 3: breakpoint() # tbd
+            # done_count += 1#tbd
+            # if done_count == 3: breakpoint() # tbd
             env.reset()
     print(f"End of main(), Performance is {np.mean(Performance_list)}, Diff is {np.mean(diff_list)}, Step is {np.mean(step_list)}, Left is {np.mean(left_list)}")
 # =============================================================================

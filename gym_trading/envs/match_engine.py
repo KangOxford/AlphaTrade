@@ -50,7 +50,7 @@ class Core():
         return np.array(result)
             
     def step(self, action):
-        print("=" * 10 + " New Epoch " + "=" * 10)
+        print("=" * 10 + " New Epoch " + "=" * 10) #tbd
         print("(match_engine) current index is ",self.index) ## tbd
         self.action = action
         
@@ -106,6 +106,10 @@ class Core():
         
         print('-'*20+"\n"+ "(match_engine) state") #tbd
         print(state) #tbd
+        print('-'*20+"\n"+ "(match_engine) diff_obs") #tbd
+        print(diff_obs) #tbd
+        try:print("Incomming orders quantity: ",sum(diff_obs[1,:])); #tbd
+        except: pass #tbd
         print('-'*20+"\n"+ "(match_engine) to_be_updated")#tbd
         print(to_be_updated)#tbd
         
