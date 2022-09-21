@@ -120,7 +120,7 @@ class Core():
         # utils.check_get_difference_and_update_1(Flag.skip, self.action, self.index, updated_state) 
 
         self.state = updated_state
-        reward = self.reward
+        reward = self.reward # todo always return None, not implemented
         self.done = self.check_done()
         self.executed_sum += self.executed_quantity # add this line to check if all liquidated
         # ---------------------

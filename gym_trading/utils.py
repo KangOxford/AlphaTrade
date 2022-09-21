@@ -227,6 +227,7 @@ def remove_zero_quantity(x):
     '''
     
 def check_positive_and_remove_zero(updated_state):
+    if updated_state.shape == (0,): return np.array([])
     index_list = []
     try: updated_state.shape[1]
     except:breakpoint()
@@ -241,12 +242,17 @@ def check_positive_and_remove_zero(updated_state):
  
 
 def keep_dimension(updated_state,size):
-    if updated_state.shape[1] > size: updated_state = updated_state[:size]
-    if updated_state.shape[1] < size: 
+    def extend_dimension(updated_state, to_be_extended_size):
         # updated_state.extend([[Flag.min_price,0] for i in range(size - len(updated_state))])
-        to_be_extended = np.array([[Flag.min_price,0] for i in range(size - updated_state.shape[1])]).T
-        updated_state = np.hstack((updated_state, to_be_extended))
+        to_be_extended = np.array([[Flag.min_price,0] for i in range(to_be_extended_size)]).T
+        if updated_state.size != 0: updated_state = np.hstack((updated_state, to_be_extended))
+        else: updated_state = to_be_extended
+        return updated_state
         # todo not sure
+    if updated_state.shape == (0,):     updated_state = extend_dimension(updated_state, Flag.price_level)
+    elif updated_state.shape[1] > size: updated_state = updated_state[:size]
+    elif updated_state.shape[1] < size: updated_state = extend_dimension(updated_state, size - updated_state.shape[1])
+    else: raise NotADirectoryError
     return updated_state
            
 
