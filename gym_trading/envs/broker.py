@@ -32,6 +32,7 @@ class Flag():
     # skip = 20 # default = 1 from step No.n to step No.n+1
     price_level = 10
     # skip = 20 # for 1 second on average
+    tests_seed = 2022
     
 class Broker():
     @classmethod
@@ -71,21 +72,24 @@ class Broker():
             num_left = num + sum([item[1] for item in result])
             result.append([obs[0][level-1], -1 * (min(num_left, obs[1][level-1]))]) # apppend the last item 
             for item in result: assert item[1]<=0 ##
-        if level == 1:
+        elif level == 1:
             # result.append([obs[0][0],-num]) # to check it should be wrong
             result.append([obs[0][0],-executed_num])
             '''-executed_num, to be negative means the quantity is removed from the lob
             '''
-        if level == 0:
+        elif level == 0:
             result = []
-        if level == -999:
-            minus_list = [[item[0],-1*item[1]] for item in obs]
-            result.extend(minus_list)
+        elif level == -999:
+            obs[1,:] *= -1
+            result = obs.copy()
+        else: raise NotImplementedError
         assert executed_num>=0
-        assert sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
         # -------------------------
-        result = np.array(result).T # keep the shape first line: price and second line: quantity
-        # result = np.array(result)
+        if type(result) == list:
+            assert  sum([-1*item[1] for item in result]) == executed_num# the result should corresponds to the real executed quantity
+            result = np.array(result).T # keep the shape first line: price and second line: quantity
+        elif type(result) == np.ndarray:
+            assert  -sum(result[1,:]) == executed_num# the result should corresponds to the real executed quantity
         return result, executed_num
 
 if __name__ == "__main__":

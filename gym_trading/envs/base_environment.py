@@ -139,9 +139,8 @@ class BaseEnv(Env):
 
     def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs.copy() # TODO
-        try: pairs[0,:] 
-        except: breakpoint()
-        result = -1 * (pairs[0,:] * pairs[1,:]).sum()
+        if pairs.size == 0 : result = 0
+        else : result = -1 * (pairs[0,:] * pairs[1,:]).sum()
         assert result >= 0
         scaled_result = result / Flag.lobster_scaling # add this line the make it as the real price
         advatage_result = scaled_result - self.init_reward_bp * self.memory_executed[-1] # add this line to get the difference between the baseline, 
@@ -255,7 +254,7 @@ class BaseEnv(Env):
             
             
     def render(self, mode = 'human'):
-        print("==="*10 + " Base_Environment Render " + "==="*10)
+        print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
 
     
 if __name__=="__main__":
