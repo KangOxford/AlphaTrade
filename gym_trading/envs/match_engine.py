@@ -123,8 +123,13 @@ class Core():
         self.done = self.check_done()
         self.executed_sum += self.executed_quantity # add this line to check if all liquidated
         # ---------------------
+        info = self.get_info() # update info for return of the step
+        # ---------------------
         self.index += Flag.skip # default = 1, change the index before return
-        return self.state, reward, self.done, {}
+        return self.state, reward, self.done, info
+    
+    def get_info(self):
+        {"action_ceilling", self.action_ceilling()}
     
     def get_difference(self, skip = 1):
         Index = copy.deepcopy(self.index)
@@ -169,7 +174,10 @@ class Core():
         self.state = utils.change_to_gym_state(self.state)
         return self.state
     
-    
+    def action_ceilling(self):
+        # the sum of all the quantity at one state,
+        # the action should be chosen within [0, ceilling], if randomly chosen.
+        return sum(self.state[1,:])
 
     
     def check_positive(self, updated_state):

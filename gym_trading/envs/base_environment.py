@@ -70,7 +70,8 @@ class BaseEnv(Env):
         action = np.squeeze(action).astype(np.int32)
         # TO check, perhpas here remians problem
         action = min(action, self.num_left)
-        observation = self.core.step(action)[0] # dtype:np.array (2,10); self.core.step(action) with shape of 4, observation, reward, done, info
+        observation, _, _, action_ceilling = self.core.step(action) # dtype:np.array (2,10); self.core.step(action) with shape of 4, observation, reward, done, info
+        self.info.update(action_ceilling) # is the ceiliing for this step or next step, it should be for next step
         num_executed = self.core.executed_quantity  
         return observation, num_executed
     
