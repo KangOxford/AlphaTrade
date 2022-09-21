@@ -77,7 +77,7 @@ class BaseEnv(Env):
         return observation, num_executed
     
     def step(self, action):
-        print("============================  STEP {} (BaseEnv)  ================================".format(self.current_step)) # tbd
+        # print("============================  STEP {} (BaseEnv)  ================================".format(self.current_step)) # tbd
         observation, num_executed =  self.core_step(action)
         self.observation = observation
         self.memory_executed_pairs.append(self.core.executed_pairs)
@@ -129,7 +129,7 @@ class BaseEnv(Env):
         '''get & set done'''
         if self.num_left <= 0 or self.current_step >= self._max_episode_steps:
             self.done = True
-            print(">>>" * 10+ " DONE " + "<<<"*10)
+            # print(">>>" * 10+ " DONE " + "<<<"*10) # tbd
         return self.done
     # ------ 3/4.REWARD  ------
     
@@ -174,7 +174,7 @@ class BaseEnv(Env):
             Flow = self.Flow_list[index_random_for_list]
             index_random = random.randint(0, Flow.shape[0]-self._max_episode_steps-1)
             flow = Flow[index_random:index_random+(self._max_episode_steps+1) * Flag.skip,:]
-        print("(base_environment) the length of flow is ",len(flow)) # tbd
+        # print("(base_environment) the length of flow is ",len(flow)) # tbd
         self.core = Core(flow)
         
         self.core.reset()
@@ -256,7 +256,8 @@ class BaseEnv(Env):
             
             
     def render(self, mode = 'human'):
-        print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
+        # print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
+        pass # tbd
 
     
 if __name__=="__main__":
