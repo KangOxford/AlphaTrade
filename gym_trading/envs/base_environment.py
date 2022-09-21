@@ -221,21 +221,26 @@ class BaseEnv(Env):
             num2liquidate -= num_executed
             
             executed_pairs = self.core.executed_pairs
-            Quantity = [(lambda x: x[1])(x) for x in executed_pairs]# if x<0, meaning withdraw order
-            assert -1 * sum(Quantity) == num_executed # the exected_pairs in the core is for each step
-            Price = [(lambda x: x[0])(x) for x in executed_pairs]
-            Reward = [(lambda x,y:x*y)(x,y) for x,y in zip(Price,Quantity)]   
-            reward = -1 * sum(Reward)    
+            if executed_pairs.size != 0:
+                Quantity = executed_pairs[1,:]# if x<0, meaning withdraw order
+                assert -sum(Quantity) == num_executed # the exected_pairs in the core is for each step
+                reward = -1 * sum(executed_pairs[0,:] * executed_pairs[1,:]) 
+            else:
+                reward = 0
+            # get reward
+            
             self.init_reward += reward
             if self.core.done:# still left stocks after selling all in the core.flow
                 inventory = num2liquidate
                 self.init_reward -= Flag.cost_parameter * inventory * inventory
                 break
         self.init_reward /= Flag.lobster_scaling # add this line to convert it to the dollar measure # self.core.executed_sum
-            
+     
+    @exit_after    
     def liquidate_init_position(self):
         self.liquidate_base_func(Flag.max_action)
-        
+    
+    @exit_after
     def liquidate_twap(self):
         avarage_action = Flag.num2liquidate//Flag.max_episode_steps + 1
         self.liquidate_base_func(avarage_action)

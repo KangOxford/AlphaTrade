@@ -56,7 +56,8 @@ model = RecurrentPPO(
     learning_rate = biquadrate_schedule(3e-4),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/")
 
-model.learn(total_timesteps=int(3e9), tb_log_name="RNN_PPO_improve")
+model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_initial")
+model.learn(total_timesteps=int(3e9), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False)
 string = time.ctime().replace(" ","-").replace(":","-")
 model.save("/Users/kang/GitHub/NeuralLOB/tensorboard_rnn-v5/rnn_ppo_gym_trading-"+string)
 
