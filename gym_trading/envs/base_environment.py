@@ -223,7 +223,7 @@ class BaseEnv(Env):
             
             executed_pairs = self.core.executed_pairs
             if executed_pairs.size != 0:
-                Quantity = executed_pairs[1,:]# if x<0, meaning withdraw order
+                Quantity = executed_pairs[1,:]# if x<TWAPw0, meaning withdraw order
                 assert -sum(Quantity) == num_executed # the exected_pairs in the core is for each step
                 reward = -1 * sum(executed_pairs[0,:] * executed_pairs[1,:]) 
             else:
@@ -260,8 +260,8 @@ class BaseEnv(Env):
 
     def _set_init_reward(self):
         # self.liquidate_init_position() # policy #1 : choose to sell all at init time
-        # self.liquidate_twap() # policy #2 : choose to sell averagely across time
-        self.liquidate_vanilla() # policy #3 : choose to sell nothing
+        self.liquidate_twap() # policy #2 : choose to sell averagely across time
+        # self.liquidate_vanilla() # policy #3 : choose to sell nothing
         # self.liquidate_zero() # policy #4 : choose to debug
         
         self.init_reward_bp = self.init_reward/Flag.num2liquidate

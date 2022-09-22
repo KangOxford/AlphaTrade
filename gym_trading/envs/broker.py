@@ -27,7 +27,7 @@ class Flag():
     scaling = 30000000
     low_dimension_penalty_parameter = 1 # todo not sure
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
-    # skip = 1 # default = 1 from step No.n to step No.n+1
+    # skip = 1 # 50 miliseconds
     # skip = 2 # default = 1 from step No.n to step No.n+1
     # skip = 20 # 1 second
     # skip = 200 # 10 seconds

@@ -13,6 +13,14 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.18 18.Sep~24.Sep`
+
+* Market making, a two-agent cooperation RL problem, with one doing the optimal liquidation and another doing the optimal acquisition.
+* Do the residual policy learning to leverage the LQR strategies.
+* Seperate twap with the drl strategies.
+* Optimal_liquidation env with the observation a combination of the given state and predicted state.
+* Apply a fine-tined transformer to learn the predited state.
+
 ## `Week.17 Sep`
 
 * replace gradient descent with [evolution algorithms](https://github.com/nnaisense/evotorch), due to the long horizon
