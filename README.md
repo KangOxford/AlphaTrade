@@ -17,9 +17,10 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 * Market making, a two-agent cooperation RL problem, with one doing the optimal liquidation and another doing the optimal acquisition.
 * Do the residual policy learning to leverage the LQR strategies.
-* Seperate twap with the drl strategies.
+* Seperate twap with the DRL strategies.
 * Optimal_liquidation env with the observation a combination of the given state and predicted state.
 * Apply a fine-tined transformer to learn the predited state.
+* Find a setting producing best advantage over TWAP.
 
 ## `Week.17 Sep`
 
