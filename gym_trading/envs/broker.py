@@ -12,8 +12,8 @@ class Flag():
     # num2liquidate = 1000
     # ------ long horizon ------
     # ------ short horizon ------
-    max_episode_steps= 256 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-    num2liquidate = 100 # short horizon
+    max_episode_steps= 600 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
+    num2liquidate = 2000 # short horizon
     # ------ short horizon ------
     max_action = 300
     max_quantity = 300 # TODO is it the same function with max_action?
@@ -30,23 +30,23 @@ class Flag():
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     # skip = 1 # 50 miliseconds
     # skip = 2 # default = 1 from step No.n to step No.n+1
-    # skip = 20 # 1 second
+    skip = 20 # 1 second
     # skip = 200 # 10 seconds
-    skip = 1200 # 1 minute
+    # skip = 1200 # 1 minute
     price_level = 10
     # skip = 20 # for 1 second on average
     tests_seed = 2022
     
     @classmethod
-    def log(cls, log_string):
+    def log(cls, log_string = None):
         dct = dict(cls.__dict__)
         dct = [[k,v] for k,v in dct.items() if type(v) == float or type(v) == int]
         table = tabulate(dct, headers = ('Parameters','Value'), tablefmt='psql', numalign="right")
         print(table)
-        # log_string = "/Users/kang/GitHub/NeuralLOB/tensorboard_rnn-v5/Sep_26/rnn_ppo_gym_trading-Wed-Aug-31-19-58-55-2022"
-        with open(log_string+".txt", 'w') as f:
-            f.write(table)
-            
+        if log_string is not None:
+            with open(log_string+".txt", 'w') as f:
+                f.write(table)
+                
         
             
 
@@ -80,7 +80,7 @@ class Broker():
     def pairs_market_order_liquidating(cls, num, obs):
         num = copy.deepcopy(num)
         level, executed_num = cls._level_market_order_liquidating(num, obs)
-        # TODO need the num <=609 the sum of prices at all leveles
+        # TODO need the num <=609 the sum of prices at all levels
         
         result = []
         if level>1:
