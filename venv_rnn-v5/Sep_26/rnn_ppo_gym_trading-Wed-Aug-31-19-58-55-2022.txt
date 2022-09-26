@@ -1,0 +1,18 @@
++---------------------------------+---------+
+| Parameters                      |   Value |
+|---------------------------------+---------|
+| lobster_scaling                 |   10000 |
+| max_episode_steps               |     256 |
+| num2liquidate                   |     100 |
+| max_action                      |     300 |
+| max_quantity                    |     300 |
+| max_price                       | 3.5e+07 |
+| min_price                       |   3e+07 |
+| min_quantity                    |       0 |
+| scaling                         |   3e+07 |
+| low_dimension_penalty_parameter |       1 |
+| cost_parameter                  |   5e-06 |
+| skip                            |    1200 |
+| price_level                     |      10 |
+| tests_seed                      |    2022 |
++---------------------------------+---------+

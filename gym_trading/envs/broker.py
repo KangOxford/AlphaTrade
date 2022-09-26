@@ -38,10 +38,15 @@ class Flag():
     tests_seed = 2022
     
     @classmethod
-    def log(cls):
+    def log(cls, log_string):
         dct = dict(cls.__dict__)
         dct = [[k,v] for k,v in dct.items() if type(v) == float or type(v) == int]
-        print(tabulate(dct, headers = ('Parameters','Value'), tablefmt='psql', numalign="right"))
+        table = tabulate(dct, headers = ('Parameters','Value'), tablefmt='psql', numalign="right")
+        print(table)
+        # log_string = "/Users/kang/GitHub/NeuralLOB/tensorboard_rnn-v5/Sep_26/rnn_ppo_gym_trading-Wed-Aug-31-19-58-55-2022"
+        with open(log_string+".txt", 'w') as f:
+            f.write(table)
+            
         
             
 
@@ -105,4 +110,5 @@ class Broker():
         return result, executed_num
 
 if __name__ == "__main__":
-    Flag.log()
+    log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_26/rnn_ppo_gym_trading-Mon-Sep-26-19-58-55-2022"
+    Flag.log(log_string)

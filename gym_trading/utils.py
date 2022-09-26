@@ -311,6 +311,30 @@ def check_get_difference_and_update_1(skip, action, index, my_answer):
 def arg_sort(x):
     return x[:,x[0, :].argsort()[::-1]]
                     
+def linear_schedule(initial_value):
+    """
+    Linear learning rate schedule.
+    :param initial_value: (float or str)
+    :return: (function)
+    """
+    if isinstance(initial_value, str):
+        initial_value = float(initial_value)
+
+    def func(progress):
+        """
+        Progress will decrease from 1 (beginning) to 0
+        :param progress: (float)
+        :return: (float)
+        """
+        return progress * initial_value
+
+    return func
+
+def biquadrate_schedule(initial_value):
+    if isinstance(initial_value, str):initial_value = float(initial_value)
+    def func(progress):return progress * progress * progress * progress * initial_value
+    return func
+
 if __name__=="__main__":
     pairs = [[123,1],[133324,1],[132312,3]]##
     # series = observation[0]
