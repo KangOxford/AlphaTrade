@@ -2,6 +2,7 @@
 import copy
 import numpy as np
 # import cudf
+from tabulate import tabulate
 import pandas as pd
 
 class Flag():
@@ -35,6 +36,15 @@ class Flag():
     price_level = 10
     # skip = 20 # for 1 second on average
     tests_seed = 2022
+    
+    @classmethod
+    def log(cls):
+        dct = dict(cls.__dict__)
+        dct = [[k,v] for k,v in dct.items() if type(v) == float or type(v) == int]
+        print(tabulate(dct, headers = ('Parameters','Value'), tablefmt='psql', numalign="right"))
+        
+            
+
     
 class Broker():
     @classmethod
@@ -95,4 +105,4 @@ class Broker():
         return result, executed_num
 
 if __name__ == "__main__":
-    pass
+    Flag.log()
