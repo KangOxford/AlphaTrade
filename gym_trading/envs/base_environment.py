@@ -153,9 +153,10 @@ class BaseEnv(Env):
         if self.num_reset_called <= int(1e4):
             def get_twap_num_left(x):
                 return Flag.num2liquidate - Flag.num2liquidate/Flag.max_episode_steps * x
-            penalty_delta = max(self.num_left-get_twap_num_left(self.current_step), 0)
+            # penalty_delta = max(self.num_left-get_twap_num_left(self.current_step), 0)
+            penalty_delta = self.num_left-get_twap_num_left(self.current_step)
             runing_penalty_parameter = 100
-            return runing_penalty_parameter * penalty_delta * penalty_delta
+            return runing_penalty_parameter * penalty_delta * penalty_delta * np.sign(penalty_delta)
         else:
             return 0
 
