@@ -4,7 +4,6 @@ import gym
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.monitor import ResultsWriter
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.logger import configure
 
@@ -41,7 +40,6 @@ model = RecurrentPPO(
 
 
 model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
-ResultsWriter("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/sb3_log/Monitor_env")
 for i in range(int(3e3)):
     model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())
     string = time.ctime().replace(" ","-").replace(":","-")

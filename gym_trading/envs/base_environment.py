@@ -149,16 +149,16 @@ class BaseEnv(Env):
     def _low_dimension_penalty(self):
         num = sum(self.observation[1,:] == 0) # The number of price-quantity pairs in observation with a quantity of 0
         return Flag.low_dimension_penalty_parameter * num * num
-    def _train_running_penalty(self):
-        if self.num_reset_called <= int(1e4):
-            def get_twap_num_left(x):
-                return Flag.num2liquidate - Flag.num2liquidate/Flag.max_episode_steps * x
-            # penalty_delta = max(self.num_left-get_twap_num_left(self.current_step), 0)
-            penalty_delta = self.num_left-get_twap_num_left(self.current_step)
-            runing_penalty_parameter = 100
-            return runing_penalty_parameter * penalty_delta * penalty_delta * np.sign(penalty_delta)
-        else:
-            return 0
+    # def _train_running_penalty(self):
+    #     if self.num_reset_called <= int(1e4):
+    #         def get_twap_num_left(x):
+    #             return Flag.num2liquidate - Flag.num2liquidate/Flag.max_episode_steps * x
+    #         # penalty_delta = max(self.num_left-get_twap_num_left(self.current_step), 0)
+    #         penalty_delta = self.num_left-get_twap_num_left(self.current_step)
+    #         runing_penalty_parameter = 100
+    #         return runing_penalty_parameter * penalty_delta * penalty_delta * np.sign(penalty_delta)
+    #     else:
+    #         return 0
 
     def _get_each_running_revenue(self):
         pairs = self.core.executed_pairs.copy() # TODO
@@ -172,7 +172,8 @@ class BaseEnv(Env):
 
     def _get_reward(self):
         if not self.done: 
-            return self.memory_revenues[-1] - self._low_dimension_penalty() - self._train_running_penalty()
+            return self.memory_revenues[-1] - self._low_dimension_penalty()
+            # return self.memory_revenues[-1] - self._low_dimension_penalty() - self._train_running_penalty()
         elif self.done:
             self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost() - self._low_dimension_penalty()
             return self.final_reward
