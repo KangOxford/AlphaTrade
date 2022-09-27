@@ -28,24 +28,43 @@ monitord_env = Monitor(
               )
 venv = DummyVecEnv([lambda: monitord_env])
 
-# %%
+# # %% training strategies 1
+
+# model = RecurrentPPO(
+#     "MlpLstmPolicy", 
+#     venv, 
+#     verbose=1,
+#     learning_rate = utils.biquadrate_schedule(3e-4),
+#     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/")
+# # initial model
+
+
+# model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
+# for i in range(int(3e3)):
+#     model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())
+#     string = time.ctime().replace(" ","-").replace(":","-")
+#     model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/rnn_ppo_gym_trading-"+string)
+#     Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/rnn_ppo_gym_trading-"+string)
+# # model learning and logging
+
+# %% training strategies 2
 
 model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    learning_rate = utils.biquadrate_schedule(3e-4),
+    learning_rate = utils.biquadrate_schedule(1e-3),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/")
 # initial model
 
 
-model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
-for i in range(int(3e3)):
-    model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())
-    string = time.ctime().replace(" ","-").replace(":","-")
-    model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/rnn_ppo_gym_trading-"+string)
-    Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/rnn_ppo_gym_trading-"+string)
-# model learning and logging
+model.learn(total_timesteps=int(1e8), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
+# for i in range(int(3e3)):
+#     model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())
+#     string = time.ctime().replace(" ","-").replace(":","-")
+#     model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/rnn_ppo_gym_trading-"+string)
+#     Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/rnn_ppo_gym_trading-"+string)
+# # model learning and logging
 
 # %% test the train result
 from stable_baselines3.common.evaluation import evaluate_policy
