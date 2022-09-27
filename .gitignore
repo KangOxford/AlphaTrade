@@ -3,6 +3,7 @@
 .idea/
 .spyproject/
 .ipynb_checkpoints/
+venv_rnn-v5/
 venv_rnn-v4/
 venv_rnn-v3/
 venv_rnn/
@@ -10,3 +11,5 @@ venv_rnn/
 tf_result/
 tensorboard_rnn/
 tensorboard/
+BaseEnv_21_Sep_1200.txt
+BaseEnv_21_Sep.txt

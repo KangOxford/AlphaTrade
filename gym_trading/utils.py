@@ -1,6 +1,8 @@
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 from gym_trading.envs.broker import Flag
+from stable_baselines3.common.callbacks import BaseCallback
 
 def get_price_list(flow):
     price_list = []
@@ -334,6 +336,25 @@ def biquadrate_schedule(initial_value):
     if isinstance(initial_value, str):initial_value = float(initial_value)
     def func(progress):return progress * progress * progress * progress * initial_value
     return func
+
+
+class TensorboardCallback(BaseCallback):
+    """
+    Custom callback for plotting additional values in tensorboard.
+    """
+
+    def __init__(self, verbose=0):
+        super(TensorboardCallback, self).__init__(verbose)
+
+    def _on_step(self) -> bool:
+        # Log scalar value (here a random variable)
+        value = np.random.random()
+        # breakpoint()
+        value_list = [item.get('num_left') for item in self.model.env.buf_infos]
+        value = value_list[-1]
+        self.logger.record('num_left', value)
+        return True
+    
 
 if __name__=="__main__":
     pairs = [[123,1],[133324,1],[132312,3]]##
