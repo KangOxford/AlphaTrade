@@ -7,14 +7,8 @@ import pandas as pd
 
 class Flag():
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
-    # ------ long horizon ------
-    # max_episode_steps= 2048 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-    # num2liquidate = 1000
-    # ------ long horizon ------
-    # ------ short horizon ------
     max_episode_steps= 600 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
-    num2liquidate = 2000 # short horizon
-    # ------ short horizon ------
+    num2liquidate = 2000 
     max_action = 300
     max_quantity = 300 # TODO is it the same function with max_action?
     # max_quantity = 6000 # TODO is it the same function with max_action?
@@ -34,8 +28,7 @@ class Flag():
     # skip = 200 # 10 seconds
     # skip = 1200 # 1 minute
     price_level = 10
-    # skip = 20 # for 1 second on average
-    tests_seed = 2022
+    test_seed = 2022
     
     @classmethod
     def log(cls, log_string = None):

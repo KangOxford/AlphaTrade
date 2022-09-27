@@ -260,8 +260,8 @@ class BaseEnv(Env):
 
     def _set_init_reward(self):
         # self.liquidate_init_position() # policy #1 : choose to sell all at init time
-        self.liquidate_twap() # policy #2 : choose to sell averagely across time
-        # self.liquidate_vanilla() # policy #3 : choose to sell nothing
+        # self.liquidate_twap() # policy #2 : choose to sell averagely across time
+        self.liquidate_vanilla() # policy #3 : choose to sell nothing should be default setting
         # self.liquidate_zero() # policy #4 : choose to debug
         
         self.init_reward_bp = self.init_reward/Flag.num2liquidate
