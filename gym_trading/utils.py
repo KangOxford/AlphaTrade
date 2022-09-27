@@ -353,12 +353,17 @@ class TensorboardCallback(BaseCallback):
         item = self.model.env.buf_infos[-1]
         
         value = item.get('num_reset_called') 
-        self.logger.record('num_reset_called', value)
+        self.logger.record('env/num_reset_called', value)
         # todo if num_reset_called changes, then record the num_left
+        
         value = item.get('cost') 
-        self.logger.record('cost', value)
+        self.logger.record('env/cost', value)
+        
         value = item.get('num_left') 
-        self.logger.record('num_left', value)
+        self.logger.record('env/num_left', value)
+        
+        value = item.get('cost_curve') 
+        self.logger.record('env/cost_curve', value)
         return True
     
 
