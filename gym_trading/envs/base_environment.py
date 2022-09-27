@@ -61,6 +61,8 @@ class BaseEnv(Env):
         self.info = {}
         self.reset_obs = None
         self.observation = None
+        # ---------------------
+        self.num_reset_called = 0
     
 # ============================  STEP  =========================================
     def core_step(self, action):
@@ -133,7 +135,13 @@ class BaseEnv(Env):
         return self.done
     # ------ 3/4.REWARD  ------
     
-    def _get_inventory_cost(self): return Flag.cost_parameter * self.num_left * self.num_left # self.num_left is inventory
+    def _get_inventory_cost(self): 
+        tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling / 500
+        cost_curve = max(Flag.cost_parameter * tuning_parameter / np.log(self.num_reset_called + 2), Flag.cost_parameter)
+        # breakpoint() #tbd
+        cost = cost_curve * self.num_left * self.num_left
+        self.info['cost'] = cost
+        return  cost # self.num_left is inventory
     
     def _low_dimension_penalty(self):
         num = sum(self.observation[1,:] == 0) # The number of price-quantity pairs in observation with a quantity of 0
@@ -158,11 +166,14 @@ class BaseEnv(Env):
     
     # ------ 4/4.INFO ------
     def _get_info(self):
-        return {'num_left': self.num_left}
+        self.info['num_left'] =  self.num_left
+        self.info['num_reset_called'] =  self.num_reset_called
+        return self.info 
 # =============================================================================
  
 # =============================  RESET  =======================================   
     def reset(self):
+        self.num_reset_called += 1 # how many times of the reset() has been called
         '''return the observation of the initial condition'''
         # print(">>> reset") ## to be deleted
         self.reset_states()

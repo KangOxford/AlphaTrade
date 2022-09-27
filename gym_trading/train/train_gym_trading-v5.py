@@ -39,12 +39,8 @@ model = RecurrentPPO(
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/")
 # initial model
 
-tmp_path = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/sb3_log/"; 
-new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
-model.set_logger(new_logger)
-# set logger
 
-model.learn(total_timesteps=int(1e3), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
+model.learn(total_timesteps=int(1e5), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
 ResultsWriter("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/sb3_log/Monitor_env")
 for i in range(int(3e3)):
     model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())

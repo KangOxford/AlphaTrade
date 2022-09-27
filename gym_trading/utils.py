@@ -347,11 +347,17 @@ class TensorboardCallback(BaseCallback):
         super(TensorboardCallback, self).__init__(verbose)
 
     def _on_step(self) -> bool:
-        # Log scalar value (here a random variable)
-        value = np.random.random()
+        buf_infos = self.model.env.buf_infos
+        assert len(buf_infos) == 1
         # breakpoint()
-        value_list = [item.get('num_left') for item in self.model.env.buf_infos]
-        value = value_list[-1]
+        item = self.model.env.buf_infos[-1]
+        
+        value = item.get('num_reset_called') 
+        self.logger.record('num_reset_called', value)
+        # todo if num_reset_called changes, then record the num_left
+        value = item.get('cost') 
+        self.logger.record('cost', value)
+        value = item.get('num_left') 
         self.logger.record('num_left', value)
         return True
     
