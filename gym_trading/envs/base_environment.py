@@ -138,13 +138,14 @@ class BaseEnv(Env):
     def _get_inventory_cost(self): 
         # tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling / 500
         # tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling / 50 # 16
-        tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling # 17
+        # tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling # 17
+        tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling * 1000 # 24
         if self.num_reset_called <= int(3e3):
             cost_curve = max(Flag.cost_parameter * tuning_parameter / np.log(self.num_reset_called + 2), Flag.cost_parameter)
         else:
             cost_cureve = Flag.cost_parameter
         # breakpoint() #tbd
-        cost = cost_curve * self.num_left * self.num_left
+        cost = cost_curve * self.num_left 
         self.info['cost_curve'] = cost_curve
         self.info['cost'] = cost
         return cost # self.num_left is inventory
