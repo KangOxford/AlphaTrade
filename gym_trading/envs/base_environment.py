@@ -165,7 +165,7 @@ class BaseEnv(Env):
             twap_delta = Flag.num2liquidate//Flag.max_episode_steps+1
             # penalty_delta = min(2*twap_delta, max( twap_delta - self.action ,0))
             penalty_delta = max(twap_delta - self.action , -2*twap_delta)
-            result = Flag.runing_penalty_parameter * penalty_delta 
+            result = (Flag.runing_penalty_parameter * penalty_delta)[0] 
             # breakpoint()
             self.info['penalty_delta'] = result
             return result
