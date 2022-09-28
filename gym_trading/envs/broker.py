@@ -30,6 +30,7 @@ class Flag():
     price_level = 10
     test_seed = 2022
     pretrain_steps = int(1e3)
+    runing_penalty_parameter = 100
     
     @classmethod
     def log(cls, log_string = None):

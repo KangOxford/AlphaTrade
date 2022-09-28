@@ -63,6 +63,7 @@ class BaseEnv(Env):
         self.observation = None
         # ---------------------
         self.num_reset_called = 0
+        self.action = None
     
 # ============================  STEP  =========================================
     def core_step(self, action):
@@ -79,6 +80,7 @@ class BaseEnv(Env):
         return observation, num_executed
     
     def step(self, action):
+        self.action = action # added for the use of _train_running_penalty
         # print("============================  STEP {} (BaseEnv)  ================================".format(self.current_step)) # tbd
         observation, num_executed =  self.core_step(action)
         self.observation = observation
@@ -160,10 +162,12 @@ class BaseEnv(Env):
             def get_twap_num_left(x):
                 return Flag.num2liquidate - Flag.num2liquidate/Flag.max_episode_steps * x
             # penalty_delta = max(self.num_left-get_twap_num_left(self.current_step), 0)
-            penalty_delta = self.num_left-get_twap_num_left(self.current_step)
-            runing_penalty_parameter = 100
-            result = runing_penalty_parameter * penalty_delta * penalty_delta * np.sign(penalty_delta)
-            breakpoint()
+            twap_delta = Flag.num2liquidate//Flag.max_episode_steps+1
+            # penalty_delta = min(2*twap_delta, max( twap_delta - self.action ,0))
+            penalty_delta = max(twap_delta - self.action , -2*twap_delta)
+            result = Flag.runing_penalty_parameter * penalty_delta 
+            # breakpoint()
+            self.info['penalty_delta'] = result
             return result
         else:
             return 0
@@ -235,6 +239,7 @@ class BaseEnv(Env):
         self.num_left = Flag.num2liquidate
         self.current_step = 0
         self.observation = np.array([])
+        self.action = None
     def _get_init_obs(self, stream):
         init_obs = np.array([[stream[2*i] for i in range(len(stream)//2)], [stream[2*i+1] for i in range(len(stream)//2)]])
         return init_obs   

@@ -364,6 +364,11 @@ class TensorboardCallback(BaseCallback):
         
         value = item.get('cost_curve') 
         self.logger.record('env/cost_curve', value)
+        
+        try:
+            value = item.get('penalty_delta') 
+            self.logger.record('env/penalty_delta', value)
+        except: pass
         return True
     
 
