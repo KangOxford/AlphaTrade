@@ -64,6 +64,7 @@ class BaseEnv(Env):
         # ---------------------
         self.num_reset_called = 0
         self.action = None
+        self.penalty_delta = None
     
 # ============================  STEP  =========================================
     def core_step(self, action):
@@ -167,7 +168,7 @@ class BaseEnv(Env):
             penalty_delta = max(twap_delta - self.action , -2*twap_delta)
             result = (Flag.runing_penalty_parameter * penalty_delta)[0] 
             # breakpoint()
-            self.info['penalty_delta'] = result
+            self.penalty_delta += result
             return result
         else:
             return 0
@@ -195,6 +196,7 @@ class BaseEnv(Env):
     def _get_info(self):
         if self.done:
             self.info['num_left'] =  self.num_left
+            self.info['penalty_delta'] = self.penalty_delta
         self.info['num_reset_called'] =  self.num_reset_called
         return self.info 
 # =============================================================================
@@ -240,6 +242,7 @@ class BaseEnv(Env):
         self.current_step = 0
         self.observation = np.array([])
         self.action = None
+        self.penalty_delta = 0
     def _get_init_obs(self, stream):
         init_obs = np.array([[stream[2*i] for i in range(len(stream)//2)], [stream[2*i+1] for i in range(len(stream)//2)]])
         return init_obs   
