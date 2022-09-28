@@ -53,7 +53,7 @@ model = RecurrentPPO(
     "MlpLstmPolicy", 
     venv, 
     verbose=1,
-    learning_rate = utils.biquadrate_schedule(1e-3),
+    learning_rate = utils.linear_schedule(1e-3),
     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_27/")
 # initial model
 
