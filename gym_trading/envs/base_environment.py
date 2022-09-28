@@ -141,7 +141,8 @@ class BaseEnv(Env):
         # tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling # 17
         tuning_parameter = Flag.num2liquidate * Flag.min_price / Flag.lobster_scaling * 1000 # 24
         if self.num_reset_called <= int(3e3):
-            cost_curve = max(Flag.cost_parameter * tuning_parameter / np.log(self.num_reset_called + 2), Flag.cost_parameter)
+            # cost_curve = max(Flag.cost_parameter * tuning_parameter / np.log(self.num_reset_called + 2), Flag.cost_parameter)
+            cost_curve = Flag.cost_parameter * tuning_parameter 
         else:
             cost_cureve = Flag.cost_parameter
         # breakpoint() #tbd
