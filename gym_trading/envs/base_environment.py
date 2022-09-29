@@ -39,9 +39,9 @@ class BaseEnv(Env):
         self.action_space = spaces.Box(0, Flag.max_action,shape =(1,),dtype = np.int32)
         self.observation_space = \
         spaces.Box(
-            low = np.array([Flag.min_price] * 10 + [Flag.min_quantity]*10).reshape((2,10)),
-            high = np.array([Flag.max_price] * 10 + [Flag.max_quantity]*10).reshape((2,10)),
-            shape = (2,10),
+            low = np.array([Flag.min_price] * 10 + [Flag.min_quantity]*10 + [Flag.min_num_left]*1 +[Flag.min_step_left]*1).reshape((state_dim_1,state_dim_2)),
+            high = np.array([Flag.max_price] * 10 + [Flag.max_quantity]*10 + [Flag.min_num_left]*1 +[Flag.min_step_left]*1).reshape((state_dim_1,state_dim_2)),
+            shape = (state_dim_1,state_dim_2),
             dtype = np.int32,
         )
         # ---------------------
@@ -65,6 +65,8 @@ class BaseEnv(Env):
         self.num_reset_called = 0
         self.action = None
         self.penalty_delta = None
+        # self.info = None
+        self.info = {}
     
 # ============================  STEP  =========================================
     def core_step(self, action):
@@ -103,13 +105,15 @@ class BaseEnv(Env):
         done = self._get_set_done()
         reward = self._get_reward()
         self.memory_reward += reward 
+        # if self.done:
+        #     breakpoint() #tbd
         info = self._get_info()
         # ---------------------
         # self.set_default_observation() # set default observation 
 
         #  -------- check observation  --------
-        if observation.shape != (2,10):
-            observation = observation.reshape((2,10))
+        if observation.shape != (state_dim_1,state_dim_2):
+            observation = observation.reshape((state_dim_1,state_dim_2))
             # if observation.shape != (2,10):
             #     breakpoint()
         # -------------------------------------
@@ -166,7 +170,8 @@ class BaseEnv(Env):
             twap_delta = Flag.num2liquidate//Flag.max_episode_steps+1
             # penalty_delta = min(2*twap_delta, max( twap_delta - self.action ,0))
             penalty_delta = max(twap_delta - self.action , -2*twap_delta)
-            result = (Flag.runing_penalty_parameter * penalty_delta)[0] 
+            if type(Flag.runing_penalty_parameter * penalty_delta) == int: result = (Flag.runing_penalty_parameter * penalty_delta)
+            else : result = (Flag.runing_penalty_parameter * penalty_delta)[0] 
             # breakpoint()
             self.penalty_delta += result
             return result
