@@ -19,9 +19,10 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 * Environment changes from gym to gymnax
 * Algorithms change from stable-baselines3 to gymnax-blines
 * Write a wrapper between obs from env.step() and the feed of neural networks. To make sure the input of the neural network is with zero mean and variance of one.
+* [Weekly Report](https://www.overleaf.com/read/bvrcvgjvkfrf)
 * New Observation
 <img width="2197" alt="Snipaste_2022-09-29_15-24-59" src="https://user-images.githubusercontent.com/37290277/193308604-91c60a26-895b-419e-803e-d27a262b1ffc.png">
-* [Weekly Report](https://www.overleaf.com/read/bvrcvgjvkfrf)
+
 
 
 ## `Week.18 18.Sep~24.Sep`
