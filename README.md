@@ -13,6 +13,13 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.19 25.Sep~30.Sep`
+
+* Changing into Jax
+* Environment changes from gym to gymnax
+* Algorithms change from stable-baselines3 to gymnax-blines
+* Write a wrapper between obs from env.step() and the feed of neural networks. To make sure the input of the neural network is with zero mean and variance of one.
+
 ## `Week.18 18.Sep~24.Sep`
 
 * Market making, a two-agent cooperation RL problem, with one doing the optimal liquidation and another doing the optimal acquisition.
