@@ -40,19 +40,19 @@ class BaseEnv(Env):
         self.observation_space = \
         spaces.Box(
             low = np.array([Flag.min_price] * 10 +\
+                           [Flag.num2liquidate]*1 +\
+                           [Flag.max_episode_steps]*1 +\
                            [Flag.min_quantity]*10 + \
                            [Flag.min_num_left]*1 +\
-                           [Flag.num2liquidate]*1 +\
-                           [Flag.min_step_left]*1 +\
-                           [Flag.max_episode_steps]*1
+                           [Flag.min_step_left]*1 
                            ).reshape((Flag.state_dim_1,Flag.state_dim_2)),
             high = np.array(
                            [Flag.max_price] * 10 +\
-                           [Flag.max_quantity]*10 + \
-                           [Flag.min_num_left]*1 +\
                            [Flag.num2liquidate]*1 +\
-                           [Flag.min_step_left]*1 +\
-                           [Flag.max_episode_steps]*1
+                           [Flag.max_episode_steps]*1 +\
+                           [Flag.max_quantity]*10 + \
+                           [Flag.max_num_left]*1 +\
+                           [Flag.max_step_left]*1 
                            ).reshape((Flag.state_dim_1,Flag.state_dim_2)),
             shape = (Flag.state_dim_1,Flag.state_dim_2),
             dtype = np.int32,
@@ -123,14 +123,16 @@ class BaseEnv(Env):
         info = self._get_info()
         # ---------------------
         # self.set_default_observation() # set default observation 
-
+        
+        
+        observation = self.extend_obs(observation)
         #  -------- check observation  --------
         if observation.shape != (Flag.state_dim_1,Flag.state_dim_2):
-            breakpoint() #tbd
             observation = observation.reshape((Flag.state_dim_1,Flag.state_dim_2))
             # if observation.shape != (2,10):
             #     breakpoint()
         # -------------------------------------
+        breakpoint()
         return  observation, float(reward), done, info
         # return of the  STEP
     # ------  1/4.OBS  ------
@@ -336,7 +338,7 @@ class BaseEnv(Env):
         # print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
         pass # tbd
         
-    def extend_obs(init_obs):
+    def extend_obs(self, init_obs):
         num_left = self.num_left
         step_left = Flag.max_episode_steps - self.current_step
         to_be_extend_obs = np.array([num_left, Flag.num2liquidate, step_left, Flag.max_episode_steps]).reshape((2,2))

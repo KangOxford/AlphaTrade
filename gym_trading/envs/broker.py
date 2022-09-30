@@ -35,7 +35,7 @@ class Flag():
     min_num_left = 0
     max_num_left = num2liquidate
     min_step_left= 0
-    max_num_left = max_episode_steps
+    max_step_left = max_episode_steps
     state_dim_1 = 2
     state_dim_2 = 12 # used to be 10
     state_dim_3 = time_window_size
