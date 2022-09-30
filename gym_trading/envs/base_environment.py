@@ -39,10 +39,10 @@ class BaseEnv(Env):
         self.action_space = spaces.Box(0, Flag.max_action,shape =(1,),dtype = np.int32)
         self.observation_space = \
         spaces.Box(
-            low = np.array([Flag.min_price] * 10 +\ 
+            low = np.array([Flag.min_price] * 10 +\
                            [Flag.min_quantity]*10 + \
                            [Flag.min_num_left]*1 +\
-                           [Flag.Flag.num2liquidate]*1 +\
+                           [Flag.num2liquidate]*1 +\
                            [Flag.min_step_left]*1 +\
                            [Flag.max_episode_steps]*1
                            ).reshape((Flag.state_dim_1,Flag.state_dim_2)),
@@ -50,7 +50,7 @@ class BaseEnv(Env):
                            [Flag.max_price] * 10 +\
                            [Flag.max_quantity]*10 + \
                            [Flag.min_num_left]*1 +\
-                           [Flag.Flag.num2liquidate]*1 +\
+                           [Flag.num2liquidate]*1 +\
                            [Flag.min_step_left]*1 +\
                            [Flag.max_episode_steps]*1
                            ).reshape((Flag.state_dim_1,Flag.state_dim_2)),
@@ -126,6 +126,7 @@ class BaseEnv(Env):
 
         #  -------- check observation  --------
         if observation.shape != (Flag.state_dim_1,Flag.state_dim_2):
+            breakpoint() #tbd
             observation = observation.reshape((Flag.state_dim_1,Flag.state_dim_2))
             # if observation.shape != (2,10):
             #     breakpoint()
@@ -240,13 +241,8 @@ class BaseEnv(Env):
         self._set_init_reward() 
         self.core.reset() 
         
-        # def extend_obs(init_obs):
         init_obs = self._get_init_obs(flow[0,:])
-        num_left = self.num_left
-        step_left = Flag.max_episode_steps - self.current_step
-        to_be_extend_obs = np.array([num_left, Flag.num2liquidate, step_left, Flag.max_episode_steps]).reshape((2,2))
-        extended_obs = np.concatenate((init_obs, to_be_extend_obs), axis = 1)
-        # return extended_obs
+        extended_obs = self.extend_obs(init_obs)
         
         self.memory_obs.append(init_obs) # index 0th observation
         # return init_obs
@@ -339,6 +335,13 @@ class BaseEnv(Env):
     def render(self, mode = 'human'):
         # print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
         pass # tbd
+        
+    def extend_obs(init_obs):
+        num_left = self.num_left
+        step_left = Flag.max_episode_steps - self.current_step
+        to_be_extend_obs = np.array([num_left, Flag.num2liquidate, step_left, Flag.max_episode_steps]).reshape((2,2))
+        extended_obs = np.concatenate((init_obs, to_be_extend_obs), axis = 1)
+        return extended_obs
 
     
 if __name__=="__main__":
