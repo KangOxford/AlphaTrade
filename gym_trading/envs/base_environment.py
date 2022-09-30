@@ -132,7 +132,7 @@ class BaseEnv(Env):
             # if observation.shape != (2,10):
             #     breakpoint()
         # -------------------------------------
-        breakpoint()
+        # breakpoint()
         return  observation, float(reward), done, info
         # return of the  STEP
     # ------  1/4.OBS  ------
@@ -341,7 +341,7 @@ class BaseEnv(Env):
     def extend_obs(self, init_obs):
         num_left = self.num_left
         step_left = Flag.max_episode_steps - self.current_step
-        to_be_extend_obs = np.array([num_left, Flag.num2liquidate, step_left, Flag.max_episode_steps]).reshape((2,2))
+        to_be_extend_obs = np.array([ Flag.num2liquidate, Flag.max_episode_steps, num_left, step_left ]).reshape((2,2))
         extended_obs = np.concatenate((init_obs, to_be_extend_obs), axis = 1)
         return extended_obs
 
