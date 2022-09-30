@@ -185,7 +185,10 @@ class BaseEnv(Env):
             # penalty_delta = max(self.num_left-get_twap_num_left(self.current_step), 0)
             twap_delta = Flag.num2liquidate//Flag.max_episode_steps+1
             # penalty_delta = min(2*twap_delta, max( twap_delta - self.action ,0))
-            penalty_delta = max(twap_delta - self.action , -2*twap_delta)
+            if self.num_reset_called <= 300:
+                penalty_delta = max(twap_delta - self.action , -2*twap_delta)
+            else: 
+                penalty_delta = max(twap_delta - self.action , 0)
             if type(Flag.runing_penalty_parameter * penalty_delta) == int: result = (Flag.runing_penalty_parameter * penalty_delta)
             else : result = (Flag.runing_penalty_parameter * penalty_delta)[0] 
             # breakpoint()
