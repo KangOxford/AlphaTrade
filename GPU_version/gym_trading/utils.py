@@ -383,14 +383,6 @@ def get_venv(string, num_env):
     venv = DummyVecEnv([lambda: monitord_env] * num_env)
     return venv
 
-def get_numleft_and_stepleft(obs):
-    num_left_index = Flag.price_level + 0
-    step_left_index = Flag.price_level + 1
-    stored_position = 1
-    num_left = obs[0][stored_position, num_left_index]
-    step_left = obs[0][stored_position, step_left_index]
-    return num_left, step_left
-        
 if __name__=="__main__":
     pairs = [[123,1],[133324,1],[132312,3]]##
     # series = observation[0]

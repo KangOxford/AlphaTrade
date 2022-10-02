@@ -1,0 +1,1347 @@
+         93343836 function calls (90825421 primitive calls) in 46.056 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      2/1    0.000    0.000   46.056   46.056 {built-in method builtins.exec}
+        1    0.000    0.000   46.056   46.056 <string>:1(<module>)
+        1    0.000    0.000   46.056   46.056 interactiveshell.py:2786(safe_execfile)
+        1    0.000    0.000   46.055   46.055 py3compat.py:164(execfile)
+        1    0.003    0.003   46.055   46.055 train_gym_trading.py:3(<module>)
+        1    0.000    0.000   45.349   45.349 ppo.py:291(learn)
+        1    0.001    0.001   45.349   45.349 on_policy_algorithm.py:228(learn)
+       15    0.280    0.019   31.289    2.086 on_policy_algorithm.py:129(collect_rollouts)
+    30720    0.019    0.000   23.509    0.001 base_vec_env.py:154(step)
+    30720    0.121    0.000   23.483    0.001 dummy_vec_env.py:41(step_wait)
+    30720    0.049    0.000   22.129    0.001 monitor.py:81(step)
+    30721    0.032    0.000   22.081    0.001 time_limit.py:14(step)
+    30721    0.152    0.000   22.049    0.001 base_environment.py:64(step)
+    30721    0.045    0.000   21.588    0.001 base_environment.py:103(_get_obs)
+    30721    0.224    0.000   17.009    0.001 match_engine.py:165(step)
+       15    0.745    0.050   14.029    0.935 ppo.py:169(train)
+    30894    0.552    0.000   11.017    0.000 match_engine.py:225(diff)
+   857160    0.685    0.000   10.084    0.000 indexing.py:2211(__getitem__)
+   857160    0.429    0.000    9.052    0.000 frame.py:3592(_get_value)
+635010/50100    0.597    0.000    8.351    0.000 module.py:1124(_call_impl)
+   857288    0.730    0.000    7.976    0.000 frame.py:3411(_ixs)
+888076/888075    0.623    0.000    5.574    0.000 series.py:323(__init__)
+    30720    0.132    0.000    5.495    0.000 policies.py:579(forward)
+    30721    0.347    0.000    4.534    0.000 utils.py:46(from_series2obs)
+    30721    0.093    0.000    4.379    0.000 match_engine.py:21(from_pair2series)
+     4800    0.049    0.000    4.280    0.001 policies.py:632(evaluate_actions)
+   857160    0.709    0.000    4.258    0.000 frame.py:3906(_box_col_values)
+   575259    0.350    0.000    3.975    0.000 indexing.py:954(__getitem__)
+    35520    0.110    0.000    3.914    0.000 torch_layers.py:224(forward)
+     4800    0.033    0.000    3.649    0.001 optimizer.py:104(wrapper)
+   106650    0.270    0.000    3.633    0.000 container.py:137(forward)
+     4800    0.021    0.000    3.504    0.001 grad_mode.py:24(decorate_context)
+     4800    0.113    0.000    3.432    0.001 adam.py:105(step)
+     4800    0.012    0.000    3.222    0.001 adam.py:176(adam)
+   575259    0.761    0.000    3.207    0.000 indexing.py:1487(_getitem_axis)
+     4800    1.196    0.000    3.197    0.001 adam.py:229(_single_tensor_adam)
+    30952    0.052    0.000    2.483    0.000 base.py:6987(ensure_index)
+    30788    0.132    0.000    2.400    0.000 base.py:672(_with_infer)
+     4800    0.010    0.000    2.192    0.000 _tensor.py:340(backward)
+     4800    0.018    0.000    2.182    0.000 __init__.py:85(backward)
+    35520    0.095    0.000    2.165    0.000 policies.py:597(_get_action_dist_from_latent)
+     4800    2.116    0.000    2.116    0.000 {method 'run_backward' of 'torch._C._EngineBase' objects}
+   213255    0.241    0.000    1.852    0.000 linear.py:113(forward)
+    35520    0.240    0.000    1.727    0.000 distributions.py:143(proba_distribution)
+61512/30788    0.305    0.000    1.726    0.000 base.py:397(__new__)
+    35520    0.044    0.000    1.668    0.000 distributions.py:155(log_prob)
+   857160    1.083    0.000    1.664    0.000 managers.py:1016(iget)
+     4800    0.151    0.000    1.575    0.000 clip_grad.py:9(clip_grad_norm_)
+   142170    0.054    0.000    1.572    0.000 activation.py:353(forward)
+   857450    0.973    0.000    1.555    0.000 generic.py:5517(__finalize__)
+   142170    1.518    0.000    1.518    0.000 {built-in method torch.tanh}
+   213255    1.507    0.000    1.507    0.000 {built-in method torch._C._nn.linear}
+11633898/11633049    0.992    0.000    1.494    0.000 {built-in method builtins.isinstance}
+    35520    0.761    0.000    1.451    0.000 normal.py:75(log_prob)
+    35520    0.110    0.000    1.276    0.000 normal.py:48(__init__)
+  1714320    0.680    0.000    1.105    0.000 base.py:5023(__getitem__)
+   888302    0.818    0.000    1.038    0.000 generic.py:239(__init__)
+    35565    0.076    0.000    1.023    0.000 policies.py:120(extract_features)
+629131/123119    0.467    0.000    0.960    0.000 copy.py:128(deepcopy)
+  1555403    0.317    0.000    0.917    0.000 series.py:687(_values)
+    61647    0.180    0.000    0.879    0.000 construction.py:470(sanitize_array)
+    92297    0.613    0.000    0.871    0.000 {pandas._libs.lib.maybe_convert_objects}
+   575549    0.212    0.000    0.804    0.000 common.py:105(is_bool_indexer)
+    35520    0.246    0.000    0.738    0.000 distribution.py:34(__init__)
+   857160    0.232    0.000    0.725    0.000 series.py:1238(_set_as_cached)
+   575290    0.223    0.000    0.702    0.000 indexing.py:1434(_validate_integer)
+       65    0.000    0.000    0.691    0.011 _decorators.py:302(wrapper)
+    30720    0.023    0.000    0.678    0.000 copy.py:200(_deepcopy_list)
+    30720    0.281    0.000    0.666    0.000 buffers.py:696(add)
+        1    0.000    0.000    0.660    0.660 data_pipeline.py:26(get_sample_order_book_data)
+        1    0.000    0.000    0.644    0.644 readers.py:584(read_csv)
+        1    0.008    0.008    0.644    0.644 readers.py:539(_read)
+     4800    0.068    0.000    0.638    0.000 clip_grad.py:42(<listcomp>)
+338915/277219    0.173    0.000    0.638    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+   888271    0.530    0.000    0.638    0.000 generic.py:5577(__setattr__)
+        1    0.000    0.000    0.634    0.634 readers.py:1245(read)
+    62400    0.612    0.000    0.612    0.000 {method 'sqrt' of 'torch._C._TensorBase' objects}
+   187206    0.609    0.000    0.609    0.000 {method 'mul_' of 'torch._C._TensorBase' objects}
+90146/30751    0.114    0.000    0.608    0.000 copy.py:226(_deepcopy_dict)
+        1    0.000    0.000    0.606    0.606 c_parser_wrapper.py:215(read)
+  1555403    0.500    0.000    0.600    0.000 managers.py:1848(internal_values)
+    60098    0.410    0.000    0.591    0.000 match_engine.py:37(remove_replicate)
+        1    0.550    0.550    0.561    0.561 {method 'read_low_memory' of 'pandas._libs.parsers.TextReader' objects}
+     4950    0.028    0.000    0.554    0.000 buffers.py:736(get)
+3537676/2622909    0.353    0.000    0.537    0.000 {built-in method builtins.len}
+    61442    0.054    0.000    0.526    0.000 match_engine.py:156(update)
+     4800    0.111    0.000    0.517    0.000 buffers.py:760(_get_samples)
+    30768    0.122    0.000    0.490    0.000 match_engine.py:108(pairs_market_order_liquidating)
+    30788    0.056    0.000    0.474    0.000 base.py:7106(_maybe_cast_data_without_dtype)
+    67200    0.156    0.000    0.463    0.000 functional.py:1345(norm)
+    35565    0.111    0.000    0.457    0.000 torch_layers.py:272(forward)
+     4800    0.024    0.000    0.441    0.000 clip_grad.py:32(<listcomp>)
+   124800    0.422    0.000    0.422    0.000 {method 'add_' of 'torch._C._TensorBase' objects}
+  2220396    0.298    0.000    0.415    0.000 generic.py:43(_check)
+    30720    0.018    0.000    0.412    0.000 <__array_function__ internals>:177(clip)
+    67275    0.016    0.000    0.393    0.000 module.py:1621(parameters)
+    67275    0.020    0.000    0.376    0.000 module.py:1645(named_parameters)
+    30720    0.020    0.000    0.375    0.000 fromnumeric.py:2083(clip)
+106695/35565    0.133    0.000    0.375    0.000 preprocessing.py:85(preprocess_obs)
+     4800    0.104    0.000    0.371    0.000 optimizer.py:212(zero_grad)
+    30753    0.148    0.000    0.360    0.000 match_engine.py:10(from_series2pair)
+    30720    0.010    0.000    0.360    0.000 distributions.py:70(get_actions)
+    67275    0.092    0.000    0.357    0.000 module.py:1608(_named_members)
+    30752    0.018    0.000    0.356    0.000 fromnumeric.py:51(_wrapfunc)
+   575034    0.141    0.000    0.351    0.000 series.py:924(_ixs)
+    30720    0.021    0.000    0.350    0.000 distributions.py:169(sample)
+    35520    0.059    0.000    0.349    0.000 utils.py:11(broadcast_all)
+    30721    0.032    0.000    0.348    0.000 cast.py:115(maybe_convert_platform)
+  1714320    0.263    0.000    0.345    0.000 common.py:160(cast_scalar_indexer)
+   782127    0.336    0.000    0.336    0.000 module.py:1194(__getattr__)
+    30720    0.015    0.000    0.333    0.000 {method 'clip' of 'numpy.ndarray' objects}
+    30720    0.138    0.000    0.329    0.000 normal.py:70(rsample)
+    35520    0.177    0.000    0.320    0.000 distribution.py:255(_validate_sample)
+    30720    0.045    0.000    0.318    0.000 _methods.py:125(_clip)
+   575259    0.183    0.000    0.304    0.000 indexing.py:2481(check_deprecated_indexers)
+   857160    0.216    0.000    0.302    0.000 indexing.py:2288(_convert_key)
+    75840    0.042    0.000    0.276    0.000 _tensor.py:26(wrapped)
+  1274293    0.275    0.000    0.275    0.000 {pandas._libs.lib.is_list_like}
+   575519    0.193    0.000    0.264    0.000 generic.py:560(_get_axis)
+    92303    0.074    0.000    0.258    0.000 numeric.py:289(full)
+    33600    0.025    0.000    0.257    0.000 buffers.py:123(to_torch)
+    30800    0.130    0.000    0.252    0.000 match_engine.py:84(_level_market_order_liquidating)
+    67200    0.244    0.000    0.244    0.000 {built-in method torch.norm}
+     4800    0.122    0.000    0.238    0.000 buffers.py:763(<dictcomp>)
+   691182    0.191    0.000    0.237    0.000 _tensor.py:1071(grad)
+    30721    0.020    0.000    0.223    0.000 dummy_vec_env.py:96(_obs_from_buf)
+    30765    0.032    0.000    0.221    0.000 utils.py:437(obs_as_tensor)
+   888302    0.220    0.000    0.220    0.000 flags.py:47(__init__)
+    35520    0.215    0.000    0.215    0.000 constraints.py:319(check)
+   575549    0.072    0.000    0.213    0.000 inference.py:184(is_array_like)
+    33613    0.212    0.000    0.212    0.000 {built-in method torch.tensor}
+    40320    0.042    0.000    0.207    0.000 distributions.py:100(sum_independent_dims)
+    40320    0.090    0.000    0.206    0.000 functional.py:44(broadcast_tensors)
+   399555    0.205    0.000    0.205    0.000 {built-in method numpy.array}
+    30789    0.071    0.000    0.205    0.000 warnings.py:130(filterwarnings)
+    62400    0.204    0.000    0.204    0.000 {method 'addcdiv_' of 'torch._C._TensorBase' objects}
+    30915    0.028    0.000    0.203    0.000 managers.py:1731(from_array)
+  4004479    0.201    0.000    0.201    0.000 {pandas._libs.lib.is_integer}
+   575357    0.071    0.000    0.192    0.000 utils.py:69(is_list_like_indexer)
+    30721    0.123    0.000    0.191    0.000 base_environment.py:125(_get_each_running_reward)
+   857450    0.190    0.000    0.190    0.000 flags.py:83(allows_duplicate_labels)
+    61544    0.059    0.000    0.188    0.000 common.py:229(asarray_tuplesafe)
+    61455    0.188    0.000    0.188    0.000 {method 'clone' of 'torch._C._TensorBase' objects}
+    30721    0.048    0.000    0.187    0.000 util.py:14(copy_obs_dict)
+    71040    0.184    0.000    0.184    0.000 {method 'pow' of 'torch._C._TensorBase' objects}
+   888075    0.184    0.000    0.184    0.000 managers.py:1700(__init__)
+    30765    0.035    0.000    0.182    0.000 utils.py:450(<dictcomp>)
+   106560    0.181    0.000    0.181    0.000 {method 'all' of 'torch._C._TensorBase' objects}
+137713/137712    0.064    0.000    0.180    0.000 {built-in method builtins.all}
+       32    0.000    0.000    0.176    0.006 time_limit.py:25(reset)
+       32    0.010    0.000    0.176    0.006 base_environment.py:145(reset)
+   665730    0.175    0.000    0.175    0.000 {built-in method torch._C._get_tracing_state}
+384159/96086    0.154    0.000    0.172    0.000 module.py:1775(named_modules)
+   122882    0.046    0.000    0.172    0.000 <__array_function__ internals>:177(copy)
+  2706365    0.171    0.000    0.171    0.000 {built-in method builtins.getattr}
+       31    0.000    0.000    0.168    0.005 monitor.py:60(reset)
+  3991601    0.167    0.000    0.167    0.000 {method 'append' of 'list' objects}
+    30721    0.147    0.000    0.167    0.000 match_engine.py:22(namelist)
+   857288    0.164    0.000    0.164    0.000 blocks.py:358(iget)
+    71040    0.163    0.000    0.163    0.000 constraints.py:307(check)
+   760228    0.120    0.000    0.162    0.000 base.py:884(__len__)
+    40320    0.161    0.000    0.161    0.000 {method 'sum' of 'torch._C._TensorBase' objects}
+    75930    0.161    0.000    0.161    0.000 {method 'float' of 'torch._C._TensorBase' objects}
+       15    0.160    0.011    0.160    0.011 buffers.py:363(compute_returns_and_advantage)
+    30720    0.026    0.000    0.158    0.000 utils.py:43(_standard_normal)
+    35565    0.152    0.000    0.152    0.000 {built-in method torch.cat}
+    31043    0.041    0.000    0.152    0.000 blocks.py:2043(new_block)
+    30916    0.013    0.000    0.151    0.000 config.py:255(__call__)
+   124813    0.146    0.000    0.146    0.000 {method 'detach' of 'torch._C._TensorBase' objects}
+  1714900    0.142    0.000    0.142    0.000 generic.py:349(flags)
+    61445    0.079    0.000    0.142    0.000 cast.py:1962(construct_1d_object_array_from_listlike)
+    62400    0.142    0.000    0.142    0.000 {method 'addcmul_' of 'torch._C._TensorBase' objects}
+    30788    0.031    0.000    0.138    0.000 base.py:554(_dtype_to_subclass)
+   272580    0.109    0.000    0.138    0.000 copy.py:242(_keep_alive)
+    30916    0.020    0.000    0.138    0.000 config.py:127(_get_option)
+    30720    0.025    0.000    0.137    0.000 callbacks.py:102(update_locals)
+     4800    0.023    0.000    0.137    0.000 functional.py:3252(mse_loss)
+    92229    0.019    0.000    0.135    0.000 series.py:743(__len__)
+   211115    0.134    0.000    0.135    0.000 {built-in method builtins.sorted}
+    30721    0.033    0.000    0.133    0.000 util.py:22(<listcomp>)
+     4800    0.009    0.000    0.130    0.000 distributions.py:166(entropy)
+    61440    0.072    0.000    0.128    0.000 _methods.py:91(_clip_dep_is_scalar_nan)
+    92365    0.040    0.000    0.125    0.000 base.py:7082(maybe_extract_name)
+   857450    0.124    0.000    0.124    0.000 generic.py:328(attrs)
+    40320    0.124    0.000    0.124    0.000 {built-in method torch.ones_like}
+    61530    0.117    0.000    0.117    0.000 {built-in method torch.as_tensor}
+    19200    0.016    0.000    0.115    0.000 _ops.py:138(__call__)
+    30720    0.114    0.000    0.114    0.000 _methods.py:106(_clip_dep_invoke_with_casting)
+   857160    0.114    0.000    0.114    0.000 indexing.py:576(iat)
+    92336    0.050    0.000    0.112    0.000 <__array_function__ internals>:177(copyto)
+   575420    0.080    0.000    0.109    0.000 common.py:346(apply_if_callable)
+    30765    0.109    0.000    0.109    0.000 {method 'update' of 'dict' objects}
+    35520    0.106    0.000    0.106    0.000 {method 'exp' of 'torch._C._TensorBase' objects}
+   153978    0.105    0.000    0.105    0.000 {built-in method numpy.empty}
+   155574    0.055    0.000    0.101    0.000 common.py:1587(_is_dtype_type)
+     9615    0.100    0.000    0.100    0.000 {method 'mean' of 'torch._C._TensorBase' objects}
+   219951    0.100    0.000    0.100    0.000 {method 'to' of 'torch._C._TensorBase' objects}
+   888042    0.099    0.000    0.099    0.000 managers.py:1792(_block)
+   857225    0.097    0.000    0.098    0.000 managers.py:156(blknos)
+     9600    0.026    0.000    0.096    0.000 profiler.py:445(__enter__)
+    14400    0.095    0.000    0.095    0.000 {built-in method torch.mean}
+    30926    0.033    0.000    0.093    0.000 construction.py:698(_try_cast)
+   857225    0.093    0.000    0.093    0.000 managers.py:172(blklocs)
+    92229    0.034    0.000    0.091    0.000 base.py:45(__len__)
+    61673    0.034    0.000    0.088    0.000 common.py:1240(is_float_dtype)
+    80808    0.066    0.000    0.088    0.000 grad_mode.py:226(__init__)
+   132499    0.028    0.000    0.087    0.000 abc.py:117(__instancecheck__)
+    61648    0.017    0.000    0.086    0.000 construction.py:379(extract_array)
+     4800    0.061    0.000    0.086    0.000 normal.py:91(entropy)
+    40404    0.041    0.000    0.086    0.000 grad_mode.py:131(__enter__)
+    30916    0.035    0.000    0.085    0.000 config.py:109(_get_single_key)
+    40404    0.035    0.000    0.084    0.000 grad_mode.py:135(__exit__)
+  1714320    0.083    0.000    0.083    0.000 {pandas._libs.lib.is_float}
+    35520    0.082    0.000    0.082    0.000 {method 'log' of 'torch._C._TensorBase' objects}
+   857450    0.082    0.000    0.082    0.000 flags.py:51(allows_duplicate_labels)
+    75930    0.081    0.000    0.081    0.000 {method 'flatten' of 'torch._C._TensorBase' objects}
+    30916    0.017    0.000    0.081    0.000 series.py:542(_set_axis)
+    30720    0.049    0.000    0.080    0.000 base_class.py:449(_update_info_buffer)
+   122882    0.023    0.000    0.080    0.000 function_base.py:846(copy)
+    71130    0.027    0.000    0.080    0.000 flatten.py:44(forward)
+    40320    0.080    0.000    0.080    0.000 {built-in method torch.broadcast_tensors}
+   106650    0.056    0.000    0.079    0.000 container.py:129(__iter__)
+  1332988    0.077    0.000    0.077    0.000 {built-in method builtins.id}
+    40404    0.072    0.000    0.077    0.000 grad_mode.py:126(__init__)
+   575292    0.074    0.000    0.074    0.000 indexing.py:130(iloc)
+    30754    0.041    0.000    0.072    0.000 base.py:744(__iter__)
+    30981    0.026    0.000    0.072    0.000 series.py:640(name)
+     4800    0.072    0.000    0.072    0.000 {built-in method torch._C._nn.mse_loss}
+  1327228    0.072    0.000    0.072    0.000 {method 'get' of 'dict' objects}
+   575681    0.071    0.000    0.071    0.000 generic.py:546(_get_axis_number)
+   187325    0.041    0.000    0.071    0.000 _tensor.py:731(__hash__)
+    81630    0.069    0.000    0.069    0.000 {method 'item' of 'torch._C._TensorBase' objects}
+     9600    0.024    0.000    0.069    0.000 profiler.py:449(__exit__)
+     4800    0.069    0.000    0.069    0.000 {method 'std' of 'torch._C._TensorBase' objects}
+    30926    0.027    0.000    0.065    0.000 frame.py:821(shape)
+    30788    0.009    0.000    0.065    0.000 re.py:250(compile)
+   950559    0.064    0.000    0.064    0.000 {built-in method torch._C._has_torch_function_unary}
+    30818    0.016    0.000    0.064    0.000 base.py:2603(_is_all_dates)
+    30732    0.064    0.000    0.064    0.000 {built-in method torch.empty}
+    71194    0.042    0.000    0.063    0.000 preprocessing.py:27(is_image_space)
+    30722    0.020    0.000    0.063    0.000 common.py:287(maybe_iterable_to_list)
+     9600    0.062    0.000    0.062    0.000 {built-in method torch._ops.profiler._record_function_enter}
+    30789    0.031    0.000    0.061    0.000 warnings.py:181(_add_filter)
+    30726    0.061    0.000    0.061    0.000 {method 'normal_' of 'torch._C._TensorBase' objects}
+   132499    0.060    0.000    0.060    0.000 {built-in method _abc._abc_instancecheck}
+   123087    0.059    0.000    0.059    0.000 {method 'astype' of 'numpy.ndarray' objects}
+   411336    0.059    0.000    0.059    0.000 {method 'index' of 'list' objects}
+   123024    0.037    0.000    0.059    0.000 common.py:1483(is_ea_or_datetimelike_dtype)
+       32    0.000    0.000    0.059    0.002 base_environment.py:186(_set_init_reward)
+    30724    0.026    0.000    0.058    0.000 inference.py:262(is_dict_like)
+    61440    0.021    0.000    0.056    0.000 <__array_function__ internals>:177(ndim)
+    30788    0.033    0.000    0.056    0.000 re.py:289(_compile)
+    96975    0.055    0.000    0.055    0.000 {method 'numpy' of 'torch._C._TensorBase' objects}
+     4800    0.054    0.000    0.054    0.000 {built-in method torch.stack}
+   151617    0.054    0.000    0.054    0.000 {method '__deepcopy__' of 'numpy.ndarray' objects}
+   153664    0.054    0.000    0.054    0.000 {method 'copy' of 'numpy.ndarray' objects}
+   107520    0.036    0.000    0.054    0.000 _VF.py:25(__getattr__)
+   151762    0.053    0.000    0.053    0.000 {method 'size' of 'torch._C._TensorBase' objects}
+    49965    0.053    0.000    0.053    0.000 {method 'flatten' of 'numpy.ndarray' objects}
+     9600    0.050    0.000    0.050    0.000 {built-in method torch.clamp}
+   106560    0.029    0.000    0.049    0.000 utils.py:27(<genexpr>)
+     9600    0.011    0.000    0.048    0.000 profiler.py:436(__init__)
+    30917    0.033    0.000    0.048    0.000 base.py:654(_simple_new)
+    61647    0.028    0.000    0.048    0.000 construction.py:630(_sanitize_ndim)
+   154289    0.025    0.000    0.048    0.000 {method 'add' of 'set' objects}
+    62387    0.048    0.000    0.048    0.000 {method 'zero_' of 'torch._C._TensorBase' objects}
+      169    0.000    0.000    0.047    0.000 <__array_function__ internals>:177(concatenate)
+    30788    0.044    0.000    0.046    0.000 warnings.py:458(__enter__)
+    30981    0.014    0.000    0.046    0.000 common.py:1721(validate_all_hashable)
+    96975    0.046    0.000    0.046    0.000 {method 'cpu' of 'torch._C._TensorBase' objects}
+        1    0.003    0.003    0.045    0.045 c_parser_wrapper.py:344(_concatenate_chunks)
+    30721    0.043    0.000    0.043    0.000 dummy_vec_env.py:89(_save_obs)
+    30721    0.012    0.000    0.042    0.000 <__array_function__ internals>:177(squeeze)
+    30721    0.019    0.000    0.042    0.000 match_engine.py:171(<lambda>)
+     4800    0.020    0.000    0.041    0.000 __init__.py:30(_make_grads)
+    30818    0.041    0.000    0.041    0.000 {built-in method pandas._libs.lib.is_datetime_array}
+     4800    0.027    0.000    0.040    0.000 _tensor.py:641(__rdiv__)
+     9615    0.039    0.000    0.039    0.000 {built-in method torch.exp}
+       33    0.000    0.000    0.038    0.001 managers.py:634(reindex_indexer)
+       64    0.002    0.000    0.038    0.001 match_engine.py:145(__init__)
+    31107    0.021    0.000    0.038    0.000 blocks.py:1962(maybe_coerce_values)
+     9600    0.037    0.000    0.037    0.000 {built-in method torch.zeros}
+   606306    0.037    0.000    0.037    0.000 {pandas._libs.lib.is_iterator}
+     9600    0.037    0.000    0.037    0.000 {built-in method torch._ops.profiler._record_function_exit}
+    31050    0.014    0.000    0.037    0.000 common.py:161(is_object_dtype)
+    30817    0.015    0.000    0.037    0.000 base.py:315(shape)
+    31043    0.021    0.000    0.037    0.000 blocks.py:2057(check_ndim)
+    61551    0.037    0.000    0.037    0.000 {built-in method builtins.sum}
+    92619    0.032    0.000    0.036    0.000 construction.py:438(ensure_wrapped_if_datetimelike)
+    30788    0.014    0.000    0.036    0.000 common.py:786(is_unsigned_integer_dtype)
+   575194    0.036    0.000    0.036    0.000 {pandas._libs.lib.item_from_zerodim}
+   123347    0.026    0.000    0.035    0.000 inference.py:321(is_hashable)
+    30982    0.018    0.000    0.035    0.000 series.py:590(name)
+      160    0.001    0.000    0.035    0.000 managers.py:253(apply)
+    31108    0.028    0.000    0.035    0.000 blocks.py:1991(get_block_type)
+    61513    0.026    0.000    0.034    0.000 <frozen importlib._bootstrap>:1033(_handle_fromlist)
+   104288    0.034    0.000    0.034    0.000 {method 'remove' of 'list' objects}
+    30788    0.014    0.000    0.033    0.000 common.py:732(is_signed_integer_dtype)
+   464418    0.033    0.000    0.033    0.000 {built-in method builtins.issubclass}
+   123969    0.033    0.000    0.033    0.000 {built-in method numpy.asarray}
+    30916    0.025    0.000    0.033    0.000 config.py:589(_get_root)
+    30720    0.031    0.000    0.032    0.000 distribution.py:241(_extended_shape)
+       32    0.000    0.000    0.031    0.001 frame.py:4806(drop)
+       32    0.000    0.000    0.031    0.001 generic.py:4238(drop)
+    91254    0.026    0.000    0.031    0.000 module.py:1666(<lambda>)
+       32    0.000    0.000    0.031    0.001 generic.py:4274(_drop_axis)
+     4800    0.031    0.000    0.031    0.000 {built-in method torch.min}
+    61440    0.023    0.000    0.031    0.000 _methods.py:101(_clip_dep_is_byte_swapped)
+      161    0.000    0.000    0.031    0.000 indexing.py:1456(_getitem_tuple)
+    30788    0.028    0.000    0.030    0.000 warnings.py:477(__exit__)
+   142080    0.029    0.000    0.029    0.000 overrides.py:1697(is_tensor_like)
+    30923    0.010    0.000    0.029    0.000 common.py:552(require_length_match)
+     4800    0.029    0.000    0.029    0.000 {built-in method torch.abs}
+   575582    0.029    0.000    0.029    0.000 {built-in method builtins.callable}
+    71040    0.013    0.000    0.029    0.000 constraints.py:142(is_dependent)
+    61445    0.029    0.000    0.029    0.000 {built-in method builtins.min}
+   106560    0.019    0.000    0.029    0.000 utils.py:31(<genexpr>)
+      226    0.000    0.000    0.028    0.000 frame.py:587(__init__)
+        1    0.000    0.000    0.027    0.027 construction.py:425(dict_to_mgr)
+   251274    0.026    0.000    0.026    0.000 {built-in method builtins.hasattr}
+        1    0.000    0.000    0.025    0.025 construction.py:102(arrays_to_mgr)
+        1    0.000    0.000    0.025    0.025 managers.py:1937(create_block_manager_from_column_arrays)
+        1    0.000    0.000    0.025    0.025 managers.py:2008(_form_blocks)
+        1    0.025    0.025    0.025    0.025 managers.py:2060(_stack_arrays)
+    30916    0.010    0.000    0.024    0.000 config.py:642(_warn_if_deprecated)
+    30853    0.017    0.000    0.024    0.000 construction.py:805(is_empty_data)
+    30720    0.018    0.000    0.024    0.000 callbacks.py:75(on_step)
+    97950    0.023    0.000    0.023    0.000 {built-in method math.sqrt}
+    30721    0.023    0.000    0.023    0.000 match_engine.py:171(<listcomp>)
+     4800    0.023    0.000    0.023    0.000 {built-in method torch.log}
+   356551    0.022    0.000    0.022    0.000 copy.py:182(_deepcopy_atomic)
+       33    0.001    0.000    0.022    0.001 managers.py:713(_slice_take_blocks_ax0)
+    92172    0.015    0.000    0.022    0.000 inference.py:288(<genexpr>)
+    30789    0.017    0.000    0.022    0.000 types.py:171(__get__)
+    61647    0.017    0.000    0.022    0.000 construction.py:667(_sanitize_str_dtypes)
+    92723    0.015    0.000    0.021    0.000 common.py:147(<lambda>)
+   280239    0.021    0.000    0.021    0.000 {method 'items' of 'collections.OrderedDict' objects}
+    30732    0.021    0.000    0.021    0.000 {built-in method builtins.locals}
+    30820    0.006    0.000    0.021    0.000 base.py:2624(_is_multi)
+    61832    0.021    0.000    0.021    0.000 config.py:603(_get_deprecated_option)
+       33    0.001    0.000    0.020    0.001 blocks.py:1116(take_nd)
+    61962    0.012    0.000    0.020    0.000 common.py:1740(<genexpr>)
+       99    0.000    0.000    0.020    0.000 take.py:57(take_nd)
+       99    0.000    0.000    0.020    0.000 take.py:120(_take_nd_ndarray)
+        1    0.000    0.000    0.020    0.020 ppo.py:68(__init__)
+    30788    0.019    0.000    0.019    0.000 warnings.py:437(__init__)
+       15    0.000    0.000    0.019    0.001 logger.py:475(dump)
+       33    0.019    0.001    0.019    0.001 {pandas._libs.algos.take_2d_axis0_int64_int64}
+    30721    0.019    0.000    0.019    0.000 base_environment.py:109(_get_set_done)
+        1    0.000    0.000    0.019    0.019 ppo.py:158(_setup_model)
+        1    0.000    0.000    0.019    0.019 on_policy_algorithm.py:105(_setup_model)
+       15    0.002    0.000    0.019    0.001 logger.py:149(write)
+    30855    0.012    0.000    0.019    0.000 common.py:1747(pandas_dtype)
+       65    0.000    0.000    0.019    0.000 indexing.py:1464(_get_list_axis)
+        1    0.000    0.000    0.018    0.018 policies.py:782(__init__)
+        1    0.000    0.000    0.018    0.018 policies.py:413(__init__)
+    35565    0.014    0.000    0.018    0.000 container.py:367(items)
+    30721    0.011    0.000    0.018    0.000 fromnumeric.py:1478(squeeze)
+    30721    0.017    0.000    0.017    0.000 match_engine.py:243(check_positive)
+    30916    0.017    0.000    0.017    0.000 generic.py:5561(__getattr__)
+   121212    0.017    0.000    0.017    0.000 {built-in method torch.is_grad_enabled}
+        1    0.000    0.000    0.017    0.017 policies.py:535(_build)
+    62400    0.017    0.000    0.017    0.000 {method 'conj' of 'torch._C._TensorBase' objects}
+       33    0.000    0.000    0.017    0.001 indexing.py:815(_getitem_tuple_same_dim)
+    62387    0.017    0.000    0.017    0.000 {method 'requires_grad_' of 'torch._C._TensorBase' objects}
+   116160    0.016    0.000    0.016    0.000 {built-in method torch._C._has_torch_function}
+       65    0.002    0.000    0.016    0.000 managers.py:1683(_consolidate_inplace)
+       64    0.000    0.000    0.016    0.000 frame.py:8453(diff)
+       32    0.000    0.000    0.016    0.000 frame.py:5638(reset_index)
+    30721    0.014    0.000    0.016    0.000 util.py:25(dict_to_obs)
+    40320    0.016    0.000    0.016    0.000 {built-in method math.log}
+       64    0.000    0.000    0.015    0.000 managers.py:354(diff)
+        1    0.000    0.000    0.015    0.015 generic.py:3708(_take_with_is_copy)
+        1    0.000    0.000    0.015    0.015 generic.py:3609(take)
+        1    0.000    0.000    0.015    0.015 managers.py:875(take)
+       64    0.000    0.000    0.015    0.000 blocks.py:1154(diff)
+        1    0.001    0.001    0.015    0.015 env_checker.py:230(check_env)
+   166325    0.014    0.000    0.014    0.000 {method 'items' of 'dict' objects}
+    92293    0.014    0.000    0.014    0.000 managers.py:222(items)
+    71190    0.014    0.000    0.014    0.000 dict.py:106(__getitem__)
+       64    0.013    0.000    0.014    0.000 algorithms.py:1551(diff)
+    61647    0.012    0.000    0.014    0.000 construction.py:687(_maybe_repeat)
+     4800    0.004    0.000    0.014    0.000 grad_mode.py:82(clone)
+        1    0.000    0.000    0.014    0.014 env_checker.py:137(_check_returned_values)
+       15    0.000    0.000    0.013    0.001 iostream.py:463(flush)
+       32    0.000    0.000    0.013    0.000 managers.py:2074(_consolidate)
+    61440    0.013    0.000    0.013    0.000 fromnumeric.py:3164(ndim)
+     4800    0.013    0.000    0.013    0.000 {method 'reciprocal' of 'torch._C._TensorBase' objects}
+    30916    0.007    0.000    0.013    0.000 config.py:630(_translate_key)
+     18/4    0.000    0.000    0.013    0.003 module.py:629(apply)
+    62851    0.009    0.000    0.013    0.000 common.py:155(<lambda>)
+       18    0.000    0.000    0.013    0.001 policies.py:284(init_weights)
+       32    0.006    0.000    0.013    0.000 managers.py:2091(_merge_blocks)
+   106651    0.013    0.000    0.013    0.000 {built-in method builtins.iter}
+    30723    0.012    0.000    0.012    0.000 {pandas._libs.lib.is_all_arraylike}
+        6    0.000    0.000    0.012    0.002 init.py:454(orthogonal_)
+    92723    0.012    0.000    0.012    0.000 common.py:145(classes)
+       64    0.000    0.000    0.012    0.000 generic.py:1492(__neg__)
+       15    0.000    0.000    0.012    0.001 threading.py:563(wait)
+    31557    0.009    0.000    0.012    0.000 range.py:909(__len__)
+    71337    0.012    0.000    0.012    0.000 space.py:38(shape)
+       15    0.000    0.000    0.012    0.001 threading.py:280(wait)
+      121    0.012    0.000    0.012    0.000 {method 'acquire' of '_thread.lock' objects}
+   122882    0.012    0.000    0.012    0.000 function_base.py:842(_copy_dispatcher)
+    67200    0.012    0.000    0.012    0.000 functional.py:1450(<listcomp>)
+       64    0.000    0.000    0.011    0.000 blocks.py:396(apply)
+   123195    0.011    0.000    0.011    0.000 typing.py:1375(cast)
+     4800    0.008    0.000    0.011    0.000 adam.py:198(<listcomp>)
+    30721    0.011    0.000    0.011    0.000 utils.py:50(<listcomp>)
+       64    0.000    0.000    0.011    0.000 generic.py:1494(blk_func)
+      161    0.001    0.000    0.011    0.000 indexing.py:834(_getitem_lowerdim)
+       64    0.011    0.000    0.011    0.000 {built-in method _operator.neg}
+   106675    0.011    0.000    0.011    0.000 {method 'values' of 'collections.OrderedDict' objects}
+    92336    0.010    0.000    0.010    0.000 multiarray.py:1071(copyto)
+    80808    0.010    0.000    0.010    0.000 {built-in method torch._C._set_grad_enabled}
+    30916    0.010    0.000    0.010    0.000 config.py:571(_select_options)
+    67224    0.010    0.000    0.010    0.000 {method 'dim' of 'torch._C._TensorBase' objects}
+        1    0.000    0.000    0.010    0.010 base_class.py:384(_setup_learn)
+    30721    0.009    0.000    0.009    0.000 utils.py:51(<listcomp>)
+        1    0.000    0.000    0.009    0.009 dummy_vec_env.py:59(reset)
+   123411    0.009    0.000    0.009    0.000 {built-in method builtins.hash}
+    30721    0.009    0.000    0.009    0.000 utils.py:37(from_pairs2lst_pairs)
+        6    0.009    0.002    0.009    0.002 {built-in method torch._C._linalg.linalg_qr}
+       32    0.000    0.000    0.009    0.000 generic.py:5926(copy)
+       32    0.000    0.000    0.009    0.000 managers.py:578(copy)
+    35922    0.008    0.000    0.008    0.000 {built-in method __new__ of type object at 0x10444b2b8}
+      150    0.008    0.000    0.008    0.000 {method 'permutation' of 'numpy.random.mtrand.RandomState' objects}
+    31014    0.008    0.000    0.008    0.000 base.py:834(_reset_identity)
+    30951    0.008    0.000    0.008    0.000 {method 'split' of 'str' objects}
+       64    0.000    0.000    0.008    0.000 match_engine.py:154(initial_state)
+      325    0.000    0.000    0.008    0.000 codecs.py:319(decode)
+        1    0.000    0.000    0.008    0.008 base_class.py:770(save)
+    29697    0.008    0.000    0.008    0.000 {method 'extend' of 'collections.deque' objects}
+       32    0.000    0.000    0.008    0.000 blocks.py:638(copy)
+        1    0.000    0.000    0.008    0.008 save_util.py:287(save_to_zip_file)
+       32    0.008    0.000    0.008    0.000 base_environment.py:165(reset_states)
+      325    0.008    0.000    0.008    0.000 {built-in method _codecs.utf_8_decode}
+    31115    0.005    0.000    0.007    0.000 common.py:1416(is_1d_only_ea_dtype)
+    62385    0.007    0.000    0.007    0.000 base.py:4820(_values)
+    92365    0.007    0.000    0.007    0.000 {built-in method _warnings._filters_mutated}
+    30721    0.007    0.000    0.007    0.000 {method 'squeeze' of 'numpy.ndarray' objects}
+     5032    0.007    0.000    0.007    0.000 {method 'format' of 'str' objects}
+    62851    0.007    0.000    0.007    0.000 common.py:150(classes_and_not_datetimelike)
+    30720    0.007    0.000    0.007    0.000 dummy_vec_env.py:38(step_async)
+     4800    0.004    0.000    0.007    0.000 <string>:1(<lambda>)
+    30788    0.006    0.000    0.006    0.000 base.py:540(_ensure_array)
+    30720    0.006    0.000    0.006    0.000 callbacks.py:262(_on_step)
+       64    0.000    0.000    0.006    0.000 base.py:3706(get_indexer)
+    61440    0.006    0.000    0.006    0.000 fromnumeric.py:3160(_ndim_dispatcher)
+       32    0.000    0.000    0.006    0.000 base.py:6615(drop)
+    30721    0.005    0.000    0.005    0.000 base_environment.py:140(_get_info)
+       32    0.000    0.000    0.005    0.000 frame.py:4381(insert)
+    30789    0.005    0.000    0.005    0.000 enum.py:792(value)
+       32    0.000    0.000    0.005    0.000 <__array_function__ internals>:177(vstack)
+       32    0.000    0.000    0.005    0.000 shape_base.py:222(vstack)
+    60098    0.005    0.000    0.005    0.000 {method 'copy' of 'list' objects}
+    30821    0.005    0.000    0.005    0.000 base.py:937(dtype)
+    40404    0.005    0.000    0.005    0.000 _jit_internal.py:958(is_scripting)
+    30721    0.005    0.000    0.005    0.000 match_engine.py:189(<listcomp>)
+       30    0.000    0.000    0.005    0.000 policies.py:207(set_training_mode)
+       32    0.000    0.000    0.005    0.000 managers.py:1219(insert)
+   570/30    0.001    0.000    0.005    0.000 module.py:1820(train)
+       32    0.000    0.000    0.005    0.000 base_environment.py:178(_get_init_obs)
+       32    0.000    0.000    0.005    0.000 base.py:5744(get_indexer_for)
+       45    0.000    0.000    0.005    0.000 policies.py:661(predict_values)
+        3    0.000    0.000    0.005    0.002 serialization.py:333(save)
+    30856    0.004    0.000    0.004    0.000 {pandas._libs.lib.is_scalar}
+    30721    0.004    0.000    0.004    0.000 base_environment.py:119(_get_reward)
+    61442    0.004    0.000    0.004    0.000 {method 'extend' of 'list' objects}
+    30822    0.004    0.000    0.004    0.000 {method 'insert' of 'list' objects}
+    30720    0.004    0.000    0.004    0.000 fromnumeric.py:2079(_clip_dispatcher)
+       46    0.000    0.000    0.004    0.000 iostream.py:202(schedule)
+    30788    0.004    0.000    0.004    0.000 base.py:229(disallow_kwargs)
+       21    0.000    0.000    0.003    0.000 iostream.py:518(write)
+       46    0.003    0.000    0.003    0.000 socket.py:543(send)
+    30720    0.003    0.000    0.003    0.000 callbacks.py:111(update_child_locals)
+    30820    0.003    0.000    0.003    0.000 {pandas._libs.algos.ensure_object}
+       64    0.000    0.000    0.003    0.000 series.py:913(_take_with_is_copy)
+    30721    0.003    0.000    0.003    0.000 fromnumeric.py:1474(_squeeze_dispatcher)
+       32    0.000    0.000    0.003    0.000 base.py:6561(insert)
+       21    0.000    0.000    0.003    0.000 iostream.py:448(_schedule_flush)
+       64    0.001    0.000    0.003    0.000 series.py:895(take)
+        1    0.000    0.000    0.003    0.003 policies.py:520(_build_mlp_extractor)
+        1    0.000    0.000    0.003    0.003 box.py:97(sample)
+      105    0.000    0.000    0.003    0.000 <__array_function__ internals>:177(mean)
+    30741    0.003    0.000    0.003    0.000 {method 'keys' of 'dict' objects}
+      105    0.000    0.000    0.003    0.000 fromnumeric.py:3356(mean)
+        1    0.000    0.000    0.003    0.003 torch_layers.py:165(__init__)
+     4800    0.003    0.000    0.003    0.000 __init__.py:77(_tensor_or_tensors_to_tuple)
+       32    0.000    0.000    0.003    0.000 utils.py:33(get_price_from_stream)
+      860    0.001    0.000    0.003    0.000 module.py:1210(__setattr__)
+        3    0.001    0.000    0.003    0.001 serialization.py:528(_save)
+     4800    0.003    0.000    0.003    0.000 _reduction.py:7(get_enum)
+      105    0.000    0.000    0.003    0.000 _methods.py:162(_mean)
+      161    0.000    0.000    0.003    0.000 indexing.py:761(_validate_tuple_indexer)
+     1274    0.001    0.000    0.002    0.000 common.py:680(is_integer_dtype)
+       15    0.000    0.000    0.002    0.000 utils.py:46(explained_variance)
+      322    0.000    0.000    0.002    0.000 indexing.py:1343(_validate_key)
+        1    0.000    0.000    0.002    0.002 readers.py:887(__init__)
+        6    0.000    0.000    0.002    0.000 linear.py:90(__init__)
+        1    0.000    0.000    0.002    0.002 save_util.py:75(data_to_json)
+        1    0.000    0.000    0.002    0.002 readers.py:1193(_make_engine)
+     4800    0.002    0.000    0.002    0.000 optimizer.py:84(_cuda_graph_capture_health_check)
+       30    0.000    0.000    0.002    0.000 <__array_function__ internals>:177(var)
+      392    0.002    0.000    0.002    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+       12    0.000    0.000    0.002    0.000 {function CloudPickler.dump at 0x111e02dc0}
+     4812    0.002    0.000    0.002    0.000 {method 'numel' of 'torch._C._TensorBase' objects}
+       45    0.000    0.000    0.002    0.000 torch_layers.py:235(forward_critic)
+       30    0.000    0.000    0.002    0.000 policies.py:217(obs_to_tensor)
+        4    0.000    0.000    0.002    0.000 space.py:28(np_random)
+        1    0.000    0.000    0.002    0.002 space.py:48(seed)
+        1    0.002    0.002    0.002    0.002 seeding.py:11(np_random)
+       16    0.001    0.000    0.002    0.000 buffers.py:681(reset)
+       30    0.000    0.000    0.002    0.000 fromnumeric.py:3624(var)
+        3    0.000    0.000    0.002    0.001 serialization.py:263(_open_zipfile_writer)
+        3    0.002    0.001    0.002    0.001 serialization.py:254(__init__)
+        1    0.002    0.002    0.002    0.002 c_parser_wrapper.py:45(__init__)
+       30    0.001    0.000    0.002    0.000 _methods.py:195(_var)
+       64    0.000    0.000    0.002    0.000 base.py:6293(_maybe_cast_listlike_indexer)
+      358    0.002    0.000    0.002    0.000 {built-in method numpy.asanyarray}
+      128    0.000    0.000    0.002    0.000 cast.py:1987(maybe_cast_to_integer_array)
+       32    0.000    0.000    0.002    0.000 utils.py:29(get_quantity_from_stream)
+     1198    0.001    0.000    0.002    0.000 module.py:1719(children)
+        6    0.000    0.000    0.001    0.000 linear.py:103(reset_parameters)
+     3563    0.001    0.000    0.001    0.000 {built-in method builtins.max}
+       64    0.000    0.000    0.001    0.000 base.py:6004(_should_compare)
+        6    0.000    0.000    0.001    0.000 init.py:366(kaiming_uniform_)
+      292    0.000    0.000    0.001    0.000 _dtype.py:328(_name_get)
+      128    0.000    0.000    0.001    0.000 <__array_function__ internals>:177(array_equal)
+       32    0.000    0.000    0.001    0.000 indexing.py:1524(_get_slice_axis)
+       19    0.000    0.000    0.001    0.000 module.py:254(__init__)
+      128    0.000    0.000    0.001    0.000 numeric.py:2388(array_equal)
+        6    0.001    0.000    0.001    0.000 {built-in method torch.diag}
+      128    0.000    0.000    0.001    0.000 base.py:2272(is_boolean)
+      141    0.001    0.000    0.001    0.000 {method '_rebuild_blknos_and_blklocs' of 'pandas._libs.internals.BlockManager' objects}
+     1198    0.001    0.000    0.001    0.000 module.py:1728(named_children)
+      305    0.000    0.000    0.001    0.000 zipfile.py:1122(write)
+       32    0.000    0.000    0.001    0.000 <__array_function__ internals>:177(insert)
+       96    0.000    0.000    0.001    0.000 base.py:2596(inferred_type)
+       32    0.000    0.000    0.001    0.000 generic.py:3908(_slice)
+        1    0.000    0.000    0.001    0.001 registration.py:234(make)
+        1    0.000    0.000    0.001    0.001 registration.py:123(make)
+        1    0.000    0.000    0.001    0.001 on_policy_algorithm.py:52(__init__)
+        4    0.001    0.000    0.001    0.000 {built-in method io.open}
+       30    0.000    0.000    0.001    0.000 utils.py:381(safe_mean)
+      986    0.001    0.000    0.001    0.000 common.py:1429(is_extension_array_dtype)
+        1    0.000    0.000    0.001    0.001 base_class.py:86(__init__)
+       96    0.001    0.000    0.001    0.000 {pandas._libs.lib.infer_dtype}
+        1    0.000    0.000    0.001    0.001 registration.py:74(make)
+       64    0.000    0.000    0.001    0.000 base.py:3786(_get_indexer)
+        4    0.000    0.000    0.001    0.000 module.py:823(to)
+        6    0.001    0.000    0.001    0.000 {method 'sign' of 'torch._C._TensorBase' objects}
+       32    0.000    0.000    0.001    0.000 function_base.py:5143(insert)
+     4812    0.001    0.000    0.001    0.000 {built-in method torch._C._has_torch_function_variadic}
+      847    0.001    0.000    0.001    0.000 parameter.py:9(__instancecheck__)
+      128    0.000    0.000    0.001    0.000 blocks.py:252(make_block)
+     1148    0.000    0.000    0.001    0.000 serialization.py:538(persistent_id)
+       12    0.001    0.000    0.001    0.000 {method 'uniform_' of 'torch._C._TensorBase' objects}
+       31    0.000    0.000    0.001    0.000 policies.py:146(device)
+        1    0.001    0.001    0.001    0.001 {method 'normal' of 'numpy.random.mtrand.RandomState' objects}
+       65    0.000    0.000    0.001    0.000 base.py:1098(take)
+      148    0.001    0.000    0.001    0.000 {built-in method numpy.zeros}
+        1    0.000    0.000    0.001    0.001 policies.py:269(__init__)
+      336    0.000    0.000    0.001    0.000 common.py:497(is_categorical_dtype)
+      644    0.000    0.000    0.001    0.000 {built-in method builtins.any}
+        1    0.000    0.000    0.001    0.001 policies.py:59(__init__)
+       10    0.000    0.000    0.001    0.000 arrayprint.py:1575(_array_str_implementation)
+       10    0.000    0.000    0.001    0.000 arrayprint.py:561(array2string)
+      400    0.000    0.000    0.001    0.000 base.py:286(is_dtype)
+       20    0.001    0.000    0.001    0.000 {built-in method torch._C._log_api_usage_once}
+        1    0.000    0.000    0.001    0.001 distributions.py:128(proba_distribution_net)
+       10    0.000    0.000    0.001    0.000 arrayprint.py:506(wrapper)
+     30/4    0.000    0.000    0.001    0.000 module.py:577(_apply)
+        3    0.000    0.000    0.001    0.000 zipfile.py:1773(writestr)
+       10    0.000    0.000    0.001    0.000 arrayprint.py:523(_array2string)
+       32    0.000    0.000    0.001    0.000 frame.py:4515(_sanitize_column)
+       32    0.000    0.000    0.001    0.000 managers.py:1267(_insert_update_mgr_locs)
+       32    0.000    0.000    0.001    0.000 managers.py:1277(_insert_update_blklocs_and_blknos)
+       32    0.000    0.000    0.001    0.000 base.py:6521(delete)
+      128    0.000    0.000    0.001    0.000 {method 'all' of 'numpy.ndarray' objects}
+        2    0.000    0.000    0.001    0.000 box.py:158(__repr__)
+        1    0.000    0.000    0.001    0.001 buffers.py:659(__init__)
+      175    0.000    0.000    0.001    0.000 base.py:53(shape)
+       66    0.000    0.000    0.001    0.000 base.py:5178(equals)
+      292    0.000    0.000    0.001    0.000 _dtype.py:314(_name_includes_bit_suffix)
+        9    0.000    0.000    0.001    0.000 cloudpickle_fast.py:59(dumps)
+      128    0.000    0.000    0.001    0.000 managers.py:2079(<lambda>)
+        1    0.000    0.000    0.001    0.001 base_class.py:188(_wrap_env)
+      128    0.000    0.000    0.001    0.000 _methods.py:60(_all)
+      161    0.000    0.000    0.001    0.000 indexing.py:1419(_is_scalar_access)
+       64    0.000    0.000    0.000    0.000 base.py:3823(_check_indexing_method)
+        1    0.000    0.000    0.000    0.000 series.py:463(_init_dict)
+       64    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(append)
+       64    0.000    0.000    0.000    0.000 blocks.py:166(_consolidate_key)
+      135    0.000    0.000    0.000    0.000 _methods.py:66(_count_reduce_items)
+        9    0.000    0.000    0.000    0.000 cloudpickle_fast.py:631(dump)
+       28    0.000    0.000    0.000    0.000 fromnumeric.py:69(_wrapreduction)
+      195    0.000    0.000    0.000    0.000 common.py:1274(is_bool_dtype)
+      305    0.000    0.000    0.000    0.000 {built-in method zlib.crc32}
+       52    0.000    0.000    0.000    0.000 _tensor.py:175(__reduce_ex__)
+        1    0.000    0.000    0.000    0.000 {built-in method torch.ones}
+       52    0.000    0.000    0.000    0.000 _tensor.py:207(_reduce_ex_internal)
+        1    0.000    0.000    0.000    0.000 {pandas._libs.lib.is_bool_list}
+       64    0.000    0.000    0.000    0.000 function_base.py:5337(append)
+        1    0.000    0.000    0.000    0.000 torch_layers.py:251(__init__)
+       64    0.000    0.000    0.000    0.000 {method 'get_indexer' of 'pandas._libs.index.IndexEngine' objects}
+      161    0.000    0.000    0.000    0.000 indexing.py:777(_is_nested_tuple_indexer)
+       32    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(delete)
+       64    0.000    0.000    0.000    0.000 blocks.py:427(_split_op_result)
+       10    0.000    0.000    0.000    0.000 arrayprint.py:452(_get_format_function)
+       32    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(moveaxis)
+       21    0.000    0.000    0.000    0.000 module.py:581(compute_should_use_set_data)
+       32    0.000    0.000    0.000    0.000 random.py:334(randint)
+        1    0.000    0.000    0.000    0.000 dummy_vec_env.py:24(__init__)
+        1    0.000    0.000    0.000    0.000 generic.py:10875(any)
+        1    0.000    0.000    0.000    0.000 generic.py:10453(any)
+      205    0.000    0.000    0.000    0.000 numerictypes.py:356(issubdtype)
+        1    0.000    0.000    0.000    0.000 generic.py:10395(_logical_func)
+        1    0.000    0.000    0.000    0.000 series.py:4435(_reduce)
+        8    0.000    0.000    0.000    0.000 arrayprint.py:410(<lambda>)
+       32    0.000    0.000    0.000    0.000 generic.py:1991(__contains__)
+        6    0.000    0.000    0.000    0.000 {method 'view_as' of 'torch._C._TensorBase' objects}
+        8    0.000    0.000    0.000    0.000 arrayprint.py:1223(__init__)
+       32    0.000    0.000    0.000    0.000 function_base.py:4958(delete)
+       32    0.000    0.000    0.000    0.000 {method 'get_slice' of 'pandas._libs.internals.BlockManager' objects}
+       32    0.000    0.000    0.000    0.000 numeric.py:1404(moveaxis)
+       32    0.000    0.000    0.000    0.000 base.py:2232(is_unique)
+        1    0.000    0.000    0.000    0.000 base_environment.py:33(__init__)
+        1    0.000    0.000    0.000    0.000 construction.py:825(create_series_with_explicit_dtype)
+      525    0.000    0.000    0.000    0.000 base.py:55(<genexpr>)
+       56    0.000    0.000    0.000    0.000 __init__.py:183(dumps)
+       64    0.000    0.000    0.000    0.000 base.py:4973(__contains__)
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.compile}
+       32    0.000    0.000    0.000    0.000 range.py:189(_data)
+       21    0.000    0.000    0.000    0.000 {built-in method torch._has_compatible_shallow_copy_type}
+        6    0.000    0.000    0.000    0.000 {method 'copy_' of 'torch._C._TensorBase' objects}
+      5/3    0.000    0.000    0.000    0.000 functools.py:883(wrapper)
+       64    0.000    0.000    0.000    0.000 blocks.py:2032(new_block_2d)
+      105    0.000    0.000    0.000    0.000 buffers.py:57(swap_and_flatten)
+        1    0.000    0.000    0.000    0.000 utils.py:173(configure_logger)
+       56    0.000    0.000    0.000    0.000 encoder.py:182(encode)
+       64    0.000    0.000    0.000    0.000 common.py:459(is_interval_dtype)
+       64    0.000    0.000    0.000    0.000 base.py:5917(_maybe_promote)
+        8    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(amax)
+        1    0.000    0.000    0.000    0.000 logger.py:582(configure)
+        6    0.000    0.000    0.000    0.000 {method 'fill_' of 'torch._C._TensorBase' objects}
+       35    0.000    0.000    0.000    0.000 {method 'any' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 save_util.py:217(open_path_str)
+        8    0.000    0.000    0.000    0.000 fromnumeric.py:2675(amax)
+        4    0.000    0.000    0.000    0.000 _ufunc_config.py:32(seterr)
+        2    0.000    0.000    0.000    0.000 _ufunc_config.py:429(__enter__)
+        1    0.000    0.000    0.000    0.000 registration.py:25(load)
+       32    0.000    0.000    0.000    0.000 managers.py:599(<listcomp>)
+        1    0.000    0.000    0.000    0.000 __init__.py:109(import_module)
+        9    0.000    0.000    0.000    0.000 base64.py:51(b64encode)
+      161    0.000    0.000    0.000    0.000 common.py:581(is_dtype_equal)
+      194    0.000    0.000    0.000    0.000 indexing.py:2454(is_label_like)
+       64    0.000    0.000    0.000    0.000 managers.py:596(copy_func)
+      343    0.000    0.000    0.000    0.000 {method 'write' of '_io.BufferedWriter' objects}
+      483    0.000    0.000    0.000    0.000 indexing.py:958(<genexpr>)
+        4    0.000    0.000    0.000    0.000 {built-in method numpy.seterrobj}
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:1018(_gcd_import)
+       36    0.000    0.000    0.000    0.000 _methods.py:54(_any)
+        9    0.000    0.000    0.000    0.000 {built-in method binascii.b2a_base64}
+      130    0.000    0.000    0.000    0.000 generic.py:441(_validate_dtype)
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:1002(_find_and_load)
+        3    0.000    0.000    0.000    0.000 box.py:25(__init__)
+        1    0.000    0.000    0.000    0.000 construction.py:596(_homogenize)
+       61    0.000    0.000    0.000    0.000 threading.py:1133(is_alive)
+       33    0.000    0.000    0.000    0.000 blocks.py:238(fill_value)
+       66    0.000    0.000    0.000    0.000 managers.py:1665(is_consolidated)
+       52    0.000    0.000    0.000    0.000 storage.py:616(size)
+       32    0.000    0.000    0.000    0.000 {built-in method numpy.arange}
+       64    0.000    0.000    0.000    0.000 dtypes.py:1206(is_dtype)
+      128    0.000    0.000    0.000    0.000 managers.py:983(fast_xs)
+       69    0.000    0.000    0.000    0.000 cloudpickle_fast.py:677(reducer_override)
+       40    0.000    0.000    0.000    0.000 c_parser_wrapper.py:360(<setcomp>)
+       64    0.000    0.000    0.000    0.000 base.py:974(view)
+      192    0.000    0.000    0.000    0.000 blocks.py:2121(extend_blocks)
+       65    0.000    0.000    0.000    0.000 algorithms.py:1356(take)
+       52    0.000    0.000    0.000    0.000 storage.py:444(__len__)
+        6    0.000    0.000    0.000    0.000 {method 'new' of 'torch._C._TensorBase' objects}
+       66    0.000    0.000    0.000    0.000 {pandas._libs.algos.take_1d_int64_int64}
+       34    0.000    0.000    0.000    0.000 {method 'max' of 'numpy.ndarray' objects}
+       26    0.000    0.000    0.000    0.000 {built-in method torch.zeros_like}
+       32    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(argsort)
+      197    0.000    0.000    0.000    0.000 {method 'reshape' of 'numpy.ndarray' objects}
+       32    0.000    0.000    0.000    0.000 random.py:290(randrange)
+      129    0.000    0.000    0.000    0.000 {method 'take' of 'numpy.ndarray' objects}
+       33    0.000    0.000    0.000    0.000 base.py:845(_engine)
+       65    0.000    0.000    0.000    0.000 managers.py:1673(_consolidate_check)
+       33    0.000    0.000    0.000    0.000 missing.py:572(na_value_for_dtype)
+        1    0.000    0.000    0.000    0.000 save_util.py:235(open_path_pathlib)
+       32    0.000    0.000    0.000    0.000 managers.py:2128(_fast_count_smallints)
+      410    0.000    0.000    0.000    0.000 numerictypes.py:282(issubclass_)
+      193    0.000    0.000    0.000    0.000 managers.py:973(from_blocks)
+        2    0.000    0.000    0.000    0.000 os.py:200(makedirs)
+       15    0.000    0.000    0.000    0.000 threading.py:528(__init__)
+       73    0.000    0.000    0.000    0.000 cast.py:1711(sanitize_to_nanoseconds)
+       40    0.000    0.000    0.000    0.000 c_parser_wrapper.py:356(<listcomp>)
+       52    0.000    0.000    0.000    0.000 storage.py:543(element_size)
+        1    0.000    0.000    0.000    0.000 common.py:601(get_handle)
+       32    0.000    0.000    0.000    0.000 managers.py:2102(<listcomp>)
+       64    0.000    0.000    0.000    0.000 numeric.py:1341(normalize_axis_tuple)
+      161    0.000    0.000    0.000    0.000 indexing.py:740(_expand_ellipsis)
+       97    0.000    0.000    0.000    0.000 range.py:167(_simple_new)
+       34    0.000    0.000    0.000    0.000 _methods.py:38(_amax)
+        2    0.000    0.000    0.000    0.000 {method 'exponential' of 'numpy.random.mtrand.RandomState' objects}
+      517    0.000    0.000    0.000    0.000 common.py:1552(get_dtype)
+       52    0.000    0.000    0.000    0.000 _utils.py:553(_element_size)
+       10    0.000    0.000    0.000    0.000 arrayprint.py:780(_formatArray)
+        6    0.000    0.000    0.000    0.000 init.py:356(_calculate_correct_fan)
+       64    0.000    0.000    0.000    0.000 base.py:7168(unpack_nested_dtype)
+       15    0.000    0.000    0.000    0.000 base_class.py:290(_update_learning_rate)
+       32    0.000    0.000    0.000    0.000 generic.py:767(_set_axis)
+    76/10    0.000    0.000    0.000    0.000 arrayprint.py:789(recurser)
+       12    0.000    0.000    0.000    0.000 init.py:284(_calculate_fan_in_and_fan_out)
+       55    0.000    0.000    0.000    0.000 save_util.py:59(is_json_serializable)
+       32    0.000    0.000    0.000    0.000 fromnumeric.py:1012(argsort)
+       33    0.000    0.000    0.000    0.000 missing.py:67(isna)
+        4    0.000    0.000    0.000    0.000 {built-in method torch._C._nn._parse_to}
+        1    0.000    0.000    0.000    0.000 {method 'uniform' of 'numpy.random.mtrand.RandomState' objects}
+        4    0.000    0.000    0.000    0.000 env_checker.py:96(_check_obs)
+       32    0.000    0.000    0.000    0.000 range.py:944(_getitem_slice)
+      316    0.000    0.000    0.000    0.000 encoder.py:413(_iterencode)
+       64    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(ravel)
+       17    0.000    0.000    0.000    0.000 {method '__exit__' of '_io._IOBase' objects}
+       32    0.000    0.000    0.000    0.000 random.py:237(_randbelow_with_getrandbits)
+      483    0.000    0.000    0.000    0.000 indexing.py:2486(<genexpr>)
+       33    0.000    0.000    0.000    0.000 missing.py:150(_isna)
+        1    0.000    0.000    0.000    0.000 {method 'read' of '_io.BufferedReader' objects}
+       64    0.000    0.000    0.000    0.000 base.py:723(tolist)
+       32    0.000    0.000    0.000    0.000 missing.py:626(is_valid_na_for_dtype)
+      483    0.000    0.000    0.000    0.000 indexing.py:783(<genexpr>)
+        4    0.000    0.000    0.000    0.000 box.py:140(contains)
+        1    0.000    0.000    0.000    0.000 base_class.py:755(get_parameters)
+       33    0.000    0.000    0.000    0.000 numeric.py:149(ones)
+        2    0.000    0.000    0.000    0.000 {built-in method posix.mkdir}
+      732    0.000    0.000    0.000    0.000 logger.py:208(_truncate)
+       15    0.000    0.000    0.000    0.000 threading.py:228(__init__)
+        1    0.000    0.000    0.000    0.000 pathlib.py:1246(open)
+       52    0.000    0.000    0.000    0.000 _tensor.py:196(storage)
+       60    0.000    0.000    0.000    0.000 utils.py:355(is_vectorized_observation)
+      161    0.000    0.000    0.000    0.000 generic.py:3925(_set_is_copy)
+      128    0.000    0.000    0.000    0.000 range.py:919(__getitem__)
+      483    0.000    0.000    0.000    0.000 indexing.py:957(<genexpr>)
+  500/316    0.000    0.000    0.000    0.000 encoder.py:333(_iterencode_dict)
+       15    0.000    0.000    0.000    0.000 on_policy_algorithm.py:263(<listcomp>)
+        3    0.000    0.000    0.000    0.000 {built-in method builtins.print}
+       32    0.000    0.000    0.000    0.000 common.py:254(index_labels_to_array)
+        6    0.000    0.000    0.000    0.000 zipfile.py:1141(close)
+       29    0.000    0.000    0.000    0.000 cloudpickle.py:241(_should_pickle_by_reference)
+       99    0.000    0.000    0.000    0.000 take.py:554(_take_preprocess_indexer_and_fill_value)
+       60    0.000    0.000    0.000    0.000 {built-in method builtins.round}
+       61    0.000    0.000    0.000    0.000 threading.py:1066(_wait_for_tstate_lock)
+        1    0.000    0.000    0.000    0.000 adam.py:74(__init__)
+      450    0.000    0.000    0.000    0.000 indexing.py:1432(<genexpr>)
+        1    0.000    0.000    0.000    0.000 series.py:4655(reindex)
+        1    0.000    0.000    0.000    0.000 optimizer.py:33(__init__)
+        1    0.000    0.000    0.000    0.000 range.py:112(__new__)
+        1    0.000    0.000    0.000    0.000 generic.py:4719(reindex)
+       32    0.000    0.000    0.000    0.000 managers.py:1679(<listcomp>)
+       33    0.000    0.000    0.000    0.000 blocks.py:267(make_block_same_class)
+       32    0.000    0.000    0.000    0.000 base.py:3999(_validate_positional_slice)
+        1    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(any)
+     19/1    0.000    0.000    0.000    0.000 module.py:1316(state_dict)
+      194    0.000    0.000    0.000    0.000 common.py:297(is_null_slice)
+      322    0.000    0.000    0.000    0.000 indexing.py:804(_validate_key_length)
+      255    0.000    0.000    0.000    0.000 logger.py:446(record)
+      325    0.000    0.000    0.000    0.000 codecs.py:331(getstate)
+        1    0.000    0.000    0.000    0.000 common.py:251(_get_filepath_or_buffer)
+        9    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(all)
+      847    0.000    0.000    0.000    0.000 {function _ParameterMeta.__instancecheck__ at 0x13706fb80}
+        1    0.000    0.000    0.000    0.000 pathlib.py:1118(_opener)
+        1    0.000    0.000    0.000    0.000 {built-in method posix.open}
+        1    0.000    0.000    0.000    0.000 series.py:5276(isna)
+       17    0.000    0.000    0.000    0.000 cloudpickle_fast.py:581(_function_reduce)
+       32    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(atleast_2d)
+        3    0.000    0.000    0.000    0.000 utils.py:134(get_device)
+       32    0.000    0.000    0.000    0.000 managers.py:212(set_axis)
+       32    0.000    0.000    0.000    0.000 {method 'argsort' of 'numpy.ndarray' objects}
+        2    0.000    0.000    0.000    0.000 flatten.py:39(__init__)
+        1    0.000    0.000    0.000    0.000 copy.py:258(_reconstruct)
+       64    0.000    0.000    0.000    0.000 fromnumeric.py:1755(ravel)
+        3    0.000    0.000    0.000    0.000 container.py:82(__init__)
+        1    0.000    0.000    0.000    0.000 generic.py:7230(isna)
+      956    0.000    0.000    0.000    0.000 {method 'pop' of 'dict' objects}
+       32    0.000    0.000    0.000    0.000 base.py:4931(_validate_fill_value)
+      483    0.000    0.000    0.000    0.000 indexing.py:2497(<genexpr>)
+      109    0.000    0.000    0.000    0.000 {method 'clear' of 'dict' objects}
+       54    0.000    0.000    0.000    0.000 encoder.py:204(iterencode)
+       97    0.000    0.000    0.000    0.000 base.py:4846(_get_engine_target)
+        9    0.000    0.000    0.000    0.000 fromnumeric.py:2404(all)
+       29    0.000    0.000    0.000    0.000 cloudpickle.py:278(_lookup_module_and_qualname)
+        6    0.000    0.000    0.000    0.000 zipfile.py:1475(open)
+       32    0.000    0.000    0.000    0.000 base.py:785(_view)
+     1096    0.000    0.000    0.000    0.000 __init__.py:301(is_storage)
+      494    0.000    0.000    0.000    0.000 {method 'find' of 'str' objects}
+       66    0.000    0.000    0.000    0.000 missing.py:391(array_equivalent)
+       32    0.000    0.000    0.000    0.000 blocks.py:2137(ensure_block_shape)
+       99    0.000    0.000    0.000    0.000 common.py:1148(needs_i8_conversion)
+       13    0.000    0.000    0.000    0.000 parameter.py:31(__new__)
+       14    0.000    0.000    0.000    0.000 cloudpickle_fast.py:434(_class_reduce)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:112(release)
+       96    0.000    0.000    0.000    0.000 {method '__deepcopy__' of 'numpy.generic' objects}
+        1    0.000    0.000    0.000    0.000 contextlib.py:76(inner)
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:160(__exit__)
+       64    0.000    0.000    0.000    0.000 arrayprint.py:753(_extendLine_pretty)
+       32    0.000    0.000    0.000    0.000 base.py:57(_validate_set_axis)
+      161    0.000    0.000    0.000    0.000 contextlib.py:376(__init__)
+        5    0.000    0.000    0.000    0.000 {built-in method posix.stat}
+        1    0.000    0.000    0.000    0.000 nanops.py:488(nanany)
+       32    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(bincount)
+      292    0.000    0.000    0.000    0.000 _dtype.py:24(_kind_name)
+       32    0.000    0.000    0.000    0.000 cast.py:2149(can_hold_element)
+        2    0.000    0.000    0.000    0.000 generic.py:4952(<genexpr>)
+      161    0.000    0.000    0.000    0.000 frame.py:804(axes)
+        2    0.000    0.000    0.000    0.000 preprocessing.py:180(get_action_dim)
+        6    0.000    0.000    0.000    0.000 zipfile.py:1573(_open_to_write)
+        1    0.000    0.000    0.000    0.000 fromnumeric.py:2305(any)
+       43    0.000    0.000    0.000    0.000 {method 'getrandbits' of '_random.Random' objects}
+       32    0.000    0.000    0.000    0.000 api.py:331(default_index)
+       20    0.000    0.000    0.000    0.000 {method 'seek' of '_io.BufferedWriter' objects}
+        1    0.000    0.000    0.000    0.000 {method 'seed' of 'numpy.random.mtrand.RandomState' objects}
+       32    0.000    0.000    0.000    0.000 shape_base.py:81(atleast_2d)
+      173    0.000    0.000    0.000    0.000 base_environment.py:199(<listcomp>)
+        2    0.000    0.000    0.000    0.000 pathlib.py:1079(__new__)
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:156(__enter__)
+      104    0.000    0.000    0.000    0.000 storage.py:362(__init__)
+       96    0.000    0.000    0.000    0.000 base.py:6299(_validate_indexer)
+       66    0.000    0.000    0.000    0.000 cast.py:468(maybe_promote)
+       13    0.000    0.000    0.000    0.000 {built-in method _make_subclass}
+        1    0.000    0.000    0.000    0.000 _asarray.py:22(require)
+        2    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(prod)
+       33    0.000    0.000    0.000    0.000 managers.py:2137(_preprocess_slice_or_indexer)
+      258    0.000    0.000    0.000    0.000 generic.py:660(ndim)
+      483    0.000    0.000    0.000    0.000 indexing.py:745(<genexpr>)
+      105    0.000    0.000    0.000    0.000 {method 'swapaxes' of 'numpy.ndarray' objects}
+       40    0.000    0.000    0.000    0.000 c_parser_wrapper.py:358(<setcomp>)
+       65    0.000    0.000    0.000    0.000 _decorators.py:214(_format_argument_list)
+       32    0.000    0.000    0.000    0.000 range.py:439(_view)
+        1    0.000    0.000    0.000    0.000 buffers.py:37(__init__)
+        1    0.000    0.000    0.000    0.000 {function SeedSequence.generate_state at 0x11770baf0}
+        3    0.000    0.000    0.000    0.000 serialization.py:258(__exit__)
+       12    0.000    0.000    0.000    0.000 zipfile.py:408(FileHeader)
+        1    0.000    0.000    0.000    0.000 utils.py:249(maybe_convert_indices)
+       46    0.000    0.000    0.000    0.000 iostream.py:90(_event_pipe)
+       99    0.000    0.000    0.000    0.000 take.py:326(_get_take_nd_function)
+       65    0.000    0.000    0.000    0.000 missing.py:911(clean_reindex_fill_method)
+       19    0.000    0.000    0.000    0.000 module.py:1279(_save_to_state_dict)
+        1    0.000    0.000    0.000    0.000 container.py:319(__init__)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:2970(prod)
+      107    0.000    0.000    0.000    0.000 {built-in method _json.encode_basestring_ascii}
+       13    0.000    0.000    0.000    0.000 module.py:329(register_parameter)
+       32    0.000    0.000    0.000    0.000 {method 'increment_above' of 'pandas._libs.internals.BlockPlacement' objects}
+        3    0.000    0.000    0.000    0.000 genericpath.py:16(exists)
+      271    0.000    0.000    0.000    0.000 base_class.py:257(logger)
+        1    0.000    0.000    0.000    0.000 logger.py:604(<listcomp>)
+        1    0.000    0.000    0.000    0.000 readers.py:1290(__exit__)
+        1    0.000    0.000    0.000    0.000 logger.py:401(make_output_format)
+       32    0.000    0.000    0.000    0.000 {built-in method pandas._libs.missing.checknull}
+        1    0.000    0.000    0.000    0.000 seeding.py:24(hash_seed)
+        1    0.000    0.000    0.000    0.000 readers.py:936(close)
+        1    0.000    0.000    0.000    0.000 base.py:5265(identical)
+      104    0.000    0.000    0.000    0.000 storage.py:295(__new__)
+       15    0.000    0.000    0.000    0.000 callbacks.py:62(on_rollout_start)
+        6    0.000    0.000    0.000    0.000 init.py:122(uniform_)
+        2    0.000    0.000    0.000    0.000 pathlib.py:702(_from_parts)
+        1    0.000    0.000    0.000    0.000 registration.py:135(spec)
+       32    0.000    0.000    0.000    0.000 frame.py:3883(_ensure_valid_index)
+       15    0.000    0.000    0.000    0.000 base_class.py:281(_update_current_progress_remaining)
+       15    0.000    0.000    0.000    0.000 on_policy_algorithm.py:264(<listcomp>)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:166(_get_module_lock)
+       32    0.000    0.000    0.000    0.000 {method 'nonzero' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:203(_lock_unlock_module)
+      199    0.000    0.000    0.000    0.000 {built-in method numpy.core._multiarray_umath.normalize_axis_index}
+        4    0.000    0.000    0.000    0.000 _dtype.py:34(__str__)
+      225    0.000    0.000    0.000    0.000 frame.py:578(_constructor)
+        2    0.000    0.000    0.000    0.000 pathlib.py:682(_parse_args)
+       32    0.000    0.000    0.000    0.000 shape_base.py:218(_vhstack_dispatcher)
+       21    0.000    0.000    0.000    0.000 iostream.py:429(_is_master_process)
+       66    0.000    0.000    0.000    0.000 base.py:803(is_)
+       33    0.000    0.000    0.000    0.000 {pandas._libs.internals.get_blkno_placements}
+       64    0.000    0.000    0.000    0.000 frame.py:3920(_clear_item_cache)
+        2    0.000    0.000    0.000    0.000 seeding.py:74(_bigint_from_bytes)
+        1    0.000    0.000    0.000    0.000 torch_layers.py:21(__init__)
+       64    0.000    0.000    0.000    0.000 numeric.py:1391(<listcomp>)
+        1    0.000    0.000    0.000    0.000 posixpath.py:373(abspath)
+        2    0.000    0.000    0.000    0.000 cloudpickle_fast.py:574(_dynamic_function_reduce)
+       64    0.000    0.000    0.000    0.000 {method 'tolist' of 'numpy.ndarray' objects}
+       15    0.000    0.000    0.000    0.000 threading.py:1358(current_thread)
+       43    0.000    0.000    0.000    0.000 __init__.py:935(__getitem__)
+        9    0.000    0.000    0.000    0.000 cloudpickle_fast.py:665(__init__)
+       21    0.000    0.000    0.000    0.000 module.py:921(convert)
+       52    0.000    0.000    0.000    0.000 serialization.py:164(location_tag)
+       64    0.000    0.000    0.000    0.000 arrayprint.py:739(_extendLine)
+        4    0.000    0.000    0.000    0.000 space.py:19(__init__)
+       10    0.000    0.000    0.000    0.000 module.py:371(add_module)
+       34    0.000    0.000    0.000    0.000 {built-in method _thread.allocate_lock}
+      325    0.000    0.000    0.000    0.000 {pandas._libs.algos.ensure_platform_int}
+      163    0.000    0.000    0.000    0.000 base.py:1650(name)
+        1    0.000    0.000    0.000    0.000 utils.py:483(get_system_info)
+       33    0.000    0.000    0.000    0.000 base.py:2642(_na_value)
+        1    0.000    0.000    0.000    0.000 readers.py:1019(_clean_options)
+        1    0.000    0.000    0.000    0.000 seeding.py:49(create_seed)
+        1    0.000    0.000    0.000    0.000 __init__.py:39(unwrap_vec_normalize)
+        8    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(amin)
+        1    0.000    0.000    0.000    0.000 base_parser.py:83(__init__)
+       60    0.000    0.000    0.000    0.000 utils.py:228(is_vectorized_box_observation)
+       32    0.000    0.000    0.000    0.000 frame.py:1413(__len__)
+        1    0.000    0.000    0.000    0.000 zipfile.py:1308(__exit__)
+       32    0.000    0.000    0.000    0.000 generic.py:554(_get_axis_name)
+        2    0.000    0.000    0.000    0.000 preprocessing.py:161(get_flattened_obs_dim)
+        2    0.000    0.000    0.000    0.000 zipfile.py:1818(close)
+        1    0.000    0.000    0.000    0.000 distributions.py:644(make_proba_distribution)
+      161    0.000    0.000    0.000    0.000 contextlib.py:382(__exit__)
+       15    0.000    0.000    0.000    0.000 utils.py:65(update_learning_rate)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:185(cb)
+       65    0.000    0.000    0.000    0.000 _validators.py:218(validate_bool_kwarg)
+       12    0.000    0.000    0.000    0.000 numeric.py:1859(isscalar)
+       15    0.000    0.000    0.000    0.000 threading.py:268(_acquire_restore)
+      226    0.000    0.000    0.000    0.000 managers.py:919(__init__)
+        6    0.000    0.000    0.000    0.000 init.py:12(_no_grad_uniform_)
+       47    0.000    0.000    0.000    0.000 base_environment.py:207(<listcomp>)
+        2    0.000    0.000    0.000    0.000 common.py:1109(_is_binary_mode)
+       10    0.000    0.000    0.000    0.000 arrayprint.py:64(_make_options_dict)
+        2    0.000    0.000    0.000    0.000 pathlib.py:64(parse_parts)
+        1    0.000    0.000    0.000    0.000 monitor.py:31(__init__)
+        1    0.000    0.000    0.000    0.000 zipfile.py:1840(_write_end_record)
+        1    0.000    0.000    0.000    0.000 base_parser.py:340(_maybe_dedup_names)
+        1    0.000    0.000    0.000    0.000 container.py:379(update)
+       95    0.000    0.000    0.000    0.000 {built-in method time.time}
+      329    0.000    0.000    0.000    0.000 zipfile.py:1115(_fileobj)
+       15    0.000    0.000    0.000    0.000 threading.py:256(__enter__)
+        1    0.000    0.000    0.000    0.000 common.py:127(is_url)
+       47    0.000    0.000    0.000    0.000 base_environment.py:204(<listcomp>)
+        8    0.000    0.000    0.000    0.000 fromnumeric.py:2800(amin)
+        4    0.000    0.000    0.000    0.000 {built-in method _imp.acquire_lock}
+        9    0.000    0.000    0.000    0.000 box.py:63(_get_precision)
+        1    0.000    0.000    0.000    0.000 {built-in method _hashlib.openssl_sha512}
+        1    0.000    0.000    0.000    0.000 optimizer.py:266(add_param_group)
+       29    0.000    0.000    0.000    0.000 pickle.py:322(_getattribute)
+       33    0.000    0.000    0.000    0.000 generic.py:566(_get_block_manager_axis)
+        2    0.000    0.000    0.000    0.000 __init__.py:23(unwrap_vec_wrapper)
+        1    0.000    0.000    0.000    0.000 base_parser.py:176(_validate_parse_dates_presence)
+       32    0.000    0.000    0.000    0.000 utils.py:30(<listcomp>)
+        1    0.000    0.000    0.000    0.000 parse.py:372(urlparse)
+       27    0.000    0.000    0.000    0.000 cloudpickle.py:181(_is_registered_pickle_by_value)
+        2    0.000    0.000    0.000    0.000 generic.py:5646(_consolidate_inplace)
+        1    0.000    0.000    0.000    0.000 posixpath.py:150(dirname)
+        5    0.000    0.000    0.000    0.000 functools.py:817(dispatch)
+       32    0.000    0.000    0.000    0.000 utils.py:34(<listcomp>)
+       96    0.000    0.000    0.000    0.000 base.py:5905(_index_as_unique)
+        1    0.000    0.000    0.000    0.000 common.py:103(close)
+       68    0.000    0.000    0.000    0.000 {method 'ravel' of 'numpy.ndarray' objects}
+       52    0.000    0.000    0.000    0.000 serialization.py:117(_cpu_tag)
+        4    0.000    0.000    0.000    0.000 <__array_function__ internals>:177(can_cast)
+        1    0.000    0.000    0.000    0.000 nanops.py:257(_get_values)
+       64    0.000    0.000    0.000    0.000 managers.py:206(_normalize_axis)
+        1    0.000    0.000    0.000    0.000 pathlib.py:1419(exists)
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:87(acquire)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:194(_set_noconvert_columns)
+        1    0.000    0.000    0.000    0.000 base_class.py:346(_init_callback)
+       29    0.000    0.000    0.000    0.000 cloudpickle.py:195(_whichmodule)
+        1    0.000    0.000    0.000    0.000 readers.py:515(_validate_names)
+        2    0.000    0.000    0.000    0.000 generic.py:5632(_protect_consolidate)
+        1    0.000    0.000    0.000    0.000 {method 'strftime' of 'datetime.date' objects}
+       32    0.000    0.000    0.000    0.000 generic.py:636(_info_axis)
+        1    0.000    0.000    0.000    0.000 optimizer.py:117(state_dict)
+       47    0.000    0.000    0.000    0.000 base_environment.py:206(<listcomp>)
+        6    0.000    0.000    0.000    0.000 init.py:67(calculate_gain)
+       52    0.000    0.000    0.000    0.000 _namedtensor_internals.py:10(check_serializing_named_tensor)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:187(close)
+        2    0.000    0.000    0.000    0.000 core.py:225(__init__)
+        1    0.000    0.000    0.000    0.000 util.py:46(obs_space_info)
+       40    0.000    0.000    0.000    0.000 managers.py:1992(_grouping_func)
+       32    0.000    0.000    0.000    0.000 {method 'transpose' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 pathlib.py:1227(stat)
+      208    0.000    0.000    0.000    0.000 {method 'data_ptr' of 'torch._C.StorageBase' objects}
+       97    0.000    0.000    0.000    0.000 blocks.py:354(dtype)
+       32    0.000    0.000    0.000    0.000 shape_base.py:207(_arrays_for_stack_dispatcher)
+      169    0.000    0.000    0.000    0.000 multiarray.py:148(concatenate)
+       52    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
+      160    0.000    0.000    0.000    0.000 managers.py:282(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 dict.py:36(__init__)
+      161    0.000    0.000    0.000    0.000 contextlib.py:379(__enter__)
+        1    0.000    0.000    0.000    0.000 zipfile.py:1215(__init__)
+       66    0.000    0.000    0.000    0.000 base.py:692(_constructor)
+        2    0.000    0.000    0.000    0.000 cloudpickle_fast.py:598(_function_getnewargs)
+       15    0.000    0.000    0.000    0.000 threading.py:259(__exit__)
+      128    0.000    0.000    0.000    0.000 numeric.py:2384(_array_equal_dispatcher)
+        2    0.000    0.000    0.000    0.000 cloudpickle_fast.py:139(_function_getstate)
+        6    0.000    0.000    0.000    0.000 zipfile.py:343(__init__)
+        1    0.000    0.000    0.000    0.000 {method 'close' of 'pandas._libs.parsers.TextReader' objects}
+       65    0.000    0.000    0.000    0.000 missing.py:107(clean_fill_method)
+       96    0.000    0.000    0.000    0.000 managers.py:1257(<genexpr>)
+       30    0.000    0.000    0.000    0.000 threading.py:1109(ident)
+        2    0.000    0.000    0.000    0.000 generic.py:5650(f)
+       21    0.000    0.000    0.000    0.000 encoder.py:160(default)
+        3    0.000    0.000    0.000    0.000 base_parser.py:1289(_is_potential_multi_index)
+        1    0.000    0.000    0.000    0.000 missing.py:227(_isna_array)
+       15    0.000    0.000    0.000    0.000 {method 'copy' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 _bootlocale.py:33(getpreferredencoding)
+       65    0.000    0.000    0.000    0.000 series.py:523(_constructor)
+        5    0.000    0.000    0.000    0.000 weakref.py:415(__getitem__)
+        2    0.000    0.000    0.000    0.000 container.py:328(__setitem__)
+        1    0.000    0.000    0.000    0.000 readers.py:941(_get_options_with_defaults)
+        1    0.000    0.000    0.000    0.000 _asarray.py:111(<setcomp>)
+       61    0.000    0.000    0.000    0.000 threading.py:536(is_set)
+        1    0.000    0.000    0.000    0.000 {method 'close' of '_io.TextIOWrapper' objects}
+        1    0.000    0.000    0.000    0.000 missing.py:268(_isna_string_dtype)
+        1    0.000    0.000    0.000    0.000 missing.py:495(_array_equivalent_object)
+       15    0.000    0.000    0.000    0.000 threading.py:271(_is_owned)
+       15    0.000    0.000    0.000    0.000 callbacks.py:96(on_rollout_end)
+       65    0.000    0.000    0.000    0.000 base.py:1124(_maybe_disallow_fill)
+        1    0.000    0.000    0.000    0.000 {built-in method posix.getcwd}
+       33    0.000    0.000    0.000    0.000 managers.py:217(is_single_block)
+       62    0.000    0.000    0.000    0.000 arrayprint.py:1231(__call__)
+      105    0.000    0.000    0.000    0.000 fromnumeric.py:3351(_mean_dispatcher)
+       15    0.000    0.000    0.000    0.000 threading.py:265(_release_save)
+        1    0.000    0.000    0.000    0.000 data_pipeline.py:28(namelist)
+      130    0.000    0.000    0.000    0.000 base.py:326(ndim)
+        1    0.000    0.000    0.000    0.000 {built-in method pandas._libs.missing.isnaobj}
+       52    0.000    0.000    0.000    0.000 hooks.py:54(warn_if_has_hooks)
+        1    0.000    0.000    0.000    0.000 optimizer.py:139(<listcomp>)
+        1    0.000    0.000    0.000    0.000 env_util.py:27(is_wrapped)
+        1    0.000    0.000    0.000    0.000 base_class.py:277(_setup_lr_schedule)
+        3    0.000    0.000    0.000    0.000 {built-in method time.localtime}
+        1    0.000    0.000    0.000    0.000 genericpath.py:39(isdir)
+       52    0.000    0.000    0.000    0.000 storage.py:619(pickle_storage_type)
+        1    0.000    0.000    0.000    0.000 dummy_vec_env.py:31(<listcomp>)
+       16    0.000    0.000    0.000    0.000 buffers.py:94(reset)
+       66    0.000    0.000    0.000    0.000 function.py:49(__call__)
+       64    0.000    0.000    0.000    0.000 blocks.py:244(mgr_locs)
+        1    0.000    0.000    0.000    0.000 optimizer.py:131(pack_group)
+        1    0.000    0.000    0.000    0.000 base_parser.py:610(_set_noconvert_dtype_columns)
+        1    0.000    0.000    0.000    0.000 common.py:462(get_compression_method)
+        1    0.000    0.000    0.000    0.000 parse.py:437(urlsplit)
+       32    0.000    0.000    0.000    0.000 cast.py:2187(np_can_hold_element)
+        1    0.000    0.000    0.000    0.000 common.py:1198(is_numeric_dtype)
+       61    0.000    0.000    0.000    0.000 {method 'append' of 'collections.deque' objects}
+        2    0.000    0.000    0.000    0.000 __init__.py:77(is_available)
+        2    0.000    0.000    0.000    0.000 preprocessing.py:202(check_for_nested_spaces)
+       28    0.000    0.000    0.000    0.000 fromnumeric.py:70(<dictcomp>)
+       32    0.000    0.000    0.000    0.000 managers.py:2111(<listcomp>)
+        2    0.000    0.000    0.000    0.000 {built-in method sys.intern}
+       14    0.000    0.000    0.000    0.000 {method 'tell' of '_io.BufferedWriter' objects}
+        1    0.000    0.000    0.000    0.000 env_checker.py:54(_check_unsupported_spaces)
+       19    0.000    0.000    0.000    0.000 {built-in method _struct.pack}
+        2    0.000    0.000    0.000    0.000 common.py:195(stringify_path)
+        1    0.000    0.000    0.000    0.000 typing.py:719(__instancecheck__)
+        1    0.000    0.000    0.000    0.000 construction.py:494(<listcomp>)
+        1    0.000    0.000    0.000    0.000 logger.py:139(__init__)
+        1    0.000    0.000    0.000    0.000 random.py:791(getrandbits)
+        3    0.000    0.000    0.000    0.000 serialization.py:228(_open_file_like)
+        4    0.000    0.000    0.000    0.000 {method 't_' of 'torch._C._TensorBase' objects}
+      104    0.000    0.000    0.000    0.000 {method 'nbytes' of 'torch._C.StorageBase' objects}
+        2    0.000    0.000    0.000    0.000 _ufunc_config.py:434(__exit__)
+       32    0.000    0.000    0.000    0.000 range.py:241(start)
+       10    0.000    0.000    0.000    0.000 arrayprint.py:403(_get_formatdict)
+        1    0.000    0.000    0.000    0.000 common.py:497(infer_compression)
+        1    0.000    0.000    0.000    0.000 {method 'upper' of 'str' objects}
+       52    0.000    0.000    0.000    0.000 {method 'stride' of 'torch._C._TensorBase' objects}
+       29    0.000    0.000    0.000    0.000 {built-in method _thread.get_ident}
+       52    0.000    0.000    0.000    0.000 {method 'data_ptr' of 'torch._C._TensorBase' objects}
+       21    0.000    0.000    0.000    0.000 {method 'write' of '_io.StringIO' objects}
+      3/1    0.000    0.000    0.000    0.000 preprocessing.py:134(get_obs_shape)
+        2    0.000    0.000    0.000    0.000 posixpath.py:71(join)
+       18    0.000    0.000    0.000    0.000 zipfile.py:454(_encodeFilenameFlags)
+       52    0.000    0.000    0.000    0.000 {method '_storage' of 'torch._C._TensorBase' objects}
+        4    0.000    0.000    0.000    0.000 _ufunc_config.py:131(geterr)
+        1    0.000    0.000    0.000    0.000 posixpath.py:334(normpath)
+        1    0.000    0.000    0.000    0.000 time_limit.py:5(__init__)
+        2    0.000    0.000    0.000    0.000 codecs.py:309(__init__)
+       21    0.000    0.000    0.000    0.000 module.py:1211(remove_from)
+        2    0.000    0.000    0.000    0.000 save_util.py:24(recursive_getattr)
+        1    0.000    0.000    0.000    0.000 builtin_trap.py:39(__enter__)
+       64    0.000    0.000    0.000    0.000 base.py:6022(_is_comparable_dtype)
+       47    0.000    0.000    0.000    0.000 base_environment.py:207(<lambda>)
+        1    0.000    0.000    0.000    0.000 save_util.py:178(open_path)
+        1    0.000    0.000    0.000    0.000 logger.py:438(__init__)
+        6    0.000    0.000    0.000    0.000 zipfile.py:1105(__init__)
+        8    0.000    0.000    0.000    0.000 {built-in method numpy.geterrobj}
+        2    0.000    0.000    0.000    0.000 copy.py:263(<genexpr>)
+       46    0.000    0.000    0.000    0.000 utils.py:128(func)
+       52    0.000    0.000    0.000    0.000 {method 'has_names' of 'torch._C._TensorBase' objects}
+       64    0.000    0.000    0.000    0.000 fromnumeric.py:1751(_ravel_dispatcher)
+        1    0.000    0.000    0.000    0.000 syspathcontext.py:45(__init__)
+       55    0.000    0.000    0.000    0.000 {method 'rsplit' of 'str' objects}
+        4    0.000    0.000    0.000    0.000 posixpath.py:228(expanduser)
+       64    0.000    0.000    0.000    0.000 {built-in method _operator.index}
+       54    0.000    0.000    0.000    0.000 {method 'pop' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 __init__.py:47(is_vecenv_wrapped)
+        1    0.000    0.000    0.000    0.000 common.py:239(is_fsspec_url)
+       32    0.000    0.000    0.000    0.000 {method 'bit_length' of 'int' objects}
+        2    0.000    0.000    0.000    0.000 common.py:115(ensure_python_int)
+        2    0.000    0.000    0.000    0.000 {built-in method _struct.unpack}
+        1    0.000    0.000    0.000    0.000 generic.py:514(_construct_axes_from_arguments)
+       30    0.000    0.000    0.000    0.000 fromnumeric.py:3619(_var_dispatcher)
+        2    0.000    0.000    0.000    0.000 posixpath.py:100(split)
+        2    0.000    0.000    0.000    0.000 utils.py:25(flatdim_box_multibinary)
+       15    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.lock' objects}
+        1    0.000    0.000    0.000    0.000 encoder.py:259(_make_iterencode)
+        1    0.000    0.000    0.000    0.000 common.py:201(all_none)
+        2    0.000    0.000    0.000    0.000 managers.py:618(consolidate)
+        1    0.000    0.000    0.000    0.000 platform.py:1124(python_version)
+       52    0.000    0.000    0.000    0.000 {method 'storage_offset' of 'torch._C._TensorBase' objects}
+        2    0.000    0.000    0.000    0.000 {built-in method _warnings.warn}
+        1    0.000    0.000    0.000    0.000 syspathcontext.py:48(__enter__)
+        1    0.000    0.000    0.000    0.000 os.py:771(getenv)
+       64    0.000    0.000    0.000    0.000 {method 'splitlines' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 {method 'search' of 're.Pattern' objects}
+       64    0.000    0.000    0.000    0.000 function_base.py:5333(_append_dispatcher)
+       25    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+       32    0.000    0.000    0.000    0.000 {method 'item' of 'numpy.ndarray' objects}
+       62    0.000    0.000    0.000    0.000 {method 'setdefault' of 'dict' objects}
+        2    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:58(__init__)
+        1    0.000    0.000    0.000    0.000 readers.py:1429(_refine_defaults_read)
+        1    0.000    0.000    0.000    0.000 platform.py:1007(_sys_version)
+       32    0.000    0.000    0.000    0.000 numeric.py:1466(<listcomp>)
+      7/5    0.000    0.000    0.000    0.000 core.py:258(observation_space)
+       47    0.000    0.000    0.000    0.000 base_environment.py:204(<lambda>)
+        1    0.000    0.000    0.000    0.000 {built-in method now}
+        2    0.000    0.000    0.000    0.000 {built-in method posix.urandom}
+        2    0.000    0.000    0.000    0.000 base.py:5278(<genexpr>)
+        2    0.000    0.000    0.000    0.000 utils.py:77(get_schedule_fn)
+        1    0.000    0.000    0.000    0.000 optimizer.py:141(<dictcomp>)
+       24    0.000    0.000    0.000    0.000 {method 'encode' of 'str' objects}
+       47    0.000    0.000    0.000    0.000 base_environment.py:206(<lambda>)
+        1    0.000    0.000    0.000    0.000 platform.py:947(version)
+       32    0.000    0.000    0.000    0.000 function_base.py:4954(_delete_dispatcher)
+        3    0.000    0.000    0.000    0.000 common.py:155(_expand_user)
+        6    0.000    0.000    0.000    0.000 zipfile.py:1701(_writecheck)
+       32    0.000    0.000    0.000    0.000 range.py:264(stop)
+       33    0.000    0.000    0.000    0.000 __init__.py:932(__missing__)
+        1    0.000    0.000    0.000    0.000 {built-in method _locale.nl_langinfo}
+        1    0.000    0.000    0.000    0.000 _collections_abc.py:760(get)
+        2    0.000    0.000    0.000    0.000 cloudpickle.py:318(_extract_code_globals)
+        1    0.000    0.000    0.000    0.000 optimizer.py:99(_hook_for_profile)
+        2    0.000    0.000    0.000    0.000 readers.py:486(validate_integer)
+       66    0.000    0.000    0.000    0.000 {pandas._libs.lib.is_bool}
+        4    0.000    0.000    0.000    0.000 {built-in method _functools.reduce}
+       52    0.000    0.000    0.000    0.000 storage.py:433(_untyped)
+        4    0.000    0.000    0.000    0.000 pathlib.py:742(__str__)
+       19    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.lock' objects}
+       21    0.000    0.000    0.000    0.000 {method 'is_floating_point' of 'torch._C._TensorBase' objects}
+        6    0.000    0.000    0.000    0.000 serialization.py:193(_is_path)
+       32    0.000    0.000    0.000    0.000 generic.py:4060(_check_inplace_and_allows_duplicate_labels)
+       40    0.000    0.000    0.000    0.000 {method 'pop' of 'set' objects}
+       21    0.000    0.000    0.000    0.000 {built-in method posix.getpid}
+        1    0.000    0.000    0.000    0.000 optimizer.py:134(<dictcomp>)
+        6    0.000    0.000    0.000    0.000 env_checker.py:12(_is_numpy_array_space)
+       32    0.000    0.000    0.000    0.000 function_base.py:5139(_insert_dispatcher)
+       32    0.000    0.000    0.000    0.000 indexing.py:2468(need_slice)
+       32    0.000    0.000    0.000    0.000 range.py:287(step)
+        2    0.000    0.000    0.000    0.000 cloudpickle_fast.py:245(_code_reduce)
+        1    0.000    0.000    0.000    0.000 posixpath.py:60(isabs)
+        1    0.000    0.000    0.000    0.000 preprocessing.py:155(<dictcomp>)
+       32    0.000    0.000    0.000    0.000 shape_base.py:77(_atleast_2d_dispatcher)
+        6    0.000    0.000    0.000    0.000 posixpath.py:41(_get_sep)
+        1    0.000    0.000    0.000    0.000 {built-in method sys.getfilesystemencoding}
+        1    0.000    0.000    0.000    0.000 nanops.py:213(_maybe_get_mask)
+        1    0.000    0.000    0.000    0.000 callbacks.py:258(__init__)
+        1    0.000    0.000    0.000    0.000 {method '__reduce_ex__' of 'object' objects}
+        1    0.000    0.000    0.000    0.000 os.py:674(__getitem__)
+        4    0.000    0.000    0.000    0.000 {method 'rfind' of 'str' objects}
+       32    0.000    0.000    0.000    0.000 fromnumeric.py:1008(_argsort_dispatcher)
+        1    0.000    0.000    0.000    0.000 env_checker.py:184(_check_spaces)
+       18    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
+       10    0.000    0.000    0.000    0.000 arrayprint.py:72(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 base_parser.py:383(_make_index)
+        8    0.000    0.000    0.000    0.000 encoder.py:223(floatstr)
+        2    0.000    0.000    0.000    0.000 base_parser.py:371(_maybe_make_multi_index_columns)
+       32    0.000    0.000    0.000    0.000 multiarray.py:883(bincount)
+        1    0.000    0.000    0.000    0.000 typing.py:848(__subclasscheck__)
+       32    0.000    0.000    0.000    0.000 numeric.py:1400(_moveaxis_dispatcher)
+      2/1    0.000    0.000    0.000    0.000 core.py:278(metadata)
+        1    0.000    0.000    0.000    0.000 copy.py:66(copy)
+       15    0.000    0.000    0.000    0.000 {method 'release' of '_thread.lock' objects}
+        9    0.000    0.000    0.000    0.000 {method 'decode' of 'bytes' objects}
+        1    0.000    0.000    0.000    0.000 base.py:150(is_consolidated)
+        2    0.000    0.000    0.000    0.000 abc.py:121(__subclasscheck__)
+        2    0.000    0.000    0.000    0.000 weakref.py:452(get)
+       10    0.000    0.000    0.000    0.000 {method 'startswith' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 seeding.py:86(_int_list_from_bigint)
+        1    0.000    0.000    0.000    0.000 data_pipeline.py:41(<listcomp>)
+        1    0.000    0.000    0.000    0.000 pathlib.py:839(suffix)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:205(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 base_vec_env.py:58(__init__)
+        1    0.000    0.000    0.000    0.000 {method 'flush' of '_io.BufferedWriter' objects}
+        1    0.000    0.000    0.000    0.000 platform.py:830(uname)
+        1    0.000    0.000    0.000    0.000 callbacks.py:40(init_callback)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:308(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 traitlets.py:675(__get__)
+        1    0.000    0.000    0.000    0.000 base_parser.py:812(_do_date_conversions)
+        1    0.000    0.000    0.000    0.000 distributions.py:122(__init__)
+        3    0.000    0.000    0.000    0.000 pathlib.py:752(__fspath__)
+        1    0.000    0.000    0.000    0.000 {method 'digest' of '_hashlib.HASH' objects}
+        6    0.000    0.000    0.000    0.000 {function _ZipWriteFile.close at 0x104b6d820}
+        1    0.000    0.000    0.000    0.000 {method 'min' of 'numpy.ndarray' objects}
+       15    0.000    0.000    0.000    0.000 callbacks.py:65(_on_rollout_start)
+        6    0.000    0.000    0.000    0.000 {method 'ndimension' of 'torch._C._TensorBase' objects}
+        1    0.000    0.000    0.000    0.000 callbacks.py:21(__init__)
+        1    0.000    0.000    0.000    0.000 env_util.py:11(unwrap_wrapper)
+        6    0.000    0.000    0.000    0.000 serialization.py:199(__init__)
+        3    0.000    0.000    0.000    0.000 save_util.py:37(_getattr)
+        4    0.000    0.000    0.000    0.000 cloudpickle_fast.py:626(<genexpr>)
+        1    0.000    0.000    0.000    0.000 base_parser.py:1318(_validate_parse_dates_arg)
+      5/4    0.000    0.000    0.000    0.000 core.py:248(action_space)
+       21    0.000    0.000    0.000    0.000 __future__.py:18(get_overwrite_module_params_on_conversion)
+       12    0.000    0.000    0.000    0.000 {method 'getvalue' of '_io.BytesIO' objects}
+        2    0.000    0.000    0.000    0.000 {built-in method _abc._abc_subclasscheck}
+        2    0.000    0.000    0.000    0.000 codecs.py:260(__init__)
+        1    0.000    0.000    0.000    0.000 _methods.py:42(_amin)
+       15    0.000    0.000    0.000    0.000 callbacks.py:99(_on_rollout_end)
+       19    0.000    0.000    0.000    0.000 {method 'values' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 {built-in method _codecs.lookup_error}
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:398(parent)
+        1    0.000    0.000    0.000    0.000 syspathcontext.py:55(__exit__)
+        1    0.000    0.000    0.000    0.000 optimizer.py:136(<listcomp>)
+        2    0.000    0.000    0.000    0.000 cloudpickle.py:345(_find_imported_submodules)
+        1    0.000    0.000    0.000    0.000 {pandas._libs.lib.array_equivalent_object}
+       14    0.000    0.000    0.000    0.000 {built-in method posix.fspath}
+       12    0.000    0.000    0.000    0.000 {method 'lower' of 'str' objects}
+        2    0.000    0.000    0.000    0.000 arrayprint.py:409(<lambda>)
+        2    0.000    0.000    0.000    0.000 env_checker.py:117(_check_box_obs)
+        4    0.000    0.000    0.000    0.000 encoder.py:277(_iterencode_list)
+        1    0.000    0.000    0.000    0.000 policies.py:902(get_policy_from_name)
+        2    0.000    0.000    0.000    0.000 parse.py:114(_coerce_args)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:206(<listcomp>)
+        9    0.000    0.000    0.000    0.000 fromnumeric.py:2399(_all_dispatcher)
+        6    0.000    0.000    0.000    0.000 base_parser.py:1314(<genexpr>)
+        1    0.000    0.000    0.000    0.000 traitlets.py:643(get)
+        4    0.000    0.000    0.000    0.000 cloudpickle_fast.py:307(_cell_reduce)
+        6    0.000    0.000    0.000    0.000 zipfile.py:681(_get_compressor)
+        1    0.000    0.000    0.000    0.000 builtin_trap.py:46(__exit__)
+        1    0.000    0.000    0.000    0.000 callbacks.py:90(on_training_end)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:304(<listcomp>)
+        2    0.000    0.000    0.000    0.000 inference.py:98(is_file_like)
+        1    0.000    0.000    0.000    0.000 {method 'match' of 're.Pattern' objects}
+        2    0.000    0.000    0.000    0.000 utils.py:119(constant_fn)
+        1    0.000    0.000    0.000    0.000 optimizer.py:133(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 readers.py:1008(_check_file_or_buffer)
+        1    0.000    0.000    0.000    0.000 os.py:754(encode)
+        2    0.000    0.000    0.000    0.000 pathlib.py:725(_format_parsed_parts)
+        1    0.000    0.000    0.000    0.000 nanops.py:346(_na_ok_dtype)
+        1    0.000    0.000    0.000    0.000 {built-in method _codecs.lookup}
+        3    0.000    0.000    0.000    0.000 serialization.py:224(__exit__)
+        1    0.000    0.000    0.000    0.000 threading.py:82(RLock)
+        7    0.000    0.000    0.000    0.000 zipfile.py:662(_check_compression)
+        1    0.000    0.000    0.000    0.000 copyreg.py:94(__newobj__)
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:152(__init__)
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:948(_sanity_check)
+        1    0.000    0.000    0.000    0.000 platform.py:1192(platform)
+        4    0.000    0.000    0.000    0.000 multiarray.py:498(can_cast)
+       10    0.000    0.000    0.000    0.000 {method 'discard' of 'set' objects}
+        1    0.000    0.000    0.000    0.000 common.py:1055(_maybe_memory_map)
+        1    0.000    0.000    0.000    0.000 <string>:2(__init__)
+        1    0.000    0.000    0.000    0.000 construction.py:233(mgr_to_mgr)
+        1    0.000    0.000    0.000    0.000 base_parser.py:1154(_process_date_conversion)
+        8    0.000    0.000    0.000    0.000 fromnumeric.py:2670(_amax_dispatcher)
+        2    0.000    0.000    0.000    0.000 cloudpickle.py:668(_get_cell_contents)
+        8    0.000    0.000    0.000    0.000 fromnumeric.py:2795(_amin_dispatcher)
+        2    0.000    0.000    0.000    0.000 pathlib.py:303(splitroot)
+        1    0.000    0.000    0.000    0.000 dummy_vec_env.py:25(<listcomp>)
+        2    0.000    0.000    0.000    0.000 {method 'keys' of 'collections.OrderedDict' objects}
+        1    0.000    0.000    0.000    0.000 {method 'union' of 'set' objects}
+        1    0.000    0.000    0.000    0.000 base.py:465(find)
+        1    0.000    0.000    0.000    0.000 base_parser.py:269(_extract_multi_indexer_columns)
+        6    0.000    0.000    0.000    0.000 serialization.py:202(__enter__)
+        1    0.000    0.000    0.000    0.000 {built-in method from_bytes}
+        7    0.000    0.000    0.000    0.000 {method 'endswith' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 zipfile.py:1814(__del__)
+        1    0.000    0.000    0.000    0.000 pathlib.py:831(name)
+        1    0.000    0.000    0.000    0.000 encoder.py:104(__init__)
+        1    0.000    0.000    0.000    0.000 _ufunc_config.py:425(__init__)
+        1    0.000    0.000    0.000    0.000 callbacks.py:53(on_training_start)
+        3    0.000    0.000    0.000    0.000 serialization.py:314(_check_dill_version)
+        1    0.000    0.000    0.000    0.000 distributions.py:18(__init__)
+        6    0.000    0.000    0.000    0.000 {method 'replace' of 'str' objects}
+        2    0.000    0.000    0.000    0.000 {built-in method builtins.divmod}
+        1    0.000    0.000    0.000    0.000 base_parser.py:832(_check_data_length)
+        6    0.000    0.000    0.000    0.000 {built-in method builtins.chr}
+        6    0.000    0.000    0.000    0.000 {method 'flush' of '_io._IOBase' objects}
+        1    0.000    0.000    0.000    0.000 generic.py:543(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 {method 'rpartition' of 'str' objects}
+        2    0.000    0.000    0.000    0.000 pathlib.py:1089(_init)
+        2    0.000    0.000    0.000    0.000 arrayprint.py:1236(__init__)
+        1    0.000    0.000    0.000    0.000 zipfile.py:1934(_fpclose)
+        1    0.000    0.000    0.000    0.000 base_class.py:42(maybe_make_env)
+        2    0.000    0.000    0.000    0.000 cloudpickle.py:772(_make_empty_cell)
+        4    0.000    0.000    0.000    0.000 __init__.py:144(_DType_reduce)
+        2    0.000    0.000    0.000    0.000 on_policy_algorithm.py:276(_get_torch_save_params)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:2965(_prod_dispatcher)
+        1    0.000    0.000    0.000    0.000 base_class.py:306(_excluded_save_params)
+        1    0.000    0.000    0.000    0.000 common.py:174(validate_header_arg)
+        1    0.000    0.000    0.000    0.000 readers.py:1705(_validate_skipfooter)
+        1    0.000    0.000    0.000    0.000 base_parser.py:240(_has_complex_date_col)
+        1    0.000    0.000    0.000    0.000 base_class.py:262(_get_eval_env)
+        1    0.000    0.000    0.000    0.000 readers.py:1607(_extract_dialect)
+        1    0.000    0.000    0.000    0.000 {method 'items' of 'mappingproxy' objects}
+        1    0.000    0.000    0.000    0.000 pathlib.py:46(_ignore_error)
+        2    0.000    0.000    0.000    0.000 base.py:518(<genexpr>)
+        1    0.000    0.000    0.000    0.000 c_parser_wrapper.py:408(ensure_dtype_objs)
+        1    0.000    0.000    0.000    0.000 logger.py:28(info)
+        1    0.000    0.000    0.000    0.000 dummy_vec_env.py:34(<listcomp>)
+        4    0.000    0.000    0.000    0.000 {built-in method _imp.release_lock}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 readers.py:1354(_clean_na_values)
+        1    0.000    0.000    0.000    0.000 fromnumeric.py:2300(_any_dispatcher)
+        2    0.000    0.000    0.000    0.000 common.py:205(<genexpr>)
+        2    0.000    0.000    0.000    0.000 arrayprint.py:1241(__call__)
+        1    0.000    0.000    0.000    0.000 numeric.py:188(_validate_dtype)
+        1    0.000    0.000    0.000    0.000 nanops.py:191(_get_fill_value)
+        1    0.000    0.000    0.000    0.000 base_parser.py:220(<setcomp>)
+        1    0.000    0.000    0.000    0.000 base_parser.py:1062(_make_date_converter)
+        1    0.000    0.000    0.000    0.000 common.py:533(is_string_or_object_np_dtype)
+        2    0.000    0.000    0.000    0.000 cloudpickle_fast.py:158(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 base_class.py:564(set_random_seed)
+        3    0.000    0.000    0.000    0.000 {method 'reverse' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 base_parser.py:920(_validate_usecols_arg)
+        1    0.000    0.000    0.000    0.000 base_class.py:207(<lambda>)
+        1    0.000    0.000    0.000    0.000 base_class.py:467(get_env)
+        1    0.000    0.000    0.000    0.000 callbacks.py:93(_on_training_end)
+        1    0.000    0.000    0.000    0.000 torch_layers.py:27(features_dim)
+        2    0.000    0.000    0.000    0.000 parse.py:103(_noop)
+        1    0.000    0.000    0.000    0.000 {method 'isdisjoint' of 'set' objects}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.next}
+        3    0.000    0.000    0.000    0.000 base_parser.py:1340(is_index_col)
+        1    0.000    0.000    0.000    0.000 {method 'writable' of '_io.BufferedWriter' objects}
+        1    0.000    0.000    0.000    0.000 zipfile.py:1305(__enter__)
+        1    0.000    0.000    0.000    0.000 tempfile.py:284(gettempdir)
+        1    0.000    0.000    0.000    0.000 {built-in method _stat.S_ISDIR}
+        1    0.000    0.000    0.000    0.000 contextlib.py:63(_recreate_cm)
+        1    0.000    0.000    0.000    0.000 copy.py:107(_copy_immutable)
+        1    0.000    0.000    0.000    0.000 base_parser.py:232(<listcomp>)
+        1    0.000    0.000    0.000    0.000 core.py:141(unwrapped)
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.globals}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.ord}
+        1    0.000    0.000    0.000    0.000 callbacks.py:50(_init_callback)
+        1    0.000    0.000    0.000    0.000 readers.py:1287(__enter__)
+        1    0.000    0.000    0.000    0.000 callbacks.py:59(_on_training_start)

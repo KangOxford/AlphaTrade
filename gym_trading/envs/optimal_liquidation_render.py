@@ -7,9 +7,9 @@ Created on Wed Sep 21 00:00:09 2022
 """
 from gym_trading.utils import * 
 from gym_trading.envs.broker import Flag
-from gym_trading.envs.base_environment import BaseEnv
+from gym_trading.envs.optimal_liquidation_v1 import OptimalLiquidation
 
-class OptimalLiquidation(BaseEnv):
+class OptimalLiquidation_Render(OptimalLiquidation):
     # ===============================  Init  =======================================
     def __init__(self, Flow) -> None:
         super().__init__()
