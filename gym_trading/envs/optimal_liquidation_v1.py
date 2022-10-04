@@ -6,10 +6,11 @@ Created on Wed Sep 21 00:00:09 2022
 @author: kang
 """
 from gym_trading.utils import * 
+from gym_trading.tests import *
 from gym_trading.envs.broker import Flag
 from gym_trading.envs.base_environment import BaseEnv
 
-class OptimalLiquidation_v1(BaseEnv):
+class OptimalLiquidation(BaseEnv):
     # ===============================  Init  =======================================
     def __init__(self, Flow) -> None:
         super().__init__(Flow)
@@ -38,3 +39,6 @@ class OptimalLiquidation_v1(BaseEnv):
         elif self.done:
             self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost() - self._low_dimension_penalty()
             return self.final_reward
+            
+if __name__=="__main__":
+    random_strategy(OptimalLiquidation)

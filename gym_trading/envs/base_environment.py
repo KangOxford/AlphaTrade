@@ -198,8 +198,10 @@ class BaseEnv(Env):
     # ------ 4/4.INFO ------
     def _get_info(self):
         if self.done:
-            self.info['num_left'] =  self.num_left
+            self.info['final_num_left'] =  self.num_left
             self.info['penalty_delta'] = self.penalty_delta
+        self.info['num_executed'] = self.memory_executed[-1]
+        self.info['num_left'] = self.num_left
         self.info['num_reset_called'] =  self.num_reset_called
         return self.info 
 # =============================================================================
@@ -317,7 +319,10 @@ class BaseEnv(Env):
             
             
     def render(self, mode = 'human'):
-        # print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
+        if self.done: print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
+        print("="*10 + str(self.current_step) + "="*10)
+        print("self.num_left: {}, self.action {}, self.num_executed {}".format(self.num_left,self.action, self.memory_executed[-1]))
+        print("self.observation: {}".format(self.observation))
         pass # tbd
         
     def extend_obs(self, init_obs):

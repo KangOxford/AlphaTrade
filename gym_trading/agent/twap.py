@@ -12,12 +12,21 @@ class Twap():
             self.venv = venv
             self.verbose = verbose
             self.num_env = venv.num_envs
+            
     def predict(self, obs):
+        if self.string == "common":
+            return self.predict_common(obs)
+        
+    def predict_common(self,obs):
         num_left, step_left = utils.get_numleft_and_stepleft(obs) # TODO need to be implemented according to venv
-        action = Flag.num2liquidate // Flag.max_episode_steps + 35 # doesn't work
-        action = Flag.num2liquidate // Flag.max_episode_steps + 40 # work
+        
+        # action = Flag.num2liquidate // Flag.max_episode_steps + 35 # doesn't work
+        # action = Flag.num2liquidate // Flag.max_episode_steps + 40 # work
+        action = Flag.num2liquidate // Flag.max_episode_steps + 0 # not work
+        
         # if step_left // 3 == step_left / 3:
         #     action += 1 #tbd only for (2000, 600)
+        
         states = None # TODO need to be implemented
         action = [action] * self.num_env 
         return action, states
@@ -31,7 +40,12 @@ if __name__== "__main__":
         action, _states = model.predict(obs)
         obs, rewards, dones, info = venv.step(action)
         step += 1
+        print("=="* 20)
         print("step, {0}; action {1}".format(step, action))
-        try:print("num_left, ", info[0]['num_left'])
+        try:
+            print("num_left, ", info[0]['num_left'])
+            print("num_executed, ", info[0]['num_executed'])
+            if info[0]['num_executed'] == 0:
+                breakpoint()
         except: pass
         if dones: break

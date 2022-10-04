@@ -15,7 +15,7 @@ register(
     id = "OptimalLiquidation-v1",
     # path to the class for creating the env
     # Note: entry_point also accept a class as input (and not only a string)
-    entry_point="gym_trading.envs.optimal_liquidation_v1:OptimalLiquidation_v1",
+    entry_point="gym_trading.envs.optimal_liquidation_v1:OptimalLiquidation",
     kwargs={'Flow': True},
     # Max number of steps per episode, using a `TimeLimitWrapper`
     max_episode_steps=Flag.max_episode_steps,

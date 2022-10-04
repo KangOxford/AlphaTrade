@@ -6,13 +6,14 @@ Created on Wed Sep 21 00:00:09 2022
 @author: kang
 """
 from gym_trading.utils import * 
+from gym_trading.tests import *
 from gym_trading.envs.broker import Flag
 from gym_trading.envs.optimal_liquidation_v1 import OptimalLiquidation
 
 class OptimalLiquidation_Render(OptimalLiquidation):
     # ===============================  Init  =======================================
     def __init__(self, Flow) -> None:
-        super().__init__()
+        super().__init__(Flow)
     # =============================== Render =======================================
     def render_v1(self):
         if self.done:
@@ -88,4 +89,8 @@ class OptimalLiquidation_Render(OptimalLiquidation):
                          }
         return self.info 
     def _get_info(self):
-        return self._get_info_v2()        
+        return self._get_info_v2()   
+
+    
+if __name__=="__main__":
+    random_strategy(OptimalLiquidation_Render)

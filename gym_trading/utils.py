@@ -359,8 +359,8 @@ class TensorboardCallback(BaseCallback):
         value = item.get('cost') 
         self.logger.record('env/cost', value)
         
-        value = item.get('num_left') 
-        self.logger.record('env/num_left', value)
+        value = item.get('final_num_left') 
+        self.logger.record('env/final_num_left', value)
         
         value = item.get('cost_curve') 
         self.logger.record('env/cost_curve', value)
