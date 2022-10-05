@@ -16,7 +16,7 @@ Debug.if_return_single_flie = False # if True then return Flow_list # Flase if y
 Debug.if_return_part_data = True # default for debugging
 Debug.if_whole_data = False # load the whole dataset
 import warnings; warnings.filterwarnings("ignore") # clear warnings
-string = time.ctime().replace(" ","-").replace(":","-"); Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/rnn_ppo_gym_trading-"+string)
+string = time.ctime().replace(" ","-").replace(":","-"); Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/rnn_ppo_gym_trading-"+string)
 # check_env(env)
 # num_cpu = 10; venv = DummyVecEnv([lambda: Monitor(gym.make("GymTrading-v1", Flow = Flow))] * num_cpu)
 
@@ -35,7 +35,7 @@ venv = DummyVecEnv([lambda: monitord_env])
 #     venv, 
 #     verbose=1,
 #     learning_rate = utils.biquadrate_schedule(3e-4),
-#     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/")
+#     tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/")
 # # initial model
 
 
@@ -43,8 +43,8 @@ venv = DummyVecEnv([lambda: monitord_env])
 # for i in range(int(3e3)):
 #     model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())
 #     string = time.ctime().replace(" ","-").replace(":","-")
-#     model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/rnn_ppo_gym_trading-"+string)
-#     Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/rnn_ppo_gym_trading-"+string)
+#     model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/rnn_ppo_gym_trading-"+string)
+#     Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/rnn_ppo_gym_trading-"+string)
 # # model learning and logging
 
 # %% training strategies 2
@@ -54,16 +54,21 @@ model = RecurrentPPO(
     venv, 
     verbose=1,
     learning_rate = utils.linear_schedule(1e-3),
-    tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/")
+    tensorboard_log="/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/")
 # initial model
 
 
-model.learn(total_timesteps=int(1e8), tb_log_name="RNN_PPO_initial",callback=utils.TensorboardCallback())
+model.learn(
+    total_timesteps=int(1e8), 
+    tb_log_name="RNN_PPO_initial",
+    eval_env = venv,
+    callback=utils.TensorboardCallback()
+    )
 # for i in range(int(3e3)):
 #     model.learn(total_timesteps=int(1e6), tb_log_name="RNN_PPO_improve",reset_num_timesteps=False,callback=utils.TensorboardCallback())
 #     string = time.ctime().replace(" ","-").replace(":","-")
-#     model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/rnn_ppo_gym_trading-"+string)
-#     Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Sep_30/rnn_ppo_gym_trading-"+string)
+#     model.save("/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/rnn_ppo_gym_trading-"+string)
+#     Flag.log(log_string = "/Users/kang/GitHub/NeuralLOB/venv_rnn-v5/Oct_05/rnn_ppo_gym_trading-"+string)
 # # model learning and logging
 
 # %% test the train result

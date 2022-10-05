@@ -39,6 +39,18 @@ class OptimalLiquidation(BaseEnv):
         elif self.done:
             self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost() - self._low_dimension_penalty()
             return self.final_reward
+        
+class OptimalLiquidation_v2(BaseEnv):
+    # ===============================  Init  =======================================
+    def __init__(self, Flow) -> None:
+        super().__init__(Flow)
+    # =============================== Reward =======================================
+    def _get_reward(self):
+        if not self.done: 
+            return self.memory_revenues[-1] - self._low_dimension_penalty() 
+        elif self.done:
+            self.final_reward = self.memory_revenues[-1] - self._get_inventory_cost() - self._low_dimension_penalty()
+            return self.final_reward
             
 if __name__=="__main__":
     random_strategy(OptimalLiquidation)

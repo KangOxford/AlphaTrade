@@ -7,7 +7,9 @@ import pandas as pd
 
 class Flag():
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
-    max_episode_steps= 600 # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
+    # max_episode_steps= 600 * 20 # 10 mins
+    max_episode_steps= 12000 # 10 mins
+    # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
     num2liquidate = 2000 
     max_action = 300
     max_quantity = 300 # TODO is it the same function with max_action?
@@ -22,9 +24,9 @@ class Flag():
     scaling = 30000000
     low_dimension_penalty_parameter = 1 # todo not sure
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
-    # skip = 1 # 50 miliseconds
+    skip = 1 # 50 miliseconds
     # skip = 2 # default = 1 from step No.n to step No.n+1
-    skip = 20 # 1 second 
+    # skip = 20 # 1 second 
     # skip = 200 # 10 seconds
     # skip = 1200 # 1 minute
     price_level = 10

@@ -11,6 +11,7 @@ from gym import spaces
 # -----------------------------------------------------------------------------
 from gym_trading.utils import * 
 from gym_trading.tests import *
+from gym_trading.debug import Debugger
 from gym_trading.envs.match_engine import Core
 from gym_trading.envs.broker import Flag, Broker
 warnings.filterwarnings("ignore")
@@ -322,7 +323,7 @@ class BaseEnv(Env):
     def render(self, mode = 'human'):
 # ==========================#  tbd ============================================
         print()
-        print("="*10 + str(self.current_step) + "="*10)
+        print("--"*10 + str(self.current_step) + "--"*10)
         print("self.num_left: {}, self.action {}, self.num_executed {}".format(self.num_left,self.action, self.memory_executed[-1]))
         print("self.observation: {}".format(self.observation))
         if self.done: print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
