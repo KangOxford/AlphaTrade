@@ -214,6 +214,7 @@ class BaseEnv(Env):
         self.reset_states()
         if not self.type_of_Flow_is_list :
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
+            print(">>> Index_random is ",index_random) #tbd
             flow = self.Flow[index_random:index_random + (self._max_episode_steps+1) * Flag.skip ,:]
         else:
             index_random_for_list = random.randint(0, len(self.Flow_list) - 1)
@@ -319,10 +320,14 @@ class BaseEnv(Env):
             
             
     def render(self, mode = 'human'):
-        if self.done: print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
+# ==========================#  tbd ============================================
+        print()
         print("="*10 + str(self.current_step) + "="*10)
         print("self.num_left: {}, self.action {}, self.num_executed {}".format(self.num_left,self.action, self.memory_executed[-1]))
         print("self.observation: {}".format(self.observation))
+        if self.done: print(">>>"*10 + " Base_Environment Render " + "<<<"*10)
+
+# =============================================================================
         pass # tbd
         
     def extend_obs(self, init_obs):

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import os.path
 import pandas as pd
+from gym_trading.envs.broker import Flag
 class Debug():
-    if_return_single_flie = False
+    if_return_single_flie = True
     if_whole_data = False
     if_return_part_data = False
     # by default, they are all set False
@@ -38,6 +39,16 @@ class ExternalData():
                 name_lst.append("bid"+str(i+1))
                 name_lst.append("bid"+str(i+1)+"_quantity")
             return name_lst
+        if Debug.if_return_single_flie: 
+            path = "/Users/kang/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
+            if not os.path.exists(path):
+                url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
+                path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]   
+                
+            df = pd.read_csv(path,names = namelist())
+            column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+            Flow = df.iloc[:,column_numbers]
+            return Flow
         if not Debug.if_return_single_flie:
             Flow_list = []
             if Debug.if_whole_data:
@@ -57,21 +68,16 @@ class ExternalData():
                 Flow = df.iloc[:,column_numbers]
                 Flow_list.append(Flow)
             return Flow_list
-        if Debug.if_return_single_flie: 
-            path = "/Users/kang/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv"
-            if not os.path.exists(path):
-                url = "https://drive.google.com/file/d/1UawhjR-9bEYYns7PyoZNym_awcyVko0i/view?usp=sharing"
-                path = 'https://drive.google.com/uc?export=download&id='+url.split('/')[-2]   
-                
-            df = pd.read_csv(path,names = namelist())
-            column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
-            Flow = df.iloc[:,column_numbers]
-            return Flow
      
 if __name__ == "__main__":
-    Debug.if_return_single_flie = False
     Flow = ExternalData.get_sample_order_book_data()
-    flow = Flow.iloc[3:1027,:].reset_index().drop("index",axis=1)
+    index = 278725
+    flow = Flow.iloc[index:index + Flag.max_episode_steps+1,:].reset_index().drop("index",axis=1)
+    m_flow = flow.diff()
+    flow.to_csv("flow.csv")
+    m_flow.to_csv("m_flow.csv")
+    
+    # flow = Flow.iloc[3:1027,:].reset_index().drop("index",axis=1)
     # datapipeline = DataPipeline(ExternalData.get_sample_order_book_data())
     # data = datapipeline.reset()
     # data = datapipeline.step()
