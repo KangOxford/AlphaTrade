@@ -23,7 +23,7 @@ string = time.ctime().replace(" ","-").replace(":","-"); Flag.log(log_string = "
 
 Flow = ExternalData.get_sample_order_book_data()
 monitord_env = Monitor(
-    env = gym.make("OptimalLiquidation-v1",Flow = Flow),
+    env = gym.make("OptimalLiquidation-v2",Flow = Flow),
     # env = gym.make("GymTrading-v1",Flow = Flow),
               )
 venv = DummyVecEnv([lambda: monitord_env])
