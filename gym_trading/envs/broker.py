@@ -9,10 +9,12 @@ class Flag():
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     # max_episode_steps= 600 * 20 # 10 mins
     # max_episode_steps= 12000 # 10 mins
-    max_episode_steps= 1200 # 1 min
+    # max_episode_steps= 1200 # 1 min
+    max_episode_steps= 600 # 1/2 min
     # max_episode_steps = 10240 # to test in 10 min, long horizon # size of a flow
     # num2liquidate = 2000 
-    num2liquidate = 200 # 1 min
+    # num2liquidate = 200 # 1 min
+    num2liquidate = 100 # 1/2 min
     max_action = 300
     max_quantity = 300 # TODO is it the same function with max_action?
     # max_quantity = 6000 # TODO is it the same function with max_action?
