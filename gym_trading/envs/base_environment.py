@@ -213,8 +213,12 @@ class BaseEnv(Env):
         '''return the observation of the initial condition'''
         # print(">>> reset") ## to be deleted
         self.reset_states()
-        if not self.type_of_Flow_is_list :
+        if not self.type_of_Flow_is_list : # single file
             index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
+            # index_random = random.randint(0, self.Flow.shape[0]-self._max_episode_steps-1)
+            if Debugger.switch_on :
+                if Debugger.BaseEnv.start_from_index_zero:
+                    index_random = 0 # tbd
             print(">>> Index_random is ",index_random) #tbd
             flow = self.Flow[index_random:index_random + (self._max_episode_steps+1) * Flag.skip ,:]
         else:
@@ -282,4 +286,5 @@ class BaseEnv(Env):
 
     
 if __name__=="__main__":
-    random_strategy(BaseEnv)
+    # random_strategy(BaseEnv)
+    zero_strategy(BaseEnv)

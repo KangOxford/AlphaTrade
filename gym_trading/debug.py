@@ -4,3 +4,4 @@ class Debugger:
     class BaseEnv:
         info = True
         # test = False
+        start_from_index_zero = True

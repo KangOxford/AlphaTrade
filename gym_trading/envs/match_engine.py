@@ -106,7 +106,7 @@ class Core():
         updated_state = self.update(state, to_be_updated) # updated state, state combined with incomming orders 3/3
         
         if Debugger.switch_on:
-            print('==='*20+"\n"+ "(match_engine) state") #tbd
+            print('==='*40+"\n"+ "(match_engine) state") #tbd
             print(state) #tbd
             print('-'*20+"\n"+ "(match_engine) diff_obs") #tbd
             print(diff_obs) #tbd
