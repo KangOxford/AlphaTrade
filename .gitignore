@@ -3,6 +3,7 @@
 .idea/
 .spyproject/
 .ipynb_checkpoints/
+venv_rnn-v*/
 venv_rnn-v5/
 venv_rnn-v4/
 venv_rnn-v3/
