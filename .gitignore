@@ -13,3 +13,4 @@ tensorboard_rnn/
 tensorboard/
 BaseEnv_21_Sep_1200.txt
 BaseEnv_21_Sep.txt
+*.txt
