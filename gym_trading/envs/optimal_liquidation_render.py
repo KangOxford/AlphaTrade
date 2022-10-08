@@ -8,7 +8,7 @@ Created on Wed Sep 21 00:00:09 2022
 from gym_trading.utils import * 
 from gym_trading.tests import *
 from gym_trading.envs.broker import Flag
-from gym_trading.envs.optimal_liquidation_v1 import OptimalLiquidation
+from gym_trading.envs.optimal_liquidation import OptimalLiquidation
 
 class OptimalLiquidation_Render(OptimalLiquidation):
     # ===============================  Init  =======================================

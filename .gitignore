@@ -15,3 +15,4 @@ tensorboard/
 
 *.txt
 !requirements.txt
+*.zip
