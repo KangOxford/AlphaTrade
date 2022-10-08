@@ -1,4 +1,4 @@
-from decimal import * 
+# from decimal import * 
 import time, random
 
 class Order(object):
@@ -10,8 +10,10 @@ class Order(object):
     '''
     def __init__(self, quote, order_list):
         self.timestamp = int(quote['timestamp']) # integer representing the timestamp of order creation
-        self.quantity = Decimal(quote['quantity']) # decimal representing amount of thing - can be partial amounts
-        self.price = Decimal(quote['price']) # decimal representing price (currency)
+        self.quantity = int(quote['quantity']) # decimal representing amount of thing - can be partial amounts
+        # self.quantity = Decimal(quote['quantity']) # decimal representing amount of thing - can be partial amounts
+        self.price = int(quote['price']) # decimal representing price (currency)
+        # self.price = Decimal(quote['price']) # decimal representing price (currency)
         self.order_id = int(quote['order_id'])
         self.trade_id = quote['trade_id']
         # doubly linked list to make it easier to re-order Orders for a particular price point

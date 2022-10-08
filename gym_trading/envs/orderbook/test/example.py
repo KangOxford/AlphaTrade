@@ -1,4 +1,4 @@
-from orderbook import OrderBook
+from gym_trading.envs.orderbook import OrderBook
 
 # Create an order book
 
@@ -47,6 +47,37 @@ limit_orders = [{'type' : 'limit',
                     'price' : 97,
                     'trade_id' : 103},
                    ]
+#tbd
+import pandas as pd
+df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv")
+
+from gym_trading.envs.orderbook import OrderBook
+order_book = OrderBook()
+
+l1 = df2.iloc[0,:]
+column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+l2 = l1.iloc[column_numbers]
+
+# # convert to float
+# new_column_numbers = [i for i in range(20) if i%2 == 0]
+# l2[new_column_numbers] = l2[new_column_numbers].apply(lambda x:x/10000)
+# l2
+
+limit_orders = []
+for i in range(10):
+    trade_id = 10086
+    item = {'type' : 'limit', 
+        'side' : 'bid', 
+         'quantity' : l2[2 * i + 1], 
+         'price' : l2[2 * i],
+         'trade_id' : trade_id}
+    limit_orders.append(item)
+# Add orders to order book
+for order in limit_orders:
+    trades, order_id = order_book.process_order(order, False, False)   
+# The current book may be viewed using a print
+print(order_book)
+#tbd
 
 # Add orders to order book
 for order in limit_orders:

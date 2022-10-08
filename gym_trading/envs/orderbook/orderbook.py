@@ -35,7 +35,8 @@ class OrderBook(object):
         if order_type == 'market':
             trades = self.process_market_order(quote, verbose)
         elif order_type == 'limit':
-            quote['price'] = Decimal(quote['price'])
+            quote['price'] = int(quote['price'])
+            # quote['price'] = Decimal(quote['price'])
             trades, order_in_book = self.process_limit_order(quote, from_data, verbose)
         else:
             sys.exit("order_type for process_order() is neither 'market' or 'limit'")
@@ -178,7 +179,8 @@ class OrderBook(object):
             sys.exit('modify_order() given neither "bid" nor "ask"')
 
     def get_volume_at_price(self, side, price):
-        price = Decimal(price)
+        price = int(price)
+        # price = Decimal(price)
         if side == 'bid':
             volume = 0
             if self.bids.price_exists(price):
@@ -219,6 +221,7 @@ class OrderBook(object):
         tempfile.write("***Bids***\n")
         if self.bids != None and len(self.bids) > 0:
             for key, value in reversed(self.bids.price_map.items()):
+                # print('%s' % value)#tbd
                 tempfile.write('%s' % value)
         tempfile.write("\n***Asks***\n")
         if self.asks != None and len(self.asks) > 0:

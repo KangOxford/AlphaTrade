@@ -3,7 +3,8 @@ from __future__ import print_function
 from random import *
 import sys
 sys.path.append('..')
-from orderbook import OrderBook
+from gym_trading.envs.orderbook import OrderBook
+
 
 def generate_new_buy(trade_id):
     return {'type' : 'limit', 
