@@ -1,52 +1,52 @@
-from gym_trading.envs.orderbook import OrderBook
+# from gym_trading.envs.orderbook import OrderBook
 
-# Create an order book
+# # Create an order book
 
-order_book = OrderBook()
+# order_book = OrderBook()
 
-# Create some limit orders
+# # Create some limit orders
 
-limit_orders = [{'type' : 'limit', 
-                   'side' : 'ask', 
-                    'quantity' : 5, 
-                    'price' : 101,
-                    'trade_id' : 100},
-                   {'type' : 'limit', 
-                    'side' : 'ask', 
-                    'quantity' : 5, 
-                    'price' : 103,
-                    'trade_id' : 101},
-                   {'type' : 'limit', 
-                    'side' : 'ask', 
-                    'quantity' : 5, 
-                    'price' : 101,
-                    'trade_id' : 102},
-                   {'type' : 'limit', 
-                    'side' : 'ask', 
-                    'quantity' : 5, 
-                    'price' : 101,
-                    'trade_id' : 103},
-                   {'type' : 'limit', 
-                    'side' : 'bid', 
-                    'quantity' : 5, 
-                    'price' : 99,
-                    'trade_id' : 100},
-                   {'type' : 'limit', 
-                    'side' : 'bid', 
-                    'quantity' : 5, 
-                    'price' : 98,
-                    'trade_id' : 101},
-                   {'type' : 'limit', 
-                    'side' : 'bid', 
-                    'quantity' : 5, 
-                    'price' : 99,
-                    'trade_id' : 102},
-                   {'type' : 'limit', 
-                    'side' : 'bid', 
-                    'quantity' : 5, 
-                    'price' : 97,
-                    'trade_id' : 103},
-                   ]
+# limit_orders = [{'type' : 'limit', 
+#                    'side' : 'ask', 
+#                     'quantity' : 5, 
+#                     'price' : 101,
+#                     'trade_id' : 100},
+#                    {'type' : 'limit', 
+#                     'side' : 'ask', 
+#                     'quantity' : 5, 
+#                     'price' : 103,
+#                     'trade_id' : 101},
+#                    {'type' : 'limit', 
+#                     'side' : 'ask', 
+#                     'quantity' : 5, 
+#                     'price' : 101,
+#                     'trade_id' : 102},
+#                    {'type' : 'limit', 
+#                     'side' : 'ask', 
+#                     'quantity' : 5, 
+#                     'price' : 101,
+#                     'trade_id' : 103},
+#                    {'type' : 'limit', 
+#                     'side' : 'bid', 
+#                     'quantity' : 5, 
+#                     'price' : 99,
+#                     'trade_id' : 100},
+#                    {'type' : 'limit', 
+#                     'side' : 'bid', 
+#                     'quantity' : 5, 
+#                     'price' : 98,
+#                     'trade_id' : 101},
+#                    {'type' : 'limit', 
+#                     'side' : 'bid', 
+#                     'quantity' : 5, 
+#                     'price' : 99,
+#                     'trade_id' : 102},
+#                    {'type' : 'limit', 
+#                     'side' : 'bid', 
+#                     'quantity' : 5, 
+#                     'price' : 97,
+#                     'trade_id' : 103},
+#                    ]
 
 
 # =============================================================================
@@ -69,18 +69,23 @@ l2 = l2.reset_index().drop(['index'],axis = 1)
 # l2
 
 limit_orders = []
+order_id_list = [15000000 + i for i in range(10)]
 for i in range(10):
     trade_id = 10086
+    timestamp = 34200.000000001
     item = {'type' : 'limit', 
         'side' : 'bid', 
           'quantity' : l2.iloc[2 * i + 1,0], 
           'price' : l2.iloc[2 * i,0],
-          'trade_id' : trade_id}
+          'trade_id' : trade_id,
+          'order_id' : order_id_list[i],
+          "timestamp": timestamp}
     limit_orders.append(item)
-    
 # Add orders to order book
+
 for order in limit_orders:
-    trades, order_id = order_book.process_order(order, False, False)   
+    breakpoint()
+    trades, order_id = order_book.process_order(order, True, False)   
 # The current book may be viewed using a print
 print(order_book)
 
@@ -120,12 +125,16 @@ for index in range(size):
         if price > best_bid:
             message = None
         else:
-            pass
+            breakpoint()
+            print(order_book)
+            order_book.cancel_order(side, trade_id)
+            print(order_book)
     else:
         raise NotImplementedError
     
     if message is not None:
-        trades, order_in_book = order_book.process_order(message, False, False)
+        breakpoint()
+        trades, order_in_book = order_book.process_order(message, True, False)
         print("Trade occurs as follows:")
         print(trades)
         print("The order book now is:")
