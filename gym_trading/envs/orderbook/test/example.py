@@ -67,12 +67,14 @@ l2 = l2.reset_index().drop(['index'],axis = 1)
 # new_column_numbers = [i for i in range(20) if i%2 == 0]
 # l2[new_column_numbers] = l2[new_column_numbers].apply(lambda x:x/10000)
 # l2
+# from datetime import datetime
 
 limit_orders = []
 order_id_list = [15000000 + i for i in range(10)]
 for i in range(10):
     trade_id = 10086
-    timestamp = 34200.000000001
+    # timestamp = datetime(34200.000000001)
+    timestamp = str(34200.000000001)
     item = {'type' : 'limit', 
         'side' : 'bid', 
           'quantity' : l2.iloc[2 * i + 1,0], 
@@ -84,7 +86,7 @@ for i in range(10):
 # Add orders to order book
 
 for order in limit_orders:
-    breakpoint()
+    # breakpoint()
     trades, order_id = order_book.process_order(order, True, False)   
 # The current book may be viewed using a print
 print(order_book)
@@ -97,7 +99,8 @@ print(order_book)
 
 import pandas as pd
 df = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_10.csv", header=None)
-# index = 0 
+df.columns = ["timestamp",'type','order_id','quantity','price','side','remark']
+df["timestamp"] = df["timestamp"].astype(str)
 size = 100
 for index in range(size):
     
@@ -110,7 +113,9 @@ for index in range(size):
     quantity = l1[3]
     price = l1[4]
     trade_id = l1[2] # not sure, in the data it is order id
-    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id}
+    order_id = trade_id
+    timestamp = l1[0]
+    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
     print("Message:")
     print(message)
     best_bid = order_book.get_best_bid()
@@ -125,15 +130,15 @@ for index in range(size):
         if price > best_bid:
             message = None
         else:
+            print(order_book)
+            order_book.cancel_order(side, trade_id, time = timestamp)
+            print(order_book)
             breakpoint()
-            print(order_book)
-            order_book.cancel_order(side, trade_id)
-            print(order_book)
     else:
         raise NotImplementedError
     
     if message is not None:
-        breakpoint()
+        # breakpoint()
         trades, order_in_book = order_book.process_order(message, True, False)
         print("Trade occurs as follows:")
         print(trades)

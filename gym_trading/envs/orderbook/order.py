@@ -9,7 +9,8 @@ class Order(object):
     existing Order.
     '''
     def __init__(self, quote, order_list):
-        self.timestamp = int(quote['timestamp']) # integer representing the timestamp of order creation
+        self.timestamp = quote['timestamp'] # string representing the timestamp of order creation
+        # self.timestamp = int(quote['timestamp']) # integer representing the timestamp of order creation
         self.quantity = int(quote['quantity']) # decimal representing amount of thing - can be partial amounts
         # self.quantity = Decimal(quote['quantity']) # decimal representing amount of thing - can be partial amounts
         self.price = int(quote['price']) # decimal representing price (currency)
