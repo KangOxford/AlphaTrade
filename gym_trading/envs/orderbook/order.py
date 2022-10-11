@@ -37,5 +37,6 @@ class Order(object):
         self.quantity = new_quantity
 
     def __str__(self):
-        return "{}@{}/{} - {}".format(self.quantity, self.price,
-                                      self.trade_id, self.timestamp)
+        return "Quantity {:5d}  |  Price {:8d}  |  Trade_ID {:10d}".format(self.quantity, self.price, self.trade_id)
+        # return "{}@{}/{} - {}".format(self.quantity, self.price,
+        #                               self.trade_id, self.timestamp)

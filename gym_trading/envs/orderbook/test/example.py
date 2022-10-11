@@ -47,9 +47,13 @@ limit_orders = [{'type' : 'limit',
                     'price' : 97,
                     'trade_id' : 103},
                    ]
-#tbd
+
+
+# =============================================================================
+# #tbd
+
 import pandas as pd
-df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv")
+df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
 
 from gym_trading.envs.orderbook import OrderBook
 order_book = OrderBook()
@@ -57,6 +61,7 @@ order_book = OrderBook()
 l1 = df2.iloc[0,:]
 column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
 l2 = l1.iloc[column_numbers]
+l2 = l2.reset_index().drop(['index'],axis = 1)
 
 # # convert to float
 # new_column_numbers = [i for i in range(20) if i%2 == 0]
@@ -68,16 +73,69 @@ for i in range(10):
     trade_id = 10086
     item = {'type' : 'limit', 
         'side' : 'bid', 
-         'quantity' : l2[2 * i + 1], 
-         'price' : l2[2 * i],
-         'trade_id' : trade_id}
+          'quantity' : l2.iloc[2 * i + 1,0], 
+          'price' : l2.iloc[2 * i,0],
+          'trade_id' : trade_id}
     limit_orders.append(item)
+    
 # Add orders to order book
 for order in limit_orders:
     trades, order_id = order_book.process_order(order, False, False)   
 # The current book may be viewed using a print
 print(order_book)
-#tbd
+
+# #tbd
+# =============================================================================
+
+# =============================================================================
+# # tbd
+
+import pandas as pd
+df = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_10.csv", header=None)
+# index = 0 
+size = 100
+for index in range(size):
+    
+    print("=="*10 + " " + str(index) + " "+ "=="*10)
+    print("The order book used to be:")
+    print(order_book)
+    l1 = df.iloc[index,:]
+    ttype = l1[1] 
+    side = 'bid' if l1[5] ==1 else 'ask'
+    quantity = l1[3]
+    price = l1[4]
+    trade_id = l1[2] # not sure, in the data it is order id
+    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id}
+    print("Message:")
+    print(message)
+    best_bid = order_book.get_best_bid()
+    if ttype == 1:
+        pass
+    elif ttype == 4 or ttype == 5:
+        if price > best_bid:
+            message = None
+        else:
+            pass
+    elif ttype == 3:
+        if price > best_bid:
+            message = None
+        else:
+            pass
+    else:
+        raise NotImplementedError
+    
+    if message is not None:
+        trades, order_in_book = order_book.process_order(message, False, False)
+        print("Trade occurs as follows:")
+        print(trades)
+        print("The order book now is:")
+        print(order_book)
+        print("=="*10 + "=" + "=====" + "="+ "=="*10)
+    
+# # tbd
+# =============================================================================
+
+
 
 # Add orders to order book
 for order in limit_orders:
