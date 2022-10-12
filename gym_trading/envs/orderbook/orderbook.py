@@ -223,19 +223,22 @@ class OrderBook(object):
             for key, value in reversed(self.bids.price_map.items()):
                 # print('%s' % value)#tbd
                 tempfile.write('%s' % value)
-        tempfile.write("\n***Asks***\n")
-        if self.asks != None and len(self.asks) > 0:
-            for key, value in self.asks.price_map.items():
-                tempfile.write('%s' % value)
-        tempfile.write("\n***Trades***\n")
-        if self.tape != None and len(self.tape) > 0:
-            num = 0
-            for entry in self.tape:
-                if num < 10: # get last 5 entries
-                    tempfile.write(str(entry['quantity']) + " @ " + str(entry['price']) + " (" + str(entry['timestamp']) + ") " + str(entry['party1'][0]) + "/" + str(entry['party2'][0]) + "\n")
-                    num += 1
-                else:
-                    break
+                
+        # tempfile.write("\n***Asks***\n")
+        # if self.asks != None and len(self.asks) > 0:
+        #     for key, value in self.asks.price_map.items():
+        #         tempfile.write('%s' % value)
+        
+        # tempfile.write("\n***Trades***\n")
+        # if self.tape != None and len(self.tape) > 0:
+        #     num = 0
+        #     for entry in self.tape:
+        #         if num < 10: # get last 5 entries
+        #             tempfile.write(str(entry['quantity']) + " @ " + str(entry['price']) + " (" + str(entry['timestamp']) + ") " + str(entry['party1'][0]) + "/" + str(entry['party2'][0]) + "\n")
+        #             num += 1
+        #         else:
+        #             break
+    
         tempfile.write("\n")
         return tempfile.getvalue()
 

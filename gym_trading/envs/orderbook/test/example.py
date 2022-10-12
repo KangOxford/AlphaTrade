@@ -48,6 +48,77 @@
 #                     'trade_id' : 103},
 #                    ]
 
+# =============================================================================
+adjust_data_drift_id = 10000
+
+def breif_order_book(order_book):
+    my_list = []
+    count = 0
+    for key, value in reversed(order_book.bids.price_map.items()):
+        count +=1 
+        # print(count)
+        quantity = value.volume
+        # print(value)
+        # print(dir(value))
+        # print(value.head_order.price)
+        # for order in value:
+        #     pirce = order.price
+        #     print(price)
+        #     break
+        # pirce = value.get_head_order().price
+        price = value.head_order.price
+        # print(pirce)
+        my_list.append(price)
+        my_list.append(quantity)
+        if count ==10:
+            break
+    # my_list = pd.DataFrame(my_list)
+    return my_list
+
+def adjust_data_drift(order_book, timestamp):
+
+    my_list = breif_order_book(order_book)
+      
+    right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1) 
+    right_list = right_list.iloc[:,0].to_list()
+    
+    right_order = list(set(right_list) - set(my_list))
+    wrong_order = list(set(my_list) -set(right_list))
+    if len(right_order) == 0 and len(wrong_order) == 0:
+        print("no data drift: no incomming new limit order outside the 10 price levels")
+        message = None
+    else:
+        if len(right_order) == 2 and len(wrong_order) == 2:
+            
+            side = 'bid'
+            price = right_order[0]
+            quantity = right_order[1]
+            
+            global adjust_data_drift_id
+            adjust_data_drift_id += 1
+            trade_id = adjust_data_drift_id
+            order_id = adjust_data_drift_id
+            
+            str_int_timestamp = str(int(timestamp[0:5]) * int(1e9) + (int(timestamp[6:15]) +1))
+            timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
+            
+            message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+            print('\n'+'-'*15)
+            print(">>> ADJUSTED <<<")
+            print('-'*15+'\n')
+        else:
+            raise NotImplementedError
+    if message is not None:
+        trades, order_in_book = order_book.process_order(message, True, False)
+    return order_book
+    # print("Adjusted Order Book")
+    # print(breif_order_book(order_book))
+# my_list[~my_list.apply(tuple,1).isin(right_list.apply(tuple,1))]
+# right_list[~right_list.apply(tuple,1).isin(my_list.apply(tuple,1))]
+# my_list is right_list
+
+# =============================================================================
+
 
 # =============================================================================
 # #tbd
@@ -62,6 +133,11 @@ l1 = df2.iloc[0,:]
 column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
 l2 = l1.iloc[column_numbers]
 l2 = l2.reset_index().drop(['index'],axis = 1)
+
+# =============================================================================
+column_numbers=[i for i in range(40) if i%4==2 or i%4==3]
+d2 = df2.iloc[:,column_numbers]  
+# =============================================================================
 
 # # convert to float
 # new_column_numbers = [i for i in range(20) if i%2 == 0]
@@ -101,7 +177,15 @@ import pandas as pd
 df = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_10.csv", header=None)
 df.columns = ["timestamp",'type','order_id','quantity','price','side','remark']
 df["timestamp"] = df["timestamp"].astype(str)
-size = 100
+# size = 50 # pass
+# size = 75 # pass
+# size = 85 # pass
+# size = 86 # pass
+# size = 88 # pass
+# size = 100 # pass
+size = 133
+# size = 200 
+
 for index in range(size):
     
     print("=="*10 + " " + str(index) + " "+ "=="*10)
@@ -121,11 +205,22 @@ for index in range(size):
     best_bid = order_book.get_best_bid()
     if ttype == 1:
         pass
-    elif ttype == 4 or ttype == 5:
-        if price > best_bid:
-            message = None
+        # if price > best_bid:
+        #     message = None
+        # else:
+        #     pass
+    # elif ttype == 5 or ttype == 4 : 
+    # # elif ttype == 5 : # not sure???
+    #     if price > best_bid:
+    #         message = None
+    #     else:
+    #         pass
+    elif ttype == 4 or ttype == 5: # not sure???
+        if side == 'bid' and price <= best_bid:
+            side = 'ask'
+            message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
         else:
-            pass
+            message = None
     elif ttype == 3:
         if price > best_bid:
             message = None
@@ -133,21 +228,35 @@ for index in range(size):
             print(order_book)
             order_book.cancel_order(side, trade_id, time = timestamp)
             print(order_book)
-            breakpoint()
+            message  = None # !remember not to pass the message to be processed
+            # breakpoint()
+    elif ttype == 6:
+        message = None
     else:
         raise NotImplementedError
     
     if message is not None:
-        # breakpoint()
         trades, order_in_book = order_book.process_order(message, True, False)
         print("Trade occurs as follows:")
         print(trades)
         print("The order book now is:")
         print(order_book)
-        print("=="*10 + "=" + "=====" + "="+ "=="*10)
-    
+        # if index == 88:
+        #     breakpoint()
+    order_book = adjust_data_drift(order_book, timestamp)
+    print("breif_order_book(order_book)")
+    print(breif_order_book(order_book))
+    print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
+   
+breakpoint()    
 # # tbd
 # =============================================================================
+
+
+
+
+
+
 
 
 
