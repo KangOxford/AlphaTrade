@@ -64,8 +64,17 @@ def cancel_by_price(order_book, Price):
     timestamp = order.timestamp
     order_book.cancel_order(side, trade_id, time = timestamp)
     return order_book
+# def cancel_by_id(orderbook, order_id):
+#     side = 'bid'
+#     order_list =  order_book.bids.get_price_list(Price)
+#     order = order_list.get_head_order()
+#     trade_id = order_id
+#     timestamp = order.timestamp
+#     order_book.cancel_order(side, trade_id, time = timestamp)
+#     return order_book
 # =============================================================================
-
+# def get_type2_price_quantity(index, price_from_data):
+#     right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list() 
 
 def get_two_list4compare(order_book, index):
     my_list = brief_order_book(order_book)
@@ -310,6 +319,21 @@ for index in range(size):
             message = None
         elif ttype == 2:
             # cancellation (partial deletion of a limit order)
+            origin_quantity = order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
+            adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
+            message = {
+                'type' : 'limit',
+                'side' : 'bid',
+                'quantity': adjusted_quantity,
+                'price' : price,
+                'order_id': order_id,
+                'timestamp': timestamp # the new timestamp
+                }
+            breakpoint()
+            print(order_book)#tbd
+            order_book.bids.update_order(message)
+            print(order_book)#tbd
+            message = None
             raise NotImplementedError
         else:
             raise NotImplementedError
