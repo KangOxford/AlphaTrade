@@ -224,10 +224,10 @@ class OrderBook(object):
                 # print('%s' % value)#tbd
                 tempfile.write('%s' % value)
                 
-        tempfile.write("\n***Asks***\n")
-        if self.asks != None and len(self.asks) > 0:
-            for key, value in self.asks.price_map.items():
-                tempfile.write('%s' % value)
+        # tempfile.write("\n***Asks***\n")
+        # if self.asks != None and len(self.asks) > 0:
+        #     for key, value in self.asks.price_map.items():
+        #         tempfile.write('%s' % value)
         
         # tempfile.write("\n***Trades***\n")
         # if self.tape != None and len(self.tape) > 0:
