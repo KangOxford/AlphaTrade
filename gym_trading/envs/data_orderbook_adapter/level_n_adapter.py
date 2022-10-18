@@ -46,6 +46,7 @@ def brief_order_book(order_book):
 
 def adjust_data_drift(order_book, timestamp, index):
         
+    print(order_book)#tbd
     my_list, right_list = get_two_list4compare(order_book, index)
     my_array, right_array = np.array(my_list), np.array(right_list)
     
@@ -86,8 +87,8 @@ def adjust_data_drift(order_book, timestamp, index):
             print(">>> ADJUSTED <<<")
             print('-'*15+'\n')   
         elif len(right_order) == 2 and len(wrong_order) == 2:
-            right_order_price =  right_order[0]
-            wrong_order_price =  wrong_order[-1]
+            right_order_price =  right_list[-2]
+            wrong_order_price =  my_list[-2]
             if right_order_price > wrong_order_price: # just insert new order
                 side = 'bid'
                 price = right_order[0]
@@ -104,14 +105,7 @@ def adjust_data_drift(order_book, timestamp, index):
                 print(">>> ADJUSTED <<<")
                 print('-'*15+'\n')
             elif right_order_price < wrong_order_price:
-                # wrong order been cancelled outside the order book
-                breakpoint()
-                # # dir(order_book.bids)
-                # for k,v in order_book.bids.order_map.items():
-                #     # print(v)
-                #     print(k)
-                    
-                # order_tobe_cancelled_list = [] 
+                # wrong order been cancelled outside the order book 
                 for price, order_list in reversed(order_book.bids.price_map.items()):
                     print(right_order_price, price , wrong_order_price)
                     if right_order_price < price  and price <= wrong_order_price:
@@ -120,23 +114,7 @@ def adjust_data_drift(order_book, timestamp, index):
                                                     order_id = order.order_id,
                                                     time = order.timestamp, 
                                                     )
-                            print("cancelled")
-                        
-                        # order_tobe_cancelled_list.append(v)
-                        
-                # find if the right price and quantity is in the order book
-                
-                # order_list  = order_book.bids.get_price_list(wrong_order_price)
-                # assert len(order_list) == 1 # only one wrong order
-                # order_tobe_cancelled = order_list.head_order
-                # order_book.cancel_order(side = 'bid', 
-                #                         order_id = order_tobe_cancelled.order_id,
-                #                         time = order_tobe_cancelled.timestamp, 
-                #                         )
                 message = None
-                breakpoint()
-                print(order_book) #tbd
-                # raise NotImplementedError
             else: 
                 raise NotImplementedError
         elif np.sum(my_array != right_array) == 2:
@@ -196,6 +174,7 @@ def adjust_data_drift(order_book, timestamp, index):
             raise NotImplementedError
     if message is not None:
         trades, order_in_book = order_book.process_order(message, True, False)
+    print(order_book) # tbd
     return order_book
     # print("Adjusted Order Book")
     # print(brief_order_book(order_book))
@@ -273,7 +252,8 @@ df["timestamp"] = df["timestamp"].astype(str)
 # size = 1830 # pass
 # size = 1864 # pass
 # size = 2189 # pass
-# size = 2190 
+# size = 2190 # pass
+# size = 2199 # pass
 # size = 2913 
 size = 4000 
 
@@ -341,7 +321,7 @@ for index in range(size):
         print("The order book now is:")
         print(order_book)
         
-    if index == 2190: breakpoint()
+    # if index == 2199: breakpoint()
     order_book = adjust_data_drift(order_book, timestamp, index)
     print("brief_order_book(order_book)")
     print(brief_order_book(order_book))
