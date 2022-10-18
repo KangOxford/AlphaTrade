@@ -103,10 +103,21 @@ def adjust_data_drift(order_book, timestamp, index):
                 print('\n'+'-'*15)
                 print(">>> ADJUSTED <<<")
                 print('-'*15+'\n')
-            else: 
+            elif right_order_price < wrong_order_price:
+                # wrong order been cancelled outside the order book
+                breakpoint()
                 dir(order_book.bids)
                 for k,v in order_book.bids.order_map.items():
-                    print(k,v)
+                    print(v)
+                    # print(k,v)
+                order_list  = order_book.bids.get_price_list(wrong_order_price)
+                assert len(order_list) == 1 # only one wrong order
+                order_tobe_cancelled = order_list.head_order
+                order_id = order_tobe_cancelled.order_id
+                timestamp = order_tobe_cancelled.timestamp
+                raise NotImplementedError
+            else: 
+                raise NotImplementedError
         elif np.sum(my_array != right_array) == 2:
             side = 'bid'
             price = right_array[-2]
@@ -189,12 +200,12 @@ l2 = l1.iloc[column_numbers]
 l2 = l2.reset_index().drop(['index'],axis = 1)
 
 # =============================================================================
-column_numbers=[i for i in range(20) if i%4==2 or i%4==3]
+column_numbers=[i for i in range(price_level * 4) if i%4==2 or i%4==3]
 d2 = df2.iloc[:,column_numbers]  
 # =============================================================================
 
 limit_orders = []
-order_id_list = [15000000 + i for i in range(5)]
+order_id_list = [15000000 + i for i in range(price_level)]
 for i in range(price_level):
     trade_id = 90000
     # timestamp = datetime(34200.000000001)
@@ -241,9 +252,9 @@ df["timestamp"] = df["timestamp"].astype(str)
 # size = 1830 # pass
 # size = 1864 # pass
 # size = 2189 # pass
-# size = 2190 # pass?
-size = 2913 
-# size = 4000 
+# size = 2190 
+# size = 2913 
+size = 4000 
 
 for index in range(size):
     
@@ -266,27 +277,6 @@ for index in range(size):
     if side == 'bid':
         if ttype == 1:
             message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-        elif ttype == 4 or ttype == 5: # not sure???
-            if side == 'bid' and price <= best_bid:
-                side = 'ask'
-                message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-            else:
-                message = None
-        elif ttype == 3:
-            # global t3_count
-            t3_count +=1
-            if index == 2900: 
-                breakpoint()
-            if price > best_bid:
-                message = None
-            else:
-                # print(order_book)
-                order_book.cancel_order(side, trade_id, time = timestamp)
-                # print(order_book)
-                message  = None # !remember not to pass the message to be processed
-                # breakpoint()
-        elif ttype == 6:
-            message = None
         elif ttype == 2:
             # cancellation (partial deletion of a limit order)
             origin_quantity = order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
@@ -301,6 +291,23 @@ for index in range(size):
                 }
             order_book.bids.update_order(message)
             message = None
+        elif ttype == 3:
+            if price > best_bid:
+                message = None
+            else:
+                # print(order_book)
+                order_book.cancel_order(side, trade_id, time = timestamp)
+                # print(order_book)
+                message  = None # !remember not to pass the message to be processed
+                # breakpoint()
+        elif ttype == 4 or ttype == 5: # not sure???
+            if side == 'bid' and price <= best_bid:
+                side = 'ask'
+                message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+            else:
+                message = None
+        elif ttype == 6:
+            message = None
         else:
             raise NotImplementedError
     else:
@@ -313,7 +320,7 @@ for index in range(size):
         print("The order book now is:")
         print(order_book)
         
-    if index == 2912: breakpoint()
+    if index == 2190: breakpoint()
     order_book = adjust_data_drift(order_book, timestamp, index)
     print("brief_order_book(order_book)")
     print(brief_order_book(order_book))
