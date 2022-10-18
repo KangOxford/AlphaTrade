@@ -153,7 +153,7 @@ class DataAdjuster():
                 try:quantity_index = quantity_list.index(quantity)
                 except: raise NotImplementedError
                 difference_index = np.array([i for i in range(len(quantity_list)) if i != quantity_index])
-                if index == 4: breakpoint()
+                # breakpoint()
                 returned_timestamp_array = np.array(timestamp_list)[difference_index]
                 returned_order_id_array = np.array(order_id_list)[difference_index] # returned_order_id_array for cancel order
                 assert len(returned_order_id_array) == 1, "NotImplemented, only implement the single order situation"

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+price_level = 10
 
 def cancel_by_price(order_book, Price):
     side = 'bid'
@@ -27,8 +28,8 @@ def get_two_list4compare(order_book, index, d2):
     right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list() 
     return my_list, right_list
     
-def is_right_answer(order_book, index):
-    my_list, right_list = get_two_list4compare(order_book, index)
+def is_right_answer(order_book, index, d2):
+    my_list, right_list = get_two_list4compare(order_book, index, d2)
     return len(list(set(right_list) - set(my_list))) == 0
     
     

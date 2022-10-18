@@ -81,7 +81,8 @@ print(order_book)
 # size = 3444 
 size = 4000 
 
-data_adjuster = DataAdjuster(df2)
+
+data_adjuster = DataAdjuster(d2)
 
 # =============================================================================
 # 04 START ALGORITHM
@@ -169,7 +170,7 @@ for index in range(size):
     print("brief_order_book(order_book)")
     print(utils.brief_order_book(order_book))
     # order_book.asks = None # remove the ask side
-    assert utils.is_right_answer(order_book, index), "the orderbook if different from the data"
+    assert utils.is_right_answer(order_book, index, d2), "the orderbook if different from the data"
     print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
     
    
