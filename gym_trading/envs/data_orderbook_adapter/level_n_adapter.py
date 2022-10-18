@@ -106,16 +106,37 @@ def adjust_data_drift(order_book, timestamp, index):
             elif right_order_price < wrong_order_price:
                 # wrong order been cancelled outside the order book
                 breakpoint()
-                dir(order_book.bids)
-                for k,v in order_book.bids.order_map.items():
-                    print(v)
-                    # print(k,v)
-                order_list  = order_book.bids.get_price_list(wrong_order_price)
-                assert len(order_list) == 1 # only one wrong order
-                order_tobe_cancelled = order_list.head_order
-                order_id = order_tobe_cancelled.order_id
-                timestamp = order_tobe_cancelled.timestamp
-                raise NotImplementedError
+                # # dir(order_book.bids)
+                # for k,v in order_book.bids.order_map.items():
+                #     # print(v)
+                #     print(k)
+                    
+                # order_tobe_cancelled_list = [] 
+                for price, order_list in reversed(order_book.bids.price_map.items()):
+                    print(right_order_price, price , wrong_order_price)
+                    if right_order_price < price  and price <= wrong_order_price:
+                        for order in order_list:
+                            order_book.cancel_order(side = 'bid', 
+                                                    order_id = order.order_id,
+                                                    time = order.timestamp, 
+                                                    )
+                            print("cancelled")
+                        
+                        # order_tobe_cancelled_list.append(v)
+                        
+                # find if the right price and quantity is in the order book
+                
+                # order_list  = order_book.bids.get_price_list(wrong_order_price)
+                # assert len(order_list) == 1 # only one wrong order
+                # order_tobe_cancelled = order_list.head_order
+                # order_book.cancel_order(side = 'bid', 
+                #                         order_id = order_tobe_cancelled.order_id,
+                #                         time = order_tobe_cancelled.timestamp, 
+                #                         )
+                message = None
+                breakpoint()
+                print(order_book) #tbd
+                # raise NotImplementedError
             else: 
                 raise NotImplementedError
         elif np.sum(my_array != right_array) == 2:
