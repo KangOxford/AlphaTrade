@@ -49,6 +49,10 @@ def adjust_data_drift(order_book, timestamp, index):
     print(order_book)#tbd
     my_list, right_list = get_two_list4compare(order_book, index)
     my_array, right_array = np.array(my_list), np.array(right_list)
+    print("my_list")
+    print(my_list)
+    print("right_list")
+    print(right_list)
     
     right_order = list(set(right_list) - set(my_list))
     wrong_order = list(set(my_list) -set(right_list))
@@ -67,7 +71,7 @@ def adjust_data_drift(order_book, timestamp, index):
                     side = 'bid'
                 elif right_order[0] < wrong_order[0]:
                     quantity = -right_order[0] + wrong_order[0]
-                    side = 'ask' # cancel order here
+                    # side = 'ask' # cancel order here
                     return cancel_by_price(order_book, price)
             elif my_list[-1] == right_list[-1]:
                 price = right_list[-2]
@@ -254,7 +258,8 @@ df["timestamp"] = df["timestamp"].astype(str)
 # size = 2189 # pass
 # size = 2190 # pass
 # size = 2199 # pass
-# size = 2913 
+# size = 2900 # pass type3 cancel
+# size = 3019 # worsest bid partly cancelled outside price range
 size = 4000 
 
 for index in range(size):
@@ -271,6 +276,7 @@ for index in range(size):
     order_id = trade_id
     timestamp = l1[0]
     message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+    print(l1)#tbd
     print("Message:")
     print(message)
     best_bid = order_book.get_best_bid()
@@ -293,11 +299,23 @@ for index in range(size):
             order_book.bids.update_order(message)
             message = None
         elif ttype == 3:
+            # if index == 2900: breakpoint()
             if price > best_bid:
                 message = None
             else:
                 # print(order_book)
-                order_book.cancel_order(side, trade_id, time = timestamp)
+                try: order_book.cancel_order(side, trade_id, time = timestamp)
+                except: 
+
+                    order_list = order_book.bids.get_price_list(price)
+                    assert len(order_list) == 1
+                    order = order_list.head_order
+                    auto_generated_trade_id = order.order_id
+                    order_book.cancel_order(side = 'bid', 
+                                            order_id = order.order_id,
+                                            time = order.timestamp, 
+                                            )
+                    
                 # print(order_book)
                 message  = None # !remember not to pass the message to be processed
                 # breakpoint()
@@ -321,7 +339,7 @@ for index in range(size):
         print("The order book now is:")
         print(order_book)
         
-    # if index == 2199: breakpoint()
+    if index == 3019: breakpoint()
     order_book = adjust_data_drift(order_book, timestamp, index)
     print("brief_order_book(order_book)")
     print(brief_order_book(order_book))

@@ -155,10 +155,15 @@ class OrderBook(object):
         if side == 'bid':
             if self.bids.order_exists(order_id):
                 self.bids.remove_order_by_id(order_id)
+            else: 
+                raise NotImplementedError # tbd
         elif side == 'ask':
             if self.asks.order_exists(order_id):
                 self.asks.remove_order_by_id(order_id)
+            else: 
+                raise NotImplementedError # tbd
         else:
+            raise NotImplementedError # tbd
             sys.exit('cancel_order() given neither "bid" nor "ask"')
 
     def modify_order(self, order_id, order_update, time=None):
