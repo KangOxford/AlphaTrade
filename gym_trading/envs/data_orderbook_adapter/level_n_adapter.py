@@ -4,6 +4,7 @@
 # =============================================================================
 import numpy as np
 import pandas as pd
+from copy import copy
 from gym_trading.envs.data_orderbook_adapter import utils
 from gym_trading.envs.data_orderbook_adapter.adjust_data_drift import DataAdjuster
 from gym_trading.envs.orderbook import OrderBook
@@ -11,7 +12,38 @@ from gym_trading.envs.orderbook import OrderBook
 class Debugger: 
     on = True
     
-class Decoder():
+class SignalProcessor:
+    def __init__(self, order_book):
+        self.order_book = order_book
+        
+    def delete_order(self, message):
+        # para: self.order_book, message
+        try: self.order_book.cancel_order(message['side'], message['trade_id'], message['timestamp'])
+        except: 
+            order_list = self.order_book.bids.get_price_list(message['price'])
+            assert len(order_list) == 1
+            order = order_list.head_order
+            auto_generated_trade_id = order.order_id
+            self.order_book.cancel_order(side = 'bid', 
+                                    order_id = order.order_id,
+                                    time = order.timestamp, 
+                                    )
+    def __call__(self, signal):
+        message = signal.copy().pop("sign")
+        if signal['sign'] in (1, 4):
+            trades, order_in_book = self.order_book.process_order(message, True, False)
+            if Debugger.on: 
+                print("Trade occurs as follows:"); print(trades)
+                print("The order book now is:");   print(self.order_book)
+        elif signal['sign'] in (2, ): # cancellation (partial deletion of a limit order)
+            self.order_book.bids.update_order(message) 
+        elif signal['sign'] in (3, ):# deletion (total deletion of a limit order)
+            self.delete_order(message)
+        elif signal['sign'] in (6, ): pass # do nothing
+        else: raise NotImplementedError
+        return self.order_book
+    
+class Decoder:
     def __init__(self, order_book, price_level, horizon, historical_data, data_loader): 
         self.order_book = order_book
         self.price_level = price_level
@@ -41,6 +73,12 @@ class Decoder():
         if Debugger.on:  print(l1)#tbd
         best_bid = self.order_book.get_best_bid()
         
+        class SignalProducer:
+            def __init__(self, order_book):
+                self.order_book = order_book
+            def __call__(self):
+                return signal
+        
         if side == 'bid':
             if ttype == 1:
                 message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
@@ -49,79 +87,37 @@ class Decoder():
                 origin_quantity = self.order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
                 adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
                 message['quantity'] = adjusted_quantity
-                # message = {
-                #     'type' : 'limit',
-                #     'side' : 'bid',
-                #     'quantity': adjusted_quantity,
-                #     'price' : price,
-                #     'order_id': order_id,
-                #     'timestamp': timestamp # the new timestamp
-                #     }
                 signal = dict({'sign':2},**message)
                 
                 self.order_book.bids.update_order(message)
-                message = None
             elif ttype == 3:
                 # if index == 3225: breakpoint()
                 if price > best_bid:
                     message = None
                 else:
                     signal = dict({'sign':3},**message)# sign 3 means: Deletion (Total deletion of a limit order) inside orderbook
-                    # print(self.order_book)
-                    try: self.order_book.cancel_order(side, trade_id, time = timestamp)
-                    except: 
-
-                        order_list = self.order_book.bids.get_price_list(price)
-                        assert len(order_list) == 1
-                        order = order_list.head_order
-                        auto_generated_trade_id = order.order_id
-                        self.order_book.cancel_order(side = 'bid', 
-                                                order_id = order.order_id,
-                                                time = order.timestamp, 
-                                                )
-                        
-                    # print(self.order_book)
-                    message  = None # !remember not to pass the message to be processed
-                    # breakpoint()
+                    
             elif ttype == 4 or ttype == 5: # not sure???
                 if side == 'bid' and price <= best_bid:
-                    side = 'ask'
-                    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+                    message['side'] = 'ask' 
+                    sign = 4
                 else:
-                    message = None
-            elif ttype == 6:
-                message = None
-            else:
-                raise NotImplementedError
+                    sign = 6
+            elif ttype == 6: sign = 6
+            else: raise NotImplementedError
         else:
-            message = None
+            sign = 6
+        signal = dict({'sign': sign},**message)   
+        
+
             
-        def process_signal(order_book, signal):
-            if signal['sign'] in (1, 4, 5):
-                message = signal.pop("sign")
-                trades, order_in_book = self.order_book.process_order(message, True, False)
-                if Debugger.on: 
-                    print("Trade occurs as follows:")
-                    print(trades)
-                    print("The order book now is:")
-                    print(self.order_book)
             
-            elif signal['sign'] in (2, ):
-                
-                
-            elif signal['sign'] in (3, ):
-                message = signal.pop("sign")
-                def delete_order(order_book, message):
-                    try: self.order_book.cancel_order(side, trade_id, time = timestamp)
-                    except: 
-                        order_list = self.order_book.bids.get_price_list(price)
-                        assert len(order_list) == 1
-                        order = order_list.head_order
-                        auto_generated_trade_id = order.order_id
-                        self.order_book.cancel_order(side = 'bid', 
-                                                order_id = order.order_id,
-                                                time = order.timestamp, 
-                                                )
+
+        
+        self.order_book = SignalProcessor(self.order_book)(signal = SignalProducer(self.order_book)())
+
+        
+        
         if message is not None:
             trades, order_in_book = self.order_book.process_order(message, True, False)
 
