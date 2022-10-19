@@ -11,7 +11,51 @@ from gym_trading.envs.orderbook import OrderBook
 
 class Debugger: 
     on = True
-    
+
+class SignalProducer:
+    def __init__(self, order_book, historical_message):
+        self.historical_message = historical_message
+        self.order_book = order_book
+        self.best_bid = self.order_book.get_best_bid()
+    def __call__(self):
+        # ---------------------------- 01 ---------------------------- 
+        ttype = self.historical_message[1] 
+        side = 'bid' if self.historical_message[5] == 1 else 'ask'
+        quantity = self.historical_message[3]
+        price = self.historical_message[4]
+        trade_id = self.historical_message[2] # not sure, in the data it is order id
+        order_id = self.historical_message[2]
+        timestamp = self.historical_message[0]
+        
+        # ---------------------------- 02 ---------------------------- 
+        message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+        if Debugger.on:  print(self.historical_message)#tbd
+        
+        # ---------------------------- 03 ---------------------------- 
+        sign = ttype
+        if side == 'bid':
+            if ttype == 1: pass
+            elif ttype == 2: # cancellation (partial deletion of a limit order)
+                origin_quantity = self.order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
+                adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
+                message['quantity'] = adjusted_quantity
+            elif ttype == 3: # deletion (total deletion of a limit order) inside orderbook
+                if price > self.best_bid:
+                    sign = 6
+                else: pass
+            elif ttype == 4 or ttype == 5: # not sure???
+                if side == 'bid' and price <= self.best_bid:
+                    message['side'] = 'ask' 
+                else:
+                    sign = 6
+            elif ttype == 6: pass
+            else: raise NotImplementedError
+        else:
+            sign = 6
+        signal = dict({'sign': sign},**message)   
+        return signal
+        
+
 class SignalProcessor:
     def __init__(self, order_book):
         self.order_book = order_book
@@ -29,7 +73,7 @@ class SignalProcessor:
                                     )
     def __call__(self, signal):
         message = signal.copy().pop("sign")
-        if signal['sign'] in (1, 4):
+        if signal['sign'] in (1, 4, 5):
             trades, order_in_book = self.order_book.process_order(message, True, False)
             if Debugger.on: 
                 print("Trade occurs as follows:"); print(trades)
@@ -56,75 +100,18 @@ class Decoder:
         pass
     
     def step(self):
+        # -------------------------- 01 ----------------------------
         if Debugger.on: 
             print("=="*10 + " " + str(self.index) + " "+ "=="*10)
-            print("The order book used to be:")
-            print(self.order_book)
-        l1 = self.data_loader.iloc[self.index,:]
-        ttype = l1[1] 
-        side = 'bid' if l1[5] ==1 else 'ask'
-        quantity = l1[3]
-        price = l1[4]
-        trade_id = l1[2] # not sure, in the data it is order id
-        order_id = trade_id
-        timestamp = l1[0]
-        message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-        if Debugger.on:  print(l1)#tbd
-        best_bid = self.order_book.get_best_bid()
-        
-        class SignalProducer:
-            def __init__(self, order_book):
-                self.order_book = order_book
-            def __call__(self):
-                return signal
-        
-        if side == 'bid':
-            if ttype == 1:
-                message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-            elif ttype == 2:
-                # cancellation (partial deletion of a limit order)
-                origin_quantity = self.order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
-                adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
-                message['quantity'] = adjusted_quantity
-                signal = dict({'sign':2},**message)
-                
-                self.order_book.bids.update_order(message)
-            elif ttype == 3:
-                # if index == 3225: breakpoint()
-                if price > best_bid:
-                    message = None
-                else:
-                    signal = dict({'sign':3},**message)# sign 3 means: Deletion (Total deletion of a limit order) inside orderbook
-                    
-            elif ttype == 4 or ttype == 5: # not sure???
-                if side == 'bid' and price <= best_bid:
-                    message['side'] = 'ask' 
-                    sign = 4
-                else:
-                    sign = 6
-            elif ttype == 6: sign = 6
-            else: raise NotImplementedError
-        else:
-            sign = 6
-        signal = dict({'sign': sign},**message)   
-        
+            print("The order book used to be:"); print(self.order_book)
+        historical_message = self.data_loader.iloc[self.index,:]
+        timestamp = historical_message[0]
 
-            
-            
-
-        
-        self.order_book = SignalProcessor(self.order_book)(signal = SignalProducer(self.order_book)())
-
-        
-        
-        if message is not None:
-            trades, order_in_book = self.order_book.process_order(message, True, False)
-
-        # elif message is ??:
-        #     # cancel order
-            
-        # if index == 3444: breakpoint()
+        # -------------------------- 02 ----------------------------
+        self.order_book = SignalProcessor(self.order_book)(signal = SignalProducer(self.order_book, historical_message)())
         self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index)
+        
+        # -------------------------- 03 ----------------------------
         assert utils.is_right_answer(self.order_book, self.index, d2), "the orderbook if different from the data"
         self.index += 1
         if Debugger.on: 
@@ -147,15 +134,13 @@ if __name__ == "__main__":
     # =============================================================================
     df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
 
-    l1 = df2.iloc[0,:]
     column_numbers=[i for i in range(price_level * 4) if i%4==2 or i%4==3]
-    l2 = l1.iloc[column_numbers]
-    l2 = l2.reset_index().drop(['index'],axis = 1)
+    l2 = df2.iloc[0,:].iloc[column_numbers].reset_index().drop(['index'],axis = 1)
 
-    # =============================================================================
+    # -------------------------------------------------------------------------
     column_numbers=[i for i in range(price_level * 4) if i%4==2 or i%4==3]
     d2 = df2.iloc[:,column_numbers]  
-    # =============================================================================
+    # -------------------------------------------------------------------------
 
 
     df = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_10.csv", header=None)
@@ -165,7 +150,6 @@ if __name__ == "__main__":
     # =============================================================================
     # 03 CONFIGURARION OF ORDERBOOK
     # =============================================================================
-    # d2.iloc[0,:]
     
     def initialize_orderbook(l2):
         limit_orders = []
@@ -192,7 +176,9 @@ if __name__ == "__main__":
         return order_book
     initialized_orderbook = initialize_orderbook(l2)
 
-
+    # =============================================================================
+    # 04 REVISING OF ORDERBOOK
+    # =============================================================================
     
     decoder =  Decoder(order_book = initialized_orderbook, price_level = 10, horizon = 2048, historical_data = d2, data_loader = df)
     decoder.modify()
