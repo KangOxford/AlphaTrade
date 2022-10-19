@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from gym_trading.envs.data_orderbook_adapter import Debugger
 from gym_trading.envs.data_orderbook_adapter import utils
 
 
@@ -10,18 +11,18 @@ class DataAdjuster():
 
     def adjust_data_drift(self, order_book, timestamp, index):
             
-        print(order_book)#tbd
+        if Debugger.on: print(order_book)#tbd
         my_list, right_list = utils.get_two_list4compare(order_book, index, self.d2)
         my_array, right_array = np.array(my_list), np.array(right_list)
-        print("my_list")
-        print(my_list)
-        print("right_list")
-        print(right_list)
+        if Debugger.on: print("my_list")
+        if Debugger.on: print(my_list)
+        if Debugger.on: print("right_list")
+        if Debugger.on: print(right_list)
         
         right_order = list(set(right_list) - set(my_list))
         wrong_order = list(set(my_list) -set(right_list))
         if len(right_order) == 0 and len(wrong_order) == 0:
-            print("no data drift: no incomming new limit order outside the 10 price levels")
+            if Debugger.on: print("no data drift: no incomming new limit order outside the 10 price levels")
             message = None
         else:
             # global adjust_data_drift_id
@@ -67,9 +68,9 @@ class DataAdjuster():
                 timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
                 
                 message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-                print('\n'+'-'*15)
-                print(">>> ADJUSTED <<<")
-                print('-'*15+'\n')   
+                if Debugger.on: print('\n'+'-'*15)
+                if Debugger.on: print(">>> ADJUSTED <<<")
+                if Debugger.on: print('-'*15+'\n')   
             elif len(right_order) == 2 and len(wrong_order) == 2:
                 right_order_price =  right_list[-2]
                 wrong_order_price =  my_list[-2]
@@ -85,9 +86,9 @@ class DataAdjuster():
                     timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
                     
                     message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-                    print('\n'+'-'*15)
-                    print(">>> ADJUSTED <<<")
-                    print('-'*15+'\n')
+                    if Debugger.on: print('\n'+'-'*15)
+                    if Debugger.on: print(">>> ADJUSTED <<<")
+                    if Debugger.on: print('-'*15+'\n')
                 elif right_order_price < wrong_order_price:
                     # wrong order been cancelled outside the order book 
                     order_book = utils.partly_cancel(order_book, right_order_price, wrong_order_price)
@@ -107,9 +108,9 @@ class DataAdjuster():
                     timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
                     
                     message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-                    print('\n'+'-'*15)
-                    print(">>> ADJUSTED <<<")
-                    print('-'*15+'\n')
+                    if Debugger.on: print('\n'+'-'*15)
+                    if Debugger.on: print(">>> ADJUSTED <<<")
+                    if Debugger.on: print('-'*15+'\n')
                 elif right_array[-2] <  my_array[-2]:
                     # =============================================================================
                     # part of order_list at this price has been partly cancelled outside the order book              
@@ -162,14 +163,14 @@ class DataAdjuster():
                                         time = returned_timestamp_array[0], 
                                         )
                 message = None
-                print('\n'+'-'*15)
-                print(">>> ADJUSTED <<<")
-                print('-'*15+'\n')
+                if Debugger.on: print('\n'+'-'*15)
+                if Debugger.on: print(">>> ADJUSTED <<<")
+                if Debugger.on: print('-'*15+'\n')
             else:
                 raise NotImplementedError
         if message is not None:
             trades, order_in_book = order_book.process_order(message, True, False)
-        print(order_book) # tbd
+        if Debugger.on: print(order_book) # tbd
         return order_book
         # print("Adjusted Order Book")
         # print(brief_order_book(order_book))
