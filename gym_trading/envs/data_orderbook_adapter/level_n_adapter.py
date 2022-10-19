@@ -23,7 +23,6 @@ class SignalProcessor:
             order_list = self.order_book.bids.get_price_list(message['price'])
             assert len(order_list) == 1
             order = order_list.head_order
-            auto_generated_trade_id = order.order_id
             self.order_book.cancel_order(side = 'bid', 
                                     order_id = order.order_id,
                                     time = order.timestamp, 
