@@ -151,6 +151,7 @@ class Decoder:
 
         # -------------------------- 02 ----------------------------
         self.order_book = SignalProcessor(self.order_book)(signal = SignalProducer(self.order_book, historical_message)())
+        # self.order_book = SignalDeducer(self.order_book)(timestamp, self.index)
         self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index)
         
         # -------------------------- 03 ----------------------------

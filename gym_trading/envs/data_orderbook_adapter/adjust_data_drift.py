@@ -15,7 +15,7 @@ class DataAdjuster():
         my_list, right_list = utils.get_two_list4compare(order_book, index, self.d2)
         my_array, right_array = np.array(my_list), np.array(right_list)
         if Debugger.on: print("my_list")
-        if Debugger.on: print(my_list)
+        if Debugger.on: print(my_array)
         if Debugger.on: print("right_list")
         if Debugger.on: print(right_list)
         
@@ -28,8 +28,8 @@ class DataAdjuster():
             # global adjust_data_drift_id
             # if  np.sum(my_array != right_array) == 2:
             if len(right_order) == 1 and len(wrong_order) == 1:
-                if my_list[-2] == right_list[-2] :
-                    price = right_list[-2]
+                if my_array[-2] == right_array[-2] :
+                    price = right_array[-2]
                     if right_order[0] == wrong_order[0]:
                         raise NotImplementedError
                     elif right_order[0] > wrong_order[0]:
@@ -51,11 +51,11 @@ class DataAdjuster():
                                 return order_book # here just cancel single order, not combined order
                             
                         raise NotImplementedError
-                elif my_list[-1] == right_list[-1]:
-                    price = right_list[-2]
-                    quantity = right_list[-1]
+                elif my_array[-1] == right_array[-1]:
+                    price = right_array[-2]
+                    quantity = right_array[-1]
                     side = 'bid'
-                elif my_list[-1] != right_list[-1] and  my_list[-2] != right_list[-2]:
+                elif my_array[-1] != right_array[-1] and  my_array[-2] != right_array[-2]:
                     # two actions needs to be taken in this step
                     pass
                 else:
@@ -72,8 +72,8 @@ class DataAdjuster():
                 if Debugger.on: print(">>> ADJUSTED <<<")
                 if Debugger.on: print('-'*15+'\n')   
             elif len(right_order) == 2 and len(wrong_order) == 2:
-                right_order_price =  right_list[-2]
-                wrong_order_price =  my_list[-2]
+                right_order_price =  right_array[-2]
+                wrong_order_price =  my_array[-2]
                 if right_order_price > wrong_order_price: # just insert new order
                     side = 'bid'
                     price = right_order[0]
@@ -115,16 +115,16 @@ class DataAdjuster():
                     # =============================================================================
                     # part of order_list at this price has been partly cancelled outside the order book              
                     # ----------------------------------------------------------------------------
-                    # my_list
+                    # my_array
                     # [31209700, 210, 31204400, 1, 31203500, 100, 31201000, 8, 31200500, 1, 
                     # 31200000, 4, 31194000, 8, 31187600, 8, 31187400, 13, 31187200, 10]
                     # ----------------------------------------------------------------------------
-                    # right_list
+                    # my_array
                     # [31209700, 210, 31204400, 1, 31203500, 100, 31201000, 8, 31200500, 1, 
                     # 31200000, 4, 31194000, 8, 31187600, 8, 31187400, 13, 31187100, 1]
                     # =============================================================================
-                    right_order_price =  right_list[-2]
-                    wrong_order_price =  my_list[-2]
+                    right_order_price =  right_array[-2]
+                    wrong_order_price =  my_array[-2]
                     order_book = utils.partly_cancel(order_book, right_order_price, wrong_order_price)
                     message = None
                 else: raise NotImplementedError
@@ -134,11 +134,11 @@ class DataAdjuster():
                 # Quantity    20  |  Price 31155100  |  Trade_ID   15227277  |  Time 34200.290719105
                 # Quantity     1  |  Price 31155100  |  Trade_ID      10003  |  Time 34204.721258569
                 # ----------------------------------------------------------------------------
-                # my_list
+                # my_array
                 # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
                 #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 21]
                 # ----------------------------------------------------------------------------
-                # right_list
+                # right_array
                 # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
                 #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
                 # =============================================================================
@@ -174,8 +174,7 @@ class DataAdjuster():
         return order_book
         # print("Adjusted Order Book")
         # print(brief_order_book(order_book))
-    # my_list[~my_list.apply(tuple,1).isin(right_list.apply(tuple,1))]
-    # right_list[~right_list.apply(tuple,1).isin(my_list.apply(tuple,1))]
-    # my_list is right_list
     
     # =============================================================================
+
+        
