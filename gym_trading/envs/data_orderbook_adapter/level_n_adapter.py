@@ -8,100 +8,139 @@ from gym_trading.envs.data_orderbook_adapter import utils
 from gym_trading.envs.data_orderbook_adapter.adjust_data_drift import DataAdjuster
 from gym_trading.envs.orderbook import OrderBook
 
-
-class Adapter():
-    def __init__(self, price_level, hoirizon, data_adjuster, data_loader): 
+class Debugger: 
+    on = True
+    
+class Decoder():
+    def __init__(self, order_book, price_level, horizon, historical_data, data_loader): 
+        self.order_book = order_book
         self.price_level = price_level
-        self.hoirizon = hoirizon
-        self.data_adjuster = data_adjuster
+        self.horizon = horizon
+        self.historical_data = historical_data
+        self.data_adjuster = DataAdjuster(historical_data)
         self.data_loader = data_loader
-    def modify(self):
-        size = self.horizon
+        self.index = 0
         
-        for index in range(size):
-            if Debugger.on: 
-                print("=="*10 + " " + str(index) + " "+ "=="*10)
-                print("The order book used to be:")
-                print(order_book)
-            l1 = self.data_loader.iloc[index,:]
-            ttype = l1[1] 
-            side = 'bid' if l1[5] ==1 else 'ask'
-            quantity = l1[3]
-            price = l1[4]
-            trade_id = l1[2] # not sure, in the data it is order id
-            order_id = trade_id
-            timestamp = l1[0]
-            if Debugger.on: 
-                print(l1)#tbd
-            best_bid = order_book.get_best_bid()
-            
-            if side == 'bid':
-                if ttype == 1:
-                    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-                elif ttype == 2:
-                    # cancellation (partial deletion of a limit order)
-                    origin_quantity = order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
-                    adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
-                    message = {
-                        'type' : 'limit',
-                        'side' : 'bid',
-                        'quantity': adjusted_quantity,
-                        'price' : price,
-                        'order_id': order_id,
-                        'timestamp': timestamp # the new timestamp
-                        }
-                    order_book.bids.update_order(message)
-                    message = None
-                elif ttype == 3:
-                    # if index == 3225: breakpoint()
-                    if price > best_bid:
-                        message = None
-                    else:
-                        # print(order_book)
-                        try: order_book.cancel_order(side, trade_id, time = timestamp)
-                        except: 
-
-                            order_list = order_book.bids.get_price_list(price)
-                            assert len(order_list) == 1
-                            order = order_list.head_order
-                            auto_generated_trade_id = order.order_id
-                            order_book.cancel_order(side = 'bid', 
-                                                    order_id = order.order_id,
-                                                    time = order.timestamp, 
-                                                    )
-                            
-                        # print(order_book)
-                        message  = None # !remember not to pass the message to be processed
-                        # breakpoint()
-                elif ttype == 4 or ttype == 5: # not sure???
-                    if side == 'bid' and price <= best_bid:
-                        side = 'ask'
-                        message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-                    else:
-                        message = None
-                elif ttype == 6:
+    def reset(self):
+        pass
+    
+    def step(self):
+        if Debugger.on: 
+            print("=="*10 + " " + str(self.index) + " "+ "=="*10)
+            print("The order book used to be:")
+            print(self.order_book)
+        l1 = self.data_loader.iloc[self.index,:]
+        ttype = l1[1] 
+        side = 'bid' if l1[5] ==1 else 'ask'
+        quantity = l1[3]
+        price = l1[4]
+        trade_id = l1[2] # not sure, in the data it is order id
+        order_id = trade_id
+        timestamp = l1[0]
+        message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+        if Debugger.on:  print(l1)#tbd
+        best_bid = self.order_book.get_best_bid()
+        
+        if side == 'bid':
+            if ttype == 1:
+                message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+            elif ttype == 2:
+                # cancellation (partial deletion of a limit order)
+                origin_quantity = self.order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
+                adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
+                message['quantity'] = adjusted_quantity
+                # message = {
+                #     'type' : 'limit',
+                #     'side' : 'bid',
+                #     'quantity': adjusted_quantity,
+                #     'price' : price,
+                #     'order_id': order_id,
+                #     'timestamp': timestamp # the new timestamp
+                #     }
+                signal = dict({'sign':2},**message)
+                
+                self.order_book.bids.update_order(message)
+                message = None
+            elif ttype == 3:
+                # if index == 3225: breakpoint()
+                if price > best_bid:
                     message = None
                 else:
-                    raise NotImplementedError
-            else:
+                    signal = dict({'sign':3},**message)# sign 3 means: Deletion (Total deletion of a limit order) inside orderbook
+                    # print(self.order_book)
+                    try: self.order_book.cancel_order(side, trade_id, time = timestamp)
+                    except: 
+
+                        order_list = self.order_book.bids.get_price_list(price)
+                        assert len(order_list) == 1
+                        order = order_list.head_order
+                        auto_generated_trade_id = order.order_id
+                        self.order_book.cancel_order(side = 'bid', 
+                                                order_id = order.order_id,
+                                                time = order.timestamp, 
+                                                )
+                        
+                    # print(self.order_book)
+                    message  = None # !remember not to pass the message to be processed
+                    # breakpoint()
+            elif ttype == 4 or ttype == 5: # not sure???
+                if side == 'bid' and price <= best_bid:
+                    side = 'ask'
+                    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+                else:
+                    message = None
+            elif ttype == 6:
                 message = None
-                
-            if message is not None:
-                trades, order_in_book = order_book.process_order(message, True, False)
+            else:
+                raise NotImplementedError
+        else:
+            message = None
+            
+        def process_signal(order_book, signal):
+            if signal['sign'] in (1, 4, 5):
+                message = signal.pop("sign")
+                trades, order_in_book = self.order_book.process_order(message, True, False)
                 if Debugger.on: 
                     print("Trade occurs as follows:")
                     print(trades)
                     print("The order book now is:")
-                    print(order_book)
+                    print(self.order_book)
+            
+            elif signal['sign'] in (2, ):
                 
-            # if index == 3444: breakpoint()
-            order_book = data_adjuster.adjust_data_drift(order_book, timestamp, index)
-            assert utils.is_right_answer(order_book, index, d2), "the orderbook if different from the data"
-            if Debugger.on: 
-                print("brief_order_book(order_book)")
-                print(utils.brief_order_book(order_book))
-                # order_book.asks = None # remove the ask side
-                print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
+                
+            elif signal['sign'] in (3, ):
+                message = signal.pop("sign")
+                def delete_order(order_book, message):
+                    try: self.order_book.cancel_order(side, trade_id, time = timestamp)
+                    except: 
+                        order_list = self.order_book.bids.get_price_list(price)
+                        assert len(order_list) == 1
+                        order = order_list.head_order
+                        auto_generated_trade_id = order.order_id
+                        self.order_book.cancel_order(side = 'bid', 
+                                                order_id = order.order_id,
+                                                time = order.timestamp, 
+                                                )
+        if message is not None:
+            trades, order_in_book = self.order_book.process_order(message, True, False)
+
+        # elif message is ??:
+        #     # cancel order
+            
+        # if index == 3444: breakpoint()
+        self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index)
+        assert utils.is_right_answer(self.order_book, self.index, d2), "the orderbook if different from the data"
+        self.index += 1
+        if Debugger.on: 
+            print("brief_self.order_book(self.order_book)")
+            print(utils.brief_order_book(self.order_book))
+            # self.order_book.asks = None # remove the ask side
+            print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
+        
+    def modify(self):
+        for index in range(self.horizon): # size : self.horizon
+            self.step()
                     
 if __name__ == "__main__":
     order_book = OrderBook()
@@ -131,60 +170,37 @@ if __name__ == "__main__":
     # =============================================================================
     # 03 CONFIGURARION OF ORDERBOOK
     # =============================================================================
-
-    limit_orders = []
-    order_id_list = [15000000 + i for i in range(price_level)]
-    for i in range(price_level):
-        trade_id = 90000
-        # timestamp = datetime(34200.000000001)
-        timestamp = str(34200.000000001)
-        item = {'type' : 'limit', 
-            'side' : 'bid', 
-            'quantity' : l2.iloc[2 * i + 1,0], 
-            'price' : l2.iloc[2 * i,0],
-            'trade_id' : trade_id,
-            'order_id' : order_id_list[i],
-            "timestamp": timestamp}
-        limit_orders.append(item)
-    # Add orders to order book
-
-    for order in limit_orders:
-        # breakpoint()
-        trades, order_id = order_book.process_order(order, True, False)   
-    # The current book may be viewed using a print
-    print(order_book)
-
-    # size = 50 # pass
-    # size = 75 # pass
-    # size = 85 # pass
-    # size = 86 # pass
-    # size = 88 # pass
-    # size = 100 # pass
-    # size = 134 # pass
-    # size = 200 # pass
-    # size = 400 # pass
-    # size = 604 # pass
-    # size = 654 # pass
-    # size = 658 # pass
-    # size = 1733 # pass
-    # size = 1830 # pass
-    # size = 1864 # pass
-    # size = 2189 # pass
-    # size = 2190 # pass
-    # size = 2199 # pass
-    # size = 2900 # pass type3 cancel
-    # size = 3019 # pass worsest bid partly cancelled outside price range
-    # size = 3225 # pass partly cancel the order oustside the price range
-    # size = 3444 
-    size = 4000 
-
-    data_adjuster = DataAdjuster(d2)
-    data_loader = df
-    class Debugger(): on = True
+    # d2.iloc[0,:]
     
-    # =============================================================================
-    # 04 START ALGORITHM
-    # =============================================================================
+    def initialize_orderbook(l2):
+        limit_orders = []
+        order_id_list = [15000000 + i for i in range(price_level)]
+        for i in range(price_level):
+            trade_id = 90000
+            # timestamp = datetime(34200.000000001)
+            timestamp = str(34200.000000001)
+            item = {'type' : 'limit', 
+                'side' : 'bid', 
+                'quantity' : l2.iloc[2 * i + 1,0], 
+                'price' : l2.iloc[2 * i,0],
+                'trade_id' : trade_id,
+                'order_id' : order_id_list[i],
+                "timestamp": timestamp}
+            limit_orders.append(item)
+        # Add orders to order book
+    
+        for order in limit_orders:
+            # breakpoint()
+            trades, order_id = order_book.process_order(order, True, False)   
+        # The current book may be viewed using a print
+        if Debugger.on: print(order_book)
+        return order_book
+    initialized_orderbook = initialize_orderbook(l2)
+
+
+    
+    decoder =  Decoder(order_book = initialized_orderbook, price_level = 10, horizon = 2048, historical_data = d2, data_loader = df)
+    decoder.modify()
 
         
     
