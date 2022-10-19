@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+# used as Level_N_Adapter
 # =============================================================================
 # 01 IMPORT PACKAGES
 # =============================================================================
 import numpy as np
 import pandas as pd
 from copy import copy
-from gym_trading.envs.data_orderbook_adapter import Debugger
+from gym_trading.envs.data_orderbook_adapter import Debugger, Configuration 
 from gym_trading.envs.data_orderbook_adapter import utils
 from gym_trading.envs.data_orderbook_adapter.adjust_data_drift import DataAdjuster
 from gym_trading.envs.orderbook import OrderBook
@@ -102,7 +103,6 @@ class SignalProcessor:
 
 
 class Decoder:
-    
     def __init__(self, price_level, horizon, historical_data, data_loader): 
         self.historical_data = historical_data
         self.price_level = price_level
@@ -116,10 +116,11 @@ class Decoder:
         self.data_adjuster = DataAdjuster(self.bid_sid_historical_data)
         
     def initialize_orderbook(self):
+        order_book = OrderBook()
         l2 = self.historical_data.iloc[0,:].iloc[self.column_numbers].reset_index().drop(['index'],axis = 1)
         limit_orders = []
-        order_id_list = [15000000 + i for i in range(price_level)]
-        for i in range(price_level):
+        order_id_list = [15000000 + i for i in range(self.price_level)]
+        for i in range(self.price_level):
             trade_id = 90000
             # timestamp = datetime(34200.000000001)
             timestamp = str(34200.000000001)
@@ -166,10 +167,6 @@ class Decoder:
             self.step()
                     
 if __name__ == "__main__":
-    order_book = OrderBook()
-    price_level = 10 # wont be changed during running
-    horizon = 2048
-
     # =============================================================================
     # 02 READ DATA
     # =============================================================================
@@ -185,7 +182,7 @@ if __name__ == "__main__":
     # 03 REVISING OF ORDERBOOK
     # =============================================================================
     
-    decoder =  Decoder(price_level = 10, horizon = 2048, historical_data = df2, data_loader = df)
+    decoder =  Decoder(price_level = Configuration.price_level, horizon = Configuration.horizon, historical_data = df2, data_loader = df)
     decoder.modify()
 
         
