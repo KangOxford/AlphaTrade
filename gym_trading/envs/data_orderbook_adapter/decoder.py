@@ -8,6 +8,9 @@ import pandas as pd
 from copy import copy
 from gym_trading.envs.data_orderbook_adapter import Debugger, Configuration 
 from gym_trading.envs.data_orderbook_adapter import utils
+from gym_trading.envs.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
+from gym_trading.envs.data_orderbook_adapter.utils.InsideSignalProducer import InsideSignalProducer
+# from gym_trading.envs.data_orderbook_adapter.utils.OutsideSingalProducer import OutsideSingalProducer
 from gym_trading.envs.data_orderbook_adapter.adjust_data_drift import DataAdjuster
 from gym_trading.envs.orderbook import OrderBook
 
@@ -59,8 +62,7 @@ class Decoder:
         timestamp = historical_message[0]
 
         # -------------------------- 02 ----------------------------
-        self.order_book = utils.SignalProcessor(self.order_book)(signal = utils.InsideSignalProducer(self.order_book, historical_message)())
-        # self.order_book = SignalDeducer(self.order_book)(timestamp, self.index)
+        self.order_book = SignalProcessor(self.order_book)(signal = InsideSignalProducer(self.order_book, historical_message)())
         self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index)
         
         # -------------------------- 03 ----------------------------

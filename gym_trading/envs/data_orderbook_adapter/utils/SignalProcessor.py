@@ -17,6 +17,8 @@
 #.......CCCCC..............................................SSSSSS...........SSSSSS.....
 #......................................................................................
 
+from gym_trading.envs.data_orderbook_adapter import Debugger
+from gym_trading.envs.data_orderbook_adapter import utils
 
 class SignalProcessor:
     def __init__(self, order_book):

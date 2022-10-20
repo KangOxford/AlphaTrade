@@ -19,22 +19,14 @@
 
 import numpy as np
 from gym_trading.envs.data_orderbook_adapter import Debugger
+from gym_trading.envs.data_orderbook_adapter import utils
 
 class OutsideSingalProducer:
     def __init__(self, order_book, historical_message):
-        self.adjust_data_drift_id = 10000
         self.historical_message = historical_message
         self.order_book = order_book
-        self.my_array, self.right_array = self.pre_process(historical_message)
+        self.my_array, self.right_array, self.timestamp, self.order_id, self.trade_id = self.pre_process(historical_message)
         
-    def get_message_auxiliary_info(self):
-        self.adjust_data_drift_id += 1
-        trade_id = self.adjust_data_drift_id
-        order_id = self.adjust_data_drift_id
-        str_int_timestamp = str(int(timestamp[0:5]) * int(1e9) + (int(timestamp[6:15]) +1))
-        timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
-        return timestamp, order_id, trade_id    
- 
     def one_difference_signal_producer(self, order_book, my_array, right_array):
         message = {}
         if my_array[-2] == right_array[-2] :
@@ -94,7 +86,7 @@ class OutsideSingalProducer:
         elif my_array[-1] != right_array[-1] and  my_array[-2] != right_array[-2]: raise NotImplementedError # two actions needs to be taken in this step
         else: raise NotImplementedError
             
-        timestamp, order_id, trade_id = self.get_message_auxiliary_info()
+        timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
         message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
         signal = dict({'sign': sign},**message)  
         return signal 
@@ -117,7 +109,7 @@ class OutsideSingalProducer:
             quantity = right_array[-1]
             sign = 11
             
-            timestamp, order_id, trade_id = self.get_message_auxiliary_info()
+            timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
             message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
         elif right_array[-2] <  my_array[-2]:
             # Cancellation (Partial deletion of a limit order), (outside lob)
@@ -144,7 +136,8 @@ class OutsideSingalProducer:
         my_list, right_list = utils.get_two_list4compare(self.order_book, index, d2)
         my_array, right_array = np.array(my_list), np.array(right_list)
         return my_array, right_array
-    def __call__(self,):    
+    
+    def __call__(self):    
         if np.sum(self.my_array != self.right_array) == 0:
             signal = {'sign':60}# do nothing
         else:

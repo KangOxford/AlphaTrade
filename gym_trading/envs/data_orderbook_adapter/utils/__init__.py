@@ -16,7 +16,6 @@
 #.................UUUUU.....................CCCCC........................OOOOOO..................
 #................................................................................................
 
-
 from gym_trading.envs.data_orderbook_adapter import Configuration 
 
 def cancel_by_price(order_book, Price):
