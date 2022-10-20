@@ -16,9 +16,9 @@ class DataAdjuster():
         my_list, right_list = utils.get_two_list4compare(order_book, index, self.d2)
         my_array, right_array = np.array(my_list), np.array(right_list)
         
-        if Debugger.on: print("my_list")
+        if Debugger.on: print("my_array")
         if Debugger.on: print(my_array)
-        if Debugger.on: print("right_list")
+        if Debugger.on: print("right_array")
         if Debugger.on: print(right_array)
         
         right_order = list(set(right_list) - set(my_list))
@@ -27,30 +27,85 @@ class DataAdjuster():
             if Debugger.on: print("no data drift: no incomming new limit order outside the 10 price levels")
             message = None
         else:
-            if len(right_order) == 1 and len(wrong_order) == 1:
+            # global adjust_data_drift_id
+            if  np.sum(my_array != right_array) == 1:
+            # if len(right_order) == 1 and len(wrong_order) == 1:
                 if my_array[-2] == right_array[-2] :
-                    price = right_array[-2]
-                    if right_order[0] == wrong_order[0]:
-                        raise NotImplementedError
-                    elif right_order[0] > wrong_order[0]:
-                        quantity = right_order[0] - wrong_order[0]
-                        side = 'bid'
-                    elif right_order[0] < wrong_order[0]:
-                        quantity = -right_order[0] + wrong_order[0]
-                        # side = 'ask' # cancel order here
-                        # return cancel_by_price(order_book, price)
-                        order_list =  order_book.bids.get_price_list(price)
-                        
-                        #search quanity
-                        for order in order_list:
-                            if order.quantity == quantity:
-                                order_book.cancel_order(side = 'bid', 
-                                                        order_id = order.order_id,
-                                                        time = order.timestamp, 
-                                                        )
-                                return order_book # here just cancel single order, not combined order
+                    if my_array[-1] < right_array[-1]:
+                        # =============================================================================
+                        # my_array
+                        # [31170000      176 31169900        1 31169800        1 31167000        3
+                        #  31161600        3 31160800        1 31160000       37 31158000        7
+                        #  31155500       70 31155100       50]
+                        # ----------------------------------------------------------------------------
+                        # my_array
+                        # [31170000      176 31169900        1 31169800        1 31167000        3
+                        #  31161600        3 31160800        1 31160000       37 31158000        7
+                        #  31155500       70 31155100       51]
+                        # =============================================================================
+                        price = right_array[-2]
+                        # if right_order[0] == wrong_order[0]:
+                        if my_array[-1] == right_array[-1]:
+                            raise NotImplementedError
+                        # elif right_order[0] > wrong_order[0]:
+                        elif my_array[-1] < right_array[-1]:
+                            quantity = right_order[0] - wrong_order[0]
+                            side = 'bid'
+                        # elif right_order[0] < wrong_order[0]:
+                        elif my_array[-1] > right_array[-1]:
+                            quantity = -right_order[0] + wrong_order[0]
+                            # side = 'ask' # cancel order here
+                            # return cancel_by_price(order_book, price)
+                            order_list =  order_book.bids.get_price_list(price)
                             
-                        raise NotImplementedError
+                            #search quanity
+                            for order in order_list:
+                                if order.quantity == quantity:
+                                    order_book.cancel_order(side = 'bid', 
+                                                            order_id = order.order_id,
+                                                            time = order.timestamp, 
+                                                            )
+                                    return order_book # here just cancel single order, not combined order
+                                
+                            raise NotImplementedError
+                    elif my_array[-1] > right_array[-1]:
+                        # =============================================================================
+                        # part of order_list at this price has been partly cancelled outside the order book
+                        # Quantity    20  |  Price 31155100  |  Trade_ID   15227277  |  Time 34200.290719105
+                        # Quantity     1  |  Price 31155100  |  Trade_ID      10003  |  Time 34204.721258569
+                        # ----------------------------------------------------------------------------
+                        # my_array
+                        # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
+                        #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 21]
+                        # ----------------------------------------------------------------------------
+                        # right_array
+                        # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
+                        #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
+                        # =============================================================================
+                        price = right_array[-2]
+                        quantity = right_array[-1] # right quantity
+                        quantity_list = [] # wrong quantity list
+                        order_id_list = []
+                        timestamp_list = []
+                        for item in order_book.bids.get_price_list(price):
+                            quantity_list.append(item.quantity)
+                            order_id_list.append(item.order_id)
+                            timestamp_list.append(item.timestamp)
+                        try:quantity_index = quantity_list.index(quantity)
+                        except: raise NotImplementedError
+                        difference_index = np.array([i for i in range(len(quantity_list)) if i != quantity_index])
+                        # breakpoint()
+                        returned_timestamp_array = np.array(timestamp_list)[difference_index]
+                        returned_order_id_array = np.array(order_id_list)[difference_index] # returned_order_id_array for cancel order
+                        assert len(returned_order_id_array) == 1, "NotImplemented, only implement the single order situation"
+                        order_book.cancel_order(side = 'bid', 
+                                                order_id = returned_order_id_array[0],
+                                                time = returned_timestamp_array[0], 
+                                                )
+                        message = None
+                        if Debugger.on: print('\n'+'-'*15)
+                        if Debugger.on: print(">>> ADJUSTED <<<")
+                        if Debugger.on: print('-'*15+'\n')
                 elif my_array[-1] == right_array[-1]:
                     price = right_array[-2]
                     quantity = right_array[-1]
@@ -128,44 +183,7 @@ class DataAdjuster():
                     order_book = utils.partly_cancel(order_book, right_order_price, wrong_order_price)
                     message = None
                 else: raise NotImplementedError
-            elif np.sum(my_array != right_array) == 1:
-                # =============================================================================
-                # part of order_list at this price has been partly cancelled outside the order book
-                # Quantity    20  |  Price 31155100  |  Trade_ID   15227277  |  Time 34200.290719105
-                # Quantity     1  |  Price 31155100  |  Trade_ID      10003  |  Time 34204.721258569
-                # ----------------------------------------------------------------------------
-                # my_array
-                # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
-                #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 21]
-                # ----------------------------------------------------------------------------
-                # right_array
-                # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
-                #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
-                # =============================================================================
-                price = right_array[-2]
-                quantity = right_array[-1] # right quantity
-                quantity_list = [] # wrong quantity list
-                order_id_list = []
-                timestamp_list = []
-                for item in order_book.bids.get_price_list(price):
-                    quantity_list.append(item.quantity)
-                    order_id_list.append(item.order_id)
-                    timestamp_list.append(item.timestamp)
-                try:quantity_index = quantity_list.index(quantity)
-                except: raise NotImplementedError
-                difference_index = np.array([i for i in range(len(quantity_list)) if i != quantity_index])
-                # breakpoint()
-                returned_timestamp_array = np.array(timestamp_list)[difference_index]
-                returned_order_id_array = np.array(order_id_list)[difference_index] # returned_order_id_array for cancel order
-                assert len(returned_order_id_array) == 1, "NotImplemented, only implement the single order situation"
-                order_book.cancel_order(side = 'bid', 
-                                        order_id = returned_order_id_array[0],
-                                        time = returned_timestamp_array[0], 
-                                        )
-                message = None
-                if Debugger.on: print('\n'+'-'*15)
-                if Debugger.on: print(">>> ADJUSTED <<<")
-                if Debugger.on: print('-'*15+'\n')
+
             else:
                 raise NotImplementedError
         if message is not None:
