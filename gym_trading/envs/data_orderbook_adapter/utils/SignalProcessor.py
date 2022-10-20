@@ -43,6 +43,7 @@ class SignalProcessor:
         order_list = message['order_list']
         quantity = message['quantity']
         for order in order_list:
+            print(order)#tbd
             if order.quantity == quantity:
                 self.order_book.cancel_order(side = 'bid', 
                                         order_id = order.order_id,

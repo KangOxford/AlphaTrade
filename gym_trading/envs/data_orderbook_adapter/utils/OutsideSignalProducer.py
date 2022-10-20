@@ -33,7 +33,8 @@ class OutsideSignalProducer:
         return my_array, right_array, historical_message[2], historical_message[3], historical_message[4]
         
     def one_difference_signal_producer(self, order_book, my_array, right_array):
-        message = {'type': 'limit'}
+        timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
+        message = {'type': 'limit', 'timestamp': timestamp, 'order_id': order_id, 'trade_id': trade_id}
         if my_array[-2] == right_array[-2] :
             price = right_array[-2]
             if my_array[-1] < right_array[-1]:
@@ -69,10 +70,10 @@ class OutsideSignalProducer:
                 #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
                 # =============================================================================
                 quantity = my_array[-1] - right_array[-1] 
-                side = 'cancel'
-                quantity = -99999
+                side = 'bid'
                 message['order_list'] =  order_book.bids.get_price_list(price)
                 sign = 30
+                # breakpoint()#tbd
     
         elif my_array[-1] == right_array[-1]:
             # Submission of a new limit order, price does not exist(outside lob)
@@ -92,13 +93,7 @@ class OutsideSignalProducer:
             sign = 11
         elif my_array[-1] != right_array[-1] and  my_array[-2] != right_array[-2]: raise NotImplementedError # two actions needs to be taken in this step
         else: raise NotImplementedError
-            
-        timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
-        
-        message['side'] = side
-        message['quantity'] = quantity
-        message['price'] = price
-        
+        message['side'], message['quantity'], message['price'] = side, quantity, price
         signal = dict({'sign': sign},**message)  
         return signal 
 
