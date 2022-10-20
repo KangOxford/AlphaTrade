@@ -38,6 +38,8 @@ def partly_cancel(order_book, right_order_price, wrong_order_price):
                                         time = order.timestamp, 
                                         )
     return order_book
+def get_right_answer(index, d2):
+    return d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list()
 
 def get_two_list4compare(order_book, index, d2):
     my_list = brief_order_book(order_book)[0:2*Configuration.price_level]

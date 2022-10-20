@@ -18,6 +18,7 @@
 #......................................................................................
 
 import numpy as np
+from gym_exchange.data_orderbook_adapter import Debugger 
 from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 
 class OutsideSignalProducer:
@@ -32,7 +33,20 @@ class OutsideSignalProducer:
         my_array, right_array = np.array(my_list), np.array(right_list)
         return my_array, right_array, historical_message[2], historical_message[3], historical_message[4]
         
-    def one_difference_signal_producer(self, order_book, my_array, right_array):
+    def __call__(self, side):    
+        if np.sum(self.my_array != self.right_array) == 0:
+            signal = {'sign':60}# do nothing
+        else:
+            if Debugger.on: print(self.my_array); print(self.right_array); print('\n'+"ADJUSTED"+'\n')
+            if np.sum(self.my_array != self.right_array) == 1:
+                signal = self.one_difference_signal_producer(self.order_book, self.my_array, self.right_array, side)
+            elif np.sum(self.my_array != self.right_array) == 2:
+                signal = self.two_difference_signal_producer(self.order_book, self.my_array, self.right_array, side)
+            else: 
+                raise NotImplementedError       
+        return signal 
+
+    def one_difference_signal_producer(self, order_book, my_array, right_array, side):
         timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
         message = {'type': 'limit', 'timestamp': timestamp, 'order_id': order_id, 'trade_id': trade_id}
         if my_array[-2] == right_array[-2] :
@@ -51,7 +65,7 @@ class OutsideSignalProducer:
                 #  31155500       70 31155100       51]
                 # =============================================================================
                 quantity = right_array[-1] - my_array[-1]
-                side = 'bid'
+                # side = 'bid'
                 sign= 10
                 
             elif my_array[-1] > right_array[-1]:
@@ -70,7 +84,7 @@ class OutsideSignalProducer:
                 #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
                 # =============================================================================
                 quantity = my_array[-1] - right_array[-1] 
-                side = 'bid'
+                # side = 'bid'
                 message['order_list'] =  order_book.bids.get_price_list(price)
                 sign = 30
                 # breakpoint()#tbd
@@ -89,7 +103,7 @@ class OutsideSignalProducer:
             # =============================================================================
             price = right_array[-2]
             quantity = right_array[-1]
-            side = 'bid'
+            # side = 'bid'
             sign = 11
         elif my_array[-1] != right_array[-1] and  my_array[-2] != right_array[-2]: raise NotImplementedError # two actions needs to be taken in this step
         else: raise NotImplementedError
@@ -97,7 +111,7 @@ class OutsideSignalProducer:
         signal = dict({'sign': sign},**message)  
         return signal 
 
-    def two_difference_signal_producer(self, order_book, my_array, right_array):
+    def two_difference_signal_producer(self, order_book, my_array, right_array, side):
         if right_array[-2] >  my_array[-2]:
             # Submission of a new limit order, price does not exist(outside lob)                    
             # =============================================================================
@@ -110,7 +124,7 @@ class OutsideSignalProducer:
             #  31169800        1 31167000        3 31161600        3 31160800        1
             #  31160000       37 31158000        7]
             # =============================================================================
-            side = 'bid'
+            # side = 'bid'
             price = right_array[-2]
             quantity = right_array[-1]
             sign = 11
@@ -139,13 +153,3 @@ class OutsideSignalProducer:
 
 
     
-    def __call__(self):    
-        if np.sum(self.my_array != self.right_array) == 0:
-            signal = {'sign':60}# do nothing
-        else:
-            if np.sum(self.my_array != self.right_array) == 1:
-                signal = self.one_difference_signal_producer(self.order_book, self.my_array, self.right_array)
-            elif np.sum(self.my_array != self.right_array) == 2:
-                signal = self.two_difference_signal_producer(self.order_book, self.my_array, self.right_array)
-            else: raise NotImplementedError       
-        return signal 

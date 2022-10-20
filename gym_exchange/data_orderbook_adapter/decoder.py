@@ -22,9 +22,10 @@ class Decoder:
         self.column_numbers_bid = [i for i in range(price_level * 4) if i%4==2 or i%4==3]
         self.column_numbers_ask = [i for i in range(price_level * 4) if i%4==0 or i%4==1]
         self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
+        self.ask_sid_historical_data = historical_data.iloc[:,self.column_numbers_ask]
         self.order_book = OrderBook()
         self.initialize_orderbook('bid')
-        self.initialize_orderbook('ask')
+        # self.initialize_orderbook('ask')
         self.data_adjuster = DataAdjuster(self.bid_sid_historical_data)
         
     def initialize_orderbook(self, side):
@@ -57,23 +58,31 @@ class Decoder:
     def step(self):
         # -------------------------- 01 ----------------------------
         if Debugger.on: 
-            print("=="*10 + " " + str(self.index) + " "+ "=="*10)
+            print("##"*25 + '###' + "##"*25)
+            print("=="*25 + " " + str(self.index) + " "+ "=="*25)
+            print("##"*25 + '###' + "##"*25+'\n')
+            
             print("The order book used to be:"); print(self.order_book)
         historical_message = self.data_loader.iloc[self.index,:]
         timestamp = historical_message[0]
+        side = 'bid' if historical_message[5] == 1 else 'ask'
 
         # -------------------------- 02 ----------------------------
-        self.order_book = SignalProcessor(self.order_book)(signal = InsideSignalProducer(self.order_book, historical_message)())
-        self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index)
+        signal          = InsideSignalProducer(self.order_book, historical_message)()
+        self.order_book = SignalProcessor(self.order_book)(signal)
+        self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side)
         
         # -------------------------- 03 ----------------------------
+        if Debugger.on: print(">>> Right_order_book"); print(utils.get_right_answer(self.index, self.bid_sid_historical_data))
         assert utils.is_right_answer(self.order_book, self.index, self.bid_sid_historical_data), "the orderbook if different from the data"
         self.index += 1
         if Debugger.on: 
-            print("brief_self.order_book(self.order_book)")
+            # print("The order book now is:"); print(self.order_book)
+            print(">>> Brief_self.order_book(self.order_book)")
             print(utils.brief_order_book(self.order_book))
             # self.order_book.asks = None # remove the ask side
-            print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
+            print("The orderbook is right!\n")
+            # print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
         
     def modify(self):
         for index in range(self.horizon): # size : self.horizon

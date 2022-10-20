@@ -229,7 +229,8 @@ class OrderBook(object):
         if self.asks != None and len(self.asks) > 0:
             for key, value in  reversed(self.asks.price_map.items()):
                 tempfile.write('%s' % value)
-        tempfile.write('\n'+"-"*string_len + "------" + "-"*string_len +"\n\n") 
+        tempfile.write("\n\n") 
+        # tempfile.write('\n'+"-"*string_len + "------" + "-"*string_len +"\n\n") 
         if self.bids != None and len(self.bids) > 0:
             for key, value in reversed(self.bids.price_map.items()):
                 tempfile.write('%s' % value)

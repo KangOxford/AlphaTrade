@@ -21,9 +21,33 @@ from gym_exchange.data_orderbook_adapter import Debugger
 
 class InsideSignalProducer:
     def __init__(self, order_book, historical_message):
+        # self.type = ['bid', 'ask']
         self.historical_message = historical_message
         self.order_book = order_book
         self.best_bid = self.order_book.get_best_bid()
+        self.best_ask = self.order_book.get_best_ask()
+    def encoder(self, side, message, ttype):
+        sign = ttype
+        best_price = self.best_bid if side == 'bid' else self.best_ask
+        if best_price == None: sign = 6 # test with only one side ???/
+        elif ttype == 1: pass
+        elif ttype == 2: # cancellation (partial deletion of a limit order)
+            origin_quantity = self.order_book.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
+            adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
+            message['quantity'] = adjusted_quantity
+        elif ttype == 3: # deletion (total deletion of a limit order) inside orderbook
+            if message['price'] > best_price:
+                sign = 6
+            else: pass
+        elif ttype == 4 or ttype == 5: # not sure???
+            if side == 'bid' and message['price'] <= best_price:
+                inversed_side = 'ask' if side == 'bid' else 'bid'
+                message['side'] = inversed_side 
+            else: sign = 6
+        elif ttype == 6: pass
+        else: raise NotImplementedError
+        signal = dict({'sign': sign},**message)  
+        return signal
     def __call__(self):
         # ---------------------------- 01 ---------------------------- 
         ttype = self.historical_message[1] 
@@ -39,23 +63,5 @@ class InsideSignalProducer:
         if Debugger.on:  print(self.historical_message)#tbd
         
         # ---------------------------- 03 ---------------------------- 
-        sign = ttype
-        if side == 'bid':
-            if ttype == 1: pass
-            elif ttype == 2: # cancellation (partial deletion of a limit order)
-                origin_quantity = self.order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
-                adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
-                message['quantity'] = adjusted_quantity
-            elif ttype == 3: # deletion (total deletion of a limit order) inside orderbook
-                if price > self.best_bid:
-                    sign = 6
-                else: pass
-            elif ttype == 4 or ttype == 5: # not sure???
-                if side == 'bid' and price <= self.best_bid:
-                    message['side'] = 'ask' 
-                else: sign = 6
-            elif ttype == 6: pass
-            else: raise NotImplementedError
-        else: sign = 6
-        signal = dict({'sign': sign},**message)   
+        signal = self.encoder(side, message, ttype)
         return signal
