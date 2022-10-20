@@ -12,12 +12,14 @@ class DataAdjuster():
     def adjust_data_drift(self, order_book, timestamp, index):
             
         if Debugger.on: print(order_book)#tbd
+        
         my_list, right_list = utils.get_two_list4compare(order_book, index, self.d2)
         my_array, right_array = np.array(my_list), np.array(right_list)
+        
         if Debugger.on: print("my_list")
         if Debugger.on: print(my_array)
         if Debugger.on: print("right_list")
-        if Debugger.on: print(right_list)
+        if Debugger.on: print(right_array)
         
         right_order = list(set(right_list) - set(my_list))
         wrong_order = list(set(my_list) -set(right_list))
@@ -25,8 +27,6 @@ class DataAdjuster():
             if Debugger.on: print("no data drift: no incomming new limit order outside the 10 price levels")
             message = None
         else:
-            # global adjust_data_drift_id
-            # if  np.sum(my_array != right_array) == 2:
             if len(right_order) == 1 and len(wrong_order) == 1:
                 if my_array[-2] == right_array[-2] :
                     price = right_array[-2]

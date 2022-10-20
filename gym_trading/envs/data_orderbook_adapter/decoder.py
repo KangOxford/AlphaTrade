@@ -46,12 +46,10 @@ class SignalProducer:
             elif ttype == 4 or ttype == 5: # not sure???
                 if side == 'bid' and price <= self.best_bid:
                     message['side'] = 'ask' 
-                else:
-                    sign = 6
+                else: sign = 6
             elif ttype == 6: pass
             else: raise NotImplementedError
-        else:
-            sign = 6
+        else: sign = 6
         signal = dict({'sign': sign},**message)   
         return signal
         
