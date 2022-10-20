@@ -18,7 +18,7 @@
 #......................................................................................
 
 from gym_trading.envs.data_orderbook_adapter import Debugger
-from gym_trading.envs.data_orderbook_adapter import utils
+from gym_trading.envs.data_orderbook_adapter.utils import partly_cancel
 
 class SignalProcessor:
     def __init__(self, order_book):
@@ -61,7 +61,7 @@ class SignalProcessor:
         elif signal['sign'] in ((2, ) + ()): # cancellation (partial deletion of a limit order)
             self.order_book.bids.update_order(message) 
         elif signal['sign'] in (20, ): 
-            self.order_book = utils.partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'])
+            self.order_book = partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'])
         elif signal['sign'] in ((3, ) + ()):# deletion (total deletion of a limit order)
             self.delete_order(message)
         elif signal['sign'] in (30, ): 

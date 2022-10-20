@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from gym_trading.envs.data_orderbook_adapter import Debugger
-from gym_trading.envs.data_orderbook_adapter import utils
 
-# from gym_trading.envs.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
-# from gym_trading.envs.data_orderbook_adapter.utils.InsideSignalProducer import InsideSignalProducer
-# from gym_trading.envs.data_orderbook_adapter.utils.OutsideSingalProducer import OutsideSingalProducer    
+from gym_trading.envs.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
+from gym_trading.envs.data_orderbook_adapter.utils.OutsideSignalProducer import OutsideSignalProducer 
         
 class DataAdjuster():
     def __init__(self, d2):
@@ -23,8 +21,8 @@ class DataAdjuster():
     def adjust_data_drift(self, order_book, timestamp, index):
         timestamp, order_id, trade_id  = self.get_message_auxiliary_info(timestamp)
         historical_message = [index, self.d2, timestamp, order_id, trade_id]
-        signal = utils.OutsideSingalProducer.OutsideSingalProducer(order_book, historical_message)()
-        order_book = utils.SignalProcessor.OutsideSingalProducer(order_book)(signal)
+        signal = OutsideSignalProducer(order_book, historical_message)()
+        order_book = SignalProcessor(order_book)(signal)
         return order_book
 
     

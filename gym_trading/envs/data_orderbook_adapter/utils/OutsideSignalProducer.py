@@ -18,14 +18,19 @@
 #......................................................................................
 
 import numpy as np
-from gym_trading.envs.data_orderbook_adapter import Debugger
-from gym_trading.envs.data_orderbook_adapter import utils
+from gym_trading.envs.data_orderbook_adapter.utils import get_two_list4compare
 
-class OutsideSingalProducer:
+class OutsideSignalProducer:
     def __init__(self, order_book, historical_message):
         self.historical_message = historical_message
         self.order_book = order_book
-        self.my_array, self.right_array, self.timestamp, self.order_id, self.trade_id = self.pre_process(historical_message)
+        self.my_array, self.right_array, self.timestamp, self.order_id, self.trade_id = self.pre_process_historical_message(historical_message)
+    
+    def pre_process_historical_message(self, historical_message):
+        index, d2 = historical_message[0], historical_message[1]
+        my_list, right_list = get_two_list4compare(self.order_book, index, d2)
+        my_array, right_array = np.array(my_list), np.array(right_list)
+        return my_array, right_array, historical_message[2], historical_message[3], historical_message[4]
         
     def one_difference_signal_producer(self, order_book, my_array, right_array):
         message = {}
@@ -63,7 +68,9 @@ class OutsideSingalProducer:
                 # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
                 #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
                 # =============================================================================
-                message['quantity'] = my_array[-1] - right_array[-1] 
+                quantity = my_array[-1] - right_array[-1] 
+                side = 'cancel'
+                quantity = -99999
                 message['order_list'] =  order_book.bids.get_price_list(price)
                 sign = 30
     
@@ -131,11 +138,7 @@ class OutsideSingalProducer:
         signal = dict({'sign': sign},**message)  
         return signal
 
-    def pre_process_historical_message(self, historical_message):
-        index, d2 = historical_message[0], historical_message[1]
-        my_list, right_list = utils.get_two_list4compare(self.order_book, index, d2)
-        my_array, right_array = np.array(my_list), np.array(right_list)
-        return my_array, right_array
+
     
     def __call__(self):    
         if np.sum(self.my_array != self.right_array) == 0:
