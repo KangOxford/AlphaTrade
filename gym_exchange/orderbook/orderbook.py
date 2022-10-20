@@ -223,16 +223,18 @@ class OrderBook(object):
 
     def __str__(self):
         tempfile = StringIO()
-        tempfile.write("***Bids***\n")
+        
+        string_len = 38
+        tempfile.write("="*string_len + " Asks " + "="*string_len +"\n") 
+        if self.asks != None and len(self.asks) > 0:
+            for key, value in  reversed(self.asks.price_map.items()):
+                tempfile.write('%s' % value)
+        tempfile.write('\n'+"-"*string_len + "------" + "-"*string_len +"\n\n") 
         if self.bids != None and len(self.bids) > 0:
             for key, value in reversed(self.bids.price_map.items()):
-                # print('%s' % value)#tbd
                 tempfile.write('%s' % value)
+        tempfile.write("="*string_len + " Bids " + "="*string_len +"\n") 
                 
-        # tempfile.write("\n***Asks***\n")
-        # if self.asks != None and len(self.asks) > 0:
-        #     for key, value in self.asks.price_map.items():
-        #         tempfile.write('%s' % value)
         
         # tempfile.write("\n***Trades***\n")
         # if self.tape != None and len(self.tape) > 0:

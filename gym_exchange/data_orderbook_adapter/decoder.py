@@ -3,14 +3,11 @@
 # =============================================================================
 # 01 IMPORT PACKAGES
 # =============================================================================
-import numpy as np
 import pandas as pd
-from copy import copy
 from gym_exchange.data_orderbook_adapter import Debugger, Configuration 
 from gym_exchange.data_orderbook_adapter import utils
 from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
 from gym_exchange.data_orderbook_adapter.utils.InsideSignalProducer import InsideSignalProducer
-# from gym_exchange.data_orderbook_adapter.utils.OutsideSingalProducer import OutsideSingalProducer
 from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
 from gym_exchange.orderbook import OrderBook
 
@@ -22,22 +19,25 @@ class Decoder:
         self.data_loader = data_loader
         self.index = 0
         # --------------- NEED ACTIONS --------------------
-        self.column_numbers = [i for i in range(price_level * 4) if i%4==2 or i%4==3]
-        self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers]
-        self.order_book = self.initialize_orderbook()
+        self.column_numbers_bid = [i for i in range(price_level * 4) if i%4==2 or i%4==3]
+        self.column_numbers_ask = [i for i in range(price_level * 4) if i%4==0 or i%4==1]
+        self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
+        self.order_book = OrderBook()
+        self.initialize_orderbook('bid')
+        self.initialize_orderbook('ask')
         self.data_adjuster = DataAdjuster(self.bid_sid_historical_data)
         
-    def initialize_orderbook(self):
-        order_book = OrderBook()
-        l2 = self.historical_data.iloc[0,:].iloc[self.column_numbers].reset_index().drop(['index'],axis = 1)
+    def initialize_orderbook(self, side):
+        columns = self.column_numbers_bid if side == 'bid' else self.column_numbers_ask
+        l2 = self.historical_data.iloc[0,:].iloc[columns].reset_index().drop(['index'],axis = 1)
         limit_orders = []
-        order_id_list = [15000000 + i for i in range(self.price_level)]
+        order_id_list = [15000000 + 100*(side == 'bid') + i for i in range(self.price_level)]
         for i in range(self.price_level):
-            trade_id = 90000
+            trade_id = 90000 + + 100*(side == 'bid')
             # timestamp = datetime(34200.000000001)
-            timestamp = str(34200.000000001)
+            timestamp = str(34200.000000002) if (side == 'bid') else str(34200.000000001)
             item = {'type' : 'limit', 
-                'side' : 'bid', 
+                'side' : side, 
                 'quantity' : l2.iloc[2 * i + 1,0], 
                 'price' : l2.iloc[2 * i,0],
                 'trade_id' : trade_id,
@@ -48,10 +48,11 @@ class Decoder:
     
         for order in limit_orders:
             # breakpoint()
-            trades, order_id = order_book.process_order(order, True, False)   
+            trades, order_id = self.order_book.process_order(order, True, False)   
         # The current book may be viewed using a print
-        if Debugger.on: print(order_book)
-        return order_book
+        if Debugger.on: print(self.order_book)
+    
+    
     
     def step(self):
         # -------------------------- 01 ----------------------------
