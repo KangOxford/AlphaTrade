@@ -1,31 +1,25 @@
-# -*- coding: utf-8 -*-
+
+#......................................................................................
+#........CCC............LL.................AAA.............SSSSSS...........SSSSSS.....
+#......CCCCCCCC........LLLL...............AAAAA...........SSSSSSSS.........SSSSSSSS....
+#.....CCCCCCCCCC.......LLLL...............AAAAA..........SSSSSSSSSS.......SSSSSSSSSS...
+#....CCCCCCCCCCC.......LLLL..............AAAAAAA.........SSSSSSSSSS.......SSSSSSSSSS...
+#....CCCC...CCCCC......LLLL..............AAAAAAA........SSSS...SSSSS..... SSS...SSSSS..
+#...CCCCC....CCCC......LLLL..............AAAAAAA........SSSSSS........... SSSSS........
+#...CCCC...............LLLL.............AAAAAAAAA........SSSSSSSSS........SSSSSSSSS....
+#...CCCC...............LLLL.............AAAA.AAAA........SSSSSSSSSS.......SSSSSSSSSS...
+#...CCCC...............LLLL.............AAAAAAAAAA.........SSSSSSSSS........SSSSSSSSS..
+#...CCCCC....CCCC......LLLL............AAAAAAAAAAA......SSSS..SSSSSS..... SSS..SSSSSS..
+#....CCCC...CCCCC......LLLL............AAAAAAAAAAA......SSSS....SSSS..... SSS....SSSS..
+#....CCCCCCCCCCC.......LLLLLLLLLL......AAAAAAAAAAAA.....SSSSSSSSSSSS..... SSSSSSSSSSS..
+#.....CCCCCCCCCC.......LLLLLLLLLL.....AAAAA....AAAA......SSSSSSSSSS.......SSSSSSSSSS...
+#......CCCCCCCC........LLLLLLLLLL.....AAAA.....AAAA.......SSSSSSSSS........SSSSSSSSS...
+#.......CCCCC..............................................SSSSSS...........SSSSSS.....
+#......................................................................................
+
 import numpy as np
 from gym_trading.envs.data_orderbook_adapter import Debugger
 from gym_trading.envs.data_orderbook_adapter import utils
-
-    
-class OutsideSingalProducer:
-    def __init__(self, order_book, historical_message):
-        self.historical_message = historical_message
-        self.order_book = order_book
-        self.my_array, self.right_array = self.pre_process(historical_message)
-    def pre_process_historical_message(self, historical_message):
-        index, d2 = historical_message[0], historical_message[1]
-        my_list, right_list = utils.get_two_list4compare(self.order_book, index, d2)
-        my_array, right_array = np.array(my_list), np.array(right_list)
-        return my_array, right_array
-    def __call__(self,):    
-        if np.sum(self.my_array != self.right_array) == 0:
-            signal = {'sign':60}# do nothing
-        else:
-            if np.sum(self.my_array != self.right_array) == 1:
-                signal = one_difference_signal_producer(self.order_book, self.my_array, self.right_array)
-            elif np.sum(self.my_array != self.right_array) == 2:
-                signal = two_difference_signal_producer(self.order_book, self.my_array, self.right_array)
-            else: raise NotImplementedError       
-        return signal 
-        
- 
  
 def one_difference_signal_producer(order_book, my_array, right_array):
     message = {}
@@ -131,28 +125,23 @@ def two_difference_signal_producer(order_book, my_array, right_array):
     signal = dict({'sign': sign},**message)  
     return signal
 
- 
- 
-        
-class DataAdjuster():
-    def __init__(self, d2):
-        self.adjust_data_drift_id = 10000
-        self.d2 = d2
-        
-    def get_message_auxiliary_info(self):
-        self.adjust_data_drift_id += 1
-        trade_id = self.adjust_data_drift_id
-        order_id = self.adjust_data_drift_id
-        str_int_timestamp = str(int(timestamp[0:5]) * int(1e9) + (int(timestamp[6:15]) +1))
-        timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
-        return timestamp, order_id, trade_id    
-    
-    def adjust_data_drift(self, order_book, timestamp, index):
-        signal = OutsideSingalProducer(order_book, historical_message = [index, self.d2])()
-        order_book = SignalProcessor(order_book)(signal)
-        return order_book
-
-    
-    # =============================================================================
-    
-
+class OutsideSingalProducer:
+    def __init__(self, order_book, historical_message):
+        self.historical_message = historical_message
+        self.order_book = order_book
+        self.my_array, self.right_array = self.pre_process(historical_message)
+    def pre_process_historical_message(self, historical_message):
+        index, d2 = historical_message[0], historical_message[1]
+        my_list, right_list = utils.get_two_list4compare(self.order_book, index, d2)
+        my_array, right_array = np.array(my_list), np.array(right_list)
+        return my_array, right_array
+    def __call__(self,):    
+        if np.sum(self.my_array != self.right_array) == 0:
+            signal = {'sign':60}# do nothing
+        else:
+            if np.sum(self.my_array != self.right_array) == 1:
+                signal = one_difference_signal_producer(self.order_book, self.my_array, self.right_array)
+            elif np.sum(self.my_array != self.right_array) == 2:
+                signal = two_difference_signal_producer(self.order_book, self.my_array, self.right_array)
+            else: raise NotImplementedError       
+        return signal 

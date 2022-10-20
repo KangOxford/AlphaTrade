@@ -59,7 +59,7 @@ class Decoder:
         timestamp = historical_message[0]
 
         # -------------------------- 02 ----------------------------
-        self.order_book = utils.SignalProcessor(self.order_book)(signal = utils.SignalProducer(self.order_book, historical_message)())
+        self.order_book = utils.SignalProcessor(self.order_book)(signal = utils.InsideSignalProducer(self.order_book, historical_message)())
         # self.order_book = SignalDeducer(self.order_book)(timestamp, self.index)
         self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index)
         
