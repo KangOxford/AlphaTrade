@@ -128,32 +128,18 @@ class DataAdjuster():
                 if Debugger.on: print('\n'+'-'*15)
                 if Debugger.on: print(">>> ADJUSTED <<<")
                 if Debugger.on: print('-'*15+'\n')   
-            elif len(right_order) == 2 and len(wrong_order) == 2:
-                right_order_price =  right_array[-2]
-                wrong_order_price =  my_array[-2]
-                if right_order_price > wrong_order_price: # just insert new order
-                    side = 'bid'
-                    price = right_order[0]
-                    quantity = right_order[1]
-                    self.adjust_data_drift_id += 1
-                    trade_id = self.adjust_data_drift_id
-                    order_id = self.adjust_data_drift_id
-                    
-                    str_int_timestamp = str(int(timestamp[0:5]) * int(1e9) + (int(timestamp[6:15]) +1))
-                    timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
-                    
-                    message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-                    if Debugger.on: print('\n'+'-'*15)
-                    if Debugger.on: print(">>> ADJUSTED <<<")
-                    if Debugger.on: print('-'*15+'\n')
-                elif right_order_price < wrong_order_price:
-                    # wrong order been cancelled outside the order book 
-                    order_book = utils.partly_cancel(order_book, right_order_price, wrong_order_price)
-                    message = None
-                else: 
-                    raise NotImplementedError
             elif np.sum(my_array != right_array) == 2:
                 if right_array[-2] >  my_array[-2]:
+                    # =============================================================================
+                    # my_array
+                    # [31177500       57 31175000        5 31170000      178 31169900        1
+                    #  31169800        1 31167000        3 31161600        3 31160800        1
+                    #  31160000       37 31155100       50]
+                    # right_array
+                    # [31177500       57 31175000        5 31170000      178 31169900        1
+                    #  31169800        1 31167000        3 31161600        3 31160800        1
+                    #  31160000       37 31158000        7]
+                    # =============================================================================
                     side = 'bid'
                     price = right_array[-2]
                     quantity = right_array[-1]
@@ -185,9 +171,7 @@ class DataAdjuster():
                     order_book = utils.partly_cancel(order_book, right_order_price, wrong_order_price)
                     message = None
                 else: raise NotImplementedError
-
-            else:
-                raise NotImplementedError
+            else: raise NotImplementedError
         if message is not None:
             trades, order_in_book = order_book.process_order(message, True, False)
         if Debugger.on: print(order_book) # tbd
