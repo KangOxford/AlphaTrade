@@ -6,13 +6,13 @@
 import numpy as np
 import pandas as pd
 from copy import copy
-from gym_trading.envs.data_orderbook_adapter import Debugger, Configuration 
-from gym_trading.envs.data_orderbook_adapter import utils
-from gym_trading.envs.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
-from gym_trading.envs.data_orderbook_adapter.utils.InsideSignalProducer import InsideSignalProducer
-# from gym_trading.envs.data_orderbook_adapter.utils.OutsideSingalProducer import OutsideSingalProducer
-from gym_trading.envs.data_orderbook_adapter.adjust_data_drift import DataAdjuster
-from gym_trading.envs.orderbook import OrderBook
+from gym_exchange.data_orderbook_adapter import Debugger, Configuration 
+from gym_exchange.data_orderbook_adapter import utils
+from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
+from gym_exchange.data_orderbook_adapter.utils.InsideSignalProducer import InsideSignalProducer
+# from gym_exchange.data_orderbook_adapter.utils.OutsideSingalProducer import OutsideSingalProducer
+from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
+from gym_exchange.orderbook import OrderBook
 
 class Decoder:
     def __init__(self, price_level, horizon, historical_data, data_loader): 

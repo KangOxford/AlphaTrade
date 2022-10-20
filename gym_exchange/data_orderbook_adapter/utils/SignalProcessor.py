@@ -17,8 +17,8 @@
 #.......CCCCC..............................................SSSSSS...........SSSSSS.....
 #......................................................................................
 
-from gym_trading.envs.data_orderbook_adapter import Debugger
-from gym_trading.envs.data_orderbook_adapter.utils import partly_cancel
+from gym_exchange.data_orderbook_adapter import Debugger
+from gym_exchange.data_orderbook_adapter.utils import partly_cancel
 
 class SignalProcessor:
     def __init__(self, order_book):

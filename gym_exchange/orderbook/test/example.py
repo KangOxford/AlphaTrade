@@ -1,4 +1,4 @@
-# from gym_trading.envs.orderbook import OrderBook
+# from gym_exchange.orderbook import OrderBook
 
 # # Create an order book
 
@@ -245,7 +245,7 @@ def adjust_data_drift(order_book, timestamp, index):
 import pandas as pd
 df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
 
-from gym_trading.envs.orderbook import OrderBook
+from gym_exchange.orderbook import OrderBook
 order_book = OrderBook()
 
 l1 = df2.iloc[0,:]

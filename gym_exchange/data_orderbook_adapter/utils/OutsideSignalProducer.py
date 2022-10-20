@@ -18,7 +18,7 @@
 #......................................................................................
 
 import numpy as np
-from gym_trading.envs.data_orderbook_adapter.utils import get_two_list4compare
+from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 
 class OutsideSignalProducer:
     def __init__(self, order_book, historical_message):

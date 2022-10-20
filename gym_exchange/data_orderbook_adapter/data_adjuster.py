@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from gym_trading.envs.data_orderbook_adapter import Debugger
+from gym_exchange.data_orderbook_adapter import Debugger
 
-from gym_trading.envs.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
-from gym_trading.envs.data_orderbook_adapter.utils.OutsideSignalProducer import OutsideSignalProducer 
+from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
+from gym_exchange.data_orderbook_adapter.utils.OutsideSignalProducer import OutsideSignalProducer 
         
 class DataAdjuster():
     def __init__(self, d2):
