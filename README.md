@@ -13,6 +13,11 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+
+## `Week.20 01.Oct~21.Oct`
+
+* The environment with 10 min batch data is from 'a distribution of environment'.
+
 ## `Week.19 25.Sep~30.Sep`
 
 * Changing into Jax
