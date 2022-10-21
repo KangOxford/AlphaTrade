@@ -25,15 +25,16 @@ class OutsideSignalProducer:
     def __init__(self, order_book, historical_message):
         self.historical_message = historical_message
         self.order_book = order_book
-        self.my_array, self.right_array, self.timestamp, self.order_id, self.trade_id = self.pre_process_historical_message(historical_message)
+        
     
-    def pre_process_historical_message(self, historical_message):
+    def pre_process_historical_message(self, historical_message, side):
         index, d2 = historical_message[0], historical_message[1]
-        my_list, right_list = get_two_list4compare(self.order_book, index, d2)
+        my_list, right_list = get_two_list4compare(self.order_book, index, d2, side)
         my_array, right_array = np.array(my_list), np.array(right_list)
         return my_array, right_array, historical_message[2], historical_message[3], historical_message[4]
         
     def __call__(self, side):    
+        self.my_array, self.right_array, self.timestamp, self.order_id, self.trade_id = self.pre_process_historical_message(self.historical_message, side)
         if np.sum(self.my_array != self.right_array) == 0:
             signal = {'sign':60}# do nothing
         else:

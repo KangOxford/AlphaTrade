@@ -41,20 +41,23 @@ def partly_cancel(order_book, right_order_price, wrong_order_price):
 def get_right_answer(index, d2):
     return d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list()
 
-def get_two_list4compare(order_book, index, d2):
-    my_list = brief_order_book(order_book)[0:2*Configuration.price_level]
+def get_two_list4compare(order_book, index, d2, side):
+    my_list =brief_order_book(order_book, side)[0:2*Configuration.price_level]
+    # my_list = my_list[::-1] if side == 'ask' else my_list # if ask, reverse the price order
     right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list() 
     return my_list, right_list
     
-def is_right_answer(order_book, index, d2):
-    my_list, right_list = get_two_list4compare(order_book, index, d2)
+def is_right_answer(order_book, index, d2, side):
+    my_list, right_list = get_two_list4compare(order_book, index, d2, side)
     return len(list(set(right_list) - set(my_list))) == 0
     
     
-def brief_order_book(order_book):
+def brief_order_book(order_book, side):
     my_list = []
     count = 0
-    for key, value in reversed(order_book.bids.price_map.items()):
+    if side == 'bid': range_generater = reversed(order_book.bids.price_map.items())
+    elif side=='ask': range_generater = order_book.asks.price_map.items()
+    for key, value in range_generater:
         count +=1 
         quantity = value.volume
         price = value.head_order.price

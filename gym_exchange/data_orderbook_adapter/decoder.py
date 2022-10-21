@@ -24,9 +24,9 @@ class Decoder:
         self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
         self.ask_sid_historical_data = historical_data.iloc[:,self.column_numbers_ask]
         self.order_book = OrderBook()
-        self.initialize_orderbook('bid')
-        # self.initialize_orderbook('ask')
-        self.data_adjuster = DataAdjuster(self.bid_sid_historical_data)
+        # self.initialize_orderbook('bid')
+        self.initialize_orderbook('ask')
+        self.data_adjuster = DataAdjuster(d2 = self.bid_sid_historical_data, l2 = self.ask_sid_historical_data)
         
     def initialize_orderbook(self, side):
         columns = self.column_numbers_bid if side == 'bid' else self.column_numbers_ask
@@ -73,13 +73,14 @@ class Decoder:
         self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side)
         
         # -------------------------- 03 ----------------------------
-        if Debugger.on: print(">>> Right_order_book"); print(utils.get_right_answer(self.index, self.bid_sid_historical_data))
-        assert utils.is_right_answer(self.order_book, self.index, self.bid_sid_historical_data), "the orderbook if different from the data"
+        single_side_historical_data = self.bid_sid_historical_data if side == 'bid' else self.ask_sid_historical_data
+        if Debugger.on: print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
+        assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side), "the orderbook if different from the data"
         self.index += 1
         if Debugger.on: 
             # print("The order book now is:"); print(self.order_book)
             print(">>> Brief_self.order_book(self.order_book)")
-            print(utils.brief_order_book(self.order_book))
+            print(utils.brief_order_book(self.order_book, side))
             # self.order_book.asks = None # remove the ask side
             print("The orderbook is right!\n")
             # print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')

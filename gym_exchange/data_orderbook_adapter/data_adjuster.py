@@ -6,8 +6,9 @@ from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProc
 from gym_exchange.data_orderbook_adapter.utils.OutsideSignalProducer import OutsideSignalProducer 
         
 class DataAdjuster():
-    def __init__(self, d2):
-        self.d2 = d2
+    def __init__(self, d2 = None, l2 = None):
+        self.d2 = d2 # bid right_order_book_data
+        self.l2 = l2 # ask right_order_book_data
         self.adjust_data_drift_id_bid = 10000  # caution about the volumn for valid numbers
         self.adjust_data_drift_id_ask = 50000  # caution about the volumn for valid numbers
         
@@ -23,7 +24,8 @@ class DataAdjuster():
     
     def adjust_data_drift(self, order_book, timestamp, index, side):
         timestamp, order_id, trade_id  = self.get_message_auxiliary_info(timestamp, side)
-        historical_message = [index, self.d2, timestamp, order_id, trade_id]
+        right_order_book_data = self.d2 if side == 'bid' else self.l2
+        historical_message = [index, right_order_book_data, timestamp, order_id, trade_id]
         signal = OutsideSignalProducer(order_book, historical_message)(side)
         order_book = SignalProcessor(order_book)(signal)
         return order_book
