@@ -3,7 +3,7 @@ import numpy as np
 from gym_exchange.data_orderbook_adapter import Debugger
 
 from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
-from gym_exchange.data_orderbook_adapter.utils.OutsideSignalProducer import OutsideSignalProducer 
+from gym_exchange.data_orderbook_adapter.utils.OutsideSignalEncoder import OutsideSignalEncoder
         
 class DataAdjuster():
     def __init__(self, d2 = None, l2 = None):
@@ -26,7 +26,7 @@ class DataAdjuster():
         timestamp, order_id, trade_id  = self.get_message_auxiliary_info(timestamp, side)
         right_order_book_data = self.d2 if side == 'bid' else self.l2
         historical_message = [index, right_order_book_data, timestamp, order_id, trade_id]
-        signal = OutsideSignalProducer(order_book, historical_message)(side)
+        signal = OutsideSignalEncoder(order_book, historical_message)(side)
         order_book = SignalProcessor(order_book)(signal)
         return order_book
 

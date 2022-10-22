@@ -19,7 +19,7 @@
 
 from gym_exchange.data_orderbook_adapter import Debugger 
 
-class InsideSignalProducer:
+class InsideSignalEncoder:
     def __init__(self, order_book, historical_message):
         # self.type = ['bid', 'ask']
         self.historical_message = historical_message
@@ -35,7 +35,7 @@ class InsideSignalProducer:
             origin_quantity = self.order_book.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
             adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
             message['quantity'] = adjusted_quantity
-        elif ttype == 3: # deletion (total deletion of a limit order) inside orderbook
+        elif ttype == 3:  # deletion (total deletion of a limit order) inside orderbook 
             if message['price'] > best_price:
                 sign = 6
             else: pass

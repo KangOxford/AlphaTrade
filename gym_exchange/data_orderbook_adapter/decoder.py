@@ -7,7 +7,7 @@ import pandas as pd
 from gym_exchange.data_orderbook_adapter import Debugger, Configuration 
 from gym_exchange.data_orderbook_adapter import utils
 from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
-from gym_exchange.data_orderbook_adapter.utils.InsideSignalProducer import InsideSignalProducer
+from gym_exchange.data_orderbook_adapter.utils.InsideSignalEncoder import InsideSignalEncoder
 from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
 from gym_exchange.orderbook import OrderBook
 
@@ -24,8 +24,8 @@ class Decoder:
         self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
         self.ask_sid_historical_data = historical_data.iloc[:,self.column_numbers_ask]
         self.order_book = OrderBook()
-        # self.initialize_orderbook('bid')
-        self.initialize_orderbook('ask')
+        self.initialize_orderbook('bid')
+        # self.initialize_orderbook('ask')
         self.data_adjuster = DataAdjuster(d2 = self.bid_sid_historical_data, l2 = self.ask_sid_historical_data)
         
     def initialize_orderbook(self, side):
@@ -68,8 +68,8 @@ class Decoder:
         side = 'bid' if historical_message[5] == 1 else 'ask'
 
         # -------------------------- 02 ----------------------------
-        signal          = InsideSignalProducer(self.order_book, historical_message)()
-        # if self.index == 2: breakpoint() #tbd
+        # if self.index == 16: breakpoint() #tbd
+        signal          = InsideSignalEncoder(self.order_book, historical_message)()
         self.order_book = SignalProcessor(self.order_book)(signal)
         
         
