@@ -35,10 +35,10 @@ class InsideSignalEncoder:
             origin_quantity = self.order_book.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
             adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
             message['quantity'] = adjusted_quantity
-        elif ttype == 3:  # deletion (total deletion of a limit order) inside orderbook 
-            if message['price'] > best_price:
-                sign = 6
-            else: pass
+        elif ttype == 3:  pass # deletion (total deletion of a limit order) inside orderbook 
+            # if message['price'] > best_price:
+            #     sign = 6
+            # else: pass
         elif ttype == 4 or ttype == 5: # not sure???
             if side == 'bid' and message['price'] <= best_price:
                 inversed_side = 'ask' if side == 'bid' else 'bid'
