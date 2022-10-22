@@ -27,11 +27,25 @@ class SignalProcessor:
     def delete_order(self, message):
         # para: self.order_book, message
         try: self.order_book.cancel_order(message['side'], message['trade_id'], message['timestamp'])
+        # ====================================== Asks ======================================
+        # Quantity     4  |  Price 31240000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity     1  |  Price 31237900  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity    24  |  Price 31230000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity   100  |  Price 31229800  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity     4  |  Price 31220000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity     2  |  Price 31214000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity     3  |  Price 31210000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity    18  |  Price 31200000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity     2  |  Price 31190000  |  Trade_ID      90000  |  Time 34200.000000001
+        # Quantity    48  |  Price 31180100  |  Trade_ID      90000  |  Time 34200.000000001
+        # Initialised quote does not have exact order id.
+        # but want to cancel order_id = 15069985 with quanitity 48. It is the best ask.
         except: 
-            order_list = self.order_book.bids.get_price_list(message['price'])
+            order_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+            order_list = order_tree.get_price_list(message['price'])
             assert len(order_list) == 1
             order = order_list.head_order
-            self.order_book.cancel_order(side = 'bid', 
+            self.order_book.cancel_order(side = message['side'], 
                                     order_id = order.order_id,
                                     time = order.timestamp, 
                                     )
@@ -45,7 +59,7 @@ class SignalProcessor:
         for order in order_list:
             print(order)#tbd
             if order.quantity == quantity:
-                self.order_book.cancel_order(side = 'bid', 
+                self.order_book.cancel_order(side = message['side'], 
                                         order_id = order.order_id,
                                         time = order.timestamp, 
                                         )

@@ -33,8 +33,10 @@ class OutsideSignalProducer:
         my_array, right_array = np.array(my_list), np.array(right_list)
         return my_array, right_array, historical_message[2], historical_message[3], historical_message[4]
         
-    def __call__(self, side):    
+    def __call__(self, side):   
         self.my_array, self.right_array, self.timestamp, self.order_id, self.trade_id = self.pre_process_historical_message(self.historical_message, side)
+        if Debugger.on: print(">>> my_array");print(self.my_array)
+        if Debugger.on: print(">>> right_array");print(self.right_array)
         if np.sum(self.my_array != self.right_array) == 0:
             signal = {'sign':60}# do nothing
         else:

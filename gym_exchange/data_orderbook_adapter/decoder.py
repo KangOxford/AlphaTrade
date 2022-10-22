@@ -69,14 +69,34 @@ class Decoder:
 
         # -------------------------- 02 ----------------------------
         signal          = InsideSignalProducer(self.order_book, historical_message)()
+        # if self.index == 2: breakpoint() #tbd
         self.order_book = SignalProcessor(self.order_book)(signal)
-        self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side)
+        
+        
+        if self.order_book.bids.depth != 0:
+            self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side = 'bid') # adjust only happens when the side of lob is existed(initialised)
+        if self.order_book.asks.depth != 0:
+            self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side = 'ask') # adjust only happens when the side of lob is existed(initialised)
+            
+        
+        # order_tree = self.order_book.bids if side == 'bid' else self.order_book.asks
+        # if order_tree.depth != 0:
+        #     self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side) # adjust only happens when the side of lob is existed(initialised)
+        
         
         # -------------------------- 03 ----------------------------
-        single_side_historical_data = self.bid_sid_historical_data if side == 'bid' else self.ask_sid_historical_data
+        # single_side_historical_data = self.bid_sid_historical_data if side == 'bid' else self.ask_sid_historical_data
+        
+        
+        if self.order_book.bids.depth != 0:
+            single_side_historical_data = self.bid_sid_historical_data
+            assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'bid'), "the orderbook if different from the data"
+        if self.order_book.asks.depth != 0:
+            single_side_historical_data = self.ask_sid_historical_data
+            assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
         if Debugger.on: print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
-        assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side), "the orderbook if different from the data"
-        self.index += 1
+        
+        
         if Debugger.on: 
             # print("The order book now is:"); print(self.order_book)
             print(">>> Brief_self.order_book(self.order_book)")
@@ -84,8 +104,9 @@ class Decoder:
             # self.order_book.asks = None # remove the ask side
             print("The orderbook is right!\n")
             # print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
+        self.index += 1
         
-    def modify(self):
+    def process(self):
         for index in range(self.horizon): # size : self.horizon
             self.step()
                     
@@ -106,5 +127,5 @@ if __name__ == "__main__":
     # =============================================================================
     
     decoder =  Decoder(price_level = Configuration.price_level, horizon = Configuration.horizon, historical_data = df2, data_loader = df)
-    decoder.modify()
+    decoder.process()
     # breakpoint() # tbd
