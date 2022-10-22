@@ -24,8 +24,8 @@ class Decoder:
         self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
         self.ask_sid_historical_data = historical_data.iloc[:,self.column_numbers_ask]
         self.order_book = OrderBook()
-        self.initialize_orderbook('bid')
-        # self.initialize_orderbook('ask')
+        # self.initialize_orderbook('bid')
+        self.initialize_orderbook('ask')
         self.data_adjuster = DataAdjuster(d2 = self.bid_sid_historical_data, l2 = self.ask_sid_historical_data)
         
     def initialize_orderbook(self, side):
@@ -68,7 +68,7 @@ class Decoder:
         side = 'bid' if historical_message[5] == 1 else 'ask'
 
         # -------------------------- 02 ----------------------------
-        # if self.index == 16: breakpoint() #tbd
+        if self.index == 109: breakpoint() #tbd
         signal          = InsideSignalEncoder(self.order_book, historical_message)()
         self.order_book = SignalProcessor(self.order_book)(signal)
         

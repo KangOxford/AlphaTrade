@@ -43,6 +43,9 @@ class InsideSignalEncoder:
             if side == 'bid' and message['price'] <= best_price:
                 inversed_side = 'ask' if side == 'bid' else 'bid'
                 message['side'] = inversed_side 
+            elif side == 'ask' and message['price'] >= best_price:
+                inversed_side = 'ask' if side == 'bid' else 'bid'
+                message['side'] = inversed_side 
             else: sign = 6
         elif ttype == 6: pass
         else: raise NotImplementedError
