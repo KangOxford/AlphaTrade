@@ -131,7 +131,8 @@ class OutsideSignalEncoder:
         return signal 
 
     def two_difference_signal_producer(self, order_book, my_array, right_array, side):
-        if right_array[-2] >  my_array[-2]:
+        if ~((right_array[-2] >  my_array[-2])^(side == 'bid')):
+            # used to be right_array[-2] >  my_array[-2]
             # Submission of a new limit order, price does not exist(outside lob)                    
             # =============================================================================
             # my_array

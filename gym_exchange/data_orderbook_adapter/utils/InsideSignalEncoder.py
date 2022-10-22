@@ -40,10 +40,8 @@ class InsideSignalEncoder:
             #     sign = 6
             # else: pass
         elif ttype == 4 or ttype == 5: # not sure???
-            if side == 'bid' and message['price'] <= best_price:
-                inversed_side = 'ask' if side == 'bid' else 'bid'
-                message['side'] = inversed_side 
-            elif side == 'ask' and message['price'] >= best_price:
+            price_ceiling_condition = (message['price'] <= best_price) if side == 'bid' else (message['price'] >= best_price)
+            if price_ceiling_condition:
                 inversed_side = 'ask' if side == 'bid' else 'bid'
                 message['side'] = inversed_side 
             else: sign = 6
