@@ -132,7 +132,6 @@ class OutsideSignalEncoder:
 
     def two_difference_signal_producer(self, order_book, my_array, right_array, side):
         if ~((right_array[-2] >  my_array[-2])^(side == 'bid')):
-            # used to be right_array[-2] >  my_array[-2]
             # Submission of a new limit order, price does not exist(outside lob)                    
             # =============================================================================
             # my_array
@@ -151,7 +150,8 @@ class OutsideSignalEncoder:
             
             timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
             message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-        elif right_array[-2] <  my_array[-2]:
+        elif ~((right_array[-2] <  my_array[-2])^(side == 'bid')):
+            # !! caution haven't tested for all ask situations 
             # Cancellation (Partial deletion of a limit order), (outside lob)
             # =============================================================================
             # part of order_list at this price has been partly cancelled outside the order book              
