@@ -15,7 +15,7 @@
 #...FFFF........UUUUUUUUU...NNN....NNNN....CCCCCCCC......TTTT....III....OOOOOOOOO...NNN....NNNN..
 #.................UUUUU.....................CCCCC........................OOOOOO..................
 #................................................................................................
-
+from copy import deepcopy
 from gym_exchange.data_orderbook_adapter import Configuration 
 
 def cancel_by_price(order_book, Price):
@@ -29,16 +29,17 @@ def cancel_by_price(order_book, Price):
     return order_book
 
 def partly_cancel(order_book, right_order_price, wrong_order_price, side):
+    tobe_returned_order_book = deepcopy(order_book)
     ranger = reversed(order_book.bids.price_map.items()) if side == 'bid' else order_book.asks.price_map.items()
     for price, order_list in ranger:
-        sequence_condition = (right_order_price < price  and price <= wrong_order_price) if side == 'bid' else (wrong_order_price <= price  and price < right_order_price)
+        sequence_condition = (right_order_price<price and price<=wrong_order_price) if side=='bid' else (wrong_order_price <= price  and price < right_order_price)
         if sequence_condition:
             for order in order_list:
-                order_book.cancel_order(side = side, 
+                tobe_returned_order_book.cancel_order(side = side, 
                                         order_id = order.order_id,
                                         time = order.timestamp, 
                                         )
-    return order_book
+    return tobe_returned_order_book
 
 
 def get_right_answer(index, d2):
