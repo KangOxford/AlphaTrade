@@ -88,16 +88,17 @@ class Decoder:
         # single_side_historical_data = self.bid_sid_historical_data if side == 'bid' else self.ask_sid_historical_data
         
         
-        if self.order_book.bids.depth != 0:
-            single_side_historical_data = self.bid_sid_historical_data
-            assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'bid'), "the orderbook if different from the data"
-        if self.order_book.asks.depth != 0:
-            single_side_historical_data = self.ask_sid_historical_data
-            assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
-        if Debugger.on: print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
-        
         
         if Debugger.on: 
+            # -------------------------- 04.01 ----------------------------
+            if self.order_book.bids.depth != 0:
+                single_side_historical_data = self.bid_sid_historical_data
+                assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'bid'), "the orderbook if different from the data"
+            if self.order_book.asks.depth != 0:
+                single_side_historical_data = self.ask_sid_historical_data
+                assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
+            print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
+            # -------------------------- 04.02 ----------------------------
             # print("The order book now is:"); print(self.order_book)
             print(">>> Brief_self.order_book(self.order_book)")
             print(utils.brief_order_book(self.order_book, side))
