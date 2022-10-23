@@ -30,35 +30,33 @@ class DataAdjuster():
         signal = OutsideSignalEncoder(order_book, historical_message)(side)
         try: order_book = SignalProcessor(order_book)(signal)
         except: 
-            for item in signal: order_book = SignalProcessor(order_book)(item)  # signals       
+            for item in signal: order_book = SignalProcessor(order_book)(item)  # EXAMPLE2        
         return order_book
-
-    
-# =============================================================================
-#  | There should be two signal produced, with given sequence: [10 => 20]
-#  | 10 to submit new order outside pricelevel.
-#  | The new submitted price can be used as anchor to cancel orders between 
-#  | Wrong price and Anchor price
-#  | my_array
-#  | [31178200      200 31180000        4 31190000      100 31200000     1014
-#  |  31200800        1 31201200        5 31201900        1 31202000        3
-#  |  31205100      200 31205600       18]
-#  | right_array
-#  | [31178200      200 31180000        4 31190000      100 31200000     1014
-#  |  31200800        1 31201200        5 31201900        1 31202000        3
-#  |  31205100      200 31207200       10]
-#  | order_book.asks.price_map 
-#  | 31210000
-#  * 31208000
-# => 31207200
-#  > 31205600
-#  | 31205100
-#  | 31202000
-#  | 31201900
-#  | 31201200
-#  | 31200800
-#  | 31200000
-#  | 31190000
-#  | 31180000
-#  | 31178200
-    
+        # ============================== EXAMPLE2 =====================================
+        #  | There should be two signal produced, with given sequence: [10 => 20]
+        #  | 10 to submit new order outside pricelevel.
+        #  | The new submitted price can be used as anchor to cancel orders between 
+        #  | Wrong price and Anchor price
+        #  | my_array
+        #  | [31178200      200 31180000        4 31190000      100 31200000     1014
+        #  |  31200800        1 31201200        5 31201900        1 31202000        3
+        #  |  31205100      200 31205600       18]
+        #  | right_array
+        #  | [31178200      200 31180000        4 31190000      100 31200000     1014
+        #  |  31200800        1 31201200        5 31201900        1 31202000        3
+        #  |  31205100      200 31207200       10]
+        #  | order_book.asks.price_map 
+        #  | 31210000
+        #  * 31208000
+        # => 31207200
+        #  > 31205600
+        #  | 31205100
+        #  | 31202000
+        #  | 31201900
+        #  | 31201200
+        #  | 31200800
+        #  | 31200000
+        #  | 31190000
+        #  | 31180000
+        #  | 31178200
+        # =============================================================================    

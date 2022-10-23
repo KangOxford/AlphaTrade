@@ -9,6 +9,7 @@ from gym_exchange.data_orderbook_adapter import utils
 from gym_exchange.data_orderbook_adapter.utils.SignalProcessor import SignalProcessor
 from gym_exchange.data_orderbook_adapter.utils.InsideSignalEncoder import InsideSignalEncoder
 from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
+from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.orderbook import OrderBook
 
 class Decoder:
@@ -28,7 +29,7 @@ class Decoder:
         self.initialize_orderbook('ask')
         self.data_adjuster = DataAdjuster(d2 = self.bid_sid_historical_data, l2 = self.ask_sid_historical_data)
         
-    def initialize_orderbook(self, side):
+    def initiaze_orderbook_message(self, side):
         columns = self.column_numbers_bid if side == 'bid' else self.column_numbers_ask
         l2 = self.historical_data.iloc[0,:].iloc[columns].reset_index().drop(['index'],axis = 1)
         limit_orders = []
@@ -45,12 +46,12 @@ class Decoder:
                 'order_id' : order_id_list[i],
                 "timestamp": timestamp}
             limit_orders.append(item)
-        # Add orders to order book
-    
-        for order in limit_orders:
-            # breakpoint()
-            trades, order_id = self.order_book.process_order(order, True, False)   
-        # The current book may be viewed using a print
+        return limit_orders
+        
+    def initialize_orderbook(self, side): # Add orders to order book
+        limit_orders = self.initiaze_orderbook_message(side)
+        
+        for order in limit_orders:  trades, order_id = self.order_book.process_order(order, True, False) # The current book may be viewed using a print 
         if Debugger.on: print(self.order_book)
     
     
@@ -79,16 +80,6 @@ class Decoder:
             self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side = 'ask') # adjust only happens when the side of lob is existed(initialised)
             
         
-        # order_tree = self.order_book.bids if side == 'bid' else self.order_book.asks
-        # if order_tree.depth != 0:
-        #     self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side) # adjust only happens when the side of lob is existed(initialised)
-        
-        
-        # -------------------------- 03 ----------------------------
-        # single_side_historical_data = self.bid_sid_historical_data if side == 'bid' else self.ask_sid_historical_data
-        
-        
-        
         if Debugger.on: 
             # -------------------------- 04.01 ----------------------------
             if self.order_book.bids.depth != 0:
@@ -99,12 +90,9 @@ class Decoder:
                 assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
             print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
             # -------------------------- 04.02 ----------------------------
-            # print("The order book now is:"); print(self.order_book)
             print(">>> Brief_self.order_book(self.order_book)")
             print(utils.brief_order_book(self.order_book, side))
-            # self.order_book.asks = None # remove the ask side
             print("The orderbook is right!\n")
-            # print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
         self.index += 1
         
     def process(self):
@@ -115,18 +103,13 @@ if __name__ == "__main__":
     # =============================================================================
     # 02 READ DATA
     # =============================================================================
-    df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
-
-
-    df = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_10.csv", header=None)
-    df.columns = ["timestamp",'type','order_id','quantity','price','side','remark']
-    df["timestamp"] = df["timestamp"].astype(str)
+    # historical_data, data_loader = DataPipeline()()
 
 
     # =============================================================================
     # 03 REVISING OF ORDERBOOK
     # =============================================================================
-    
-    decoder =  Decoder(price_level = Configuration.price_level, horizon = Configuration.horizon, historical_data = df2, data_loader = df)
+    # decoder =  Decoder(price_level = Configuration.price_level, horizon = Configuration.horizon, historical_data = historical_data, data_loader = df)
+    decoder = Decoder(**DataPipeline()())
     decoder.process()
     # breakpoint() # tbd

@@ -48,7 +48,8 @@ def get_right_answer(index, d2):
 def get_two_list4compare(order_book, index, d2, side):
     my_list =brief_order_book(order_book, side)[0:2*Configuration.price_level]
     # my_list = my_list[::-1] if side == 'ask' else my_list # if ask, reverse the price order
-    right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list() 
+    # right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list() # slower
+    right_list = list(d2.iloc[index,:]) # faster
     return my_list, right_list
     
 def is_right_answer(order_book, index, d2, side):
