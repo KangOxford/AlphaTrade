@@ -24,7 +24,7 @@ class Decoder:
         self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
         self.ask_sid_historical_data = historical_data.iloc[:,self.column_numbers_ask]
         self.order_book = OrderBook()
-        # self.initialize_orderbook('bid')
+        self.initialize_orderbook('bid')
         self.initialize_orderbook('ask')
         self.data_adjuster = DataAdjuster(d2 = self.bid_sid_historical_data, l2 = self.ask_sid_historical_data)
         
