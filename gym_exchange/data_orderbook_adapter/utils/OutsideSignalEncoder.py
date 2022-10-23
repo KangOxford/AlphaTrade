@@ -52,10 +52,9 @@ class OutsideSignalEncoder:
 
     def one_difference_signal_producer(self, order_book, my_array, right_array, side):
         timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
-        message = {'type': 'limit', 'timestamp': timestamp, 'order_id': order_id, 'trade_id': trade_id}
+        message = {'type': 'limit', 'timestamp': timestamp, 'order_id': order_id, 'trade_id': trade_id,'price':right_array[-2],'quantity':right_array[-1],'side':side}
         if my_array.size == Configuration.price_level * 2:
             if my_array[-2] == right_array[-2] :
-                price = right_array[-2]
                 if my_array[-1] < right_array[-1]:
                     # Submission of a new limit order, price exist(outside lob)
                     # =============================================================================
@@ -69,7 +68,7 @@ class OutsideSignalEncoder:
                     #  31161600        3 31160800        1 31160000       37 31158000        7
                     #  31155500       70 31155100       51]
                     # =============================================================================
-                    quantity = right_array[-1] - my_array[-1]
+                    message['quantity'] = right_array[-1] - my_array[-1]
                     # side = 'bid'
                     sign= 10
                     
@@ -88,9 +87,9 @@ class OutsideSignalEncoder:
                     # [31171400, 5, 31171000, 200, 31167100, 4, 31160000, 4, 31159800, 20, 
                     #  31158100, 10, 31158000, 7, 31157700, 1, 31155500, 70, 31155100, 1]
                     # =============================================================================
-                    quantity = my_array[-1] - right_array[-1] 
+                    message['quantity'] = my_array[-1] - right_array[-1] 
                     # side = 'bid'
-                    message['order_list'] =  order_book.bids.get_price_list(price)
+                    message['order_list'] =  order_book.bids.get_price_list(message['price'])
                     sign = 30
                     # breakpoint()#tbd
         
@@ -106,9 +105,6 @@ class OutsideSignalEncoder:
                 #  31160800        1 31160000       37 31158000        7 31155500       70
                 #  31155100       51 31154300       16]
                 # =============================================================================
-                price = right_array[-2]
-                quantity = right_array[-1]
-                # side = 'bid'
                 sign = 11
             elif my_array[-1] != right_array[-1] and  my_array[-2] != right_array[-2]: raise NotImplementedError # two actions needs to be taken in this step
             else: raise NotImplementedError
@@ -123,14 +119,13 @@ class OutsideSignalEncoder:
             #  31220000        4 31229800      100 31230000       24 31237900        1
             #  31240000        4 31240800        5], ask price
             # =============================================================================
-            price, quantity = right_array[-2],  right_array[-1]
             sign = 11
         else: raise NotImplementedError
-        message['side'], message['quantity'], message['price'] = side, quantity, price
         signal = dict({'sign': sign},**message)  
         return signal 
 
     def two_difference_signal_producer(self, order_book, my_array, right_array, side):
+        timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
         if ~((right_array[-2] >  my_array[-2])^(side == 'bid')):
             # Submission of a new limit order, price does not exist(outside lob)                    
             # =============================================================================
@@ -144,17 +139,24 @@ class OutsideSignalEncoder:
             #  31160000       37 31158000        7]
             # =============================================================================
             # side = 'bid'
-            price = right_array[-2]
-            quantity = right_array[-1]
+            price, quantity = right_array[-2], right_array[-1]
             sign = 11
-            
-            timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
             message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
         elif ~((right_array[-2] <  my_array[-2])^(side == 'bid')):
             # !! caution haven't tested for all ask situations 
             # breakpoint()
             sign = 20
-            message = {"right_order_price": right_array[-2], "wrong_order_price":my_array[-2],'side':side}            
+            message = {"right_order_price": right_array[-2], "wrong_order_price":my_array[-2],'side':side}      
+            # Test if the right_order_price and wrong_order_price are all in the price_tree
+            order_tree = order_book.bids if side == 'bid' else order_book.asks
+            try: assert right_array[-2] in order_tree.price_map, "right_order_price is not in order tree"
+            except:
+                signal = dict({'sign': sign},**message)  
+                second_sign = 11
+                second_message = {'type': 'limit', 'timestamp': timestamp, 'order_id': order_id, 'trade_id': trade_id,'price':right_array[-2],'quantity':right_array[-1],'side':side}
+                second_signal = dict({'sign': second_sign},**second_message)  
+                signals = [signal, second_signal]
+                return signals 
             
             # ================================== EXAMPLE 1 ================================
             # Cancellation (Partial deletion of a limit order), (outside lob)
