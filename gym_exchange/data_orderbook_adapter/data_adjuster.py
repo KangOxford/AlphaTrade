@@ -9,8 +9,8 @@ class DataAdjuster():
     def __init__(self, d2 = None, l2 = None):
         self.d2 = d2 # bid right_order_book_data
         self.l2 = l2 # ask right_order_book_data
-        self.adjust_data_drift_id_bid = 10000  # caution about the volumn for valid numbers
-        self.adjust_data_drift_id_ask = 50000  # caution about the volumn for valid numbers
+        self.adjust_data_drift_id_bid = 1000000  # caution about the volumn for valid numbers
+        self.adjust_data_drift_id_ask = 5000000  # caution about the volumn for valid numbers
         
     def get_message_auxiliary_info(self, timestamp, side):
         if side == 'bid': self.adjust_data_drift_id_bid += 1; adjust_data_drift_id = self.adjust_data_drift_id_bid

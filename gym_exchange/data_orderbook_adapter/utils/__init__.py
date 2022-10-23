@@ -28,16 +28,28 @@ def cancel_by_price(order_book, Price):
     order_book.cancel_order(side, trade_id, time = timestamp)
     return order_book
 
-def partly_cancel(order_book, right_order_price, wrong_order_price):
-    for price, order_list in reversed(order_book.bids.price_map.items()):
-        print(right_order_price, price , wrong_order_price)
-        if right_order_price < price  and price <= wrong_order_price:
+def partly_cancel(order_book, right_order_price, wrong_order_price, side):
+    ranger = reversed(order_book.bids.price_map.items()) if side == 'bid' else order_book.asks.price_map.items()
+    for price, order_list in ranger:
+        # print(right_order_price, price , wrong_order_price)
+        sequence_condition = (right_order_price < price  and price <= wrong_order_price) if side == 'bid' else (wrong_order_price <= price  and price < right_order_price)
+        if sequence_condition:
             for order in order_list:
-                order_book.cancel_order(side = 'bid', 
+                order_book.cancel_order(side = side, 
                                         order_id = order.order_id,
                                         time = order.timestamp, 
                                         )
     return order_book
+# def partly_cancel(order_book, right_order_price, wrong_order_price):
+#     for price, order_list in reversed(order_book.bids.price_map.items()):
+#         print(right_order_price, price , wrong_order_price)
+#         if right_order_price < price  and price <= wrong_order_price:
+#             for order in order_list:
+#                 order_book.cancel_order(side = 'bid', 
+#                                         order_id = order.order_id,
+#                                         time = order.timestamp, 
+#                                         )
+#     return order_book
 def get_right_answer(index, d2):
     return d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list()
 

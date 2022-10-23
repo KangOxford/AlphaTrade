@@ -68,7 +68,7 @@ class Decoder:
         side = 'bid' if historical_message[5] == 1 else 'ask'
 
         # -------------------------- 02 ----------------------------
-        if self.index == 122: breakpoint() #tbd
+        # if self.index == 524: breakpoint() #tbd
         signal          = InsideSignalEncoder(self.order_book, historical_message)()
         self.order_book = SignalProcessor(self.order_book)(signal)
         

@@ -76,7 +76,7 @@ class SignalProcessor:
         elif signal['sign'] in ((2, ) + ()): # cancellation (partial deletion of a limit order)
             self.order_book.bids.update_order(message) 
         elif signal['sign'] in (20, ): 
-            self.order_book = partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'])
+            self.order_book = partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'], message['side'])
         elif signal['sign'] in ((3, ) + ()):# deletion (total deletion of a limit order)
             self.delete_order(message)
         elif signal['sign'] in (30, ): 
