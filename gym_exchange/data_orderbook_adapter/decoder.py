@@ -25,8 +25,7 @@ class Decoder:
         self.bid_sid_historical_data = historical_data.iloc[:,self.column_numbers_bid]
         self.ask_sid_historical_data = historical_data.iloc[:,self.column_numbers_ask]
         self.order_book = OrderBook()
-        self.initialize_orderbook('bid')
-        self.initialize_orderbook('ask')
+        self.initialize_orderbook()
         self.data_adjuster = DataAdjuster(d2 = self.bid_sid_historical_data, l2 = self.ask_sid_historical_data)
         
     def initiaze_orderbook_message(self, side):
@@ -48,36 +47,36 @@ class Decoder:
             limit_orders.append(item)
         return limit_orders
         
-    def initialize_orderbook(self, side): # Add orders to order book
+    def initialize_orderbook_with_side(self, side): # Add orders to order book
         limit_orders = self.initiaze_orderbook_message(side)
-        
         for order in limit_orders:  trades, order_id = self.order_book.process_order(order, True, False) # The current book may be viewed using a print 
         if Debugger.on: print(self.order_book)
     
+    def initialize_orderbook(self):
+        self.initialize_orderbook_with_side('bid')
+        self.initialize_orderbook_with_side('ask')
+    
+    def get_inside_signal(self):
+        signal = InsideSignalEncoder(self.order_book, self.historical_message)()
+        return signal
+        
     
     
     def step(self):
         # -------------------------- 01 ----------------------------
         if Debugger.on: 
-            print("##"*25 + '###' + "##"*25)
-            print("=="*25 + " " + str(self.index) + " "+ "=="*25)
-            print("##"*25 + '###' + "##"*25+'\n')
-            
-            print("The order book used to be:"); print(self.order_book)
-        historical_message = self.data_loader.iloc[self.index,:]
-        timestamp = historical_message[0]
-        side = 'bid' if historical_message[5] == 1 else 'ask'
-
-        # -------------------------- 02 ----------------------------
-        # if self.index == 1614: breakpoint() #tbd
-        signal          = InsideSignalEncoder(self.order_book, historical_message)()
-        self.order_book = SignalProcessor(self.order_book)(signal)
+            print("##"*25 + '###' + "##"*25);print("=="*25 + " " + str(self.index) + " "+ "=="*25)
+            print("##"*25 + '###' + "##"*25+'\n');print("The order book used to be:"); print(self.order_book)
+        self.historical_message = self.data_loader.iloc[self.index,:]
+        historical_message = list(self.historical_message) # tbd 
+        inside_signal = self.get_inside_signal()
+        self.order_book = SignalProcessor(self.order_book)(inside_signal)
         
         
         if self.order_book.bids.depth != 0:
-            self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side = 'bid') # adjust only happens when the side of lob is existed(initialised)
+            outside_signal_bid, self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, self.historical_message[0], self.index, side = 'bid') # adjust only happens when the side of lob is existed(initialised)
         if self.order_book.asks.depth != 0:
-            self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, timestamp, self.index, side = 'ask') # adjust only happens when the side of lob is existed(initialised)
+            outside_signal_ask, self.order_book = self.data_adjuster.adjust_data_drift(self.order_book, self.historical_message[0], self.index, side = 'ask') # adjust only happens when the side of lob is existed(initialised)
             
         
         if Debugger.on: 
@@ -91,13 +90,18 @@ class Decoder:
             print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
             # -------------------------- 04.02 ----------------------------
             print(">>> Brief_self.order_book(self.order_book)")
+            side = 'bid' if self.historical_message[5] == 1 else 'ask'
             print(utils.brief_order_book(self.order_book, side))
             print("The orderbook is right!\n")
         self.index += 1
+        outside_signals = [outside_signal_bid, outside_signal_ask]
+        return inside_signal, outside_signals
         
     def process(self):
+        
         for index in range(self.horizon): # size : self.horizon
-            self.step()
+            # inside_signal, outside_signal = self.step()
+            _, _ = self.step()
                     
 if __name__ == "__main__":
     # =============================================================================

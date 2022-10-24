@@ -6,6 +6,7 @@
 
 # @Order_Flow_Interface.register
 import numpy as np
+from gym_exchange.data_orderbook_adapter import Configuration 
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 class OrderFlow():
@@ -43,6 +44,7 @@ class OrderFlow():
         self.order_id, 
         self.timestamp 
             ])
+    
     # def __str___(self):
     
 # class Encoder():
@@ -69,6 +71,8 @@ def initialize_order_flows():
 if __name__ == "__main__":
     decoder = Decoder(**DataPipeline()())
     ofs = initialize_order_flows()
-    
+    for index in range(Configuration.horizon):
+        inside_signal, outside_signals = decoder.step()
+        print()
     
     

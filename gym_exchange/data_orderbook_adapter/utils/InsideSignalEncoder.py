@@ -44,7 +44,7 @@ class InsideSignalEncoder:
             if price_ceiling_condition:
                 inversed_side = 'ask' if side == 'bid' else 'bid'
                 message['side'] = inversed_side 
-            else: sign = 6
+            else: sign = 6 ###?????? NOT SURE !!!!
         elif ttype == 6: pass
         else: raise NotImplementedError
         signal = dict({'sign': sign},**message)  

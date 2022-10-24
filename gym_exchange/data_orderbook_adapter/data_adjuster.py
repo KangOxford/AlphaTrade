@@ -31,7 +31,7 @@ class DataAdjuster():
         try: order_book = SignalProcessor(order_book)(signal)
         except: 
             for item in signal: order_book = SignalProcessor(order_book)(item)  # EXAMPLE2        
-        return order_book
+        return signal, order_book
         # ============================== EXAMPLE2 =====================================
         #  | There should be two signal produced, with given sequence: [10 => 20]
         #  | 10 to submit new order outside pricelevel.
