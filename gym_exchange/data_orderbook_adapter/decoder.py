@@ -35,7 +35,7 @@ class Decoder:
         limit_orders = []
         order_id_list = [15000000 + 100*(side == 'bid') + i for i in range(self.price_level)]
         for i in range(self.price_level):
-            trade_id = 90000 + + 100*(side == 'bid')
+            trade_id = 9000000 + + 10000*(side == 'bid')
             # timestamp = datetime(34200.000000001)
             timestamp = str(34200.000000002) if (side == 'bid') else str(34200.000000001)
             item = {'type' : 'limit', 
@@ -101,15 +101,8 @@ class Decoder:
                     
 if __name__ == "__main__":
     # =============================================================================
-    # 02 READ DATA
+    # 02 REVISING OF ORDERBOOK
     # =============================================================================
-    # historical_data, data_loader = DataPipeline()()
-
-
-    # =============================================================================
-    # 03 REVISING OF ORDERBOOK
-    # =============================================================================
-    # decoder =  Decoder(price_level = Configuration.price_level, horizon = Configuration.horizon, historical_data = historical_data, data_loader = df)
     decoder = Decoder(**DataPipeline()())
     decoder.process()
     # breakpoint() # tbd
