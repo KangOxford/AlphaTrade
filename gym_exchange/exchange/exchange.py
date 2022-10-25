@@ -79,7 +79,6 @@ class Exchange():
                     print(utils.brief_order_book(self.order_book, side = 'ask'))#$
         return self.order_book
 
-
 if __name__ == "__main__":
     exchange = Exchange()
     for _ in range(1000):

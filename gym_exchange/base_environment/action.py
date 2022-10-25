@@ -1,32 +1,43 @@
-class BaseAction:
-    def __init__(self,):
-        pass
+class BaseAction():
+    def __init__(self,side,quantity,price_delta,auto_cancel):
+        self.side = side
+        self.quantity = quantity
+        self.price_delta = price_delta
+        self.auto_cancel = auto_cancel
     
     @property
     def to_message(self):
         pass
 
 # -------------------------- 01 ----------------------------
-class Action:
-    price_delta = -3,-2,-1,0,1,2,3 
-    side = 'bid' or 'ask'
-    quantity = 0 ~ num2liquidate (int)
-    auto_cancel = 10 # fixed
+class ComplexAction(BaseAction):
+    def __init__(self,side,quantity,price_delta):
+        super.__init__(side,quantity,price_delta, auto_cancel = 10)
+        ''''price_delta = -3,-2,-1,0,1,2,3 
+            side = 'bid' or 'ask'
+            quantity = 0 ~ num2liquidate (int)
+            auto_cancel = 10 # fixed'''
 # -------------------------- 02 ----------------------------    
-class Action:
-    side = 'bid' or 'ask'
-    quantity = 0 ~ num2liquidate (int)
-    price_delta = 0 # fixed
-    auto_cancel = 10 # fixed
+class SideAction(BaseAction):
+    def __init__(self,side,quantity):
+        super.__init__(side,quantity, price_delta = 0, auto_cancel = 10)
+        ''''side = 'bid' or 'ask'
+            quantity = 0 ~ num2liquidate (int)
+            price_delta = 0 # fixed
+            auto_cancel = 10 # fixed'''
     
-class Action:
-    quantity = 0 ~ num2liquidate (int)
-    price_delta = -1, 0, 1 
-    side = 'bid' # fixed
-    auto_cancel = 10 # fixed
+class DeltaAction(BaseAction):
+    def __init__(self,quantity,price_delta):
+        super.__init__(side,quantity, price_delta, side = 'ask', auto_cancel = 10)
+        ''''quantity = 0 ~ num2liquidate (int)
+            price_delta = -1, 0, 1 
+            side = 'ask' # fixed
+            auto_cancel = 10 # fixed'''
 # -------------------------- 03 ----------------------------    
-class Action:
-    quantity = 0 ~ num2liquidate (int)
-    side =  'ask' # fixed
-    price_delta = 0 # fixed
-    auto_cancel = 10 # fixed
+class SimpleAction(BaseAction):
+    def __init__(self,quantity):
+        super.__init__(side,quantity, price_delta = 0, side = 'ask', auto_cancel = 10)
+        ''''quantity = 0 ~ num2liquidate (int)
+            side =  'ask' # fixed
+            price_delta = 0 # fixed
+            auto_cancel = 10 # fixed'''
