@@ -41,6 +41,7 @@ class SignalProcessor:
         # Initialised quote does not have exact order id.
         # but want to cancel order_id = 15069985 with quanitity 48. It is the best ask.
         except: 
+            # try:
             order_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
             order_list = order_tree.get_price_list(message['price'])
             assert len(order_list) == 1
@@ -49,7 +50,15 @@ class SignalProcessor:
                                     order_id = order.order_id,
                                     time = order.timestamp, 
                                     )
-            
+            # except:
+            #     order_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+            #     order_list = order_tree.get_price_list(message['price'])
+            #     remaining_tobe_deleted = message['quantity']
+            #     for order in order_list:
+            #         remaining_tobe_deleted -= order.quntity
+                    
+                    
+                    
     def delete_order_ouside(self, message):
         # para: self.order_book, message
         # func: search quanity and delete order ouside lob
@@ -87,7 +96,12 @@ class SignalProcessor:
             else:  raise NotImplementedError
         except:
             for item in signal:
-                if item['sign'] in ((5, ) + ()): 
-                    message = item.copy(); message.pop("sign")
-                    trades, order_in_book = self.order_book.process_order(message, True, False)
+                for item in signal: assert item['sign'] in ((5, ) + ())
+                prior_signal, posterior_signal = signal[0], signal[1]
+                # TYPE 1
+                prior_message = prior_signal.copy(); prior_message.pop("sign")
+                trades, order_in_book = self.order_book.process_order(prior_message, True, False)
+                # TYPE 3
+                posterior_message = posterior_signal.copy(); posterior_message.pop("sign")
+                self.delete_order(message)
         return self.order_book      

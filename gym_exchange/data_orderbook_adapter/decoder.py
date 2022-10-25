@@ -66,12 +66,13 @@ class Decoder:
         self.historical_message = self.data_loader.iloc[self.index,:]
         historical_message = list(self.historical_message) # tbd 
         # if self.index == 237:breakpoint();
-        # if self.index == 238:breakpoint();
-        print(self.order_book)#tbd
+        if self.index == 299:breakpoint();
+        # print(self.order_book)#tbd
         inside_signals = InsideSignalEncoder(self.order_book, self.historical_message)()
-        print(self.order_book)#tbd
+        print(inside_signals)#tbd
+        # print(self.order_book)#tbd
         self.order_book = SignalProcessor(self.order_book)(inside_signals)
-        print(self.order_book)#tbd
+        # print(self.order_book)#tbd
         
         
         if self.order_book.bids.depth != 0:

@@ -78,3 +78,13 @@ def update_id(message):
     message['order_id'] = order_id
     message['trade_id'] = order_id
     return message
+
+def type5_update_id(previous_message, message):
+    if message['side'] == 'bid': Configuration.Adapter.type5_id_bid += 1; order_id = Configuration.Adapter.type5_id_bid
+    else: Configuration.Adapter.type5_id_ask += 1; order_id = Configuration.Adapter.type5_id_ask
+    message['order_id'] = order_id
+    message['trade_id'] = order_id
+    previous_message['order_id'] = order_id
+    previous_message['trade_id'] = order_id
+    return previous_message, message
+     
