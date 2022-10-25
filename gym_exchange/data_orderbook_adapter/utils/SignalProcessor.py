@@ -97,11 +97,11 @@ class SignalProcessor:
         except:
             for item in signal:
                 for item in signal: assert item['sign'] in ((5, ) + ())
-                prior_signal, posterior_signal = signal[0], signal[1]
+                prior_signal, posterior_signal = signal[0], signal[1]; print(self.order_book)#$
                 # TYPE 1
                 prior_message = prior_signal.copy(); prior_message.pop("sign")
                 trades, order_in_book = self.order_book.process_order(prior_message, True, False)
                 # TYPE 3
                 posterior_message = posterior_signal.copy(); posterior_message.pop("sign")
-                self.delete_order(message)
+                self.delete_order(posterior_message)
         return self.order_book      

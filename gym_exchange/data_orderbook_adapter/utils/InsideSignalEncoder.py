@@ -49,27 +49,23 @@ class InsideSignalEncoder:
             else: 
                 sign = 6
                 # sign = 5 ###?????? NOT SURE !!!!
-        elif ttype == 5: 
-            sign = 5 # sumbmit two limit orders with different direction. With liquidity providing orders first.
-            # inversed_side = 'ask' if side == 'bid' else 'bid'
-            # ---------------------------- 01 ---------------------------- 
-            # previous_message = deepcopy(message)
-            # previous_message['side'] = side# the timestamp of side would be smaller than the current timestamp
-            # previous_message['side'] = inversed_side# the timestamp of side would be smaller than the current timestamp
-            # str_int_timestamp = str(int(message['timestamp'][0:5]) * int(1e9) + (int(message['timestamp'][6:15]) - 1))
-            # previous_timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
-            # previous_message['timestamp'] = previous_timestamp
-            # ---------------------------- 02 ---------------------------- 
-            # previous_message = utils.update_id(previous_message)# change of order_id and trade_id
-            message = utils.update_id(message)# change of order_id and trade_id
-            # previous_message = utils.update_id(previous_message)# change of order_id and trade_id
-            # previous_message, message = utils.type5_update_id(previous_message, message) # change of order_id and trade_id
-            # previous_message, message = utils.type5_update_id(previous_message, message) # change of order_id and trade_id
-            # ---------------------------- 03 ---------------------------- 
-            signal = dict({'sign': sign},**message)  
-            # previous_signal = dict({'sign': sign},**deepcopy(message))  
-            signals = [deepcopy(signal), signal]
-            return signals
+        elif ttype == 5: pass
+            # sign = 5 # sumbmit two limit orders with different direction. With liquidity providing orders first.
+            
+            # inverse_order_tree = self.order_book.asks if side =='bid' else self.order_book.bids
+            # try: 
+            #     order_tree.get_price_list(message['price'])
+            #     breakpoint()
+            #     print()
+            # except:
+            #     pass
+            
+            
+            
+            # message = utils.update_id(message)# change of order_id and trade_id
+            # signal = dict({'sign': sign},**message)  
+            # signals = [deepcopy(signal), signal]
+            # return signals
         elif ttype == 6: pass
         else: raise NotImplementedError
         signal = dict({'sign': sign},**message)  
