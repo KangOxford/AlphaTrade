@@ -46,6 +46,9 @@ class Exchange():
     def reset(self):
         self.order_book = OrderBook()
         self.initialize_orderbook(self.order_book)
+    def generate_flow(self):
+        for flow in self.flow_list:
+            yield flow
     def step(self):
         # -------------------------- 03.02 ----------------------------
         for flow in self.flow_list:

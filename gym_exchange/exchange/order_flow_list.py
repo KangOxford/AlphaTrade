@@ -102,3 +102,5 @@ class FlowList():
             temp_file.write("%s\n" % str(order_flow))
         #temp_file.write("%s\n" % str(self.head_order_flow))
         return temp_file.getvalue()
+    
+    # def __getitem__(self, n):
