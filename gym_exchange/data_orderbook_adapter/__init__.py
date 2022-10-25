@@ -4,8 +4,8 @@ class Debugger:
     # on = True # by default
     on = False
     class Encoder:
-        on = True
-        # on = False
+        # on = True
+        on = False
     
 class Configuration:
     price_level = 10 

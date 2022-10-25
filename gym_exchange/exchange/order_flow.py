@@ -1,3 +1,4 @@
+import numpy as np
 class OrderFlow():
     length = 7
     def __init__(self,Type,direction,size,price,trade_id,order_id,time):
