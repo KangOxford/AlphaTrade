@@ -57,7 +57,8 @@ class Exchange():
         # for flow in self.flow_list:
         # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
-        for item in [flow, action]:
+        for item in [action, flow]: # advantange for ask limit order (in liquidation problem)
+        # for item in [flow, action]:
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
