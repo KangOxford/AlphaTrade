@@ -16,8 +16,9 @@
 #......CCCCCCCC........LLLLLLLLLL.....AAAA.....AAAA.......SSSSSSSSS........SSSSSSSSS...
 #.......CCCCC..............................................SSSSSS...........SSSSSS.....
 #......................................................................................
-
-from gym_exchange.data_orderbook_adapter import Debugger 
+from copy import deepcopy
+from gym_exchange.data_orderbook_adapter import Debugger
+from gym_exchange.data_orderbook_adapter  import utils
 
 class InsideSignalEncoder:
     def __init__(self, order_book, historical_message):
@@ -26,6 +27,7 @@ class InsideSignalEncoder:
         self.order_book = order_book
         self.best_bid = self.order_book.get_best_bid()
         self.best_ask = self.order_book.get_best_ask()
+
     def encoder(self, side, message, ttype):
         sign = ttype
         best_price = self.best_bid if side == 'bid' else self.best_ask
@@ -39,12 +41,31 @@ class InsideSignalEncoder:
             # if message['price'] > best_price:
             #     sign = 6
             # else: pass
-        elif ttype == 4 or ttype == 5: # not sure???
+        elif ttype == 4: # not sure???
             price_ceiling_condition = (message['price'] <= best_price) if side == 'bid' else (message['price'] >= best_price)
             if price_ceiling_condition:
                 inversed_side = 'ask' if side == 'bid' else 'bid'
                 message['side'] = inversed_side 
-            else: sign = 6 ###?????? NOT SURE !!!!
+            else: 
+                sign = 6
+                # sign = 5 ###?????? NOT SURE !!!!
+        elif ttype == 5: 
+            sign = 5 # sumbmit two limit orders with different direction. With liquidity providing orders first.
+            inversed_side = 'ask' if side == 'bid' else 'bid'
+            # ---------------------------- 01 ---------------------------- 
+            previous_message = deepcopy(message)
+            previous_message['side'] = inversed_side# the timestamp of side would be smaller than the current timestamp
+            str_int_timestamp = str(int(message['timestamp'][0:5]) * int(1e9) + (int(message['timestamp'][6:15]) - 1))
+            previous_timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
+            previous_message['timestamp'] = previous_timestamp
+            # ---------------------------- 02 ---------------------------- 
+            previous_message = utils.update_id(previous_message)# change of order_id and trade_id
+            message = utils.update_id(message)# change of order_id and trade_id
+            # ---------------------------- 03 ---------------------------- 
+            signal = dict({'sign': sign},**message)  
+            previous_signal = dict({'sign': sign},**previous_message)  
+            signals = [previous_signal, signal]
+            return signals
         elif ttype == 6: pass
         else: raise NotImplementedError
         signal = dict({'sign': sign},**message)  

@@ -22,7 +22,7 @@ def cancel_by_price(order_book, Price):
     side = 'bid'
     order_list =  order_book.bids.get_price_list(Price)
     order = order_list.get_head_order()
-    order_id = order.order_id
+    # order_id = order.order_id
     trade_id = order.trade_id
     timestamp = order.timestamp
     order_book.cancel_order(side, trade_id, time = timestamp)
@@ -71,3 +71,10 @@ def brief_order_book(order_book, side):
         if count == Configuration.price_level:
             break
     return my_list
+
+def update_id(message):
+    if message['side'] == 'bid': Configuration.Adapter.type5_id_bid += 1; order_id = Configuration.Adapter.type5_id_bid
+    else: Configuration.Adapter.type5_id_ask += 1; order_id = Configuration.Adapter.type5_id_ask
+    message['order_id'] = order_id
+    message['trade_id'] = order_id
+    return message
