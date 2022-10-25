@@ -71,6 +71,7 @@ class Exchange():
 
 if __name__ == "__main__":
     exchange = Exchange()
+    exchange.step()
     
 
 
