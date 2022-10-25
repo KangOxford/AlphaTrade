@@ -1,5 +1,6 @@
 class Vwap():
-    time_delta = 1 # one step
-    def __init__(self):
-        pass
+    time_window = 1 # one step
+    def __init__(self, historical_data, running_data):
+        self.historical_data = historical_data
+        self.running_data = running_data
     
