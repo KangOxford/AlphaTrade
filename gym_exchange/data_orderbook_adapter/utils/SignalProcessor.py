@@ -76,32 +76,33 @@ class SignalProcessor:
         raise NotImplementedError
     
     def __call__(self, signal):
-        try:
-            message = signal.copy(); message.pop("sign")
-            if signal['sign'] in ((1, 4) + (10, 11)):
-                trades, order_in_book = self.order_book.process_order(message, True, False)
-                if Debugger.on: 
-                    print("Trade occurs as follows:"); print(trades)
-                    print("The order book now is:");   print(self.order_book)
-                
-            elif signal['sign'] in ((2, ) + ()): # cancellation (partial deletion of a limit order)
-                self.order_book.bids.update_order(message) 
-            elif signal['sign'] in (20, ): 
-                self.order_book = partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'], message['side'])
-            elif signal['sign'] in ((3, ) + ()):# deletion (total deletion of a limit order)
-                self.delete_order(message)
-            elif signal['sign'] in (30, ): 
-                return self.delete_order_ouside(message)
-            elif signal['sign'] in ((6, ) + (60, )): pass # do nothing
-            else:  raise NotImplementedError
-        except:
-            for item in signal:
-                for item in signal: assert item['sign'] in ((5, ) + ())
-                prior_signal, posterior_signal = signal[0], signal[1]; print(self.order_book)#$
-                # TYPE 1
-                prior_message = prior_signal.copy(); prior_message.pop("sign")
-                trades, order_in_book = self.order_book.process_order(prior_message, True, False)
-                # TYPE 3
-                posterior_message = posterior_signal.copy(); posterior_message.pop("sign")
-                self.delete_order(posterior_message)
+        # try:
+        message = signal.copy(); message.pop("sign")
+        if signal['sign'] in ((1, 4) + (10, 11)):
+            trades, order_in_book = self.order_book.process_order(message, True, False)
+            if Debugger.on: 
+                print("Trade occurs as follows:"); print(trades)
+                print("The order book now is:");   print(self.order_book)
+            
+        elif signal['sign'] in ((2, ) + ()): # cancellation (partial deletion of a limit order)
+            self.order_book.bids.update_order(message) 
+        elif signal['sign'] in (20, ): 
+            self.order_book = partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'], message['side'])
+        elif signal['sign'] in ((3, ) + ()):# deletion (total deletion of a limit order)
+            self.delete_order(message)
+        elif signal['sign'] in (30, ): 
+            return self.delete_order_ouside(message)
+        elif signal['sign'] in ((5, 6) + (60, )): pass # do nothing
+        # elif signal['sign'] in ((6, ) + (60, )): pass # do nothing
+        else:  raise NotImplementedError
+        # except:
+        #     for item in signal:
+        #         for item in signal: assert item['sign'] in ((5, ) + ())
+        #         prior_signal, posterior_signal = signal[0], signal[1]; print(self.order_book)#$
+        #         # TYPE 1
+        #         prior_message = prior_signal.copy(); prior_message.pop("sign")
+        #         trades, order_in_book = self.order_book.process_order(prior_message, True, False)
+        #         # TYPE 3
+        #         posterior_message = posterior_signal.copy(); posterior_message.pop("sign")
+        #         self.delete_order(posterior_message)
         return self.order_book      

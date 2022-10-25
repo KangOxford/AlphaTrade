@@ -65,7 +65,7 @@ class Decoder:
             print("##"*25 + '###' + "##"*25+'\n');print("The order book used to be:"); print(self.order_book)
         self.historical_message = self.data_loader.iloc[self.index,:]
         historical_message = list(self.historical_message) # tbd 
-        if self.index == 237:breakpoint();
+        # if self.index == 237:breakpoint();
         # if self.index == 299:breakpoint();
         # print(self.order_book)#tbd
         inside_signals = InsideSignalEncoder(self.order_book, self.historical_message)()
