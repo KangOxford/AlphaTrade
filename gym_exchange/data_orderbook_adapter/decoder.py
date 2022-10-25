@@ -68,10 +68,10 @@ class Decoder:
         # if self.index == 237:breakpoint();
         # if self.index == 299:breakpoint();
         # print(self.order_book)#tbd
-        inside_signals = InsideSignalEncoder(self.order_book, self.historical_message)()
-        print(inside_signals)#tbd
+        inside_signal = InsideSignalEncoder(self.order_book, self.historical_message)()
+        # print(inside_signal)#tbd
         # print(self.order_book)#tbd
-        self.order_book = SignalProcessor(self.order_book)(inside_signals)
+        self.order_book = SignalProcessor(self.order_book)(inside_signal)
         # print(self.order_book)#tbd
         
         
@@ -103,13 +103,15 @@ class Decoder:
             except: 
                 try:outside_signals = [outside_signal_bid]
                 except: outside_signals = []
-        return inside_signals, outside_signals
+        return inside_signal, outside_signals
         
     def process(self):
         
         for index in range(self.horizon): # size : self.horizon
-            # inside_signal, outside_signal = self.step()
-            _, _ = self.step()
+            # if index == 124: breakpoint()#$
+            inside_signal, outside_signals = self.step()
+            # print()
+            # _, _ = self.step()
                     
 if __name__ == "__main__":
     # =============================================================================

@@ -6,46 +6,11 @@
 
 # @Order_Flow_Interface.register
 import numpy as np
-from gym_exchange.data_orderbook_adapter import Configuration 
+from gym_exchange.data_orderbook_adapter import Configuration, Debugger 
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-class OrderFlow():
-    length = 7
-    def __init__(self,Type,direction,size,price,trade_id,order_id,time):
-        '''Parameters
-        -------------
-        time : str
-        Type : int
-            1: submission of a new limit order
-            2: cancellation(partial deletion)
-            3: deletion(total deletion)
-        order_id : int
-        size : int
-        price : int
-        direction : int
-            -1 : limit order at ask side
-            +1 : limit order at sell side
-        trade_id : int
-        '''
-        self.type = Type
-        self.side = direction
-        self.quantity = size
-        self.price = price
-        self.trade_id = trade_id
-        self.order_id = order_id
-        self.timestamp = time
-    def __call__(self):
-        return np.array([
-        self.type, 
-        self.side, 
-        self.quantity, 
-        self.price, 
-        self.trade_id, 
-        self.order_id, 
-        self.timestamp 
-            ])
-    
-    # def __str___(self):
+from gym_exchange.order_flow import Order_Flow
+
     
 # class Encoder():
 #     def __init__(self):
@@ -68,11 +33,84 @@ def initialize_order_flows():
                 )()).reshape([-1, OrderFlow.length])
     return order_flows
     
+def inside_signal_encoding(inside_signal):
+    if inside_signal['sign'] in (1,2,3,):
+        order_flow = OrderFlow(
+        time = inside_signal['timestamp'],
+        Type = inside_signal['sign'],
+        order_id = inside_signal['order_id'],
+        size = inside_signal['quantity'],
+        price = inside_signal['price'],
+        direction = inside_signal['side'],
+        trade_id= inside_signal['trade_id']
+        )()
+    elif inside_signal['sign'] in (4,):
+        order_flow = OrderFlow(
+        time = inside_signal['timestamp'],
+        Type = 1 ,
+        order_id = inside_signal['order_id'],
+        size = inside_signal['quantity'],
+        price = inside_signal['price'],
+        direction = (set(['bid','ask'])-set([inside_signal['side']])).pop(),
+        trade_id= inside_signal['trade_id']
+        )()
+    elif inside_signal['sign'] in (5,6,): order_flow = None
+    else: raise NotImplementedError
+    return order_flow
+
+def outside_signal_encoding(signal):
+    if signal['sign'] in (10,11):
+        order_flow = OrderFlow(
+        time = signal['timestamp'],
+        Type = signal['sign']//10,
+        order_id = signal['order_id'],
+        size = signal['quantity'],
+        price = signal['price'],
+        direction = signal['side'],
+        trade_id= signal['trade_id']
+        )()
+    # elif signal['sign'] in (20,): #TODO
+    #     '''signal
+    #     {'sign': 20, 'right_order_price': 31210000, 'wrong_order_price': 31209000, 'side': 'ask'}'''
+    elif signal['sign'] in (60,):  order_flow = None
+    else: order_flow = None # !not implemented yet
+    return order_flow
+
+def get_running_order_flows():
+    order_flows = np.array([])
+    for index in range(Configuration.horizon):
+        inside_signal, outside_signals = decoder.step()
+        inside_order_flow = inside_signal_encoding(inside_signal)
+        if inside_order_flow is not None:
+            order_flows = np.append(order_flows, inside_order_flow).reshape([-1, OrderFlow.length])
+        # if index == 1614: breakpoint()#$
+        for signal in outside_signals:
+            if type(signal) is list: 
+                for s in signal:
+                    outside_order_flow = outside_signal_encoding(s)
+                    if outside_order_flow is not None:
+                        order_flows = np.append(order_flows, outside_order_flow).reshape([-1, OrderFlow.length])
+            else:
+                outside_order_flow = outside_signal_encoding(signal)
+                if outside_order_flow is not None:
+                    order_flows = np.append(order_flows, outside_order_flow).reshape([-1, OrderFlow.length])
+        if Debugger.Encoder.on:
+            print("="*10+' '+str(index)+" "+"="*10)
+            print(">>> inside_signal");print(inside_signal)
+            print(">>> outside_signal")
+            for signal in outside_signals:
+                print(signal)
+            print("-"*23)
+            #     if signal['sign'] != 60:#$
+            #         breakpoint()#$
+            # print()#$
+    return order_flows
+
 if __name__ == "__main__":
     decoder = Decoder(**DataPipeline()())
     ofs = initialize_order_flows()
-    for index in range(Configuration.horizon):
-        inside_signal, outside_signals = decoder.step()
-        print()
+    ofs2 = get_running_order_flows()
+    Ofs = np.append(ofs, ofs2).reshape([-1, OrderFlow.length])
     
-    
+    import pandas as pd
+    pd.DataFrame(Ofs).to_csv("Ofs.csv", header=None, index=None)
