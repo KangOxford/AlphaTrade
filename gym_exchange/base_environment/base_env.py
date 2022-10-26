@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 from gym import Env
 from gym import spaces
+from gym_exchange.metric import Vwap
+from gym_exchange.action import SimpleAction
+from gym_exchange.action import BaseAction
 from gym_exchange.base_environment import Configuration
+
 
 class BaseEnv():
     """A stock trading environment based on OpenAI gym"""
