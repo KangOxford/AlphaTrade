@@ -14,6 +14,7 @@ class BaseEnv():
     def __init__(self):
         super().__init__()
         self.space_definition()
+        self.vwap_estimator = Vwap()
         
     def space_definition(self):
         self.action_space = spaces.Box(
@@ -54,7 +55,8 @@ class BaseEnv():
         # ····················· 03.02 ·····················
         @property
         def reward(self):
-            pass
+            difference = self.vwap_estimator.difference
+            return reward
         # ····················· 03.03 ·····················
         @property
         def done(self):
