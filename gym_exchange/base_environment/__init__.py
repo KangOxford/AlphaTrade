@@ -1,6 +1,7 @@
 from gym.envs.registration import register
 
-class Configuration:
+class Conf:
+# class Configuration:
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     max_episode_steps= 12000 # 10 mins
     # max_episode_steps= 1200 # 1 min
