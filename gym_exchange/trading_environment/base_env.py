@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 from gym import Env
 from gym import spaces
 from gym_exchange.metric import Vwap

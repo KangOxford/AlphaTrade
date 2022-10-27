@@ -8,3 +8,7 @@ class Vwap():
     def difference(self):
         pass
     
+    class StaticVwap():
+        def __init__(self, historical_data, running_data):
+            pass
+    
