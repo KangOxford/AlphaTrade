@@ -3,7 +3,6 @@ class BaseAction():
         self.side = side
         self.quantity = quantity
         self.price_delta = price_delta
-        self.auto_cancel = auto_cancel
     
     @property
     def to_message(self):
@@ -12,7 +11,7 @@ class BaseAction():
 # -------------------------- 01 ----------------------------
 class ComplexAction(BaseAction):
     def __init__(self,side,quantity,price_delta):
-        super.__init__(side,quantity,price_delta, auto_cancel = 10)
+        super.__init__(side,quantity,price_delta)
         ''''price_delta = -3,-2,-1,0,1,2,3 
             side = 'bid' or 'ask'
             quantity = 0 ~ num2liquidate (int)
@@ -20,7 +19,7 @@ class ComplexAction(BaseAction):
 # -------------------------- 02 ----------------------------    
 class SideAction(BaseAction):
     def __init__(self,side,quantity):
-        super.__init__(side,quantity, price_delta = 0, auto_cancel = 10)
+        super.__init__(side,quantity, price_delta = 0)
         ''''side = 'bid' or 'ask'
             quantity = 0 ~ num2liquidate (int)
             price_delta = 0 # fixed
@@ -28,7 +27,7 @@ class SideAction(BaseAction):
     
 class DeltaAction(BaseAction):
     def __init__(self,quantity,price_delta):
-        super.__init__(side,quantity, price_delta, side = 'ask', auto_cancel = 10)
+        super.__init__(side,quantity, price_delta, side = 'ask')
         ''''quantity = 0 ~ num2liquidate (int)
             price_delta = -1, 0, 1 
             side = 'ask' # fixed
@@ -36,7 +35,7 @@ class DeltaAction(BaseAction):
 # -------------------------- 03 ----------------------------    
 class SimpleAction(BaseAction):
     def __init__(self,quantity):
-        super.__init__(side,quantity, price_delta = 0, side = 'ask', auto_cancel = 10)
+        super.__init__(side,quantity, price_delta = 0, side = 'ask')
         ''''quantity = 0 ~ num2liquidate (int)
             side =  'ask' # fixed
             price_delta = 0 # fixed
