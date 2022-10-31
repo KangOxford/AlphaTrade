@@ -6,8 +6,8 @@ class Config:
     # max_episode_steps= 1200 # 1 min
     # max_episode_steps= 600 # 1/2 min
     
-    # num2liquidate = 1119 # debug twap
-    # num2liquidate = 2000 # 10 min
+
+    num2liquidate = 2000 # 10 min
     # num2liquidate = 200 # 1 min
     # num2liquidate = 100 # 1/2 min
     max_action = 300
