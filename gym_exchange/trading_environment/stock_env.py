@@ -6,6 +6,7 @@ from gym_exchange.trading_environment.action import SimpleAction
 from gym_exchange.trading_environment.action import BaseAction
 from gym_exchange.trading_environment.base_env import BaseEnv 
 
+@EnvInterface.register
 class StockEnv():
     def __init__(self):
         super(StockEnv, self).__init__()
