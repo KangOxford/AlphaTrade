@@ -38,4 +38,4 @@ if __name__ == '__main__':
         action, done = twap.step()
         action_list.append(action)
         if done: break
-    print(sum(action_list))
+    print(sum(action_list) == Config.num2liquidate)
