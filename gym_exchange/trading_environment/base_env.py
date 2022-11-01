@@ -20,8 +20,6 @@ class BaseSpaceParams(SpaceParams):
         side_size = 2
         quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
 
-# @EnvInterface.register
-# class BaseEnv():
 class BaseEnv(EnvInterface):
     # ========================== 01 ==========================
     def __init__(self):
