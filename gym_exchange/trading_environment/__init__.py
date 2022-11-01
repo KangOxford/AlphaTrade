@@ -11,7 +11,7 @@ class Config:
     # num2liquidate = 200 # 1 min
     # num2liquidate = 100 # 1/2 min
     max_action = 300
-    max_quantity = 300 # TODO is it the same function with max_action?
+    max_quantity = 3000 # TODO is it the same function with max_action?
     max_price = 35000000 # upper bound
     min_price = 30000000 # lower bound
     min_quantity = 0

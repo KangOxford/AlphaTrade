@@ -1,6 +1,7 @@
 import numpy as np
 from gym import Env
 from gym import spaces
+from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 from gym_exchange.exchange.exchange import Exchange
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
@@ -36,19 +37,27 @@ class BaseEnv(EnvInterface):
     def reset(self):
         """Reset episode and return initial observation."""
         self.exchange.reset()
-        self.cur_state = self.initial_state(); assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
+        self.cur_state = self.initial_state()
+        assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
         observation = self.obs_from_state(self.cur_state)
         return observation
     # ------------------------- 02.01 ------------------------
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
+        # ···················· 02.01.01 ···················· 
         self.cur_step = 0
         self.num_left = Config.num2liquidate
-        order_book = self.exchange.order_book #$
-        from gym_exchange.data_orderbook_adapter.utils import brief_order_book
-        asks = brief_order_book(order_book, 'ask')
-        bids = brief_order_book(order_book, 'bid')
-        state = 0
+        order_book = self.exchange.order_book 
+        asks, bids = brief_order_book(order_book, 'ask'), brief_order_book(order_book, 'bid')
+        asks, bids = np.array(asks), np.array(bids)
+        
+        # ···················· 02.01.02 ···················· 
+        price_indexes, quantity_indexes = [2*i for i in range(Config.price_level)], [2*i +1 for i in range(Config.price_level)]
+        asks = np.concatenate([asks[price_indexes],asks[quantity_indexes]]).reshape(-1,Config.price_level)
+        bids = np.concatenate([bids[price_indexes],bids[quantity_indexes]]).reshape(-1,Config.price_level)
+        state = np.concatenate([asks, bids])
+        state = state.astype(np.int64)
+        assert state.shape == (4, Config.price_level)
         return state
         
     # ========================== 03 ==========================

@@ -21,12 +21,16 @@ class SpaceParams(object):
         quantity_size = 2*quantity_size_one_side + 1
     class State:
         low = np.array([Config.min_price] * 10 +\
+                        [Config.min_quantity]*10 +\
+                        [Config.min_price] * 10 +\
                         [Config.min_quantity]*10 
-                        ).reshape((Config.state_dim_1,Config.state_dim_2))
+                        ).reshape((2 * Config.state_dim_1,Config.state_dim_2))
         high = np.array([Config.max_price] * 10 +\
+                        [Config.max_quantity]*10 +\
+                        [Config.max_price] * 10 +\
                         [Config.max_quantity]*10 
-                        ).reshape((Config.state_dim_1,Config.state_dim_2))
-        shape = (Config.state_dim_1,Config.state_dim_2)
+                        ).reshape((2 * Config.state_dim_1,Config.state_dim_2))
+        shape = (2 * Config.state_dim_1,Config.state_dim_2)
 
 
 class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
@@ -50,7 +54,7 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
               low   = SpaceParams.State.low,
               high  = SpaceParams.State.high,
               shape = SpaceParams.State.shape,
-              dtype = np.int32,
+              dtype = np.int64,
         )
         return action_space, state_space
 
