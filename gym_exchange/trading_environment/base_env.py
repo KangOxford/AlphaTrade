@@ -23,6 +23,9 @@ class BaseEnv():
         super(BaseEnv, self).__init__()
         self.observation_space = EnvInterface.state_space
         self.vwap_estimator = VwapEstimator() # Used for info
+        self.obs_generator = ObsGenerator() # Used for Obs
+        self.reward_generator = RewardGenerator() # Used for Reward
+        self.done_generator = DoneGenerator() # Used for Done
     
     # ========================== 02 ==========================
     def reset(self):
@@ -59,4 +62,13 @@ class BaseEnv():
     # --------------------- 03.04 ---------------------  
     @property
     def info(self):
-        pass
+        MarketVwap = self.vwap_estimator.market_vwap
+        AgentVwap = self.vwap_estimator.agent_vwap
+        return {
+            "MarketVwap"  :MarketVwap,
+            "AgentVwap"   :AgentVwap,
+            "VwapSlippage":MarketVwap - AgentVwap
+        }
+        '''in an liquidation task the market_vwap ought to be
+        higher, as they are not eagle to takt the liquidity, 
+        and can be executed at higher price.'''
