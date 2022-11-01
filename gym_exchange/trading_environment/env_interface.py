@@ -23,7 +23,7 @@ class SpaceParams(object):
         low = np.array([Config.min_price] * 10 +\
                         [Config.min_quantity]*10 
                         ).reshape((Config.state_dim_1,Config.state_dim_2))
-        hig = np.array([Config.max_price] * 10 +\
+        high = np.array([Config.max_price] * 10 +\
                         [Config.max_quantity]*10 
                         ).reshape((Config.state_dim_1,Config.state_dim_2))
         shape = (Config.state_dim_1,Config.state_dim_2)
@@ -37,6 +37,7 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     # --------------------- 01.01 ---------------------
         super().__init__()
         self.action_space, self.state_space = self.space_definition()
+        # print()#$
     # --------------------- 01.02 ---------------------
         self.cur_state: Optional[State] = None  
         self.seed()
@@ -44,7 +45,7 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     def space_definition(self):
         action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size, 
                                              SpaceParams.Action.quantity_size,
-                                             SpaceParams.Action.price_delta_size]),
+                                             SpaceParams.Action.price_delta_size])
         state_space = spaces.Box(
               low   = SpaceParams.State.low,
               high  = SpaceParams.State.high,

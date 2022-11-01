@@ -11,9 +11,9 @@ class BaseAction():
     def to_message(self):
         pass
     
-    # def __str__(self):
-    #     fstring = 'side: {self.side}, quantity: {self.quantity}, price_delta: {self.price_delta}'
-    #     return fstring
+    def __str__(self):
+        fstring = f'side: {self.side}, quantity: {self.quantity}, price_delta: {self.price_delta}'
+        return fstring
 
 
 # -------------------------- 01 ----------------------------    
