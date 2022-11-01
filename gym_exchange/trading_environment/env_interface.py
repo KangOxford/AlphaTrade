@@ -4,10 +4,19 @@ import gym
 import numpy as np
 from gym import spaces
 from typing import Generic, Optional, Sequence, Tuple, TypeVar
+from gym_exchange.trading_environment import Config
 
 State = TypeVar("State")
 Observation = TypeVar("Observation")
 Action = TypeVar("Action")
+
+class SpaceParams(object):
+    class Action:
+        price_delta_size = 7
+        side_size = 2
+        quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
+    class State:
+        pass
 
 class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     """A stock trading environment based on OpenAI gym"""
@@ -17,27 +26,30 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
         # --------------------- 01.01 ---------------------
         super().__init__()
         self.space_definition()
-        self.vwap_estimator = Vwap()
+        self.vwap_estimator = Vwap() # Used for info
         # --------------------- 01.02 ---------------------
-        self.cur_state: Optional[State] = None
-        # self._n_actions_taken: Optional[int] = None        
+        self.cur_state: Optional[State] = None  
         self.seed()
     
-    @abc.abstractmethod    
     def space_definition(self):
-        pass
+        action_space = spaces.MultiDiscrete([SpaceParams.Action.price_delta_size, 
+                                             SpaceParams.Action.side_size, 
+                                             SpaceParams.Action.quantity_size]),
+        # state_space=spaces.MultiDiscrete([price_delta_size, side_size, quantity_size]),
+        # action_space=spaces.Discrete(5),
+
+    
     # ========================== 02 ==========================
     def reset(self):
         """Reset episode and return initial observation."""
         self.cur_state = self.initial_state()
         assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
-        # self._n_actions_taken = 0
         return self.obs_from_state(self.cur_state)
     # ------------------------- 02.01 ------------------------
-    def initial_state(self):
-        pass
+    @abc.abstractmethod
+    def initial_state(self) -> State:
+        """Samples from the initial state distribution."""
         
-    
     # ========================== 03 ==========================
     @abc.abstractmethod
     def step(self, action):
