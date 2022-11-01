@@ -5,6 +5,7 @@ import numpy as np
 from gym import spaces
 from typing import Generic, Optional, Sequence, Tuple, TypeVar
 from gym_exchange.trading_environment import Config
+from trading_environment import action
 
 State = TypeVar("State")
 Observation = TypeVar("Observation")
@@ -25,7 +26,7 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     def __init__(self):
         # --------------------- 01.01 ---------------------
         super().__init__()
-        self.space_definition()
+        self.action_space, self.state_space = self.space_definition()
         self.vwap_estimator = Vwap() # Used for info
         # --------------------- 01.02 ---------------------
         self.cur_state: Optional[State] = None  
@@ -35,8 +36,18 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
         action_space = spaces.MultiDiscrete([SpaceParams.Action.price_delta_size, 
                                              SpaceParams.Action.side_size, 
                                              SpaceParams.Action.quantity_size]),
-        # state_space=spaces.MultiDiscrete([price_delta_size, side_size, quantity_size]),
-        # action_space=spaces.Discrete(5),
+        state_space = spaces.Box(
+            low = np.array([Config.min_price] * 10 +\
+                           [Config.min_quantity]*10 
+                           ).reshape((Config.state_dim_1,Config.state_dim_2)),
+            high = np.array(
+                           [Config.max_price] * 10 +\
+                           [Config.max_quantity]*10 
+                           ).reshape((Config.state_dim_1,Config.state_dim_2)),
+            shape = (Config.state_dim_1,Config.state_dim_2),
+            dtype = np.int32,
+        )
+        return action_space, state_space
 
     
     # ========================== 02 ==========================
