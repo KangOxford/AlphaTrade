@@ -1,3 +1,6 @@
+import numpy as np
+from gym_exchange.trading_environment.env_interface import SpaceParams
+
 class BaseAction():
     def __init__(self,side,quantity,price_delta):
         self.side = side
@@ -52,3 +55,13 @@ class Action(BaseAction):
         # ''''price_delta = -3,-2,-1,0,1,2,3 (0 ~ 7)
         #     side = 'bid'(0) or 'ask'(1)
         #     residual_quantity = -num2liquidate ~ num2liquidate (int: 0 ~ 2*num2liquidate+1)''' 
+        
+    @property
+    def to_array(self):
+        '''action: BaseAction'''
+        price_delta = self.price_delta + SpaceParams.price_delta_size_one_side
+        side = 0 if self.side == 'bid' else 1
+        quantity  = self.quantity + SpaceParams.Action.quantity_size_one_side
+        result = [side, quantity, price_delta]
+        wrapped_result = np.array(result)
+        return wrapped_result

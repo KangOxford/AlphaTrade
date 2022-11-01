@@ -3,6 +3,8 @@ from gym import Env
 from gym import spaces
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
+from gym_exchange.trading_environment.action import Action
+from gym_exchange.trading_environment.action import BaseAction
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.env_interface import SpaceParams
@@ -18,12 +20,13 @@ class BaseSpaceParams(SpaceParams):
         side_size = 2
         quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
 
-@EnvInterface.register
-class BaseEnv():
+# @EnvInterface.register
+# class BaseEnv():
+class BaseEnv(EnvInterface):
     # ========================== 01 ==========================
     def __init__(self):
-        super(BaseEnv, self).__init__()
-        self.observation_space = EnvInterface.state_space
+        super().__init__()
+        self.observation_space = self.state_space
         self.vwap_estimator = VwapEstimator() # Used for info
         # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
@@ -87,3 +90,18 @@ class BaseEnv():
     # ========================== 04 ==========================
     def render(self, mode = 'human'):
         '''for render method'''
+        
+if __name__ == "__main__":
+    # --------------------- 05.01 --------------------- 
+    from stable_baselines3.common.env_checker import check_env
+    env = BaseEnv()
+    check_env(env)
+    # --------------------- 05.02 --------------------- 
+    # env = BaseEnv()
+    # env.reset()
+    # for i in range(int(1e6)):
+    #     action = BaseAction(side = 'ask', quantity = 1, price_delta = 1)
+    #     observation, reward, done, info = env.step(action.to_array)
+    #     env.render()
+    #     if done:
+    #         env.reset()

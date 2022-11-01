@@ -42,14 +42,14 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
         self.seed()
     # --------------------- 01.03 ---------------------
     def space_definition(self):
-        action_space = spaces.MultiDiscrete([SpaceParams.Action.price_delta_size, 
-                                             SpaceParams.Action.side_size, 
-                                             SpaceParams.Action.quantity_size]),
+        action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size, 
+                                             SpaceParams.Action.quantity_size,
+                                             SpaceParams.Action.price_delta_size]),
         state_space = spaces.Box(
-            low   = SpaceParams.Action.low,
-            high  = SpaceParams.Action.high,
-            shape = SpaceParams.Action.shape,
-            dtype = np.int32,
+              low   = SpaceParams.State.low,
+              high  = SpaceParams.State.high,
+              shape = SpaceParams.State.shape,
+              dtype = np.int32,
         )
         return action_space, state_space
 
@@ -95,3 +95,6 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     @abc.abstractmethod
     def render(self, mode = 'human'):
         '''for render method'''
+
+if __name__ == "__main__":
+    pass
