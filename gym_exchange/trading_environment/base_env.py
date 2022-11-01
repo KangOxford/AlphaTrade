@@ -24,6 +24,7 @@ class BaseEnv():
         super(BaseEnv, self).__init__()
         self.observation_space = EnvInterface.state_space
         self.vwap_estimator = VwapEstimator() # Used for info
+        # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
     
@@ -60,7 +61,7 @@ class BaseEnv():
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        reward = reward_generator.step()
+        reward = self.reward_generator.step()
         return reward
     # --------------------- 03.03  ---------------------
     @property
