@@ -1,6 +1,7 @@
 import numpy as np
 from gym import Env
 from gym import spaces
+from gym_exchange.exchange import Exchange
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
 from gym_exchange.trading_environment.action import Action
@@ -25,6 +26,7 @@ class BaseEnv(EnvInterface):
     def __init__(self):
         super().__init__()
         self.observation_space = self.state_space
+        self.exchange = Exchange()
         self.vwap_estimator = VwapEstimator() # Used for info
         # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
@@ -33,14 +35,16 @@ class BaseEnv(EnvInterface):
     # ========================== 02 ==========================
     def reset(self):
         """Reset episode and return initial observation."""
-        self.cur_state = self.initial_state()
-        assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
-        return self.obs_from_state(self.cur_state)
+        self.exchange.reset()
+        self.cur_state = self.initial_state(); assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
+        observation = self.obs_from_state(self.cur_state)
+        return observation
     # ------------------------- 02.01 ------------------------
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         self.cur_step = 0
         self.num_left = Config.num2liquidate
+        return state
         
     # ========================== 03 ==========================
     def step(self, action):

@@ -27,7 +27,7 @@ class Exchange():
     def __init__(self):
         self.index = 0
         self.encoder, self.flow_list = self.initialization()
-        self.reset()
+        
     def initialize_orderbook(self):
         for _ in range(2*Configuration.price_level):
             flow = next(self.flow_generator)
@@ -49,6 +49,7 @@ class Exchange():
         self.order_book = OrderBook()
         self.flow_generator = self.generate_flow()
         self.initialize_orderbook()
+        
     def generate_flow(self):
         for flow in self.flow_list:
             yield flow
@@ -81,6 +82,7 @@ class Exchange():
 
 if __name__ == "__main__":
     exchange = Exchange()
+    exchange.reset()
     for _ in range(1000):
         exchange.step()
     
