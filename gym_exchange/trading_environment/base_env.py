@@ -4,6 +4,7 @@ from gym import spaces
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
+from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.env_interface import SpaceParams
 from gym_exchange.trading_environment.env_interface import EnvInterface
 from gym_exchange.trading_environment.env_interface import State, Observation, Action
@@ -58,6 +59,8 @@ class BaseEnv():
     def obs_from_state(self, state: State) -> Observation:
         """Sample observation for given state."""
         return state
+    def state(self, action: Action) -> State:
+        action = action_wrapper(action)
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):

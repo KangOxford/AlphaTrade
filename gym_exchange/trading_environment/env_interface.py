@@ -4,7 +4,7 @@ import gym
 import numpy as np
 from gym import spaces
 from typing import Generic, Optional, Sequence, Tuple, TypeVar
-from trading_environment import action
+from gym_exchange.trading_environment import action
 from gym_exchange.trading_environment import Config
 
 
@@ -14,9 +14,11 @@ Action = TypeVar("Action")
 
 class SpaceParams(object):
     class Action:
-        price_delta_size = 7
+        price_delta_size_one_side = 3
+        price_delta_size = 2 * price_delta_size_one_side + 1
         side_size = 2
-        quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
+        quantity_size_one_side =Config.num2liquidate//Config.max_horizon +1
+        quantity_size = 2*quantity_size_one_side + 1
     class State:
         low = np.array([Config.min_price] * 10 +\
                         [Config.min_quantity]*10 
@@ -80,8 +82,7 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        difference = self.vwap_estimator.difference
-        return reward
+        pass
     # --------------------- 03.03  ---------------------
     @property
     def done(self):
