@@ -32,13 +32,13 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     metadata = {'render.modes': ['human']}
     # ========================== 01 ==========================
     def __init__(self):
-        # --------------------- 01.01 ---------------------
+    # --------------------- 01.01 ---------------------
         super().__init__()
         self.action_space, self.state_space = self.space_definition()
-        # --------------------- 01.02 ---------------------
+    # --------------------- 01.02 ---------------------
         self.cur_state: Optional[State] = None  
         self.seed()
-    
+    # --------------------- 01.03 ---------------------
     def space_definition(self):
         action_space = spaces.MultiDiscrete([SpaceParams.Action.price_delta_size, 
                                              SpaceParams.Action.side_size, 
@@ -90,4 +90,7 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     @property
     def info(self):
         pass
- 
+    # ========================== 04 ==========================
+    @abc.abstractmethod
+    def render(self, mode = 'human'):
+        '''for render method'''

@@ -36,16 +36,23 @@ class BaseEnv():
     # ------------------------- 02.01 ------------------------
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
+        self.cur_step = 0
+        self.num_left = Config.num2liquidate
         
     # ========================== 03 ==========================
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
-        return self.observation, self.reward, self.done, self.info
+        observation, reward, done, info = self.observation, self.reward, self.done, self.info
+        self.accumulator()
+        return observation, reward, done, info
+    def accumulator(self):
+        self.num_left -= self.cur_action
+        self.cur_step += 1
     # --------------------- 03.01 ---------------------
     @property
     def observation(self):
-        pass
+        return self.obs_from_state(self.cur_state)
     # ···················· 03.01.01 ···················· 
     def obs_from_state(self, state: State) -> Observation:
         """Sample observation for given state."""
@@ -58,7 +65,8 @@ class BaseEnv():
     # --------------------- 03.03  ---------------------
     @property
     def done(self):
-        pass
+        if self.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
+        else : return False
     # --------------------- 03.04 ---------------------  
     @property
     def info(self):
@@ -72,3 +80,6 @@ class BaseEnv():
         '''in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity, 
         and can be executed at higher price.'''
+    # ========================== 04 ==========================
+    def render(self, mode = 'human'):
+        '''for render method'''
