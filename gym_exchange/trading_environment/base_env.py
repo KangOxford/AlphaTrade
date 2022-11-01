@@ -2,6 +2,7 @@ import numpy as np
 from gym import Env
 from gym import spaces
 from gym_exchange.trading_environment import Config
+from gym_exchange.trading_environment.reward import RewardGenerator
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.env_interface import SpaceParams
 from gym_exchange.trading_environment.env_interface import EnvInterface
@@ -23,9 +24,8 @@ class BaseEnv():
         super(BaseEnv, self).__init__()
         self.observation_space = EnvInterface.state_space
         self.vwap_estimator = VwapEstimator() # Used for info
+        self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
-        # self.reward_generator = RewardGenerator() # Used for Reward
-        # self.done_generator = DoneGenerator() # Used for Done
     
     # ========================== 02 ==========================
     def reset(self):
@@ -60,7 +60,7 @@ class BaseEnv():
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        difference = self.vwap_estimator.difference
+        reward = reward_generator.step()
         return reward
     # --------------------- 03.03  ---------------------
     @property
