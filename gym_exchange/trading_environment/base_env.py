@@ -23,9 +23,9 @@ class BaseEnv():
         super(BaseEnv, self).__init__()
         self.observation_space = EnvInterface.state_space
         self.vwap_estimator = VwapEstimator() # Used for info
-        self.obs_generator = ObsGenerator() # Used for Obs
-        self.reward_generator = RewardGenerator() # Used for Reward
-        self.done_generator = DoneGenerator() # Used for Done
+        # self.state_generator = StateGenerator() # Used for State
+        # self.reward_generator = RewardGenerator() # Used for Reward
+        # self.done_generator = DoneGenerator() # Used for Done
     
     # ========================== 02 ==========================
     def reset(self):
