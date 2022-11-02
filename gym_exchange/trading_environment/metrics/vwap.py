@@ -20,9 +20,20 @@
 #     def __init__(self):
 #         pass
 
+class VwapCurve():
+    def __init__(self,):
+        self.index = 0
+        
+    def to_array(self):
+        '''index | 0 | 1 | 2 | 3 | 4 | 5 |
+           pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
+        return np.array(result)
+    
+
 class VwapEstimator():
     def __init__(self):
-        pass        
+        self.index = 0
+        self.vwap_curve = VwapCurve()        
     
     def vwap_price(self, pairs):
         '''
@@ -31,8 +42,6 @@ class VwapEstimator():
         '''
         vwap_price = (pairs[0]*pairs[1]).sum()/pairs[1].sum()
         return vwap_price
-    
-
     
 
 

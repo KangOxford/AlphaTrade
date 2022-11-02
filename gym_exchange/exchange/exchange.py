@@ -21,8 +21,8 @@ class ExecutedPairs():
         self.market_pairs = []
         self.agent_pairs  = []
     def update(self, batch, kind):
-        if kind == "market": self.market_pairs.append(batch)
-        elif kind=="agent" : self.agent_pairs.append(batch)
+        if kind == "market": self.market_pairs += batch
+        elif kind=="agent" : self.agent_pairs  += batch
         else: raise NotImplementedError
 
 # -------------------------- 03 ----------------------------
@@ -41,6 +41,19 @@ class Exchange():
     def __init__(self):
         self.index = 0
         self.encoder, self.flow_list = self.initialization()
+
+    def initialization(self):
+        decoder  = Decoder(**DataPipeline()())
+        encoder  = Encoder(decoder)
+        flow_list= encoder.process()
+        # print(ofs)#$
+        return encoder, flow_list
+        
+# -------------------------- 03.01 ----------------------------
+    def reset(self):
+        self.order_book = OrderBook()
+        self.flow_generator = self.generate_flow()
+        self.initialize_orderbook()
         self.executed_pairs = ExecutedPairs()
         
     def initialize_orderbook(self):
@@ -53,23 +66,12 @@ class Exchange():
         #     order_book.process_order(self.flow_list[index])
         print()#$
             
-    def initialization(self):
-        # -------------------------- 03.01 ----------------------------
-        decoder  = Decoder(**DataPipeline()())
-        encoder  = Encoder(decoder)
-        flow_list= encoder.process()
-        # print(ofs)#$
-        return encoder, flow_list
-    def reset(self):
-        self.order_book = OrderBook()
-        self.flow_generator = self.generate_flow()
-        self.initialize_orderbook()
-        
     def generate_flow(self):
         for flow in self.flow_list:
             yield flow
+            
+# -------------------------- 03.02 ----------------------------
     def step(self, action = None):
-        # -------------------------- 03.02 ----------------------------
         # for flow in self.flow_list:
         # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
@@ -79,6 +81,10 @@ class Exchange():
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
+                    if len(trades) != 0:
+                        print(trades)#$
+                    # print("+++trades+++")#$
+                    # print(trades)#$
                 elif item.type == 2:
                     pass #TODO, not implemented!!
                 elif item.type == 3:
@@ -100,7 +106,22 @@ if __name__ == "__main__":
     exchange.reset()
     for _ in range(1000):
         exchange.step()
-    
+        
+
+""" trade format
+transaction_record = {
+        'timestamp': self.time,
+        'price': traded_price,
+        'quantity': traded_quantity,
+        'time': self.time
+        }
+if side == 'bid':
+    transaction_record['party1'] = [counter_party, 'bid', head_order.order_id, new_book_quantity]
+    transaction_record['party2'] = [quote['trade_id'], 'ask', None, None]
+else:
+    transaction_record['party1'] = [counter_party, 'ask', head_order.order_id, new_book_quantity]
+    transaction_record['party2'] = [quote['trade_id'], 'bid', None, None]
+"""
 
 
 

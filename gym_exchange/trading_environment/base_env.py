@@ -29,21 +29,23 @@ class BaseEnv(EnvInterface):
         super().__init__()
         self.observation_space = self.state_space
         self.exchange = Exchange()
-        self.vwap_estimator = VwapEstimator() # Used for info
-        # self.reward_generator = RewardGenerator(self) # Used for Reward
-        self.reward_generator = RewardGenerator() # Used for Reward
-        # self.state_generator = StateGenerator() # Used for State
-        self.order_flow_generator = OrderFlowGenerator() # Used for Order
-    
+        
     # ========================== 02 ==========================
     def reset(self):
         """Reset episode and return initial observation."""
         self.exchange.reset()
+        self.init_components()
         self.cur_state = self.initial_state()
         assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
         observation = self.obs_from_state(self.cur_state)
         return observation
     # ------------------------- 02.01 ------------------------
+    def init_components(self):
+        self.vwap_estimator = VwapEstimator() # Used for info
+        # self.reward_generator = RewardGenerator(self) # Used for Reward
+        self.reward_generator = RewardGenerator() # Used for Reward
+        # self.state_generator = StateGenerator() # Used for State
+        self.order_flow_generator = OrderFlowGenerator() # Used for Order
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 
@@ -82,6 +84,8 @@ class BaseEnv(EnvInterface):
     def accumulator(self):
         self.num_left -= self.cur_action
         self.cur_step += 1
+        self.vwap_estimator.index += 1
+        self.vwap_estimator.vwap_curve.index += 1
     # --------------------- 03.01 ---------------------
     @property
     def observation(self):
