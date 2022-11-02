@@ -24,6 +24,8 @@ class OrderFlow():
         self.trade_id = trade_id
         self.order_id = order_id
         self.timestamp = time
+        self.next_order_flow = None
+        self.prev_order_flow = None
     def __call__(self):
         return np.array([
         self.type, 
@@ -34,5 +36,32 @@ class OrderFlow():
         self.order_id, 
         self.timestamp 
             ])
+    # helper functions to get Orders in linked list
+    def next_order_flow(self):
+        return self.next_order_flow
+
+    def prev_order_flow(self):
+        return self.prev_order_flow
     
-    # def __str___(self):
+    def __str__(self):
+        return "||  Type {:2s} | Side {:4s} | Quantity {:3s} | Price {:8s} | Order_ID {:9s} | Time {:15s}  ||".format( \
+        str(self.type), str(self.side), str(self.quantity),\
+        str(self.price), str(self.order_id), str(self.timestamp))
+        # return "Type {:5d}  |  Side {:8d}  |  Quantity {:8d}  |  Price {:8d}  |  Order_ID {:10d}  |  Time {:15s}".format(self.type, self.side, self.quantity, self.price, self.order_id, self.timestamp)
+    
+    @property
+    def to_message(self):
+        '''message = 
+        {'type': 'limit','side': side,'quantity': quantity,\
+         'price': price,'trade_id': trade_id, "timestamp":timestamp,\
+         'order_id':order_id}'''
+        message = {
+            'type'     : 'limit',
+            'side'     : self.side,
+            'quantity' : self.quantity,
+            'price'    : self.price,
+            'trade_id' : self.trade_id,
+            'order_id' : self.order_id,
+            'timestamp': self.timestamp
+            }
+        return message
