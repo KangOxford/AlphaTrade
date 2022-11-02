@@ -69,10 +69,13 @@ class BaseEnv(EnvInterface):
         # ···················· 03.00.01 ····················    
         # self.prev_state = self.cur_state
         order_flows = self.order_flow_generator.step(action, price_list)
-        wrapped_order_flows = time_wrapper(order_flows)
-        for order_flow in wrapped_order_flows:
-            self.exchange.step(order_flow)
+        order_flow  = order_flows[0]
+        wrapped_order_flow = self.exchange.time_wrapper(order_flow)
+        self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ···················· 
+        auto_cancel = order_flows[1]
+        self.exchange.futures(auto_cancel) #TODO:implement futures
+        # ···················· 03.00.03 ···················· 
         observation, reward, done, info = self.observation, self.reward, self.done, self.info
         self.accumulator()
         return observation, reward, done, info
