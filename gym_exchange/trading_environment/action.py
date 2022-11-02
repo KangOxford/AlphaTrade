@@ -1,4 +1,6 @@
+from jinja2 import pass_eval_context
 import numpy as np
+from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.trading_environment.env_interface import SpaceParams
 
 class BaseAction():
@@ -42,8 +44,10 @@ class SimpleAction(BaseAction):
             auto_cancel = 10 # fixed'''
 
 class PriceDelta():
-    def __init__(self, price_delta):
-        self.price_delta = price_delta
+    def __init__(self, price_list):
+        self.price_list = price_list
+    def __call__(self, price_delta):
+        return 0 # TODO: implement
         
  # =================================================================
         
@@ -57,11 +61,54 @@ class Action(BaseAction):
         #     residual_quantity = -num2liquidate ~ num2liquidate (int: 0 ~ 2*num2liquidate+1)''' 
         
     @property
-    def to_array(self):
-        '''action: BaseAction'''
+    def to_array(self) -> np.ndarray:
+        '''wrapped_result: BaseAction'''
         price_delta = self.price_delta + SpaceParams.price_delta_size_one_side
-        side = 0 if self.side == 'bid' else 1
+        side = 1 if self.side == 'bid' else 0
+        # side = 0 if self.side == 'bid' else 1
         quantity  = self.quantity + SpaceParams.Action.quantity_size_one_side
         result = [side, quantity, price_delta]
         wrapped_result = np.array(result)
         return wrapped_result
+        '''[side, quantity, price_delta]'''
+
+class OrderFlowGenerator(object):
+    def __init__(self, residual_policy):
+        self.residual_policy = residual_policy
+    
+        
+    def step(self, action: np.ndarray) -> OrderFlow:
+        self.action = action # [side, quantity, price_delta]
+        content_dict = self.content_dict
+        order_flow = OrderFlow(**content_dict)
+        auto_cancel = OrderFlow(**(
+            content_dict
+        )) # TODO 
+        return order_flow, auto_cancel
+    
+    @property    
+    def content_dict(self):
+        residual_action, residual_done = self.residual_policy.step()
+        content_dict = {
+            "type" : 1, # submission of a new limit order
+            "direction" : -1 if self.action[0] == 0 else 1,
+            "size" : self.action[1] + residual_action,
+            "price": self.price,
+            "trade_id":self.trade_id,
+            "order_id":self.order_id,
+            "time":self.time,
+        }
+        return content_dict
+    @property
+    def price(self):
+        return PriceDelta(price_list)(self.action[2])
+    @property
+    def trade_id(self):
+        pass
+    @property
+    def order_id(self):
+        pass
+    @property
+    def time(self):
+        pass 
+    '''revise it outside the class, (revised in the class Exchange)'''

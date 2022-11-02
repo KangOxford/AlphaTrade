@@ -23,11 +23,13 @@ class Twap():
     def done(self):
         if self.step_index < Config.max_horizon: return False
         else: return True
+        
     def step(self) -> int:
         """Return the simple actions: numbers to sell/buy"""
         action = self.step_integer + self.supplement
         self.step_index +=1
         return action, self.done
+    
     
     
 if __name__ == '__main__':

@@ -64,6 +64,8 @@ class BaseEnv(EnvInterface):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
+        # self.prev_state = self.cur_state
+        self.exchange.step(action.to_exchange)
         observation, reward, done, info = self.observation, self.reward, self.done, self.info
         self.accumulator()
         return observation, reward, done, info
@@ -73,6 +75,8 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.01 ---------------------
     @property
     def observation(self):
+        # self.prev_state = self.cur_state
+        
         return self.obs_from_state(self.cur_state)
     # ···················· 03.01.01 ···················· 
     def obs_from_state(self, state: State) -> Observation:
@@ -113,11 +117,11 @@ if __name__ == "__main__":
     env = BaseEnv()
     check_env(env)
     # --------------------- 05.02 --------------------- 
-    # env = BaseEnv()
-    # env.reset()
-    # for i in range(int(1e6)):
-    #     action = BaseAction(side = 'ask', quantity = 1, price_delta = 1)
-    #     observation, reward, done, info = env.step(action.to_array)
-    #     env.render()
-    #     if done:
-    #         env.reset()
+    env = BaseEnv()
+    env.reset()
+    for i in range(int(1e6)):
+        action = Action(side = 'ask', quantity = 1, price_delta = 1)
+        observation, reward, done, info = env.step(action.to_array)
+        env.render()
+        if done:
+            env.reset()
