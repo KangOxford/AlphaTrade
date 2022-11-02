@@ -107,6 +107,7 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.04 ---------------------  
     @property
     def info(self):
+        self.vwap_estimator.update(self.exchange.executed_pairs)
         MarketVwap = self.vwap_estimator.market_vwap
         AgentVwap = self.vwap_estimator.agent_vwap
         return {

@@ -11,7 +11,21 @@ from gym_exchange.orderbook import OrderBook
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
 
+
+
+
 # -------------------------- 02 ----------------------------
+
+class ExecutedPairs():
+    def __init__(self):
+        self.market_pairs = []
+        self.agent_pairs  = []
+    def update(self, batch, kind):
+        if kind == "market": self.market_pairs.append(batch)
+        elif kind=="agent" : self.agent_pairs.append(batch)
+        else: raise NotImplementedError
+
+# -------------------------- 03 ----------------------------
 import abc; from abc import abstractclassmethod
 class Exchange_Interface(abc.ABC):
     @abstractclassmethod
@@ -21,12 +35,13 @@ class Exchange_Interface(abc.ABC):
     def step(self):
         pass
 
-# -------------------------- 03 ----------------------------
+# -------------------------- 04 ----------------------------
 @Exchange_Interface.register
 class Exchange():
     def __init__(self):
         self.index = 0
         self.encoder, self.flow_list = self.initialization()
+        self.executed_pairs = ExecutedPairs()
         
     def initialize_orderbook(self):
         for _ in range(2*Configuration.price_level):
@@ -63,7 +78,7 @@ class Exchange():
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
-                    self.order_book.process_order(message, True, False)
+                    trades, order_in_book = self.order_book.process_order(message, True, False)
                 elif item.type == 2:
                     pass #TODO, not implemented!!
                 elif item.type == 3:

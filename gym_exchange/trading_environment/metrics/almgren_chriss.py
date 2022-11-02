@@ -14,16 +14,16 @@ class AlmgrenChriss():
     
     @property
     def book_value_at_initial_time(self):
-        return q(0) * S(0)
+        return self.q(0) * self.S(0)
     @property
     def running_revenue(self):
         '''self.time'''
-        if t != T: return u(t) * S_tilde(t)
-        else: return q(T) * S_tilde(T)
+        if t != T: return self.u(t) * self.S_tilde(t)
+        else: return self.q(T) * self.S_tilde(T)
     @property  
     def revenue(self):
         revenue = 0
-        for t in time_list:
+        for t in self.time_list:
             revenue += self.running_revenue
         return revenue
     @property  
@@ -32,10 +32,4 @@ class AlmgrenChriss():
     
     
 if __name__ == "__main__":
-    
-    
-    
-    
-    
-    
     pass
