@@ -1,6 +1,7 @@
-# -------------------------- 01 ----------------------------
+# ========================= 01 =========================
 # import numpy as np
 from gym_exchange.exchange import Debugger
+from gym_exchange.exchange.utils import ExecutedPairs
 from gym_exchange.data_orderbook_adapter import Configuration
 # from gym_exchange.data_orderbook_adapter import Debugger 
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
@@ -11,21 +12,7 @@ from gym_exchange.orderbook import OrderBook
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
 
-
-
-
-# -------------------------- 02 ----------------------------
-
-class ExecutedPairs():
-    def __init__(self):
-        self.market_pairs = []
-        self.agent_pairs  = []
-    def update(self, batch, kind):
-        if kind == "market": self.market_pairs += batch
-        elif kind=="agent" : self.agent_pairs  += batch
-        else: raise NotImplementedError
-
-# -------------------------- 03 ----------------------------
+# ========================= 02 =========================
 import abc; from abc import abstractclassmethod
 class Exchange_Interface(abc.ABC):
     def __init__(self):
@@ -45,12 +32,12 @@ class Exchange_Interface(abc.ABC):
     def step(self):
         pass
 
-# -------------------------- 04 ----------------------------
+# ========================= 03 =========================
 class Exchange(Exchange_Interface):
     def __init__(self):
         super().__init__()
         
-# -------------------------- 04.01 ----------------------------
+# -------------------------- 03.01 ----------------------------
     def reset(self):
         self.order_book = OrderBook()
         self.flow_generator = self.generate_flow()
@@ -71,17 +58,19 @@ class Exchange(Exchange_Interface):
         for flow in self.flow_list:
             yield flow
             
-# -------------------------- 04.02 ----------------------------
+# -------------------------- 03.02 ----------------------------
     def step(self, action = None):
         # for flow in self.flow_list:
         # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
-        for item in [action, flow]: # advantange for ask limit order (in liquidation problem)
+        for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
         # for item in [flow, action]:
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
+                    kind = 'agent' if index == 0 else 'market'
+                    self.executed_pairs.step(trades, kind)
                     if len(trades) != 0:
                         print(trades)#$
                     # print("+++trades+++")#$
@@ -101,7 +90,7 @@ class Exchange(Exchange_Interface):
                     print(utils.brief_order_book(self.order_book, side = 'bid'))#$
                     print(utils.brief_order_book(self.order_book, side = 'ask'))#$
         return self.order_book
-# ···················· 04.02.01 ···················· 
+# ···················· 03.02.01 ···················· 
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
         wrapped_order_flow = 0
         return wrapped_order_flow #TODO
@@ -116,20 +105,7 @@ if __name__ == "__main__":
         exchange.step()
         
 
-""" trade format
-transaction_record = {
-        'timestamp': self.time,
-        'price': traded_price,
-        'quantity': traded_quantity,
-        'time': self.time
-        }
-if side == 'bid':
-    transaction_record['party1'] = [counter_party, 'bid', head_order.order_id, new_book_quantity]
-    transaction_record['party2'] = [quote['trade_id'], 'ask', None, None]
-else:
-    transaction_record['party1'] = [counter_party, 'ask', head_order.order_id, new_book_quantity]
-    transaction_record['party2'] = [quote['trade_id'], 'bid', None, None]
-"""
+
 
 
 
