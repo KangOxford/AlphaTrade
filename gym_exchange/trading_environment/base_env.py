@@ -10,6 +10,7 @@ from gym_exchange.trading_environment.action import BaseAction
 from gym_exchange.trading_environment.action import OrderFlowGenerator
 
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
+from gym_exchange.trading_environment.utils.residual_policy import ResidualPolicy_Factory
 from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.env_interface import SpaceParams
 from gym_exchange.trading_environment.env_interface import EnvInterface
@@ -46,7 +47,8 @@ class BaseEnv(EnvInterface):
         # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
-        self.order_flow_generator = OrderFlowGenerator() # Used for Order
+        residual_policy = self.ResidualPolicy_Factory.produce("Twap")
+        self.order_flow_generator = OrderFlowGenerator(residual_policy) # Used for Order
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 
@@ -71,7 +73,7 @@ class BaseEnv(EnvInterface):
            return: observation, reward, done, info'''
         # ···················· 03.00.01 ····················    
         # self.prev_state = self.cur_state
-        order_flows = self.order_flow_generator.step(action, price_list)
+        order_flows = self.order_flow_generator.step(action, price_list) # price list is used for PriceDelta
         order_flow  = order_flows[0]
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         self.exchange.step(wrapped_order_flow)

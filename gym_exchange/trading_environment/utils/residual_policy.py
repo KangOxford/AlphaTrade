@@ -30,7 +30,14 @@ class Twap():
         self.step_index +=1
         return action, self.done
     
-    
+class ResidualPolicy_Factory():
+    '''factory methods/ or interface methods
+    TWAP is a kind of implemention of ResidualPolicy'''
+    @staticmethod
+    def produce(name):
+        if name == "Twap":
+            return Twap()
+        else: raise NotImplementedError
     
 if __name__ == '__main__':
     action_list = []

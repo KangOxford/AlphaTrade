@@ -1,5 +1,6 @@
-from jinja2 import pass_eval_context
+# from jinja2 import pass_eval_context
 import numpy as np
+from gym_exchange.trading_environment import Config
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.trading_environment.env_interface import SpaceParams
 
@@ -29,26 +30,28 @@ class SideAction(BaseAction):
             price_delta = 0 # fixed
             auto_cancel = 10 # fixed'''
     
-class DeltaAction(BaseAction):
-    def __init__(self,quantity,price_delta):
-        super.__init__(side, quantity, price_delta, side = 'ask')
-        ''''quantity = 0 ~ num2liquidate (int)
-            price_delta = -1, 0, 1 
-            side = 'ask' # fixed
-            auto_cancel = 10 # fixed'''
-# -------------------------- 02 ----------------------------    
-class SimpleAction(BaseAction):
-    def __init__(self,quantity):
-        super.__init__(side, quantity, price_delta = 0, side = 'ask')
-        ''''quantity = 0 ~ num2liquidate (int)
-            side =  'ask' # fixed
-            price_delta = 0 # fixed
-            auto_cancel = 10 # fixed'''
+# class DeltaAction(BaseAction):
+#     def __init__(self,quantity,price_delta):
+#         super.__init__(side, quantity, price_delta, side = 'ask')
+#         ''''quantity = 0 ~ num2liquidate (int)
+#             price_delta = -1, 0, 1 
+#             side = 'ask' # fixed
+#             auto_cancel = 10 # fixed'''
+# # -------------------------- 02 ----------------------------    
+# class SimpleAction(BaseAction):
+#     def __init__(self,quantity):
+#         super.__init__(side, quantity, price_delta = 0, side = 'ask')
+#         ''''quantity = 0 ~ num2liquidate (int)
+#             side =  'ask' # fixed
+#             price_delta = 0 # fixed
+#             auto_cancel = 10 # fixed'''
 
 class PriceDelta():
     def __init__(self, price_list):
         self.price_list = price_list
     def __call__(self, price_delta):
+        tick_size = Config.tick_size
+        if the 
         return 0 # TODO: implement
         
 # ========================== 02 ==========================
@@ -72,9 +75,27 @@ class Action(BaseAction):
         result = [side, quantity, price_delta]
         wrapped_result = np.array(result)
         return wrapped_result
-        '''[side, quantity, price_delta]'''
+        '''[side, quantity, price_delta]''' 
 
 # ========================== 03 ==========================
+
+class IdGenerator():
+    def __init__(self, initial_number):
+        self.trade_id = initial_number
+    def step(self):
+        self.trade_id += 1
+        return self.trade_id
+    
+class TradeIdGenerator(IdGenerator):
+    def __init__(self):
+        super().__init__(initial_number = 80000000)
+        
+        
+class OrderIdGenerator(IdGenerator):
+    def __init__(self):
+        super().__init__(initial_number = 88000000)
+    
+
 
 class OrderFlowGenerator(object):
     def __init__(self, residual_policy):
@@ -84,12 +105,14 @@ class OrderFlowGenerator(object):
     
         
     def step(self, action: np.ndarray, price_list) -> OrderFlow:
+        # shoud the price list be one sided or two sided???? #TODO
         self.action = action # [side, quantity, price_delta]
         self.price_list = price_list
         content_dict = self.content_dict
+        revised_content_dict = content_dict_revising(content_dict) # TODO
         order_flow = OrderFlow(**content_dict)
         auto_cancel = OrderFlow(**(
-            content_dict
+            revised_content_dict
         )) # TODO 
         return order_flow, auto_cancel
     
@@ -106,6 +129,7 @@ class OrderFlowGenerator(object):
             "time":self.time,
         }
         return content_dict
+    
     @property
     def price(self):
         return PriceDelta(self.price_list)(self.action[2])
@@ -117,5 +141,10 @@ class OrderFlowGenerator(object):
         return self.order_id_generator.step()
     @property
     def time(self):
-        return 0 #TODO: implement
+        return str(30000.000000000) #TODO: implement
     '''revise it outside the class, (revised in the class Exchange)'''
+    
+    
+    
+if __name__ == '__main':
+    pass

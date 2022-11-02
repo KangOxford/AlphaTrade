@@ -37,6 +37,7 @@ class Config:
     state_dim_2 = 10 
     # state_dim_2 = 12 # used to be 10
     state_dim_3 = time_window_size
+    tick_size = 100 #(should be divided by 10000 to be converted to currency)
 
 register(
     id = "GymExchange-v1",
