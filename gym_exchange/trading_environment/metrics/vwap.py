@@ -20,30 +20,41 @@
 #     def __init__(self):
 #         pass
 
+
+
 class VwapCurve():
+    ''' curve format
+        index | 0 | 1 | 2 | 3 | 4 | 5 |
+        pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
     def __init__(self,):
         self.index = 0
         
     def to_array(self):
-        '''index | 0 | 1 | 2 | 3 | 4 | 5 |
-           pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
         return np.array(result)
     
 
 class VwapEstimator():
     def __init__(self):
-        self.index = 0
-        self.vwap_curve = VwapCurve()        
+        pass
     
     def vwap_price(self, pairs):
-        '''
+        ''' pairs format
         price:    array([[ 1. ,  1. ,  1. ,  1.1,  0.9],
         quantity:        [ 2. , 23. ,  3. , 21. ,  3. ]])
         '''
         vwap_price = (pairs[0]*pairs[1]).sum()/pairs[1].sum()
         return vwap_price
     
-
+    @property
+    def market_vwap(self):
+        return self.vwap_price(self.market_pairs)
+    
+    @property
+    def agent_vwap(self):
+        return self.vwap_price(self.agent_pairs)
+    
+    def update(executed_pairs):
+        pass
 
     
 

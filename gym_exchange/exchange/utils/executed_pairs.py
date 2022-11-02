@@ -31,8 +31,9 @@ else:
     transaction_record['party2'] = [quote['trade_id'], 'bid', None, None]
 """
 
-'''pairs format
-
+''' pairs format
+price:    array([[ 1. ,  1. ,  1. ,  1.1,  0.9],
+quantity:        [ 2. , 23. ,  3. , 21. ,  3. ]])
 '''
 
 if __name__ == "__main__":

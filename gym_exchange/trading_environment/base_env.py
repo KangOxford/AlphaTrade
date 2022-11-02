@@ -84,8 +84,6 @@ class BaseEnv(EnvInterface):
     def accumulator(self):
         self.num_left -= self.cur_action
         self.cur_step += 1
-        self.vwap_estimator.index += 1
-        self.vwap_estimator.vwap_curve.index += 1
     # --------------------- 03.01 ---------------------
     @property
     def observation(self):
