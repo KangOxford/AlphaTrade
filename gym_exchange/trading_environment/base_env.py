@@ -8,6 +8,7 @@ from gym_exchange.trading_environment.reward import RewardGenerator
 from gym_exchange.trading_environment.action import Action
 from gym_exchange.trading_environment.action import BaseAction
 from gym_exchange.trading_environment.action import OrderFlowGenerator
+
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.env_interface import SpaceParams
@@ -41,7 +42,7 @@ class BaseEnv(EnvInterface):
         return observation
     # ------------------------- 02.01 ------------------------
     def init_components(self):
-        self.vwap_estimator = VwapEstimator() # Used for info
+        self.vwap_estimaor = VwapEstimator()
         # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
@@ -76,7 +77,7 @@ class BaseEnv(EnvInterface):
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ···················· 
         auto_cancel = order_flows[1]
-        self.exchange.future_todos += auto_cancel #TODO:implement futures
+        self.exchange.futures += auto_cancel #TODO:implement futures
         # ···················· 03.00.03 ···················· 
         observation, reward, done, info = self.observation, self.reward, self.done, self.info
         self.accumulator()
@@ -109,13 +110,10 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.04 ---------------------  
     @property
     def info(self):
-        self.vwap_estimator.update(self.exchange.executed_pairs)
-        MarketVwap = self.vwap_estimator.market_vwap
-        AgentVwap = self.vwap_estimator.agent_vwap
+        self.vwap_estimator.step(self.exchange.executed_pairs, self.done)
         return {
-            "MarketVwap"  :MarketVwap,
-            "AgentVwap"   :AgentVwap,
-            "VwapSlippage":MarketVwap - AgentVwap
+            **self.vwap_estimator.step_vwap.info_dict,
+            **self.vwap_estimator.epoch_vwap.info_dict
         }
         '''in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity, 

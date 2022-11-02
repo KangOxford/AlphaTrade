@@ -1,39 +1,6 @@
 # ========================== 01 ==========================
-
-# class Vwap():
-#     time_window = 1 # one step
-#     def __init__(self, historical_data, running_data):
-#         self.historical_data = historical_data
-#         self.running_data = running_data
-        
-#     @property
-#     def difference(self):
-#         pass
-    
-
-    
-# class StaticVwap():
-#     def __init__(self, historical_data, running_data):
-#         pass
-    
-# class DynamicVwap():
-#     def __init__(self):
-#         pass
-
-
-
-class VwapCurve():
-    ''' curve format
-        index | 0 | 1 | 2 | 3 | 4 | 5 |
-        pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
-    def __init__(self,):
-        self.index = 0
-        
-    def to_array(self):
-        return np.array(result)
-    
-
-class VwapEstimator():
+import abc
+class Vwap(abc.ABC):
     def __init__(self):
         pass
     
@@ -53,11 +20,83 @@ class VwapEstimator():
     def agent_vwap(self):
         return self.vwap_price(self.agent_pairs)
     
-    def update(executed_pairs):
+    @property
+    def vwap_slippage(self):
+        return self.market_vwap - self.agent_vwap
+    
+    @abc.abstractmethod
+    def update(self,executed_pairs):
+        '''update the market pairs and agent pairs'''
+    
+    @abc.abstractmethod
+    @property
+    def info_dict(self):
+        '''return the info dict'''
+        
+    def step(self, executed_pairs):
+        self.update(executed_pairs)
+        return self.info_dict    
+    
+class StepVwap(Vwap):
+    def __init__(self):
+        super().__init__()
+    
+    def update(self, executed_pairs):
+        self.market_pairs = executed_pairs.market_pairs[-1]
+        self.agent_pairs  = executed_pairs.agent_pairs[-1]
+    
+    @property
+    def info_dict(self):
+        return {
+            "StepVwap/MarketVwap"  :self.market_vwap,
+            "StepVwap/AgentVwap"   :self.agent_vwap,
+            "StepVwap/VwapSlippage":self.vwap_slippage
+        }
+        
+    
+# ========================== 02 ==========================
+class EpochVwap(Vwap):
+    def __init__(self):
+        super().__init__()
+        
+    @property
+    def info_dict(self):
+        return {
+            "EpochVwap/MarketVwap"  :self.market_vwap,
+            "EpochVwap/AgentVwap"   :self.agent_vwap,
+            "EpochVwap/VwapSlippage":self.vwap_slippage
+        }
+            
+    def update(self,executed_pairs):
+        self.market_pairs = np.concatenate(executed_pairs.market_pairs) # TODO: test
+        self.agent_pairs  = np.concatenate(executed_pairs.agent_pairs)        
+    
+# ========================== 03 ==========================
+class StepVwap_MA():
+    '''Moving average of step vwap'''
+    def __init__(self,):
         pass
 
+class VwapCurve():
+    ''' curve format
+        index | 0 | 1 | 2 | 3 | 4 | 5 |
+        pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
+    def __init__(self,):
+        self.index = 0
+        
+    def to_array(self):
+        result = 0 #TODO: implement
+        return np.array(result)
     
-
+# ========================== 04 ==========================
+class VwapEstimator():
+    def __init__(self):
+        self.step_vwap = StepVwap() # Used for info
+        self.epoch_vwap= EpochVwap()# Used for info
+    def step(self, executed_pairs, done):
+        self.step_vwap.step(executed_pairs)
+        if done: self.epoch_vwap.step(executed_pairs)
+        
 if __name__ == "__main__":
     # vwap_price testing
     import numpy as np

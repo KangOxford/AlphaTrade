@@ -4,15 +4,17 @@ class ExecutedPairs():
         self.agent_pairs  = []
         
     def step(self, trades, kind):
-        batch = self.trades2pairs(trades)
-        self.update(batch, kind)
+        if len(trades) != 0:
+            batch = self.trades2pairs(trades)
+            self.update(batch, kind)
+        else: pass
         
     def trades2pairs(self, trades):
         return pairs #TODO : implement
     
-    def update(self, batch, kind):
-        if kind == "market": self.market_pairs += batch
-        elif kind=="agent" : self.agent_pairs  += batch
+    def update(self, pairs, kind):
+        if kind == "market": self.market_pairs += pairs
+        elif kind=="agent" : self.agent_pairs  += pairs
         else: raise NotImplementedError
         
         

@@ -2,6 +2,7 @@
 # import numpy as np
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.utils import ExecutedPairs
+from gym_exchange.exchange.utils import Futures
 from gym_exchange.data_orderbook_adapter import Configuration
 # from gym_exchange.data_orderbook_adapter import Debugger 
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
@@ -43,6 +44,7 @@ class Exchange(Exchange_Interface):
         self.flow_generator = self.generate_flow()
         self.initialize_orderbook()
         self.executed_pairs = ExecutedPairs()
+        self.futures = Futures()
         
     def initialize_orderbook(self):
         for _ in range(2*Configuration.price_level):
@@ -63,6 +65,12 @@ class Exchange(Exchange_Interface):
         # for flow in self.flow_list:
         # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
+        
+        # # used for auto cancel
+        # future = self.futures.step()
+        # auto_cancel = self.time_wrapper(future)
+        # for index, item in enumerate([action, flow, auto_cancel]): # advantange for ask limit order (in liquidation problem)
+        
         for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
         # for item in [flow, action]:
             if item is not None:
@@ -71,8 +79,8 @@ class Exchange(Exchange_Interface):
                     trades, order_in_book = self.order_book.process_order(message, True, False)
                     kind = 'agent' if index == 0 else 'market'
                     self.executed_pairs.step(trades, kind)
-                    if len(trades) != 0:
-                        print(trades)#$
+                    # if len(trades) != 0:
+                    #     print(trades)#$
                     # print("+++trades+++")#$
                     # print(trades)#$
                 elif item.type == 2:
