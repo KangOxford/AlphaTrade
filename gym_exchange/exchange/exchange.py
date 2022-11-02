@@ -6,7 +6,7 @@ from gym_exchange.data_orderbook_adapter import Configuration
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-# from gym_exchange.order_flow import OrderFlow
+from gym_exchange.order_flow import OrderFlow
 from gym_exchange.orderbook import OrderBook
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
@@ -28,16 +28,6 @@ class ExecutedPairs():
 # -------------------------- 03 ----------------------------
 import abc; from abc import abstractclassmethod
 class Exchange_Interface(abc.ABC):
-    @abstractclassmethod
-    def reset(self):
-        pass
-    @abstractclassmethod
-    def step(self):
-        pass
-
-# -------------------------- 04 ----------------------------
-@Exchange_Interface.register
-class Exchange():
     def __init__(self):
         self.index = 0
         self.encoder, self.flow_list = self.initialization()
@@ -46,10 +36,21 @@ class Exchange():
         decoder  = Decoder(**DataPipeline()())
         encoder  = Encoder(decoder)
         flow_list= encoder.process()
-        # print(ofs)#$
         return encoder, flow_list
+    
+    @abstractclassmethod
+    def reset(self):
+        pass
+    @abstractclassmethod
+    def step(self):
+        pass
+
+# -------------------------- 04 ----------------------------
+class Exchange(Exchange_Interface):
+    def __init__(self):
+        super().__init__()
         
-# -------------------------- 03.01 ----------------------------
+# -------------------------- 04.01 ----------------------------
     def reset(self):
         self.order_book = OrderBook()
         self.flow_generator = self.generate_flow()
@@ -70,7 +71,7 @@ class Exchange():
         for flow in self.flow_list:
             yield flow
             
-# -------------------------- 03.02 ----------------------------
+# -------------------------- 04.02 ----------------------------
     def step(self, action = None):
         # for flow in self.flow_list:
         # order_book.process(flow.to_order)
@@ -100,7 +101,14 @@ class Exchange():
                     print(utils.brief_order_book(self.order_book, side = 'bid'))#$
                     print(utils.brief_order_book(self.order_book, side = 'ask'))#$
         return self.order_book
-
+# ···················· 04.02.01 ···················· 
+    def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
+        wrapped_order_flow = 0
+        return wrapped_order_flow #TODO
+    
+    
+    
+    
 if __name__ == "__main__":
     exchange = Exchange()
     exchange.reset()
