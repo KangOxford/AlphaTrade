@@ -3,6 +3,8 @@ import numpy as np
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.trading_environment.env_interface import SpaceParams
 
+# ========================== 01 ==========================
+
 class BaseAction():
     def __init__(self,side,quantity,price_delta):
         self.side = side
@@ -49,7 +51,7 @@ class PriceDelta():
     def __call__(self, price_delta):
         return 0 # TODO: implement
         
- # =================================================================
+# ========================== 02 ==========================
         
 class Action(BaseAction):
     def __init__(self,side,quantity,price_delta):
@@ -72,13 +74,18 @@ class Action(BaseAction):
         return wrapped_result
         '''[side, quantity, price_delta]'''
 
+# ========================== 03 ==========================
+
 class OrderFlowGenerator(object):
     def __init__(self, residual_policy):
         self.residual_policy = residual_policy
+        self.trade_id_generator = TradeIdGenerator() 
+        self.order_id_generator = OrderIdGenerator()
     
         
-    def step(self, action: np.ndarray) -> OrderFlow:
+    def step(self, action: np.ndarray, price_list) -> OrderFlow:
         self.action = action # [side, quantity, price_delta]
+        self.price_list = price_list
         content_dict = self.content_dict
         order_flow = OrderFlow(**content_dict)
         auto_cancel = OrderFlow(**(
@@ -101,14 +108,14 @@ class OrderFlowGenerator(object):
         return content_dict
     @property
     def price(self):
-        return PriceDelta(price_list)(self.action[2])
+        return PriceDelta(self.price_list)(self.action[2])
     @property
     def trade_id(self):
-        pass
+        return self.trade_id_generator.step()
     @property
     def order_id(self):
-        pass
+        return self.order_id_generator.step()
     @property
     def time(self):
-        pass 
+        return 0 #TODO: implement
     '''revise it outside the class, (revised in the class Exchange)'''

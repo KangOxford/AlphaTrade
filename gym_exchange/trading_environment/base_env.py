@@ -7,6 +7,7 @@ from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
 from gym_exchange.trading_environment.action import Action
 from gym_exchange.trading_environment.action import BaseAction
+from gym_exchange.trading_environment.action import OrderFlowGenerator
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.env_interface import SpaceParams
@@ -32,6 +33,7 @@ class BaseEnv(EnvInterface):
         # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
+        self.order_flow_generator = OrderFlowGenerator() # Used for Order
     
     # ========================== 02 ==========================
     def reset(self):
@@ -64,8 +66,13 @@ class BaseEnv(EnvInterface):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
+        # ···················· 03.00.01 ····················    
         # self.prev_state = self.cur_state
-        self.exchange.step(action.to_exchange)
+        order_flows = self.order_flow_generator.step(action, price_list)
+        wrapped_order_flows = time_wrapper(order_flows)
+        for order_flow in wrapped_order_flows:
+            self.exchange.step(order_flow)
+        # ···················· 03.00.02 ···················· 
         observation, reward, done, info = self.observation, self.reward, self.done, self.info
         self.accumulator()
         return observation, reward, done, info
