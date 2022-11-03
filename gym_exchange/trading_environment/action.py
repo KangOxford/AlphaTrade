@@ -168,7 +168,7 @@ class OrderFlowGenerator(object):
         return self.order_id_generator.step()
     @property
     def time(self):
-        return str(30000.000000000) #TODO: implement; partly done
+        return '30000.000000000' #TODO: implement; partly done
     '''revise it outside the class, (revised in the class Exchange)'''
     
     
