@@ -129,14 +129,12 @@ class OrderFlowGenerator(object):
         # shoud the price list be one sided or two sided???? #TODO
         self.action = action # [side, quantity, price_delta]
         self.price_list = price_list
-        content_dict = self.content_dict
-        revised_content_dict = self.content_dict_revising(content_dict) # TODO
         order_flow = OrderFlow(**self.content_dict)
-        auto_cancel = OrderFlow(**revised_content_dict) # TODO 
+        auto_cancel = OrderFlow(**self.revised_content_dict) # TODO 
         return order_flow, auto_cancel
     
     @property    
-    def content_dict(self):
+    def content_dicts(self):
         residual_action, residual_done = self.residual_policy.step()
         content_dict = {
             "Type" : 1, # submission of a new limit order
@@ -147,17 +145,26 @@ class OrderFlowGenerator(object):
             "order_id":self.order_id,
             "time":self.time,
         }
-        return content_dict
-    
-    @property    
-    def revised_content_dict(self, content_dict):
-        new_content_dict = {
+        revised_content_dict = {
             "Type" : 3, # total deletion of a limit order
             "direction" : content_dict['direction'], # keep the same direction
-            "size" : content_dict['size'],
-            "price": content_dict['price'],
-            "trade_id":content_dict['trade_id'],
-            "order_id":content_dict['order_id'],
+            "size"      : content_dict['size'],
+            "price"     : content_dict['price'],
+            "trade_id"  : content_dict['trade_id'],
+            "order_id"  : content_dict['order_id'],
+            "time"      : content_dict['time'],
+        } 
+        return content_dict, revised_content_dict
+    
+    @property    
+    def revised_content_dict(self):
+        new_content_dict = {
+            "Type" : 3, # total deletion of a limit order
+            "direction" : self.content_dict['direction'], # keep the same direction
+            "size" : self.content_dict['size'],
+            "price": self.content_dict['price'],
+            "trade_id":self.content_dict['trade_id'],
+            "order_id":self.content_dict['order_id'],
             "time":self.time,
         } 
         return new_content_dict
