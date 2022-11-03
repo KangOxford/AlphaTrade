@@ -51,17 +51,29 @@ class SideAction(BaseAction):
 class PriceDelta():
     def __init__(self, price_list):
         self.price_list = price_list
-    def __call__(self, price_delta):
+    def __call__(self, side, price_delta):
+        self.side = side
+        delta = self.adjust_price_delta(price_delta)
+        if delta == 0: return self.price_list[0] # best_bid or best_ask # TODO: test 
+        elif delta> 0: return self.positive_modifying(delta)
+        else         : return self.negetive_modifying(delta)
+    def adjust_price_delta(self, price_delta):
+        return price_delta - SpaceParams.Action.price_delta_size_one_side
+    def negetive_modifying(self, delta):
         tick_size = Config.tick_size
-        # if the 
-        return 0 # TODO: implement
+        if self.side == 'bid': return self.price_list[0] + delta * tick_size
+        elif self.side=='ask': return self.price_list[0] - delta * tick_size
+    def positive_modifying(self, delta):
+        return self.price_list[delta] # delta_th best bid/ best ask
+
+        
         
 # ========================== 03 ==========================
 
-from enum import Enum
-class Side(Enum):
-    ask = 0
-    bid = 1
+# from enum import Enum
+# class Side(Enum):
+#     ask = 0
+#     bid = 1
             
 class Action(BaseAction):
     def __init__(self,side,quantity,price_delta):
@@ -139,7 +151,7 @@ class OrderFlowGenerator(object):
         content_dict = {
             "Type" : 1, # submission of a new limit order
             "direction" : -1 if self.action[0] == 0 else 1,
-            "size" : self.action[1] + residual_action,
+            "size" :  (self.action[1] - SpaceParams.Action.quantity_size_one_side) + residual_action,
             "price": self.price,
             "trade_id":self.trade_id,
             "order_id":self.order_id,
@@ -154,12 +166,13 @@ class OrderFlowGenerator(object):
             "order_id"  : content_dict['order_id'],
             "time"      : content_dict['time'],
         } 
+        assert content_dict['size'] >= 0, "The real quote size should be non-negative"
         return content_dict, revised_content_dict
     
     
     @property
     def price(self):
-        return PriceDelta(self.price_list)(self.action[2])
+        return PriceDelta(self.price_list)('ask' if self.action[0]==0 else 'bid', self.action[2]) # side, price_delta 
     @property
     def trade_id(self):
         return self.trade_id_generator.step()

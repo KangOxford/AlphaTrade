@@ -70,13 +70,14 @@ class Exchange(Exchange_Interface):
         # future = self.futures.step()
         # auto_cancel = self.time_wrapper(future)
         # for index, item in enumerate([action, flow, auto_cancel]): # advantange for ask limit order (in liquidation problem)
-        
+        self.prev_trades = [] #prev_trades reset
         for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
         # for item in [flow, action]:
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
+                    self.prev_trades += trades; assert len(trades) == 1 # record prev_trades
                     kind = 'agent' if index == 0 else 'market'
                     self.executed_pairs.step(trades, kind)
                     # if len(trades) != 0:
@@ -100,9 +101,21 @@ class Exchange(Exchange_Interface):
         return self.order_book
 # ···················· 03.02.01 ···················· 
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
-        wrapped_order_flow = 0
-        return wrapped_order_flow #TODO
+        timestamp = self.latest_timestamp
+        str_int_timestamp = str(int(timestamp[0:5]) * int(1e9) + (int(timestamp[6:15]) +1))
+        order_flow.timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
+        return order_flow 
     
+    @property
+    def latest_timestamp(self):
+        '''ought to return the latest timestamp in the exchange.prev_trades 
+           and exchange.prev_orders_in_book'''
+        timestamp_list = []
+        for trade in self.prev_trades:
+            timestamp_list += trade['timestamp']
+        max_timestamp = max(timestamp_list)
+        return max_timestamp #!TODO  exchange.prev_orders_in_book not included
+        # return '34200.000000000' #!TODO
     
     
     

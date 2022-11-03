@@ -4,7 +4,6 @@ import gym
 import numpy as np
 from gym import spaces
 from typing import Generic, Optional, Sequence, Tuple, TypeVar
-from gym_exchange.trading_environment import action
 from gym_exchange.trading_environment import Config
 
 
@@ -17,7 +16,7 @@ class SpaceParams(object):
         price_delta_size_one_side = 3
         price_delta_size = 2 * price_delta_size_one_side + 1
         side_size = 2
-        quantity_size_one_side =Config.num2liquidate//Config.max_horizon +1
+        quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
         quantity_size = 2*quantity_size_one_side + 1
     class State:
         low = np.array([Config.min_price] * 10 +\
