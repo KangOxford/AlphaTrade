@@ -1,7 +1,7 @@
 import sys
 import math
 from collections import deque # a faster insert/pop queue
-from six.moves import cStringIO as StringIO
+from six.moves import cStringIO as StringIO  # pyright: ignore
 from decimal import Decimal
 
 from .ordertree import OrderTree

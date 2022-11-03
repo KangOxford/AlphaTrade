@@ -4,7 +4,7 @@ from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 from gym_exchange.exchange.exchange import Exchange
 
 from gym_exchange.trading_environment import Config
-from gym_exchange.trading_environment.reward import RewardGenerator
+from gym_exchange.trading_environment.assets.reward import RewardGenerator
 # from gym_exchange.trading_environment.action import Side
 # from gym_exchange.trading_environment.action import BaseAction
 from gym_exchange.trading_environment.assets.action import Action, OrderFlowGenerator

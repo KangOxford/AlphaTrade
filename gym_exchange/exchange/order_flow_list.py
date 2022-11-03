@@ -96,7 +96,7 @@ class FlowList():
         self.tail_order_flow = order_flow
 
     def __str__(self):
-        from six.moves import cStringIO as StringIO
+        from six.moves import cStringIO as StringIO  # pyright: ignore
         temp_file = StringIO()
         for order_flow in self:
             temp_file.write("%s\n" % str(order_flow))

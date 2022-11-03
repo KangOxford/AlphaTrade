@@ -1,4 +1,5 @@
 # ========================== 04 ==========================
+import numpy as np
 from gym_exchange.trading_environment import Config
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.trading_environment.assets.action import PriceDelta
