@@ -70,8 +70,6 @@ class Exchange(Exchange_Interface):
 # -------------------------- 03.02 ----------------------------
     def step(self, action = None):
         # action : Action(for the definition of type)
-        # for flow in self.flow_list:
-        # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
         
         # used for auto cancel
