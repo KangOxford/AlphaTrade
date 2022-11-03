@@ -1,8 +1,9 @@
 import numpy as np
-from gym import Env
-from gym import spaces
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
+
 from gym_exchange.exchange.exchange import Exchange
+from gym_exchange.exchange.exchange_interface import Exchange_Interface
+
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
 # from gym_exchange.trading_environment.action import Side

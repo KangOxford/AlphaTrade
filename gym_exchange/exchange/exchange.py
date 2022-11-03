@@ -99,10 +99,6 @@ class Exchange(Exchange_Interface):
         timestamp = latest_timestamp(self.order_book)
         return timestamp_increase(timestamp, order_flow) 
     
-
-    
-    
-    
 if __name__ == "__main__":
     exchange = Exchange()
     exchange.reset()
