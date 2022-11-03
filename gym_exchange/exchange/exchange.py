@@ -74,13 +74,11 @@ class Exchange(Exchange_Interface):
         # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
         
-        # # used for auto cancel
-        # future = self.futures.step()
-        # auto_cancel = self.time_wrapper(future)
-        # for index, item in enumerate([action, flow, auto_cancel]): # advantange for ask limit order (in liquidation problem)
-
-        for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
-        # for item in [flow, action]:
+        # used for auto cancel
+        future = self.futures.step()
+        auto_cancel = self.time_wrapper(future)
+        for index, item in enumerate([action, flow, auto_cancel]): # advantange for ask limit order (in liquidation problem)
+        # for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
