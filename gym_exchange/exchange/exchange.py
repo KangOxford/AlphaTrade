@@ -31,10 +31,6 @@ class Exchange(Exchange_Interface):
             flow = next(self.flow_generator)
             self.order_book.process_order(flow.to_message, True, False)
             self.index += 1
-            # if self.index >= 2*Configuration.price_level:break #TODO not sure about the num
-        # for index in range():
-        #     order_book.process_order(self.flow_list[index])
-        print()#$
             
     def generate_flow(self):
         for flow in self.flow_list: yield flow
