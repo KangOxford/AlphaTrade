@@ -48,16 +48,17 @@ class OrderFlow():
         str(self.type), str(self.side), str(self.quantity),\
         str(self.price), str(self.order_id), str(self.timestamp))
         # return "Type {:5d}  |  Side {:8d}  |  Quantity {:8d}  |  Price {:8d}  |  Order_ID {:10d}  |  Time {:15s}".format(self.type, self.side, self.quantity, self.price, self.order_id, self.timestamp)
-    
+        # here side should be -1 or 1
+        
     @property
     def to_message(self):
         '''message = 
-        {'type': 'limit','side': side,'quantity': quantity,\
+        {'type': 'limit','side': bid or ask,'quantity': quantity,\
          'price': price,'trade_id': trade_id, "timestamp":timestamp,\
          'order_id':order_id}'''
         message = {
             'type'     : 'limit',
-            'side'     : self.side,
+            'side'     : 'bid' if self.side==1 else 'ask',
             'quantity' : self.quantity,
             'price'    : self.price,
             'trade_id' : self.trade_id,

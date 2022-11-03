@@ -12,7 +12,7 @@ from gym_exchange.orderbook import OrderBook
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
-
+# from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
 # ========================= 02 =========================
 import abc; from abc import abstractclassmethod
 class Exchange_Interface(abc.ABC):
@@ -24,7 +24,14 @@ class Exchange_Interface(abc.ABC):
         decoder  = Decoder(**DataPipeline()())
         encoder  = Encoder(decoder)
         flow_list= encoder.process()
+        flow_list = self.to_order_flow_list(flow_list)
         return encoder, flow_list
+    
+    def to_order_flow_list(self, flow_list):
+        for item in flow_list:
+            side = -1 if item.side == 'ask' else 1
+            item.side = side
+        return flow_list
     
     @abstractclassmethod
     def reset(self):
@@ -62,6 +69,7 @@ class Exchange(Exchange_Interface):
             
 # -------------------------- 03.02 ----------------------------
     def step(self, action = None):
+        # action : Action(for the definition of type)
         # for flow in self.flow_list:
         # order_book.process(flow.to_order)
         flow = next(self.flow_generator)
@@ -70,14 +78,13 @@ class Exchange(Exchange_Interface):
         # future = self.futures.step()
         # auto_cancel = self.time_wrapper(future)
         # for index, item in enumerate([action, flow, auto_cancel]): # advantange for ask limit order (in liquidation problem)
-        self.prev_trades = [] #prev_trades reset
+
         for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
         # for item in [flow, action]:
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
-                    self.prev_trades += trades; assert len(trades) == 1 # record prev_trades
                     kind = 'agent' if index == 0 else 'market'
                     self.executed_pairs.step(trades, kind)
                     # if len(trades) != 0:
@@ -111,11 +118,20 @@ class Exchange(Exchange_Interface):
         '''ought to return the latest timestamp in the exchange.prev_trades 
            and exchange.prev_orders_in_book'''
         timestamp_list = []
-        for trade in self.prev_trades:
-            timestamp_list += trade['timestamp']
+        
+        if self.order_book.asks != None and len(self.order_book.asks) > 0:
+            for key, list_ in  reversed(self.order_book.asks.price_map.items()):
+                for order in list_:
+                    timestamp_list.append(order.timestamp)
+        
+        if self.order_book.bids != None and len(self.order_book.bids) > 0:
+            for key, list_ in reversed(self.order_book.bids.price_map.items()):
+                for order in list_:
+                    timestamp_list.append(order.timestamp)
+        
+                    
         max_timestamp = max(timestamp_list)
-        return max_timestamp #!TODO  exchange.prev_orders_in_book not included
-        # return '34200.000000000' #!TODO
+        return max_timestamp 
     
     
     
