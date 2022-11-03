@@ -68,22 +68,16 @@ class Exchange(Exchange_Interface):
             yield flow
             
 # -------------------------- 03.02 ----------------------------
-    def step(self, action = None):
-        # action : Action(for the definition of type)
+    def step(self, action = None): # action : Action(for the definition of type)
         flow = next(self.flow_generator)#used for historical data
         futures = self.futures.step(); auto_cancels = [self.time_wrapper(future) for future in futures] # used for auto cancel
         for index, item in enumerate([action, flow] + auto_cancels): # advantange for ask limit order (in liquidation problem)
-        # for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
                     kind = 'agent' if index == 0 else 'market'
                     self.executed_pairs.step(trades, kind)
-                    # if len(trades) != 0:
-                    #     print(trades)#$
-                    # print("+++trades+++")#$
-                    # print(trades)#$
                 elif item.type == 2:
                     pass #TODO, not implemented!!
                 elif item.type == 3:
