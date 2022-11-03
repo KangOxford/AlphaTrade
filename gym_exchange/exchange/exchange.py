@@ -1,45 +1,17 @@
 # ========================= 01 =========================
 # import numpy as np
 from gym_exchange.exchange import Debugger
+from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 from gym_exchange.exchange.utils.futures import Futures
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
 from gym_exchange.data_orderbook_adapter import Configuration
 # from gym_exchange.data_orderbook_adapter import Debugger 
-from gym_exchange.data_orderbook_adapter.decoder import Decoder
-from gym_exchange.data_orderbook_adapter.encoder import Encoder
-from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.orderbook import OrderBook
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
 # from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
-# ========================= 02 =========================
-import abc; from abc import abstractclassmethod
-class Exchange_Interface(abc.ABC):
-    def __init__(self):
-        self.index = 0
-        self.encoder, self.flow_list = self.initialization()
-
-    def initialization(self):
-        decoder  = Decoder(**DataPipeline()())
-        encoder  = Encoder(decoder)
-        flow_list= encoder.process()
-        flow_list = self.to_order_flow_list(flow_list)
-        return encoder, flow_list
-    
-    def to_order_flow_list(self, flow_list):
-        for item in flow_list:
-            side = -1 if item.side == 'ask' else 1
-            item.side = side
-        return flow_list
-    
-    @abstractclassmethod
-    def reset(self):
-        pass
-    @abstractclassmethod
-    def step(self):
-        pass
 
 # ========================= 03 =========================
 class Exchange(Exchange_Interface):
