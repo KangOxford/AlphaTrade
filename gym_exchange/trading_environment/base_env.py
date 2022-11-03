@@ -5,16 +5,14 @@ from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 from gym_exchange.exchange.exchange import Exchange
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.reward import RewardGenerator
-from gym_exchange.trading_environment.action import Action
-from gym_exchange.trading_environment.action import BaseAction
-from gym_exchange.trading_environment.action import OrderFlowGenerator
+# from gym_exchange.trading_environment.action import Side
+from gym_exchange.trading_environment.action import Action, BaseAction, OrderFlowGenerator
 
-from gym_exchange.trading_environment.utils.metric import VwapEstimator
-from gym_exchange.trading_environment.utils.residual_policy import ResidualPolicy_Factory
+from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
+
 from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
-from gym_exchange.trading_environment.env_interface import SpaceParams
-from gym_exchange.trading_environment.env_interface import EnvInterface
-from gym_exchange.trading_environment.env_interface import State, Observation, Action
+from gym_exchange.trading_environment.env_interface import SpaceParams, EnvInterface
+from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
 
 # from gym_exchange.trading_environment.action import SimpleAction
 # from gym_exchange.trading_environment.action import BaseAction
@@ -47,8 +45,7 @@ class BaseEnv(EnvInterface):
         # self.reward_generator = RewardGenerator(self) # Used for Reward
         self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
-        residual_policy = self.ResidualPolicy_Factory.produce("Twap")
-        self.order_flow_generator = OrderFlowGenerator(residual_policy) # Used for Order
+        self.order_flow_generator = OrderFlowGenerator() # Used for Order
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 
@@ -73,12 +70,15 @@ class BaseEnv(EnvInterface):
            return: observation, reward, done, info'''
         # ···················· 03.00.01 ····················    
         # self.prev_state = self.cur_state
-        order_flows = self.order_flow_generator.step(action, price_list) # price list is used for PriceDelta
-        order_flow  = order_flows[0]
+        
+        
+        price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
+        order_flows = self.order_flow_generator.step(action, price_list)# price list is used for PriceDelta, only one side is needed
+        order_flow  = order_flows[0] # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ···················· 
-        auto_cancel = order_flows[1]
+        auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
         self.exchange.futures += auto_cancel #TODO:implement futures
         # ···················· 03.00.03 ···················· 
         observation, reward, done, info = self.observation, self.reward, self.done, self.info
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     env = BaseEnv()
     env.reset()
     for i in range(int(1e6)):
-        action = Action(side = 'ask', quantity = 1, price_delta = 1)
+        action = Action(side = 'bid', quantity = 1, price_delta = 1)
         observation, reward, done, info = env.step(action.to_array)
         env.render()
         if done:

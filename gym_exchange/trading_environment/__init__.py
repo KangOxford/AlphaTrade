@@ -37,7 +37,9 @@ class Config:
     state_dim_2 = 10 
     # state_dim_2 = 12 # used to be 10
     state_dim_3 = time_window_size
+    
     tick_size = 100 #(should be divided by 10000 to be converted to currency)
+    phi_prime = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
 
 register(
     id = "GymExchange-v1",

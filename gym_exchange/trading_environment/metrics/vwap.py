@@ -28,8 +28,8 @@ class Vwap(abc.ABC):
     def update(self,executed_pairs):
         '''update the market pairs and agent pairs'''
     
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def info_dict(self):
         '''return the info dict'''
         

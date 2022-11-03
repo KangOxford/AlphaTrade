@@ -1,15 +1,15 @@
 # ========================= 01 =========================
 # import numpy as np
 from gym_exchange.exchange import Debugger
-from gym_exchange.exchange.utils import ExecutedPairs
-from gym_exchange.exchange.utils import Futures
+from gym_exchange.exchange.utils.futures import Futures
+from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
 from gym_exchange.data_orderbook_adapter import Configuration
 # from gym_exchange.data_orderbook_adapter import Debugger 
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gym_exchange.order_flow import OrderFlow
 from gym_exchange.orderbook import OrderBook
+from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
 
