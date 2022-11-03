@@ -70,13 +70,9 @@ class Exchange(Exchange_Interface):
 # -------------------------- 03.02 ----------------------------
     def step(self, action = None):
         # action : Action(for the definition of type)
-        flow = next(self.flow_generator)
-        
-        # used for auto cancel
-        future = self.futures.step()
-        auto_cancel = self.time_wrapper(future)
-        
-        for index, item in enumerate([action, flow, auto_cancel]): # advantange for ask limit order (in liquidation problem)
+        flow = next(self.flow_generator)#used for historical data
+        futures = self.futures.step(); auto_cancels = [self.time_wrapper(future) for future in futures] # used for auto cancel
+        for index, item in enumerate([action, flow] + auto_cancels): # advantange for ask limit order (in liquidation problem)
         # for index, item in enumerate([action, flow]): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message

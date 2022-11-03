@@ -70,8 +70,6 @@ class BaseEnv(EnvInterface):
            return: observation, reward, done, info'''
         # ···················· 03.00.01 ····················    
         # self.prev_state = self.cur_state
-        
-        
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
         order_flows = self.order_flow_generator.step(action, price_list)# price list is used for PriceDelta, only one side is needed
         order_flow  = order_flows[0] # order_flows consists of order_flow, auto_cancel
