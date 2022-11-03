@@ -1,6 +1,7 @@
 # ========================= 01 =========================
 # import numpy as np
 from gym_exchange.exchange import Debugger
+from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 from gym_exchange.exchange.utils.futures import Futures
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
 from gym_exchange.data_orderbook_adapter import Configuration
@@ -45,7 +46,7 @@ class Exchange(Exchange_Interface):
     def __init__(self):
         super().__init__()
         
-# -------------------------- 03.01 ----------------------------
+    # -------------------------- 03.01 ----------------------------
     def reset(self):
         self.order_book = OrderBook()
         self.flow_generator = self.generate_flow()
@@ -64,10 +65,9 @@ class Exchange(Exchange_Interface):
         print()#$
             
     def generate_flow(self):
-        for flow in self.flow_list:
-            yield flow
+        for flow in self.flow_list: yield flow
             
-# -------------------------- 03.02 ----------------------------
+    # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         flow = next(self.flow_generator)#used for historical data
         futures = self.futures.step(); auto_cancels = [self.time_wrapper(future) for future in futures] # used for auto cancel
@@ -93,32 +93,13 @@ class Exchange(Exchange_Interface):
                     print(utils.brief_order_book(self.order_book, side = 'bid'))#$
                     print(utils.brief_order_book(self.order_book, side = 'ask'))#$
         return self.order_book
-# ···················· 03.02.01 ···················· 
-    def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
-        timestamp = self.latest_timestamp
-        str_int_timestamp = str(int(timestamp[0:5]) * int(1e9) + (int(timestamp[6:15]) +1))
-        order_flow.timestamp = str(str_int_timestamp[0:5])+'.'+str(str_int_timestamp[5:15])
-        return order_flow 
     
-    @property
-    def latest_timestamp(self):
-        '''ought to return the latest timestamp in the exchange.prev_trades 
-           and exchange.prev_orders_in_book'''
-        timestamp_list = []
-        
-        if self.order_book.asks != None and len(self.order_book.asks) > 0:
-            for key, list_ in  reversed(self.order_book.asks.price_map.items()):
-                for order in list_:
-                    timestamp_list.append(order.timestamp)
-        
-        if self.order_book.bids != None and len(self.order_book.bids) > 0:
-            for key, list_ in reversed(self.order_book.bids.price_map.items()):
-                for order in list_:
-                    timestamp_list.append(order.timestamp)
-        
-                    
-        max_timestamp = max(timestamp_list)
-        return max_timestamp 
+    # ···················· 03.02.01 ···················· 
+    def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
+        timestamp = latest_timestamp(self.order_book)
+        return timestamp_increase(timestamp, order_flow) 
+    
+
     
     
     
