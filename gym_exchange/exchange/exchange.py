@@ -24,7 +24,6 @@ class Exchange(BaseExchange):
         super().reset()
         self.auto_cancels = AutoCancels()
 
-        
     def update_task_list(self, action = None):# action : Action(for the definition of type)
         super().update_task_list(action)
         auto_cancels = self.auto_cancels.step(); auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
@@ -33,7 +32,7 @@ class Exchange(BaseExchange):
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         self.update_task_list(action)
-        self.process_task()
+        self.process_tasks()
         return self.order_book
     
     # ···················· 03.02.01 ···················· 
