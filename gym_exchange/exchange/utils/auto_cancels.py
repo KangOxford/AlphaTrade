@@ -20,24 +20,37 @@ from gym_exchange.exchange.order_flow import OrderFlow
 #             "price_trend" : self.price_trend,
 #         }
 
-class CancellationDeterminant():
+class Timeout():
     def __init__(self): 
         self.age = 0
     
     def step(self):
         self.age += 1
+    
+    def __call__(self) -> bool:
+        return self.cancellation_determinant > Config.timeout
+
+class CancellationDeterminants():
+            
+    def __init__(self):
+        self.determinants = [
+            Timeout()
+        ]
+
 
 class AutoCancel():
     def __init__(self,  auto_cancel: OrderFlow):
         self.auto_cancel = auto_cancel
-        self.cancellation_determinant = CancellationDeterminant()
+        self.cancellation_determinants = CancellationDeterminants()
 
     @property
     def maturity(self) -> bool:
         # '''determined by the price and mid-price or the exchange'''
-        '''determined by the quote age'''
-        if self.cancellation_determinant <= Config.timeout: return False   
-        if self.cancellation_determinant  > Config.timeout: return True   
+        # '''determined by the quote age'''
+        for determinant in self.cancellation_determinants:
+            if determinant() == False:
+                return False # if all satisfied then return mature
+        return True  
 
         
 class AutoCancels():
