@@ -3,16 +3,11 @@
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
-from exchange.utils.auto_cancels import AutoCancels
-from exchange.utils.deletion_handler import PartDeletionHandler, TotalDeletionHandler
+# from exchange.utils.deletion_handler import PartDeletion, TotalDeletion
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
-
-# from gym_exchange.data_orderbook_adapter import Debugger 
-
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
-# from gym_exchange.orderbook.order import Order
-# from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
+
 
 # ========================= 03 =========================
 class BaseExchange(Exchange_Interface):
@@ -23,12 +18,14 @@ class BaseExchange(Exchange_Interface):
     def reset(self):
         super().reset()
         self.executed_pairs = ExecutedPairs()
-        self.part_deletion_handler = PartDeletionHandler()
-        self.total_deletion_handler = TotalDeletionHandler()
+        # self.part_deletion = PartDeletion()
+        # self.total_deletion = TotalDeletion()
     
     def update_task_list(self, action = None):# action : Action(for the definition of type)
         flow = next(self.flow_generator)#used for historical data
         self.task_list = [action, flow] 
+        
+    # def 
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
@@ -42,6 +39,38 @@ class BaseExchange(Exchange_Interface):
                     pass #TODO, not implemented!!
                 elif item.type == 3:
                     print(f'>>> type3 activated')#$ 
+                    print(item)
+                    my_order_id = message['order_id']
+                    my_side = message['side']
+                    right_tree = self.order_book.bids if my_side == 'bid' else self.order_book.asks
+                    if right_tree.order_exists(my_order_id) == False:
+                        right_price_list = right_tree.get_price_list(message['price']) # my_price
+                        for order in right_price_list:
+                            if 90000000 <= order.order_id and order.order_id < 100000000: # if my_order_id in initial_orderbook_ids
+                                '''Initial orderbook id is created via the exchange
+                                cannot be the same with the message['order_id'].
+                                Solution: total delete the first (90000000) order in the orderlist
+                                at the price we want to totally delete.
+                                Solution code: 31'''
+                                self.order_book.cancel_order(
+                                    side = message['side'], 
+                                    order_id = message['order_id'],
+                                    time = message['timestamp'], 
+                                    order_id = order.order_id,
+                                    time = order.timestamp, 
+                                )
+                                    
+                            
+                    right_tree.order_map
+                    
+                    
+                    
+                    # if order_id in initial_orderbook_ids:
+                    #     pass
+                    
+                    
+                    print()
+                    
                     pass #TODO, should be partly cancel
         
     # -------------------------- 03.02 ----------------------------

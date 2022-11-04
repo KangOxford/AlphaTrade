@@ -44,7 +44,7 @@ class OrderFlow():
         return self.prev_order_flow
     
     def __str__(self):
-        return "||  Type {:2s} | Side {:4s} | Quantity {:3s} | Price {:8s} | Order_ID {:9s} | Time {:15s}  ||".format( \
+        return "‖ Type {:2s} | Side {:2s}| Quantity {:3s}| Price {:8s} | Order_ID {:9s}| Time {:15s} ‖".format( \
         str(self.type), str(self.side), str(self.quantity),\
         str(self.price), str(self.order_id), str(self.timestamp))
         # return "Type {:5d}  |  Side {:8d}  |  Quantity {:8d}  |  Price {:8d}  |  Order_ID {:10d}  |  Time {:15s}".format(self.type, self.side, self.quantity, self.price, self.order_id, self.timestamp)

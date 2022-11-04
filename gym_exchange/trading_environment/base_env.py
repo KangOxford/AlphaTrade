@@ -7,7 +7,8 @@ from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.assets.reward import RewardGenerator
 # from gym_exchange.trading_environment.action import Side
 # from gym_exchange.trading_environment.action import BaseAction
-from gym_exchange.trading_environment.assets.action import Action, OrderFlowGenerator
+from gym_exchange.trading_environment.assets.action import Action
+from gym_exchange.trading_environment.assets.action_wrapper import  OrderFlowGenerator
 
 from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
 

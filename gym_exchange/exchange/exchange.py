@@ -4,11 +4,6 @@ from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.base_exchange import BaseExchange
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 from exchange.utils.auto_cancels import AutoCancels
-from exchange.utils.deletion_handler import PartDeletionHandler, TotalDeletionHandler
-from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
-
-# from gym_exchange.data_orderbook_adapter import Debugger 
-
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
