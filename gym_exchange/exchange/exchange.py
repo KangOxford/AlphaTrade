@@ -3,7 +3,8 @@
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
-from gym_exchange.exchange.utils.futures import Futures
+from exchange.utils.auto_cancels import AutoCancels
+from exchange.utils.deletion_handler import PartDeletionHandler, TotalDeletionHandler
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
 from gym_exchange.data_orderbook_adapter import Configuration
 # from gym_exchange.data_orderbook_adapter import Debugger 
@@ -24,7 +25,9 @@ class Exchange(Exchange_Interface):
         self.flow_generator = self.generate_flow()
         self.initialize_orderbook()
         self.executed_pairs = ExecutedPairs()
-        self.futures = Futures()
+        self.auto_cancels = AutoCancels()
+        self.part_deletion_handler = PartDeletionHandler()
+        self.total_deletion_handler = TotalDeletionHandler()
         
     def initialize_orderbook(self):
         for _ in range(2*Configuration.price_level):
@@ -38,17 +41,19 @@ class Exchange(Exchange_Interface):
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         flow = next(self.flow_generator)#used for historical data
-        futures = self.futures.step(); auto_cancels = [self.time_wrapper(future) for future in futures] # used for auto cancel
+        auto_cancels = self.auto_cancels.step(); auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
         for index, item in enumerate([action, flow] + auto_cancels): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
-                    kind = 'agent' if index == 0 else 'market'
-                    self.executed_pairs.step(trades, kind)
+                    self.executed_pairs.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
                 elif item.type == 2:
+                    print(f'>>> type2 activated')#$ 
                     pass #TODO, not implemented!!
+
                 elif item.type == 3:
+                    print(f'>>> type3 activated')#$ 
                     pass #TODO, should be partly cancel
                     # order_book.cancel_order(side = message['side'], 
                     #                         order_id = message['order_id'],

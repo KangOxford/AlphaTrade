@@ -78,7 +78,7 @@ class BaseEnv(EnvInterface):
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ···················· 
         auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
-        self.exchange.futures.update(auto_cancel) #TODO:implement futures
+        self.exchange.auto_cancels.add(auto_cancel) 
         # ···················· 03.00.03 ···················· 
         observation, reward, done, info = self.observation, self.reward, self.done, self.info
         self.accumulator()
