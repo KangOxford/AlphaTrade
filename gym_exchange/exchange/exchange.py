@@ -1,7 +1,7 @@
 # ========================= 01 =========================
 # import numpy as np
 from gym_exchange.exchange import Debugger
-from gym_exchange.exchange.exchange_interface import Exchange_Interface
+from gym_exchange.exchange.base_exchange import BaseExchange
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 from exchange.utils.auto_cancels import AutoCancels
 from exchange.utils.deletion_handler import PartDeletionHandler, TotalDeletionHandler
@@ -15,7 +15,7 @@ from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
 
 # ========================= 03 =========================
-class Exchange(Exchange_Interface):
+class Exchange(BaseExchange):
     def __init__(self):
         super().__init__()
         
