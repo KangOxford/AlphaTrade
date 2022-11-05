@@ -44,3 +44,6 @@ class Exchange_Interface(abc.ABC):
     @abstractclassmethod
     def step(self):
         pass
+
+    def accumulating(self):
+        self.index += 1

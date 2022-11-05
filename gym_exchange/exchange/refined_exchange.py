@@ -26,10 +26,10 @@ class Exchange(BaseExchange):
             
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
-        self.update_task_list(action)
-        self.process_tasks()
+        super().step(action)
         return self.order_book
     
+
     # ···················· 03.02.01 ···················· 
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
         timestamp = latest_timestamp(self.order_book)

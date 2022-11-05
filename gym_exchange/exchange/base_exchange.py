@@ -62,8 +62,9 @@ class BaseExchange(Exchange_Interface):
                             if not done:
                                 raise NotImplementedError
                         except: # message['price'] not in the order_book
-                            pass
-                            # raise NotImplementedError #TODO
+                            # pass
+                            print()#$
+                            raise NotImplementedError #TODO
                     else: #right_tree.order_exists(message['order_id']) == True
                         self.order_book.cancel_order(
                             side = message['side'], 
@@ -76,12 +77,9 @@ class BaseExchange(Exchange_Interface):
     def step(self, action = None): # action : Action(for the definition of type)
         self.update_task_list(action)
         self.process_tasks()
+        super().accumulating()
         return self.order_book
-    
-    # ···················· 03.02.01 ···················· 
-    def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
-        timestamp = latest_timestamp(self.order_book)
-        return timestamp_increase(timestamp, order_flow) 
+
     
 if __name__ == "__main__":
     exchange = BaseExchange()
