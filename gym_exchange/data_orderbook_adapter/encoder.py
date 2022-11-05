@@ -19,7 +19,7 @@ class Encoder():
     
     # -------------------------- 01 ----------------------------
     def initialize_order_flows(self):
-        order_flows = np.array([])
+        self.flow_list = np.array([])
         for side in ['bid','ask']:
             List = self.decoder.initiaze_orderbook_message(side)
             for Dict in List:
@@ -32,7 +32,7 @@ class Encoder():
                 direction = Dict['side'],
                 trade_id= Dict['trade_id']
                 )
-                self.flow_list = np.append(order_flows, order_flow()).reshape([-1, OrderFlow.length])
+                self.flow_list = np.append(self.flow_list, order_flow()).reshape([-1, OrderFlow.length])
         return self.flow_list
     
     # -------------------------- 02 ----------------------------    
@@ -81,33 +81,38 @@ class Encoder():
     
     def get_all_running_order_flows(self):
         for index in range(Configuration.horizon):
-            self.step(index)
+            _ = self.step(index)
         return self.flow_list
     
     def step(self, index = None): # get_single_running_order_flows
         inside_signal, outside_signals = self.decoder.step() # the decoder return single data in step()
         inside_order_flow = self.inside_signal_encoding(inside_signal)
+        # ···················· 02.01 ···················· 
+        flows = []
         if inside_order_flow is not None:
-            self.flow_list = np.append(self.flow_list, inside_order_flow()).reshape([-1, OrderFlow.length])
+            flows.append(inside_order_flow())
         for signal in outside_signals:
             if type(signal) is list: 
                 for s in signal:
                     outside_order_flow = self.outside_signal_encoding(s)
                     if outside_order_flow is not None:
-                        self.flow_list = np.append(self.flow_list, outside_order_flow()).reshape([-1, OrderFlow.length])
+                        flows.append(outside_order_flow())
             else:
                 outside_order_flow = self.outside_signal_encoding(signal)
                 if outside_order_flow is not None:
-                    self.flow_list = np.append(self.flow_list, outside_order_flow()).reshape([-1, OrderFlow.length])
+                    flows.append(outside_order_flow())
+        # ···················· 02.02 ····················             
+        for flow in flows:
+            self.flow_list = np.append(self.flow_list, flow).reshape([-1, OrderFlow.length])
+        # ···················· 02.03 ···················· 
         if Debugger.Encoder.on:
             try:
                 print("="*10+' '+str(index)+" "+"="*10)
                 print(">>> inside_signal");print(inside_signal)
-                print(">>> outside_signal")
-                for signal in outside_signals:
-                    print(signal)
+                print(">>> outside_signal");[print(signal) for signal in outside_signals]
                 print("-"*23)
             except: pass
+        return flows
         
     
     # -------------------------- 03 ----------------------------
