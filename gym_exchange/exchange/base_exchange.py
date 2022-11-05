@@ -18,8 +18,7 @@ class BaseExchange(Exchange_Interface):
     def reset(self):
         super().reset()
         self.executed_pairs = ExecutedPairs()
-        # self.part_deletion = PartDeletion()
-        # self.total_deletion = TotalDeletion()
+        
     
     def update_task_list(self, action = None):# action : Action(for the definition of type)
         flow = next(self.flow_generator)#used for historical data
@@ -33,8 +32,10 @@ class BaseExchange(Exchange_Interface):
                     trades, order_in_book = self.order_book.process_order(message, True, False)
                     self.executed_pairs.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
                 elif item.type == 2:
-                    print(f'>>> type2 activated')#$ 
-                    pass #TODO, not implemented!!
+                    tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+                    in_book_quantity = tree.get_order(message['order_id']).quantity
+                    message['quantity'] = min(message['quantity'], in_book_quantity)# adjuested_message 
+                    (self.order_book.bids if message['side'] == 'bid' else self.order_book.asks).update_order(message)
                 elif item.type == 3:
                     done = False
                     right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
@@ -55,7 +56,7 @@ class BaseExchange(Exchange_Interface):
                                     order_id = order.order_id,
                                     time = order.timestamp, 
                                 )
-                                cancelled_quantity = order.quantity
+                                self.cancelled_quantity = order.quantity
                                 done = True; break
                         if not done:
                             raise NotImplementedError
@@ -65,7 +66,7 @@ class BaseExchange(Exchange_Interface):
                             order_id = order.order_id,
                             time = order.timestamp, 
                         )
-                        cancelled_quantity = order.quantity
+                        self.cancelled_quantity = order.quantity
         
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
