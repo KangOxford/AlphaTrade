@@ -2,7 +2,7 @@ import numpy as np
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
-from gym_exchange.exchange.refined_exchange import Exchange
+from gym_exchange.exchange.auto_cancel_exchange import Exchange
 
 from gym_exchange import Config
 

@@ -42,8 +42,11 @@ class StepVwap(Vwap):
         super().__init__()
     
     def update(self, executed_pairs):
-        self.market_pairs = executed_pairs.market_pairs[-1]
-        self.agent_pairs  = executed_pairs.agent_pairs[-1]
+        if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
+            print()
+        else:
+            self.market_pairs = executed_pairs.market_pairs[-1]
+            self.agent_pairs  = executed_pairs.agent_pairs[-1]
     
     @property
     def info_dict(self):

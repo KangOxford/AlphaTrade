@@ -1,6 +1,6 @@
 # ========================= 01 =========================
-# import numpy as np
-from gym_exchange.data_orderbook_adapter.utils import is_right_answer
+import numpy as np
+from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
@@ -21,7 +21,7 @@ class BaseExchange(Exchange_Interface):
         if Debugger.BaseExchange.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-            _,_,historical_data,_ = DataPipeline()()
+            historical_data = (DataPipeline()())['historical_data']
             column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
             bid_sid_historical_data = historical_data.iloc[:,column_numbers_bid]
@@ -82,8 +82,16 @@ class BaseExchange(Exchange_Interface):
         self.order_book = super().step(action)
         if action == None and Debugger.BaseExchange.on == True:
             for side in ['bid', 'ask']:
+                print(f"self.index: {self.index}")#$
                 history_data = self.d2 if side == 'bid' else self.l2
-                assert is_right_answer(self.order_book, self.index, history_data, side)
+                my_list, right_list = get_two_list4compare(self.order_book, self.index, history_data, side)
+                my_list = np.array(my_list); right_list = np.array(right_list)
+                difference = my_list - right_list
+                is_the_same = (not any(difference))
+                print(my_list) #$
+                print(right_list) #$
+                print(f"is_the_same:{is_the_same}") #$
+                print() #$ #TODO
         return self.order_book 
         
     
