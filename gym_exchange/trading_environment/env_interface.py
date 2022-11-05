@@ -4,7 +4,7 @@ import gym
 import numpy as np
 from gym import spaces
 from typing import Generic, Optional, Sequence, Tuple, TypeVar
-from gym_exchange.trading_environment import Config
+from gym_exchange import Config
 
 
 State = TypeVar("State")

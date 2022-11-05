@@ -62,9 +62,9 @@ class BaseExchange(Exchange_Interface):
                             if not done:
                                 raise NotImplementedError
                         except: # message['price'] not in the order_book
-                            # pass
-                            print()#$
-                            raise NotImplementedError #TODO
+                            pass
+                            # print()#$
+                            # raise NotImplementedError #TODO
                     else: #right_tree.order_exists(message['order_id']) == True
                         self.order_book.cancel_order(
                             side = message['side'], 

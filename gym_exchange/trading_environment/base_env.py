@@ -1,23 +1,20 @@
 import numpy as np
+
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
-from gym_exchange.exchange.exchange import Exchange
+from gym_exchange.exchange.refined_exchange import Exchange
 
-from gym_exchange.trading_environment import Config
+from gym_exchange import Config
+
 from gym_exchange.trading_environment.assets.reward import RewardGenerator
-# from gym_exchange.trading_environment.action import Side
-# from gym_exchange.trading_environment.action import BaseAction
 from gym_exchange.trading_environment.assets.action import Action
 from gym_exchange.trading_environment.assets.action_wrapper import  OrderFlowGenerator
 
 from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
 
-from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
+# from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.env_interface import SpaceParams, EnvInterface
-from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
-
-# from gym_exchange.trading_environment.action import SimpleAction
-# from gym_exchange.trading_environment.action import BaseAction
+from gym_exchange.trading_environment.env_interface import State, Observation # types
 
 class BaseSpaceParams(SpaceParams):
     class Observation:
@@ -43,8 +40,7 @@ class BaseEnv(EnvInterface):
         return observation
     # ------------------------- 02.01 ------------------------
     def init_components(self):
-        self.vwap_estimaor = VwapEstimator()
-        # self.reward_generator = RewardGenerator(self) # Used for Reward
+        self.vwap_estimator = VwapEstimator()
         self.reward_generator = RewardGenerator() # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
@@ -61,7 +57,7 @@ class BaseEnv(EnvInterface):
         price_indexes, quantity_indexes = [2*i for i in range(Config.price_level)], [2*i +1 for i in range(Config.price_level)]
         asks = np.concatenate([asks[price_indexes],asks[quantity_indexes]]).reshape(-1,Config.price_level)
         bids = np.concatenate([bids[price_indexes],bids[quantity_indexes]]).reshape(-1,Config.price_level)
-        state = np.concatenate([asks, bids])
+        state = np.concatenate([asks, bids]) # fixed sequence: first ask, then bid 
         state = state.astype(np.int64)
         assert state.shape == (4, Config.price_level)
         return state
@@ -70,8 +66,25 @@ class BaseEnv(EnvInterface):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
+
+        # ···················· 03.00.03 ···················· 
+        observation, reward, done, info = self.observation(action), self.reward, self.done, self.info
+        self.accumulator()
+        return observation, reward, done, info
+    def accumulator(self):
+        self.num_left -= self.cur_action
+        self.cur_step += 1
+    # --------------------- 03.01 ---------------------
+    def observation(self, action): 
+        state = self.state(action)
+        return self.obs_from_state(state)
+    # ···················· 03.01.01 ···················· 
+    def obs_from_state(self, state: State) -> Observation:
+        """Sample observation for given state."""
+        return state
+    
+    def state(self, action: Action) -> State:
         # ···················· 03.00.01 ····················    
-        # self.prev_state = self.cur_state
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
         order_flows = self.order_flow_generator.step(action, price_list)# price list is used for PriceDelta, only one side is needed
         order_flow  = order_flows[0] # order_flows consists of order_flow, auto_cancel
@@ -81,24 +94,11 @@ class BaseEnv(EnvInterface):
         auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel) 
         # ···················· 03.00.03 ···················· 
-        observation, reward, done, info = self.observation, self.reward, self.done, self.info
-        self.accumulator()
-        return observation, reward, done, info
-    def accumulator(self):
-        self.num_left -= self.cur_action
-        self.cur_step += 1
-    # --------------------- 03.01 ---------------------
-    @property
-    def observation(self):
-        # self.prev_state = self.cur_state
-        
-        return self.obs_from_state(self.cur_state)
-    # ···················· 03.01.01 ···················· 
-    def obs_from_state(self, state: State) -> Observation:
-        """Sample observation for given state."""
+        state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
+        price, quantity = state[:,::2], state[:,1::2]
+        state = np.concatenate([price,quantity],axis = 1)
+        state = state.reshape(4, Config.price_level).astype(np.int64)
         return state
-    def state(self, action: Action) -> State:
-        action = action_wrapper(action)
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):

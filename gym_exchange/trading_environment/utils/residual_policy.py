@@ -1,5 +1,5 @@
 from fractions import Fraction
-from gym_exchange.trading_environment import Config
+from gym_exchange import Config
 
 
 class Twap():

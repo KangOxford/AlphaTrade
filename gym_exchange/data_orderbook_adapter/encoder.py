@@ -16,8 +16,6 @@ from gym_exchange.exchange.order_flow_list import FlowList
 class Encoder():
     def __init__(self, decoder):
         self.decoder = decoder
-        self.aggregate_data = False # by default
-        self.flow_list = FlowList()
     
     # -------------------------- 01 ----------------------------
     def initialize_order_flows(self):
@@ -34,9 +32,8 @@ class Encoder():
                 direction = Dict['side'],
                 trade_id= Dict['trade_id']
                 )
-                self.flow_list.append(order_flow)
-                if self.aggregate_data: order_flows = np.append(order_flows, order_flow()).reshape([-1, OrderFlow.length])
-        return order_flows
+                self.flow_list = np.append(order_flows, order_flow()).reshape([-1, OrderFlow.length])
+        return self.flow_list
     
     # -------------------------- 02 ----------------------------    
     def inside_signal_encoding(self, inside_signal):
@@ -82,50 +79,47 @@ class Encoder():
         else: order_flow = None # !not implemented yet
         return order_flow
     
-    def get_running_order_flows(self):
-        order_flows = np.array([])
+    def get_all_running_order_flows(self):
         for index in range(Configuration.horizon):
-            inside_signal, outside_signals = self.decoder.step()
-            inside_order_flow = self.inside_signal_encoding(inside_signal)
-            if inside_order_flow is not None:
-                self.flow_list.append(inside_order_flow)
-                if self.aggregate_data: order_flows = np.append(order_flows, inside_order_flow()).reshape([-1, OrderFlow.length])
-            # if index == 1614: breakpoint()#$
-            for signal in outside_signals:
-                if type(signal) is list: 
-                    for s in signal:
-                        outside_order_flow = self.outside_signal_encoding(s)
-                        if outside_order_flow is not None:
-                            self.flow_list.append(outside_order_flow)
-                            if self.aggregate_data: order_flows = np.append(order_flows, outside_order_flow()).reshape([-1, OrderFlow.length])
-                else:
-                    outside_order_flow = self.outside_signal_encoding(signal)
+            self.step(index)
+        return self.flow_list
+    
+    def step(self, index = None): # get_single_running_order_flows
+        inside_signal, outside_signals = self.decoder.step() # the decoder return single data in step()
+        inside_order_flow = self.inside_signal_encoding(inside_signal)
+        if inside_order_flow is not None:
+            self.flow_list = np.append(self.flow_list, inside_order_flow()).reshape([-1, OrderFlow.length])
+        for signal in outside_signals:
+            if type(signal) is list: 
+                for s in signal:
+                    outside_order_flow = self.outside_signal_encoding(s)
                     if outside_order_flow is not None:
-                        self.flow_list.append(outside_order_flow)
-                        if self.aggregate_data: order_flows = np.append(order_flows, outside_order_flow()).reshape([-1, OrderFlow.length])
-            if Debugger.Encoder.on:
+                        self.flow_list = np.append(self.flow_list, outside_order_flow()).reshape([-1, OrderFlow.length])
+            else:
+                outside_order_flow = self.outside_signal_encoding(signal)
+                if outside_order_flow is not None:
+                    self.flow_list = np.append(self.flow_list, outside_order_flow()).reshape([-1, OrderFlow.length])
+        if Debugger.Encoder.on:
+            try:
                 print("="*10+' '+str(index)+" "+"="*10)
                 print(">>> inside_signal");print(inside_signal)
                 print(">>> outside_signal")
                 for signal in outside_signals:
                     print(signal)
                 print("-"*23)
-                #     if signal['sign'] != 60:#$
-                #         breakpoint()#$
-                # print()#$
-        return order_flows
+            except: pass
+        
     
     # -------------------------- 03 ----------------------------
     def process(self):
-        self.aggregate_data = False
         self.initialize_order_flows()
-        self.get_running_order_flows()
+        self.get_all_running_order_flows()
         return self.flow_list
     def __call__(self):
-        self.aggregate_data = True
-        ofs  = self.initialize_order_flows()
-        ofs2 = self.get_running_order_flows()
-        Ofs = np.append(ofs, ofs2).reshape([-1, OrderFlow.length])
+        # ofs  = self.initialize_order_flows()
+        # ofs2 = self.get_all_running_order_flows()
+        # Ofs = np.append(ofs, ofs2).reshape([-1, OrderFlow.length])
+        Ofs = self.process()
         return Ofs
         
         

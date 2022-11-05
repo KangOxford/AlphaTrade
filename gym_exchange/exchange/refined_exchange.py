@@ -3,7 +3,7 @@
 # from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.base_exchange import BaseExchange
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
-from exchange.utils.auto_cancels import AutoCancels
+from gym_exchange.exchange.utils.auto_cancels import AutoCancels
 from gym_exchange.exchange.order_flow import OrderFlow
 # from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
@@ -19,11 +19,6 @@ class Exchange(BaseExchange):
         super().reset()
         self.auto_cancels = AutoCancels()
 
-    def update_task_list(self, action = None):# action : Action(for the definition of type)
-        super().update_task_list(action)
-        auto_cancels = self.auto_cancels.step(); auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
-        self.task_list += auto_cancels    
-            
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         super().step(action)
@@ -31,6 +26,11 @@ class Exchange(BaseExchange):
     
 
     # ···················· 03.02.01 ···················· 
+    def update_task_list(self, action = None):# action : Action(for the definition of type)
+        super().update_task_list(action)
+        auto_cancels = self.auto_cancels.step(); auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
+        self.task_list += auto_cancels    
+    # ···················· 03.02.02 ···················· 
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
         timestamp = latest_timestamp(self.order_book)
         return timestamp_increase(timestamp, order_flow) 
