@@ -40,10 +40,9 @@ class BaseExchange(Exchange_Interface):
                 elif item.type == 3:
                     print(f'>>> type3 activated')#$ 
                     print(item)
-                    my_order_id = message['order_id']
-                    my_side = message['side']
-                    right_tree = self.order_book.bids if my_side == 'bid' else self.order_book.asks
-                    if right_tree.order_exists(my_order_id) == False:
+                    done = False
+                    right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+                    if right_tree.order_exists(message['order_id']) == False:
                         right_price_list = right_tree.get_price_list(message['price']) # my_price
                         for order in right_price_list:
                             if 90000000 <= order.order_id and order.order_id < 100000000: # if my_order_id in initial_orderbook_ids
@@ -51,27 +50,26 @@ class BaseExchange(Exchange_Interface):
                                 cannot be the same with the message['order_id'].
                                 Solution: total delete the first (90000000) order in the orderlist
                                 at the price we want to totally delete.
+                                message['order_id'] not in the order_book.
+                                message['timestamp'] not in the order_book.
+                                Only tackle with single order. If found, break.
                                 Solution code: 31'''
                                 self.order_book.cancel_order(
                                     side = message['side'], 
-                                    order_id = message['order_id'],
-                                    time = message['timestamp'], 
                                     order_id = order.order_id,
                                     time = order.timestamp, 
                                 )
-                                    
-                            
-                    right_tree.order_map
-                    
-                    
-                    
-                    # if order_id in initial_orderbook_ids:
-                    #     pass
-                    
-                    
-                    print()
-                    
-                    pass #TODO, should be partly cancel
+                                cancelled_quantity = order.quantity
+                                done = True; break
+                        if not done:
+                            raise NotImplementedError
+                    else: #right_tree.order_exists(message['order_id']) == True
+                        self.order_book.cancel_order(
+                            side = message['side'], 
+                            order_id = order.order_id,
+                            time = order.timestamp, 
+                        )
+                        cancelled_quantity = order.quantity
         
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
