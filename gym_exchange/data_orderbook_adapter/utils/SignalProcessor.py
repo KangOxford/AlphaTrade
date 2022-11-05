@@ -85,7 +85,7 @@ class SignalProcessor:
                 print("The order book now is:");   print(self.order_book)
             
         elif signal['sign'] in ((2, ) + ()): # cancellation (partial deletion of a limit order)
-            self.order_book.bids.update_order(message) 
+            self.order_book.bids.update_order(message) # should be an error here #TODO
         elif signal['sign'] in (20, ): 
             self.order_book = partly_cancel(self.order_book, message['right_order_price'], message['wrong_order_price'], message['side'])
         elif signal['sign'] in ((3, ) + ()):# deletion (total deletion of a limit order)

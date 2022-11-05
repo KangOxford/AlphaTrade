@@ -25,8 +25,6 @@ class BaseExchange(Exchange_Interface):
         flow = next(self.flow_generator)#used for historical data
         self.task_list = [action, flow] 
         
-    # def 
-        
     def process_tasks(self): # para: self.task_list; return: self.order_book
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
             if item is not None:
