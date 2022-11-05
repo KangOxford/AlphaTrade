@@ -6,10 +6,9 @@ class ExecutedPairs():
         
     def step(self, trades, kind):
         if len(trades) == 0: pass
-        elif len(trades) == 1:
+        else: # len(trades) == 1 or 3
             batch = self.trades2pairs(trades)
             self.update(batch, kind)
-        else: raise NotImplementedError
         
     def trades2pairs(self, trades):
         pairs = [[trade['price'], trade['quantity']] for trade in trades]
