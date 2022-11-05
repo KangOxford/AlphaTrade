@@ -30,7 +30,10 @@ class BaseExchange(Exchange_Interface):
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
-                    self.executed_pairs.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
+                    if len(trades) != 0:
+                         breakpoint()#$
+                         self.executed_pairs.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
+                    # self.executed_pairs.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
                 elif item.type == 2:
                     tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
                     in_book_quantity = tree.get_order(message['order_id']).quantity
@@ -63,10 +66,10 @@ class BaseExchange(Exchange_Interface):
                     else: #right_tree.order_exists(message['order_id']) == True
                         self.order_book.cancel_order(
                             side = message['side'], 
-                            order_id = order.order_id,
-                            time = order.timestamp, 
+                            order_id = message['order_id'],
+                            time = message['timestamp'], 
                         )
-                        self.cancelled_quantity = order.quantity
+                        self.cancelled_quantity =  message['quantity']
         
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
