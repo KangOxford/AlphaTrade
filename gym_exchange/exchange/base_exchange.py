@@ -3,7 +3,6 @@
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
-# from exchange.utils.deletion_handler import PartDeletion, TotalDeletion
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
@@ -19,12 +18,6 @@ class BaseExchange(Exchange_Interface):
         super().reset()
         self.executed_pairs = ExecutedPairs()
         
-    
-    def update_task_list(self, action = None):# action : Action(for the definition of type)
-        # flow = next(self.flow_generator)#used for historical data
-        # self.task_list = [action, flow] 
-        flow_list = next(self.flow_generator)#used for historical data
-        self.task_list = [action] + [flow for flow in flow_list]
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
@@ -75,13 +68,6 @@ class BaseExchange(Exchange_Interface):
                         )
                         self.cancelled_quantity =  message['quantity']
         
-    # -------------------------- 03.02 ----------------------------
-    def step(self, action = None): # action : Action(for the definition of type)
-        self.update_task_list(action)
-        self.process_tasks()
-        super().accumulating()
-        return self.order_book
-
     
 if __name__ == "__main__":
     exchange = BaseExchange()

@@ -29,26 +29,32 @@ class Exchange_Interface(abc.ABC):
         return flow_lists
     
     # -------------------------- 02.02 ----------------------------
+    def initialize_orderbook(self):
+        flow_list = next(self.flow_generator)
+        for flow in flow_list:
+            self.order_book.process_order(flow.to_message, True, False)
+        self.index += 1
+        
     def reset(self):
         self.order_book = OrderBook()
-        self.flow_generator = self.generate_flow()
+        self.flow_generator = (flow for flow in self.flow_list)
         self.initialize_orderbook()
         
-    def initialize_orderbook(self):
-        for _ in range(2*Configuration.price_level):
-            flow_list = next(self.flow_generator)
-            for flow in flow_list:
-                self.order_book.process_order(flow.to_message, True, False)
-            self.index += 1
-            
-    def generate_flow(self):
-        for flow in self.flow_list: yield flow
+    # -------------------------- 02.03 ----------------------------
+    def update_task_list(self, action = None):# action : Action(for the definition of type)
+        flow_list = next(self.flow_generator)#used for historical data
+        self.task_list = [action] + [flow for flow in flow_list]
+    
+    @abstractclassmethod
+    def process_tasks(self):
+        pass
         
     def accumulating(self):
         self.index += 1
 
-    # -------------------------- 02.03 ----------------------------
-    @abstractclassmethod
-    def step(self):
-        pass
+    def step(self, action = None): # action : Action(for the definition of type)
+        self.update_task_list(action)
+        self.process_tasks()
+        self.accumulating()
+        return self.order_book
 
