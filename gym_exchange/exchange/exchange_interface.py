@@ -14,17 +14,18 @@ class Exchange_Interface(abc.ABC):
         self.encoder, self.flow_list = self.initialization()
 
     def initialization(self):
-        decoder  = Decoder(**DataPipeline()())
-        encoder  = Encoder(decoder)
-        flow_list= encoder.process()
-        flow_list= self.to_order_flow_list(flow_list)
-        return encoder, flow_list
+        decoder   = Decoder(**DataPipeline()())
+        encoder   = Encoder(decoder)
+        flow_lists= encoder()
+        flow_lists= self.to_order_flow_lists(flow_lists)
+        return encoder, flow_lists
     
-    def to_order_flow_list(self, flow_list):
-        for item in flow_list:
-            side = -1 if item.side == 'ask' else 1
-            item.side = side
-        return flow_list
+    def to_order_flow_lists(self, flow_lists):
+        for flow_list in flow_lists:
+            for item in flow_list:
+                side = -1 if item.side == 'ask' else 1
+                item.side = side
+        return flow_lists
     
 
     def reset(self):
@@ -34,8 +35,9 @@ class Exchange_Interface(abc.ABC):
         
     def initialize_orderbook(self):
         for _ in range(2*Configuration.price_level):
-            flow = next(self.flow_generator)
-            self.order_book.process_order(flow.to_message, True, False)
+            flow_list = next(self.flow_generator)
+            for flow in flow_list:
+                self.order_book.process_order(flow.to_message, True, False)
             self.index += 1
             
     def generate_flow(self):

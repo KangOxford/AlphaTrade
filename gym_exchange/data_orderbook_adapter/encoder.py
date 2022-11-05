@@ -16,10 +16,11 @@ from gym_exchange.exchange.order_flow_list import FlowList
 class Encoder():
     def __init__(self, decoder):
         self.decoder = decoder
+        self.flow_lists = [] # [flow_list, flow_list, ... ], for each step we get a flow_list
     
     # -------------------------- 01 ----------------------------
     def initialize_order_flows(self):
-        self.flow_list = FlowList()
+        flow_list = FlowList()
         for side in ['bid','ask']:
             List = self.decoder.initiaze_orderbook_message(side)
             for Dict in List:
@@ -32,8 +33,9 @@ class Encoder():
                 direction = Dict['side'],
                 trade_id= Dict['trade_id']
                 )
-                self.flow_list.append(order_flow)
-        return self.flow_list
+                flow_list.append(order_flow)
+                self.flow_lists.append(flow_list)
+        return self.flow_lists
     
     # -------------------------- 02 ----------------------------    
     def inside_signal_encoding(self, inside_signal):
@@ -82,28 +84,27 @@ class Encoder():
     def get_all_running_order_flows(self):
         for index in range(Configuration.horizon):
             _ = self.step(index)
-        return self.flow_list
+        return self.flow_lists
     
     def step(self, index = None): # get_single_running_order_flows
         inside_signal, outside_signals = self.decoder.step() # the decoder return single data in step()
         inside_order_flow = self.inside_signal_encoding(inside_signal)
         # ···················· 02.01 ···················· 
-        flows = []
+        flow_list = FlowList()
         if inside_order_flow is not None:
-            flows.append(inside_order_flow)
+            flow_list.append(inside_order_flow)
         for signal in outside_signals:
             if type(signal) is list: 
                 for s in signal:
                     outside_order_flow = self.outside_signal_encoding(s)
                     if outside_order_flow is not None:
-                        flows.append(outside_order_flow)
+                        flow_list.append(outside_order_flow)
             else:
                 outside_order_flow = self.outside_signal_encoding(signal)
                 if outside_order_flow is not None:
-                    flows.append(outside_order_flow)
-        # ···················· 02.02 ····················             
-        for flow in flows:
-            self.flow_list.append(flow)
+                    flow_list.append(outside_order_flow)
+        # ···················· 02.02 ···················· 
+        self.flow_lists.append(flow_list)
         # ···················· 02.03 ···················· 
         if Debugger.Encoder.on:
             try:
@@ -112,17 +113,14 @@ class Encoder():
                 print(">>> outside_signal");[print(signal) for signal in outside_signals]
                 print("-"*23)
             except: pass
-        return flows
+        return flow_list
         
     
     # -------------------------- 03 ----------------------------
-    def process(self):
+    def __call__(self):
         self.initialize_order_flows()
         self.get_all_running_order_flows()
-        return self.flow_list
-    def __call__(self):
-        Ofs = self.process()
-        return Ofs
+        return self.flow_lists
         
         
 
