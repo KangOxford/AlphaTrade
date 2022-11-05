@@ -86,7 +86,7 @@ class BaseExchange(Exchange_Interface):
 if __name__ == "__main__":
     exchange = BaseExchange()
     exchange.reset()
-    for _ in range(1000):
+    for _ in range(2048):
         exchange.step()
         
 
