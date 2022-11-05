@@ -5,10 +5,11 @@ class ExecutedPairs():
         self.agent_pairs  = []
         
     def step(self, trades, kind):
-        if len(trades) != 0:
+        if len(trades) == 0: pass
+        elif len(trades) == 1:
             batch = self.trades2pairs(trades)
             self.update(batch, kind)
-        else: pass
+        else: raise NotImplementedError
         
     def trades2pairs(self, trades):
         pairs = [[trade['price'], trade['quantity']] for trade in trades]
