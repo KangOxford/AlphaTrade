@@ -40,6 +40,7 @@ class Exchange_Interface(abc.ABC):
         self.flow_generator = (flow for flow in self.flow_list)
         self.initialize_orderbook()
         
+        
     # -------------------------- 02.03 ----------------------------
     def update_task_list(self, action = None):# action : Action(for the definition of type)
         flow_list = next(self.flow_generator)#used for historical data

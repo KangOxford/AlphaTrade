@@ -1,5 +1,6 @@
 # ========================= 01 =========================
 # import numpy as np
+from gym_exchange.data_orderbook_adapter.utils import is_right_answer
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
@@ -17,6 +18,15 @@ class BaseExchange(Exchange_Interface):
     def reset(self):
         super().reset()
         self.executed_pairs = ExecutedPairs()
+        if Debugger.BaseExchange.on == True:
+            from gym_exchange import Config
+            from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
+            _,_,historical_data,_ = DataPipeline()()
+            column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
+            column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
+            bid_sid_historical_data = historical_data.iloc[:,column_numbers_bid]
+            ask_sid_historical_data = historical_data.iloc[:,column_numbers_ask]
+            self.d2 = bid_sid_historical_data; self.l2 = ask_sid_historical_data
         
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
@@ -67,6 +77,14 @@ class BaseExchange(Exchange_Interface):
                             time = message['timestamp'], 
                         )
                         self.cancelled_quantity =  message['quantity']
+                        
+    def step(self, action = None): # action : Action(for the definition of type)
+        self.order_book = super().step(action)
+        if action == None and Debugger.BaseExchange.on == True:
+            for side in ['bid', 'ask']:
+                history_data = self.d2 if side == 'bid' else self.l2
+                assert is_right_answer(self.order_book, self.index, history_data, side)
+        return self.order_book 
         
     
 if __name__ == "__main__":
