@@ -116,9 +116,6 @@ class Encoder():
         self.get_all_running_order_flows()
         return self.flow_list
     def __call__(self):
-        # ofs  = self.initialize_order_flows()
-        # ofs2 = self.get_all_running_order_flows()
-        # Ofs = np.append(ofs, ofs2).reshape([-1, OrderFlow.length])
         Ofs = self.process()
         return Ofs
         
