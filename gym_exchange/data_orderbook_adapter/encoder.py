@@ -19,7 +19,7 @@ class Encoder():
     
     # -------------------------- 01 ----------------------------
     def initialize_order_flows(self):
-        self.flow_list = np.array([])
+        self.flow_list = FlowList()
         for side in ['bid','ask']:
             List = self.decoder.initiaze_orderbook_message(side)
             for Dict in List:
@@ -32,7 +32,7 @@ class Encoder():
                 direction = Dict['side'],
                 trade_id= Dict['trade_id']
                 )
-                self.flow_list = np.append(self.flow_list, order_flow()).reshape([-1, OrderFlow.length])
+                self.flow_list.append(order_flow)
         return self.flow_list
     
     # -------------------------- 02 ----------------------------    
@@ -90,20 +90,20 @@ class Encoder():
         # ···················· 02.01 ···················· 
         flows = []
         if inside_order_flow is not None:
-            flows.append(inside_order_flow())
+            flows.append(inside_order_flow)
         for signal in outside_signals:
             if type(signal) is list: 
                 for s in signal:
                     outside_order_flow = self.outside_signal_encoding(s)
                     if outside_order_flow is not None:
-                        flows.append(outside_order_flow())
+                        flows.append(outside_order_flow)
             else:
                 outside_order_flow = self.outside_signal_encoding(signal)
                 if outside_order_flow is not None:
-                    flows.append(outside_order_flow())
+                    flows.append(outside_order_flow)
         # ···················· 02.02 ····················             
         for flow in flows:
-            self.flow_list = np.append(self.flow_list, flow).reshape([-1, OrderFlow.length])
+            self.flow_list.append(flow)
         # ···················· 02.03 ···················· 
         if Debugger.Encoder.on:
             try:
@@ -131,5 +131,5 @@ if __name__ == "__main__":
     encoder = Encoder(decoder)
     Ofs     = encoder()
     
-    import pandas as pd
-    pd.DataFrame(Ofs).to_csv("Ofs.csv", header=None, index=None)
+    # import pandas as pd
+    # pd.DataFrame(Ofs).to_csv("Ofs.csv", header=None, index=None)
