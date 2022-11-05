@@ -38,8 +38,6 @@ class BaseExchange(Exchange_Interface):
                     print(f'>>> type2 activated')#$ 
                     pass #TODO, not implemented!!
                 elif item.type == 3:
-                    print(f'>>> type3 activated')#$ 
-                    print(item)
                     done = False
                     right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
                     if right_tree.order_exists(message['order_id']) == False:
