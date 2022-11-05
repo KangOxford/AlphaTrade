@@ -12,7 +12,8 @@ class Exchange_Interface(abc.ABC):
     def __init__(self):
         self.index = 0
         self.encoder, self.flow_list = self.initialization()
-
+    
+    # -------------------------- 02.01 ----------------------------
     def initialization(self):
         decoder   = Decoder(**DataPipeline()())
         encoder   = Encoder(decoder)
@@ -27,7 +28,7 @@ class Exchange_Interface(abc.ABC):
                 item.side = side
         return flow_lists
     
-
+    # -------------------------- 02.02 ----------------------------
     def reset(self):
         self.order_book = OrderBook()
         self.flow_generator = self.generate_flow()
@@ -43,9 +44,11 @@ class Exchange_Interface(abc.ABC):
     def generate_flow(self):
         for flow in self.flow_list: yield flow
         
+    def accumulating(self):
+        self.index += 1
+
+    # -------------------------- 02.03 ----------------------------
     @abstractclassmethod
     def step(self):
         pass
 
-    def accumulating(self):
-        self.index += 1

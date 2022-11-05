@@ -21,7 +21,7 @@ class Encoder():
     # -------------------------- 01 ----------------------------
     def initialize_order_flows(self):
         flow_list = FlowList()
-        for side in ['bid','ask']:
+        for side in ['ask','bid']:
             List = self.decoder.initiaze_orderbook_message(side)
             for Dict in List:
                 order_flow = OrderFlow(
@@ -34,7 +34,7 @@ class Encoder():
                 trade_id= Dict['trade_id']
                 )
                 flow_list.append(order_flow)
-                self.flow_lists.append(flow_list)
+        self.flow_lists.append(flow_list)
         return self.flow_lists
     
     # -------------------------- 02 ----------------------------    
@@ -131,3 +131,8 @@ if __name__ == "__main__":
     
     # import pandas as pd
     # pd.DataFrame(Ofs).to_csv("Ofs.csv", header=None, index=None)
+
+    # count = 0
+    # for of in Ofs:
+    #     if of.length != 0:
+    #         count += 1
