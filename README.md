@@ -13,6 +13,10 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.21 30.Oct~06.Nov`
+
+* Guided strategies based on predicted signals
+   * cancellation of the best bid/ask on price moving [Enhancing Trading Strategies with Order Book Signals](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwjhnNX2gZv7AhWiQUEAHV1nChAQFnoECBwQAQ&url=https%3A%2F%2Fora.ox.ac.uk%2Fobjects%2Fuuid%3A006addde-3a03-4d75-89c1-04b59026e1c0%2Ffiles%2Fme4008e0ecca779b45d59231ebca3e69c&usg=AOvVaw0NwsI0vsUMJ5DcuLFY7yg8)
 
 ## `Week.20 01.Oct~21.Oct`
 
