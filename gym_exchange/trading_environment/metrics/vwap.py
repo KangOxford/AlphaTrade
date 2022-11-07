@@ -14,15 +14,26 @@ class Vwap(abc.ABC):
     
     @property
     def market_vwap(self):
-        return self.vwap_price(self.market_pairs)
+        self._market_vwap = self.vwap_price(self.market_pairs)
+        return self._market_vwap
     
     @property
     def agent_vwap(self):
-        return self.vwap_price(self.agent_pairs)
+        self._agent_vwap = self.vwap_price(self.agent_pairs)
+        return self._agent_vwap
+    
+    @market_vwap.setter
+    def market_vwap(self, value):
+        pass
+        
+    @agent_vwap.setter
+    def agent_vwap(self, value):
+        pass
     
     @property
     def vwap_slippage(self):
-        return self.market_vwap - self.agent_vwap
+        self._vwap_slippage = self.market_vwap - self.agent_vwap
+        return self._vwap_slippage
     
     @abc.abstractmethod
     def update(self,executed_pairs):
@@ -43,10 +54,20 @@ class StepVwap(Vwap):
     
     def update(self, executed_pairs):
         if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
-            print()
+            if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
+            if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
+            print()# % check self.market_vwap 
         else:
             self.market_pairs = executed_pairs.market_pairs[-1]
             self.agent_pairs  = executed_pairs.agent_pairs[-1]
+            
+    @market_vwap.setter
+    def market_vwap(self, value):
+        self._market_vwap = value
+        
+    @agent_vwap.setter
+    def agent_vwap(self, value):
+        self._agent_vwap = value
     
     @property
     def info_dict(self):

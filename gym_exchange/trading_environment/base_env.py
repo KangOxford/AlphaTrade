@@ -93,7 +93,8 @@ class BaseEnv(EnvInterface):
         # ···················· 03.00.02 ···················· 
         auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel) 
-        # ···················· 03.00.03 ···················· 
+        # ···················· 03.00.03 ····················
+        print(self.exchange.index)#$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
