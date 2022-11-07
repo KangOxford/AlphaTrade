@@ -22,13 +22,13 @@ class Vwap(abc.ABC):
         self._agent_vwap = self.vwap_price(self.agent_pairs)
         return self._agent_vwap
     
-    @market_vwap.setter
-    def market_vwap(self, value):
-        pass
+    # @market_vwap.setter
+    # def market_vwap(self, value):
+    #     pass
         
-    @agent_vwap.setter
-    def agent_vwap(self, value):
-        pass
+    # @agent_vwap.setter
+    # def agent_vwap(self, value):
+    #     pass
     
     @property
     def vwap_slippage(self):
