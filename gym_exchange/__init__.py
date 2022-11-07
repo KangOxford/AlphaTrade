@@ -43,6 +43,10 @@ class Config:
     
     price_trend_window = 10
     timeout = 10
+    
+    class Adapter:
+        type5_id_bid = 30000000  # caution about the volumn for valid numbers
+        type5_id_ask = 40000000  # caution about the volumn for valid numbers
 
 register(
     id = "GymExchange-v1",

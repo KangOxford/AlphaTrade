@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-from gym_exchange.data_orderbook_adapter import Configuration 
+# from gym_exchange.data_orderbook_adapter import Configuration 
+from gym_exchange import Config
 class DataPipeline:
     def __init__(self):
+        
         self.historical_data = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
         # column_numbers_ask = [i for i in range(Configuration.price_level * 4) if i%4==0 or i%4==1]
         # l2 = historical_data.iloc[0,:].iloc[column_numbers_ask].reset_index().drop(['index'],axis = 1)
