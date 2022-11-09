@@ -22,6 +22,10 @@ class ExecutedPairs():
         elif kind=="agent" : self.agent_pairs.append(pairs)
         else: raise NotImplementedError
         
+    def __str__(self):
+        fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'
+        return fstring
+        
         
 """ trades format
 transaction_record = {

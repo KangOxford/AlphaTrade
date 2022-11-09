@@ -17,11 +17,13 @@ class Exchange(BaseExchange):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
+        self.mid_prices = []
         self.auto_cancels = AutoCancels()
 
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         super().step(action)
+        self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
         return self.order_book
     
 

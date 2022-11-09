@@ -1,25 +1,18 @@
 # ========================== 01 ==========================
 import abc
+from gym_exchange.trading_environment.utils import vwap_price
 class Vwap(abc.ABC):
     def __init__(self):
         pass
-    
-    def vwap_price(self, pairs):
-        ''' pairs format
-        price:    array([[ 1. ,  1. ,  1. ,  1.1,  0.9],
-        quantity:        [ 2. , 23. ,  3. , 21. ,  3. ]])
-        '''
-        vwap_price = (pairs[0]*pairs[1]).sum()/pairs[1].sum()
-        return vwap_price
-    
+
     @property
     def market_vwap(self):
-        self._market_vwap = self.vwap_price(self.market_pairs)
+        self._market_vwap = vwap_price(self.market_pairs)
         return self._market_vwap
     
     @property
     def agent_vwap(self):
-        self._agent_vwap = self.vwap_price(self.agent_pairs)
+        self._agent_vwap = vwap_price(self.agent_pairs)
         return self._agent_vwap
     
     @market_vwap.setter

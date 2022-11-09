@@ -41,7 +41,7 @@ class BaseEnv(EnvInterface):
     # ------------------------- 02.01 ------------------------
     def init_components(self):
         self.vwap_estimator = VwapEstimator()
-        self.reward_generator = RewardGenerator() # Used for Reward
+        self.reward_generator = RewardGenerator(p_0 = ?) # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
     def initial_state(self) -> State:
@@ -94,7 +94,7 @@ class BaseEnv(EnvInterface):
         auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel) 
         # ···················· 03.00.03 ····················
-        print(self.exchange.index)#$
+        print(f"self.exchange.index: {self.exchange.index}")#$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
@@ -103,6 +103,7 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
+        self.reward_generator.update(self.exchange.executed_pairs, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
         return reward
     # --------------------- 03.03  ---------------------
