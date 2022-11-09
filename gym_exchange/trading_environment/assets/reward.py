@@ -1,9 +1,9 @@
 class RewardGenerator():
-    def __init__(self):
+    def __init__(self, lambda_ = 0.5):
         self.lambda_ = lambda_
+        
+    def update(self, excuted):
         self.excuted = excuted
-    
-    def update(self,):
         signals = {
             "p_0" : p_0,
             "p_market" : p_market,

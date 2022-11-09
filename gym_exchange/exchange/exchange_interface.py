@@ -17,7 +17,7 @@ class Exchange_Interface(abc.ABC):
     def initialization(self):
         decoder   = Decoder(**DataPipeline()())
         encoder   = Encoder(decoder)
-        flow_lists= encoder()
+        flow_lists= encoder() 
         flow_lists= self.to_order_flow_lists(flow_lists)
         return encoder, flow_lists
     

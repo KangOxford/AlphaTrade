@@ -1,0 +1,6 @@
+numppy
+pandas
+gym
+
+
+
