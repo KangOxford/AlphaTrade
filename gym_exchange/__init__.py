@@ -1,6 +1,7 @@
 from gym.envs.registration import register
 
-class Basic:
+class Config:
+    # --------------- 01 Basic ---------------
     tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
@@ -18,21 +19,22 @@ class Basic:
     
     time_window_size = 1
     
-class Reward:
+    # --------------- 02 Reward ---------------
     low_dimension_penalty_parameter = 1 # todo not sure
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     phi_prime = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
-class Task:
-    max_horizon = int(Basic.max_episode_ticks / Basic.skip) # caution, need to be integer
+    
+    # --------------- 03 Task ---------------
+    max_horizon = int(max_episode_ticks / skip) # caution, need to be integer
     num2liquidate = 2000 # 10 min
     # num2liquidate = 200 # 1 min
     # num2liquidate = 100 # 1/2 min
     
-class Action:
+    # --------------- 04 Action ---------------
     timeout = 10
 
-class Space:
+    # --------------- 05 Space ---------------
     max_action = 300
     max_quantity = 3000 # TODO is it the same function with max_action?
     max_price = 35000000 # upper bound
@@ -40,37 +42,24 @@ class Space:
     min_quantity = 0
     scaling = 30000000
     min_num_left = 0
-    max_num_left = Task.num2liquidate
+    max_num_left = num2liquidate
     min_step_left= 0
-    max_step_left = Basic.max_episode_ticks
+    max_step_left = max_episode_ticks
     state_dim_1 = 2
     state_dim_2 = 10 
     # state_dim_2 = 12 # used to be 10
-    state_dim_3 = Basic.time_window_size
+    state_dim_3 = time_window_size
 
-class Observation:
+    # --------------- 06 Observation ---------------
     num_tick = 1200 # 1min
 
-class Adapter:
+    # --------------- 07 Adapter ---------------
     raw_price_level = 10
     raw_horizon = 2048
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
 
-class Config:
-    Basic = Basic()
-    Reward = Reward()
-    Task = Task()
-    Action = Action()
-    Space = Space()
-    Observation = Observation()
-    Adapter = Adapter()
-    
-    # test_seed = 2022
-    # pretrain_steps = int(1e3)
-    # runing_penalty_parameter = 100
-    
-    # price_trend_window = 10
+
     
 
 

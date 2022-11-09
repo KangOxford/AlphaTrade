@@ -22,13 +22,13 @@ class Vwap(abc.ABC):
         self._agent_vwap = self.vwap_price(self.agent_pairs)
         return self._agent_vwap
     
-    # @market_vwap.setter
-    # def market_vwap(self, value):
-    #     pass
+    @market_vwap.setter
+    def market_vwap(self, value):
+        pass
         
-    # @agent_vwap.setter
-    # def agent_vwap(self, value):
-    #     pass
+    @agent_vwap.setter
+    def agent_vwap(self, value):
+        pass
     
     @property
     def vwap_slippage(self):
@@ -61,11 +61,11 @@ class StepVwap(Vwap):
             self.market_pairs = executed_pairs.market_pairs[-1]
             self.agent_pairs  = executed_pairs.agent_pairs[-1]
             
-    @market_vwap.setter
+    @Vwap.market_vwap.setter
     def market_vwap(self, value):
         self._market_vwap = value
         
-    @agent_vwap.setter
+    @Vwap.agent_vwap.setter
     def agent_vwap(self, value):
         self._agent_vwap = value
     

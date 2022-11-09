@@ -4,7 +4,7 @@ from gym_exchange import Config
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.trading_environment.assets.action import PriceDelta
 from gym_exchange.trading_environment.env_interface import SpaceParams
-from trading_environment.baselines.residual_policy import ResidualPolicy_Factory
+from gym_exchange.trading_environment.baselines.residual_policy import ResidualPolicy_Factory
 
 
 def singleton(cls):
