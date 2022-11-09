@@ -13,6 +13,10 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 
 <H1> Part III, Improving Learning</H1>
 
+## `Week.22 07.Nov~12.Nov`
+
+* Action designing: A distribution of volume in different price levels
+
 ## `Week.21 30.Oct~06.Nov`
 
 * Guided strategies based on predicted signals
