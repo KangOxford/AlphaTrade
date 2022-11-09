@@ -33,8 +33,12 @@ class Config:
     
     # --------------- 04 Action ---------------
     timeout = 10
+    
+    # --------------- 05 ActionWrapper --------
+    trade_id_generator = 80000000
+    order_id_generator = 88000000
 
-    # --------------- 05 Space ---------------
+    # --------------- 06 Space ---------------
     max_action = 300
     max_quantity = 3000 # TODO is it the same function with max_action?
     max_price = 35000000 # upper bound
@@ -50,10 +54,10 @@ class Config:
     # state_dim_2 = 12 # used to be 10
     state_dim_3 = time_window_size
 
-    # --------------- 06 Observation ---------------
+    # --------------- 07 Observation ---------------
     num_tick = 1200 # 1min
 
-    # --------------- 07 Adapter ---------------
+    # --------------- 08 Adapter ---------------
     raw_price_level = 10
     raw_horizon = 2048
     type5_id_bid = 30000000  # caution about the volumn for valid numbers

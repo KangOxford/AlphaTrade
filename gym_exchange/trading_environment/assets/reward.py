@@ -1,21 +1,3 @@
-class RewardGenerator():
-    def __init__(self, lambda_ = 0.5):
-        self.lambda_ = lambda_
-        
-    def update(self, excuted):
-        self.excuted = excuted
-        signals = {
-            "p_0" : p_0,
-            "p_market" : p_market,
-            "lambda_" : lambda_,
-        }
-        self.reward_functional = RewardFunctional(**signals)
-        
-    def step(self):
-        reward = self.reward_functional()
-        return reward
-        
-    
     
 class RewardFunctional():
     '''functional'''
@@ -41,3 +23,23 @@ class RewardFunctional():
     def __call__(self):
         reward = advantage + self.lambda_ * drift
         return reward
+
+class RewardGenerator():
+    def __init__(self, lambda_ = 0.5):
+        self.lambda_ = lambda_
+        
+    def update(self, excuted):
+        self.excuted = excuted
+        signals = {
+            "p_0" : p_0,
+            "p_market" : p_market,
+            "lambda_" : lambda_,
+        }
+        self.reward_functional = RewardFunctional(**signals)
+        
+    def step(self):
+        reward = self.reward_functional()
+        return reward
+        
+if __name__ == "__main__":
+    pass

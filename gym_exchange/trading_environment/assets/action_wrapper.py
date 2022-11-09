@@ -28,14 +28,14 @@ class IdGenerator():
 @singleton    
 class TradeIdGenerator(IdGenerator):
     def __init__(self):
-        super().__init__(initial_number = 80000000)
+        super().__init__(initial_number = Config.trade_id_generator)
         '''type(TradeIdGenerator) : function
         '''    
         
 @singleton          
 class OrderIdGenerator(IdGenerator):
     def __init__(self):
-        super().__init__(initial_number = 88000000)
+        super().__init__(initial_number = Config.order_id_generator)
         
 # ========================== 05 ==========================
 
