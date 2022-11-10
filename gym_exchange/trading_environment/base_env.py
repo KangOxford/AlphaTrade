@@ -41,7 +41,7 @@ class BaseEnv(EnvInterface):
     # ------------------------- 02.01 ------------------------
     def init_components(self):
         self.vwap_estimator = VwapEstimator()
-        self.reward_generator = RewardGenerator(p_0 = ?) # Used for Reward
+        self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
     def initial_state(self) -> State:
@@ -103,7 +103,7 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        self.reward_generator.update(self.exchange.executed_pairs, self.exchange.mid_prices[-1])
+        self.reward_generator.update(self.exchange.last_market_agent_executed_pairs, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
         return reward
     # --------------------- 03.03  ---------------------

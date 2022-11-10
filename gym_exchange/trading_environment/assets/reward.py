@@ -38,25 +38,29 @@ class RewardGenerator():
         self.p_0 = p_0
         self.lambda_ = lambda_
         
-    def update(self, executed_pairs, mid_price):
-        def get_p_market(executed_pairs, mid_price):
-            if len(executed_pairs.market_pairs) == 0:
+    def update(self, executed_pairs_bigram, mid_price):
+        def get_p_market(executed_pairs_bigram, mid_price):
+            if len(executed_pairs_bigram['market_pairs']) == 0:
                 p_market = 0 # TODO 
             else:
-                p_market = vwap_price(executed_pairs.market_pairs)
+                p_market = vwap_price(executed_pairs_bigram['market_pairs'])
             return p_market
-        p_market = get_p_market(executed_pairs, mid_price)
-        signals = {
-            "p_0" : self.p_0,
-            "p_market" : p_market,
-            "lambda_" : self.lambda_,
-            "agent_pairs":executed_pairs.agent_pairs
-        }
-        self.reward_functional = RewardFunctional(**signals)
+        p_market = get_p_market(executed_pairs_bigram, mid_price)
+        if len(executed_pairs_bigram['agent_pairs']) != 0: 
+            signals = {
+                "p_0" : self.p_0,
+                "p_market" : p_market,
+                "lambda_" : self.lambda_,
+                "agent_pairs":executed_pairs_bigram['agent_pairs']
+            }
+            self.reward_functional = RewardFunctional(**signals)
+        else: self.reward_functional = -1
+            
         
     def step(self):
-        reward = self.reward_functional()
-        return reward
+        if self.reward_functional == -1 : reward = 0 # TODO:check if the executed_pairs is all the pairs recorded or only from one step
+        else:   reward = self.reward_functional()
+        return  reward
         
 if __name__ == "__main__":
     pass

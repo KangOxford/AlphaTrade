@@ -4,7 +4,7 @@ from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
-from gym_exchange.exchange.utils.executed_pairs import ExecutedPairs
+from gym_exchange.exchange.utils.executed_pairs import ExecutedPairsRecorder
 from gym_exchange.exchange.order_flow import OrderFlow
 from gym_exchange.data_orderbook_adapter import utils
 
@@ -17,7 +17,7 @@ class BaseExchange(Exchange_Interface):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
-        self.executed_pairs = ExecutedPairs()
+        self.executed_pairs_recoder = ExecutedPairsRecorder()
         if Debugger.BaseExchange.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
@@ -35,7 +35,7 @@ class BaseExchange(Exchange_Interface):
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
-                    self.executed_pairs.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
+                    self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
                 elif item.type == 2:
                     tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
                     in_book_quantity = tree.get_order(message['order_id']).quantity

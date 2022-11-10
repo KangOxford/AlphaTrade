@@ -17,7 +17,7 @@ class Exchange(BaseExchange):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
-        self.mid_prices = []
+        self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2]
         self.auto_cancels = AutoCancels()
 
     # -------------------------- 03.02 ----------------------------
