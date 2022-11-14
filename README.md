@@ -16,6 +16,7 @@ Advised by Prof. Jakob Foerster and Prof. Ben Hambly.
 ## `Week.22 07.Nov~12.Nov`
 
 * Action designing: A distribution of volume in different price levels
+* [Weekly Report](https://www.overleaf.com/read/zwfrsswysmtb) [pdf](https://github.com/KangOxford/NeuralLOB/blob/main/docs/Weekly%20Report.pdf)
 
 ## `Week.21 30.Oct~06.Nov`
 
