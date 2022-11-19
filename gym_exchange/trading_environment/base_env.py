@@ -103,7 +103,7 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        self.reward_generator.update(self.exchange.last_market_agent_executed_pairs, self.exchange.mid_prices[-1])
+        self.reward_generator.update(self.exchange.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
         return reward
     # --------------------- 03.03  ---------------------
