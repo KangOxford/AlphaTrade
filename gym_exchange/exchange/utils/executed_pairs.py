@@ -14,8 +14,8 @@ class ExecutedPairsRecorder():
         return formatted_pairs 
     
     def update(self, pairs, kind):
-        if kind == "market": self.market_pairs_list.append(pairs)
-        elif kind=="agent" : self.agent_pairs_list.append(pairs)
+        if kind == "market": self.market_pairs_list.append((self.index, pairs))
+        elif kind=="agent" : self.agent_pairs_list.append((self.index, pairs))
         else: raise NotImplementedError
 
     def step(self, trades, kind):
@@ -24,10 +24,6 @@ class ExecutedPairsRecorder():
         else: # len(trades) == 1 or 3
             batch = self.trades2pairs(trades)
             self.update(batch, kind)
-            # self.last_market_agent_executed_pairs = {
-            #         "market_pairs":self.market_pairs_list[-1],
-            #         "agent_pairs" :self.agent_pairs_list[-1]
-            #     }
         self.index += 1
         
     def __str__(self):
