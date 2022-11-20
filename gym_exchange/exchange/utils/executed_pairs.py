@@ -2,11 +2,10 @@ import numpy as np
 class ExecutedPairsRecorder():
     def __init__(self):
         self.index = 0
-        self.market_pairs_dict = {}
-        self.agent_pairs_dict  = {}
+        self.market_pairs = {}
+        self.agent_pairs  = {}
         
-        
-        
+
     def trades2pairs(self, trades):
         pairs = [[trade['price'], trade['quantity']] for trade in trades]
         formatted_pairs = np.array(pairs).T
@@ -15,8 +14,8 @@ class ExecutedPairsRecorder():
         return formatted_pairs 
     
     def update(self, pairs, kind):
-        if kind == "market": self.market_pairs_dict[self.index] =  pairs
-        elif kind=="agent" : self.agent_pairs_dict[self.index] =  pairs
+        if kind == "market": self.market_pairs[self.index] =  pairs
+        elif kind=="agent" : self.agent_pairs[self.index] =  pairs
         else: raise NotImplementedError
 
     def step(self, trades, kind, index):
@@ -31,8 +30,8 @@ class ExecutedPairsRecorder():
         try:
             self.market_agent_executed_pairs_in_last_step = [
                 self.index,
-                [self.market_pairs_dict[self.index],
-                 self.agent_pairs_dict[self.index]]
+                [self.market_pairs[self.index],
+                 self.agent_pairs[self.index]]
                 ]
         except:
             self.market_agent_executed_pairs_in_last_step = [

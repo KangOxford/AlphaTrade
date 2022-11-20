@@ -3,8 +3,10 @@ import abc
 from gym_exchange.trading_environment.utils import vwap_price
 class Vwap(abc.ABC):
     def __init__(self):
-        pass
-
+        self.market_vwap = None
+        self.agent_vwap = None
+        self.vwap_slippage = None
+        
     @property
     def market_vwap(self):
         self._market_vwap = vwap_price(self.market_pairs)
@@ -15,18 +17,25 @@ class Vwap(abc.ABC):
         self._agent_vwap = vwap_price(self.agent_pairs)
         return self._agent_vwap
     
-    @market_vwap.setter
-    def market_vwap(self, value):
-        pass
-        
-    @agent_vwap.setter
-    def agent_vwap(self, value):
-        pass
-    
     @property
     def vwap_slippage(self):
         self._vwap_slippage = self.market_vwap - self.agent_vwap
         return self._vwap_slippage
+    
+    @market_vwap.setter
+    def market_vwap(self, value):
+        return value
+        
+    @agent_vwap.setter
+    def agent_vwap(self, value):
+        return value
+        # pass
+    
+    @vwap_slippage.setter
+    def vwap_slippage(self, value):
+        return value
+        # pass
+    
     
     @abc.abstractmethod
     def update(self,executed_pairs):
@@ -76,6 +85,10 @@ class EpochVwap(Vwap):
     def __init__(self):
         super().__init__()
         
+    def update(self,executed_pairs):
+        self.market_pairs = np.concatenate(executed_pairs.market_pairs) # TODO: test
+        self.agent_pairs  = np.concatenate(executed_pairs.agent_pairs)        
+
     @property
     def info_dict(self):
         return {
@@ -84,9 +97,6 @@ class EpochVwap(Vwap):
             "EpochVwap/VwapSlippage":self.vwap_slippage
         }
             
-    def update(self,executed_pairs):
-        self.market_pairs = np.concatenate(executed_pairs.market_pairs) # TODO: test
-        self.agent_pairs  = np.concatenate(executed_pairs.agent_pairs)        
     
 # ========================== 03 ==========================
 class StepVwap_MA():
@@ -110,9 +120,18 @@ class VwapEstimator():
     def __init__(self):
         # self.step_vwap = StepVwap() # Used for info
         self.epoch_vwap= EpochVwap()# Used for info
+    def executed_pairs_adapter(self, executed_pairs):
+        result = 0
+        print()#$
+        raise NotImplementedError
+        return result 
     def step(self, executed_pairs, done):
         # self.step_vwap.step(executed_pairs)
-        if done: self.epoch_vwap.step(executed_pairs)
+        
+
+        if done: 
+            executed_pairs = self.executed_pairs_adapter(executed_pairs)
+            self.epoch_vwap.step(executed_pairs)
         
 if __name__ == "__main__":
     # vwap_price testing

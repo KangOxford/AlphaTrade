@@ -117,7 +117,7 @@ class BaseEnv(EnvInterface):
     def info(self):
         self.vwap_estimator.step(self.exchange.executed_pairs_recoder, self.done)
         return {
-            **self.vwap_estimator.step_vwap.info_dict,
+            # **self.vwap_estimator.step_vwap.info_dict,
             **self.vwap_estimator.epoch_vwap.info_dict
         } #% needed
         '''in an liquidation task the market_vwap ought to be
