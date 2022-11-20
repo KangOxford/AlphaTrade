@@ -41,34 +41,34 @@ class Vwap(abc.ABC):
         self.update(executed_pairs)
         return self.info_dict    
     
-class StepVwap(Vwap):
-    def __init__(self):
-        super().__init__()
+# class StepVwap(Vwap):
+#     def __init__(self):
+#         super().__init__()
     
-    def update(self, executed_pairs):
-        if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
-            if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
-            if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
-            print()# % check self.market_vwap 
-        else:
-            self.market_pairs = executed_pairs.market_pairs[-1]
-            self.agent_pairs  = executed_pairs.agent_pairs[-1]
+#     def update(self, executed_pairs):
+#         if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
+#             if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
+#             if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
+#             print()# % check self.market_vwap 
+#         else:
+#             self.market_pairs = executed_pairs.market_pairs[-1]
+#             self.agent_pairs  = executed_pairs.agent_pairs[-1]
             
-    @Vwap.market_vwap.setter
-    def market_vwap(self, value):
-        self._market_vwap = value
+#     @Vwap.market_vwap.setter
+#     def market_vwap(self, value):
+#         self._market_vwap = value
         
-    @Vwap.agent_vwap.setter
-    def agent_vwap(self, value):
-        self._agent_vwap = value
+#     @Vwap.agent_vwap.setter
+#     def agent_vwap(self, value):
+#         self._agent_vwap = value
     
-    @property
-    def info_dict(self):
-        return {
-            "StepVwap/MarketVwap"  :self.market_vwap,
-            "StepVwap/AgentVwap"   :self.agent_vwap,
-            "StepVwap/VwapSlippage":self.vwap_slippage
-        }
+#     @property
+#     def info_dict(self):
+#         return {
+#             "StepVwap/MarketVwap"  :self.market_vwap,
+#             "StepVwap/AgentVwap"   :self.agent_vwap,
+#             "StepVwap/VwapSlippage":self.vwap_slippage
+#         }
         
     
 # ========================== 02 ==========================
@@ -108,10 +108,10 @@ class VwapCurve():
 # ========================== 04 ==========================
 class VwapEstimator():
     def __init__(self):
-        self.step_vwap = StepVwap() # Used for info
+        # self.step_vwap = StepVwap() # Used for info
         self.epoch_vwap= EpochVwap()# Used for info
     def step(self, executed_pairs, done):
-        self.step_vwap.step(executed_pairs)
+        # self.step_vwap.step(executed_pairs)
         if done: self.epoch_vwap.step(executed_pairs)
         
 if __name__ == "__main__":
