@@ -6,6 +6,7 @@ class ExecutedPairsRecorder():
         self.agent_pairs_dict  = {}
         
         
+        
     def trades2pairs(self, trades):
         pairs = [[trade['price'], trade['quantity']] for trade in trades]
         formatted_pairs = np.array(pairs).T
@@ -19,12 +20,23 @@ class ExecutedPairsRecorder():
         else: raise NotImplementedError
 
     def step(self, trades, kind, index):
+        # ----------- 01 ------------
         self.index = index # keep the same with the exchange index
         if len(trades) == 0: 
             pass
         else: # len(trades) == 1 or 3
             batch = self.trades2pairs(trades)
             self.update(batch, kind)
+        # ----------- 02 ------------
+        try:
+            self.market_agent_executed_pairs_in_last_step = [
+                self.index,
+                [self.market_pairs_dict[self.index],
+                 self.agent_pairs_dict[self.index]]
+                ]
+        except:
+            self.market_agent_executed_pairs_in_last_step = [
+                self.index, None]
         
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'

@@ -30,9 +30,9 @@ class BaseExchange(Exchange_Interface):
         
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
-        print(f"self.index : {self.index}") #$
-        if self.index == 570:
-            breakpoint()#$
+        # print(f"self.index : {self.index}") #$
+        # if self.index == 570:
+        #     breakpoint()#$
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message

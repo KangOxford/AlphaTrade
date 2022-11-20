@@ -45,16 +45,23 @@ class RewardGenerator():
             else:
                 p_market = vwap_price(executed_pairs_bigram['market_pairs'])
             return p_market
-        p_market = get_p_market(executed_pairs_bigram, mid_price)
-        if len(executed_pairs_bigram['agent_pairs']) != 0: 
-            signals = {
-                "p_0" : self.p_0,
-                "p_market" : p_market,
-                "lambda_" : self.lambda_,
-                "agent_pairs":executed_pairs_bigram['agent_pairs']
-            }
-            self.reward_functional = RewardFunctional(**signals)
-        else: self.reward_functional = -1
+        if executed_pairs_bigram[-1] == None:
+            # no executed pairs in this step
+            # raise NotImplementedError
+            # pass #%
+            self.reward_functional = -1 #%
+        else:
+            
+            p_market = get_p_market(executed_pairs_bigram, mid_price)
+            if len(executed_pairs_bigram['agent_pairs']) != 0: 
+                signals = {
+                    "p_0" : self.p_0,
+                    "p_market" : p_market,
+                    "lambda_" : self.lambda_,
+                    "agent_pairs":executed_pairs_bigram['agent_pairs']
+                }
+                self.reward_functional = RewardFunctional(**signals)
+            else: self.reward_functional = -1
             
         
     def step(self):

@@ -9,6 +9,7 @@ from gym_exchange import Config
 from gym_exchange.trading_environment.assets.reward import RewardGenerator
 from gym_exchange.trading_environment.assets.action import Action
 from gym_exchange.trading_environment.assets.action_wrapper import  OrderFlowGenerator
+from gym_exchange.trading_environment.assets.task import NumLeftProcessor
 
 from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
 
@@ -44,11 +45,11 @@ class BaseEnv(EnvInterface):
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         # self.state_generator = StateGenerator() # Used for State
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
+        self.num_left_processor = NumLeftProcessor()
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 
         self.cur_step = 0
-        self.num_left = Config.num2liquidate
         order_book = self.exchange.order_book 
         asks, bids = brief_order_book(order_book, 'ask'), brief_order_book(order_book, 'bid')
         asks, bids = np.array(asks), np.array(bids)
@@ -72,7 +73,7 @@ class BaseEnv(EnvInterface):
         self.accumulator()
         return observation, reward, done, info
     def accumulator(self):
-        self.num_left -= self.cur_action
+        self.num_left_processor.step(self)
         self.cur_step += 1
     # --------------------- 03.01 ---------------------
     def observation(self, action): 
@@ -103,22 +104,22 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        self.reward_generator.update(self.exchange.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
+        self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
         return reward
     # --------------------- 03.03  ---------------------
     @property
     def done(self):
-        if self.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
+        if self.num_left_processor.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
         else : return False
     # --------------------- 03.04 ---------------------  
     @property
     def info(self):
-        self.vwap_estimator.step(self.exchange.executed_pairs, self.done)
+        self.vwap_estimator.step(self.exchange.executed_pairs_recoder, self.done)
         return {
             **self.vwap_estimator.step_vwap.info_dict,
             **self.vwap_estimator.epoch_vwap.info_dict
-        }
+        } #% needed
         '''in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity, 
         and can be executed at higher price.'''
