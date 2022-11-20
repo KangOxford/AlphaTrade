@@ -3,22 +3,31 @@ import abc
 from gym_exchange.trading_environment.utils import vwap_price
 class Vwap(abc.ABC):
     def __init__(self):
-        self.market_vwap = None
-        self.agent_vwap = None
-        self.vwap_slippage = None
+        pass
         
     def get_market_vwap(self):
-        self._market_vwap = vwap_price(self.market_pairs)
-        return self._market_vwap
+        if self.market_pairs is None:
+            market_vwap = None
+        else:
+            market_vwap = vwap_price(self.market_pairs)
+        self.market_vwap = market_vwap
+        return self.market_vwap
     
     def get_agent_vwap(self):
-        self._agent_vwap = vwap_price(self.agent_pairs)
-        return self._agent_vwap
+        if self.agent_pairs is None:
+            agent_vwap = None
+        else:
+            agent_vwap = vwap_price(self.agent_pairs)
+        self.agent_vwap = agent_vwap
+        return agent_vwap
     
     def get_vwap_slippage(self):
-        self._vwap_slippage = self.market_vwap - self.agent_vwap
-        return self._vwap_slippage
-    
+        if self.agent_vwap is not None and self.market_vwap is not None:
+            vwap_slippage = self.market_vwap - self.agent_vwap
+        else:
+            vwap_slippage = None
+        self.vwap_slippage = vwap_slippage
+        return vwap_slippage
     
     @abc.abstractmethod
     def update(self,executed_pairs):
@@ -29,9 +38,9 @@ class Vwap(abc.ABC):
     def info_dict(self):
         '''return the info dict'''
         
-    def step(self, executed_pairs):
-        self.update(executed_pairs)
-        return self.info_dict    
+    # @abc.abstractmethod    
+    # def step(self, executed_pairs):
+    #     '''step'''
     
 # class StepVwap(Vwap):
 #     def __init__(self):
@@ -70,15 +79,17 @@ class EpochVwap(Vwap):
         
     def update(self,executed_pairs):
         self.market_pairs = np.concatenate(executed_pairs.market_pairs) # TODO: test
-        self.agent_pairs  = np.concatenate(executed_pairs.agent_pairs)        
+        self.agent_pairs  = np.concatenate(executed_pairs.agent_pairs)    
+        
 
     @property
     def info_dict(self):
         return {
-            "EpochVwap/MarketVwap"  :self.market_vwap,
-            "EpochVwap/AgentVwap"   :self.agent_vwap,
-            "EpochVwap/VwapSlippage":self.vwap_slippage
+            "EpochVwap/MarketVwap"  :self.get_market_vwap(),
+            "EpochVwap/AgentVwap"   :self.get_agent_vwap(),
+            "EpochVwap/VwapSlippage":self.get_vwap_slippage()
         }
+    
             
     
 # ========================== 03 ==========================
@@ -108,13 +119,11 @@ class VwapEstimator():
         print()#$
         raise NotImplementedError
         return result 
-    def step(self, executed_pairs, done):
+    def update(self, executed_pairs, done):
         # self.step_vwap.step(executed_pairs)
-        
-
         if done: 
             executed_pairs = self.executed_pairs_adapter(executed_pairs)
-            self.epoch_vwap.step(executed_pairs)
+            self.epoch_vwap.update(executed_pairs)
         
 if __name__ == "__main__":
     # vwap_price testing

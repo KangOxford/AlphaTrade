@@ -115,7 +115,7 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.04 ---------------------  
     @property
     def info(self):
-        self.vwap_estimator.step(self.exchange.executed_pairs_recoder, self.done)
+        self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
         return {
             # **self.vwap_estimator.step_vwap.info_dict,
             **self.vwap_estimator.epoch_vwap.info_dict
