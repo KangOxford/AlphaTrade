@@ -7,34 +7,17 @@ class Vwap(abc.ABC):
         self.agent_vwap = None
         self.vwap_slippage = None
         
-    @property
-    def market_vwap(self):
+    def get_market_vwap(self):
         self._market_vwap = vwap_price(self.market_pairs)
         return self._market_vwap
     
-    @property
-    def agent_vwap(self):
+    def get_agent_vwap(self):
         self._agent_vwap = vwap_price(self.agent_pairs)
         return self._agent_vwap
     
-    @property
-    def vwap_slippage(self):
+    def get_vwap_slippage(self):
         self._vwap_slippage = self.market_vwap - self.agent_vwap
         return self._vwap_slippage
-    
-    @market_vwap.setter
-    def market_vwap(self, value):
-        return value
-        
-    @agent_vwap.setter
-    def agent_vwap(self, value):
-        return value
-        # pass
-    
-    @vwap_slippage.setter
-    def vwap_slippage(self, value):
-        return value
-        # pass
     
     
     @abc.abstractmethod
@@ -99,21 +82,21 @@ class EpochVwap(Vwap):
             
     
 # ========================== 03 ==========================
-class StepVwap_MA():
-    '''Moving average of step vwap'''
-    def __init__(self,):
-        pass
+# class StepVwap_MA():
+#     '''Moving average of step vwap'''
+#     def __init__(self,):
+#         pass
 
-class VwapCurve():
-    ''' curve format
-        index | 0 | 1 | 2 | 3 | 4 | 5 |
-        pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
-    def __init__(self,):
-        self.index = 0
+# class VwapCurve():
+#     ''' curve format
+#         index | 0 | 1 | 2 | 3 | 4 | 5 |
+#         pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
+#     def __init__(self,):
+#         self.index = 0
         
-    def to_array(self):
-        result = 0 #TODO: implement
-        return np.array(result)
+#     def to_array(self):
+#         result = 0 #TODO: implement
+#         return np.array(result)
     
 # ========================== 04 ==========================
 class VwapEstimator():
