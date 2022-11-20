@@ -2,8 +2,8 @@ import numpy as np
 class ExecutedPairsRecorder():
     def __init__(self):
         self.index = 0
-        self.market_pairs_list = []
-        self.agent_pairs_list  = []
+        self.market_pairs_dict = {}
+        self.agent_pairs_dict  = {}
         
         
     def trades2pairs(self, trades):
@@ -14,17 +14,17 @@ class ExecutedPairsRecorder():
         return formatted_pairs 
     
     def update(self, pairs, kind):
-        if kind == "market": self.market_pairs_list.append((self.index, pairs))
-        elif kind=="agent" : self.agent_pairs_list.append((self.index, pairs))
+        if kind == "market": self.market_pairs_dict[self.index] =  pairs
+        elif kind=="agent" : self.agent_pairs_dict[self.index] =  pairs
         else: raise NotImplementedError
 
-    def step(self, trades, kind):
+    def step(self, trades, kind, index):
+        self.index = index # keep the same with the exchange index
         if len(trades) == 0: 
             pass
         else: # len(trades) == 1 or 3
             batch = self.trades2pairs(trades)
             self.update(batch, kind)
-        self.index += 1
         
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'

@@ -31,12 +31,14 @@ class BaseExchange(Exchange_Interface):
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
         print(f"self.index : {self.index}") #$
+        if self.index == 570:
+            breakpoint()#$
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
                     trades, order_in_book = self.order_book.process_order(message, True, False)
-                    self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market') # 2nd para: kind
+                    self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market', self.index) # 2nd para: kind
                 elif item.type == 2:
                     tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
                     in_book_quantity = tree.get_order(message['order_id']).quantity
