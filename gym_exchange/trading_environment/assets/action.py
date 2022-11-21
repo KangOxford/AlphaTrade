@@ -83,7 +83,7 @@ class Action(BaseAction):
     @property
     def to_array(self) -> np.ndarray:
         '''wrapped_result: BaseAction'''
-        price_delta = self.price_delta + SpaceParams.price_delta_size_one_side
+        price_delta = self.price_delta + SpaceParams.Action.price_delta_size_one_side
         side = 1 if self.side == 'bid' else 0
         # side = 0 if self.side == 'bid' else 1
         quantity  = self.quantity + SpaceParams.Action.quantity_size_one_side

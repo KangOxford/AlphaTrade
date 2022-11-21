@@ -37,8 +37,8 @@ class CancellationDeterminants():
 
 
 class AutoCancel():
-    def __init__(self,  auto_cancel: OrderFlow):
-        self.auto_cancel = auto_cancel
+    def __init__(self, flow: OrderFlow):
+        self.flow = flow
         self.cancellation_determinants = CancellationDeterminants()
 
     @property
