@@ -128,9 +128,11 @@ class VwapEstimator():
             self.epoch_vwap.update(executed_pairs)
     def step(self):
         if not self.done:
-            return self.step_vwap.info_dict, None
+            return None, None
+            # return self.step_vwap.info_dict, None
         else:
-            return self.step_vwap.info_dict, self.epoch_vwap.info_dict
+            return None, self.epoch_vwap.info_dict
+            # return self.step_vwap.info_dict, self.epoch_vwap.info_dict
         
         
 if __name__ == "__main__":
