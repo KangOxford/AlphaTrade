@@ -117,6 +117,7 @@ class BaseEnv(EnvInterface):
     def info(self):
         self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
         step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
+        print(f"self.done:{self.done}")#$
         if epoch_vwap_info_dict is None:
             return {}
         else:
