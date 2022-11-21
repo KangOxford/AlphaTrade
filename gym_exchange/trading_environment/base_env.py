@@ -136,7 +136,7 @@ if __name__ == "__main__":
     env.reset()
     for i in range(int(1e6)):
         action = Action(side = 'bid', quantity = 1, price_delta = 1)
-        observation, reward, done, info = env.step(action.to_array)
+        state, reward, done, info = env.step(action.to_array)
         env.render()
         if done:
             env.reset()
