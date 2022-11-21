@@ -8,7 +8,7 @@ from gym_exchange import Config
 
 
 State = TypeVar("State")
-Observation = TypeVar("Observation")
+# Observation = TypeVar("Observation")
 Action = TypeVar("Action")
 
 class SpaceParams(object):
@@ -32,7 +32,8 @@ class SpaceParams(object):
         shape = (2 * Config.state_dim_1,Config.state_dim_2)
 
 
-class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
+class EnvInterface(gym.Env, abc.ABC, Generic[State, Action]):
+# class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     """A stock trading environment based on OpenAI gym"""
     metadata = {'render.modes': ['human']}
     # ========================== 01 ==========================
