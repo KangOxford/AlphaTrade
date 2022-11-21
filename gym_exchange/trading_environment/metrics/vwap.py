@@ -86,11 +86,12 @@ class EpochVwap(Vwap):
 
     @property
     def info_dict(self):
-        return {
+        result = {
             "EpochVwap/MarketVwap"  :self.get_market_vwap(),
             "EpochVwap/AgentVwap"   :self.get_agent_vwap(),
             "EpochVwap/VwapSlippage":self.get_vwap_slippage()
         }
+        return result
     
             
     
