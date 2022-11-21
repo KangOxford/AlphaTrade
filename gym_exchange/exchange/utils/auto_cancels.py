@@ -33,9 +33,7 @@ class Timeout():
 class CancellationDeterminants():
             
     def __init__(self):
-        self.members = [
-            Timeout()
-        ]
+        self.timeout = Timeout()
 
 
 class AutoCancel():
@@ -47,10 +45,9 @@ class AutoCancel():
     def maturity(self) -> bool:
         # '''determined by the price and mid-price or the exchange'''
         # '''determined by the quote age'''
-        for determinant in self.cancellation_determinants.members:
-            if determinant() == False:
-                return False # if all satisfied then return mature
-        return True  
+        determinant = self.cancellation_determinants.timeout
+        if determinant() == False:  return False # if all satisfied then return mature
+        else: return True  
 
         
 class AutoCancels():
@@ -62,7 +59,12 @@ class AutoCancels():
         waited to be processed at this time step. The step should
         be in the Exchange'''
         for auto_cancel in self.auto_cancels:
-            auto_cancel.cancellation_determinants.members.step()
+            auto_cancel.cancellation_determinants.timeout.step()
+            # try: #$
+            #     auto_cancel.cancellation_determinants.timeout.step()
+            # except:
+            #     breakpoint()
+            #     print()#$
 
         order_flow_list = []
         for auto_cancel in self.auto_cancels:
