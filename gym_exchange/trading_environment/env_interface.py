@@ -73,16 +73,21 @@ class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     @abc.abstractmethod
     def step(self, action):
         '''input : action
-           return: observation, reward, done, info'''
-        return self.observation, self.reward, self.done, self.info
+           return: state, reward, done, info'''
+        return self.state, self.reward, self.done, self.info
+        #    return: observation, reward, done, info'''
+        # return self.observation, self.reward, self.done, self.info
     # --------------------- 03.01 ---------------------
     @property
-    def observation(self):
+    def state(self):
         pass
-    # ···················· 03.01.01 ···················· 
-    @abc.abstractmethod
-    def obs_from_state(self, state: State) -> Observation:
-        """Sample observation for given state."""
+    # @property
+    # def observation(self):
+    #     pass
+    # # ···················· 03.01.01 ···················· 
+    # @abc.abstractmethod
+    # def obs_from_state(self, state: State) -> Observation:
+    #     """Sample observation for given state."""
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):

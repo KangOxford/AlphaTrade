@@ -4,7 +4,7 @@ from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
 from gym_exchange.exchange.auto_cancel_exchange import Exchange
 
-from gym_exchange import Config
+from gym_exchange import Config 
 
 from gym_exchange.trading_environment.assets.reward import RewardGenerator
 from gym_exchange.trading_environment.assets.action import Action
@@ -17,11 +17,7 @@ from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
 from gym_exchange.trading_environment.env_interface import SpaceParams, EnvInterface
 from gym_exchange.trading_environment.env_interface import State, Observation # types
 
-class BaseSpaceParams(SpaceParams):
-    class Observation:
-        price_delta_size = 7
-        side_size = 2
-        quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
+
 
 class BaseEnv(EnvInterface):
     # ========================== 01 ==========================
@@ -37,8 +33,9 @@ class BaseEnv(EnvInterface):
         self.init_components()
         self.cur_state = self.initial_state()
         assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
-        observation = self.obs_from_state(self.cur_state)
-        return observation
+        # observation = self.obs_from_state(self.cur_state)
+        state = self.cur_state
+        return state
     # ------------------------- 02.01 ------------------------
     def init_components(self):
         self.vwap_estimator = VwapEstimator()
@@ -69,21 +66,16 @@ class BaseEnv(EnvInterface):
            return: observation, reward, done, info'''
 
         # ···················· 03.00.03 ···················· 
-        observation, reward, done, info = self.observation(action), self.reward, self.done, self.info
+        state, reward, done, info = self.state(action), self.reward, self.done, self.info
+        # observation, reward, done, info = self.observation(action), self.reward, self.done, self.info
         self.accumulator()
-        return observation, reward, done, info
+        return state, reward, done, info
+        # return observation, reward, done, info
     def accumulator(self):
         self.num_left_processor.step(self)
         self.cur_step += 1
     # --------------------- 03.01 ---------------------
-    def observation(self, action): 
-        state = self.state(action)
-        return self.obs_from_state(state)
-    # ···················· 03.01.01 ···················· 
-    def obs_from_state(self, state: State) -> Observation:
-        """Sample observation for given state."""
-        return state
-    
+
     def state(self, action: Action) -> State:
         # ···················· 03.00.01 ····················    
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
