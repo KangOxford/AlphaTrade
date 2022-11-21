@@ -28,7 +28,7 @@ class Timeout():
         self.age += 1
     
     def __call__(self) -> bool:
-        return self.cancellation_determinant > Config.timeout
+        return self.age > Config.timeout
 
 class CancellationDeterminants():
             
