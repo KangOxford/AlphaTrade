@@ -137,7 +137,6 @@ class VwapEstimator():
             return None, None
             # return self.step_vwap.info_dict, None
         else:
-            breakpoint()#$
             return None, self.epoch_vwap.info_dict
             # return self.step_vwap.info_dict, self.epoch_vwap.info_dict
         

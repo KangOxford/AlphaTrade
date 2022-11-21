@@ -148,3 +148,4 @@ if __name__ == "__main__":
         env.render()
         if done:
             env.reset()
+            break #$
