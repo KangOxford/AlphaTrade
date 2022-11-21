@@ -5,6 +5,17 @@ from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.env_interface import SpaceParams
 from gym_exchange.trading_environment.base_environment import BaseEnv
 
+from typing import TypeVar
+State = TypeVar("State")
+Observation = TypeVar("Observation")
+Action = TypeVar("Action")
+
+class BaseSpaceParams(SpaceParams):
+    class Observation:
+        price_delta_size = 7
+        side_size = 2
+        quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
+
 class TradeSpaceParams(SpaceParams):
     class Observation:
         low=np.concatenate(([0, 0], np.full(self._noise_length, -np.inf))),
@@ -21,6 +32,14 @@ class TradeEnv(BaseEnv):
             high=TradeSpaceParams.Observation.high,
             dtype=np.int32,
         )
+        
+    def observation(self, action): 
+        state = self.state(action)
+        return self.obs_from_state(state)
+    # ···················· 03.01.01 ···················· 
+    def obs_from_state(self, state: State) -> Observation:
+        """Sample observation for given state."""
+        return state
            
     
     def initial_state(self) -> np.ndarray:
