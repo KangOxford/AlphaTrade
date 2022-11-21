@@ -116,12 +116,16 @@ class BaseEnv(EnvInterface):
     @property
     def info(self):
         self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
-        # step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
-        _, epoch_vwap_info_dict = self.vwap_estimator.step()
-        return {
-            # **step_vwap_info_dict,
-            **epoch_vwap_info_dict
-        } #% needed
+        step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
+        if epoch_vwap_info_dict is None:
+            return {}
+        else:
+            return {**epoch_vwap_info_dict}
+        
+        # if epoch_vwap_info_dict is None:
+        #     return {**step_vwap_info_dict}
+        # else:
+        #     return {**step_vwap_info_dict, **epoch_vwap_info_dict}
         '''in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity, 
         and can be executed at higher price.'''

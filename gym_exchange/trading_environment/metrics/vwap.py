@@ -124,6 +124,7 @@ class VwapEstimator():
         self.done = done
         # self.step_vwap.step(executed_pairs)
         if done: 
+            breakpoint()#$
             executed_pairs = self.executed_pairs_adapter(executed_pairs)
             self.epoch_vwap.update(executed_pairs)
     def step(self):
