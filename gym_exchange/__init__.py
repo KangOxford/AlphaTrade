@@ -5,19 +5,19 @@ class Config:
     tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
-    # max_episode_steps = 12000 # 10 mins
-    max_episode_ticks = 12000 # 10 mins
-    # max_episode_steps= 1200 # 1 min
-    # max_episode_steps= 600 # 1/2 min
-    
+    # # max_episode_steps = 12000 # 10 mins
+    # max_episode_ticks = 12000 # 10 mins
+    # # max_episode_steps= 1200 # 1 min
+    # # max_episode_steps= 600 # 1/2 min
+    max_horizon = 600
 
     # skip = 1 # 50 miliseconds
     # skip = 2 # default = 1 from step No.n to step No.n+1
-    skip = 20 # 1 second 
+    window_size = 20 # 1 second 
     # skip = 200 # 10 seconds
     # skip = 1200 # 1 minute
-    
-    time_window_size = 1
+    # max_horizon = int(max_episode_ticks / skip) # caution, need to be integer
+    max_episode_ticks = int(max_horizon * window_size)
     
     # --------------- 02 Reward ---------------
     low_dimension_penalty_parameter = 1 # todo not sure
@@ -26,7 +26,6 @@ class Config:
     
     
     # --------------- 03 Task ---------------
-    max_horizon = int(max_episode_ticks / skip) # caution, need to be integer
     num2liquidate = 2000 # 10 min
     # num2liquidate = 200 # 1 min
     # num2liquidate = 100 # 1/2 min
@@ -51,11 +50,6 @@ class Config:
     max_step_left = max_episode_ticks
     state_dim_1 = 2
     state_dim_2 = 10 
-    # state_dim_2 = 12 # used to be 10
-    state_dim_3 = time_window_size
-
-    # --------------- 07 Observation ---------------
-    num_tick = 1200 # 1min
 
     # --------------- 08 Adapter ---------------
     raw_price_level = 10

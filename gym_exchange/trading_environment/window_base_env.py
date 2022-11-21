@@ -6,22 +6,15 @@ from gym_exchange.trading_environment.env_interface import SpaceParams
 from gym_exchange.trading_environment.base_environment import BaseEnv
 
 from typing import TypeVar
+Action = TypeVar("Action")
 State = TypeVar("State")
 Observation = TypeVar("Observation")
-Action = TypeVar("Action")
-
-class BaseSpaceParams(SpaceParams):
-    class Observation:
-        price_delta_size = 7
-        side_size = 2
-        quantity_size = 2*(Config.num2liquidate//Config.max_horizon +1) + 1
 
 class WindowParams(SpaceParams):
     class Observation:
-        low=np.concatenate(([0, 0], np.full(self._noise_length, -np.inf))),
-        high=np.concatenate(
-            ([size - 1, size - 1], np.full(self._noise_length, np.inf)),
-        )
+        low  = SpaceParams.State.low,
+        high = SpaceParams.State.high
+        shape= SpaceParams.State.shape
 
 
 class Window_Env(BaseEnv):
