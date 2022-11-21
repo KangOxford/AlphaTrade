@@ -118,7 +118,7 @@ class BaseEnv(EnvInterface):
         self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
         return {
             # **self.vwap_estimator.step_vwap.info_dict,
-            **self.vwap_estimator.epoch_vwap.info_dict
+            **self.vwap_estimator.epoch_vwap.step()
         } #% needed
         '''in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity, 

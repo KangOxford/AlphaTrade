@@ -73,6 +73,7 @@ class Vwap(abc.ABC):
         
     
 # ========================== 02 ==========================
+
 class EpochVwap(Vwap):
     def __init__(self):
         super().__init__()
@@ -120,10 +121,17 @@ class VwapEstimator():
         raise NotImplementedError
         return result 
     def update(self, executed_pairs, done):
+        self.done = done
         # self.step_vwap.step(executed_pairs)
         if done: 
             executed_pairs = self.executed_pairs_adapter(executed_pairs)
             self.epoch_vwap.update(executed_pairs)
+    def step(self):
+        if not self.done:
+            return self.step_vwap.info_dict, None
+        else:
+            return self.step_vwap.info_dict, self.epoch_vwap.info_dict
+        
         
 if __name__ == "__main__":
     # vwap_price testing
