@@ -3,21 +3,17 @@ from gym import spaces
 from gym_exchange import Config
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.env_interface import SpaceParams
-from gym_exchange.trading_environment.base_environment import BaseEnv
+from gym_exchange.trading_environment.memoryview import MemoEnv
 
 from typing import TypeVar
 Action = TypeVar("Action")
 State = TypeVar("State")
 
-class SkipEnv(BaseEnv):
+class SkipEnv(MemoEnv):
     # ========================== 01 ==========================
     def __init__(self):
         super(SkipEnv, self).__init__()
-        
-          
-    def __init__(self):
-        super().__init__()
-
+    
     # ========================== 03 ==========================
     def step(self, action):
         '''input : action

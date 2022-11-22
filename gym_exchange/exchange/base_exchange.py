@@ -93,18 +93,19 @@ class BaseExchange(Exchange_Interface):
     def step(self, action = None): # action : Action(for the definition of type)
         self.order_book = super().step(action)
         if action == None:
-            for side in ['bid', 'ask']:
-                history_data = self.d2 if side == 'bid' else self.l2
-                my_list, right_list = get_two_list4compare(self.order_book, self.index, history_data, side)
-                my_list = np.array(my_list); right_list = np.array(right_list)
-                difference = my_list - right_list
-                is_the_same = (not any(difference))
-                if Debugger.BaseExchange.on == True:
-                    print(f"self.index: {self.index}")#$
-                    print(my_list) #$
-                    print(right_list) #$
-                    print(f"is_the_same:{is_the_same}") #$
-                    print() #$ #TODO
+            pass
+            # for side in ['bid', 'ask']:
+            #     history_data = self.d2 if side == 'bid' else self.l2
+            #     my_list, right_list = get_two_list4compare(self.order_book, self.index, history_data, side)
+            #     my_list = np.array(my_list); right_list = np.array(right_list)
+            #     difference = my_list - right_list
+            #     is_the_same = (not any(difference))
+            #     if Debugger.BaseExchange.on == True:
+            #         print(f"self.index: {self.index}")#$
+            #         print(my_list) #$
+            #         print(right_list) #$
+            #         print(f"is_the_same:{is_the_same}") #$
+            #         print() #$ #TODO
         return self.order_book 
         
     
