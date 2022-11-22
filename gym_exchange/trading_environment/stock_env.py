@@ -3,7 +3,7 @@ from gym import spaces
 from gym_exchange.trading_environment import Config
 from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.env_interface import SpaceParams
-from gym_exchange.trading_environment.base_environment import BaseEnv
+from gym_exchange.trading_environment.window_env import WindowEnv
 
 from typing import TypeVar
 State = TypeVar("State")
@@ -24,7 +24,7 @@ class TradeSpaceParams(SpaceParams):
         )
 
 
-class TradeEnv(BaseEnv):
+class TradeEnv(WindowEnv):
     def __init__(self):
         super(TradeEnv, self).__init__()
         self.observation_space=spaces.Box(
