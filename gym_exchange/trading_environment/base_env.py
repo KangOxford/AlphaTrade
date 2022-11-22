@@ -2,7 +2,7 @@ import numpy as np
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
-from gym_exchange.exchange.auto_cancel_exchange import Exchange
+from gym_exchange.exchange.autocancel_exchange import Exchange
 
 from gym_exchange import Config 
 
@@ -10,6 +10,7 @@ from gym_exchange.trading_environment.assets.reward import RewardGenerator
 from gym_exchange.trading_environment.assets.action import Action
 from gym_exchange.trading_environment.assets.action_wrapper import  OrderFlowGenerator
 from gym_exchange.trading_environment.assets.task import NumLeftProcessor
+from gym_exchange.trading_environment.assets.renders.base_env_render import base_env_render
 
 from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
 
@@ -78,6 +79,7 @@ class BaseEnv(EnvInterface):
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
+        # self.action = action # record action for render use #$
         # ···················· 03.00.01 ····················    
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
         order_flows = self.order_flow_generator.step(action, price_list)# price list is used for PriceDelta, only one side is needed
@@ -126,6 +128,7 @@ class BaseEnv(EnvInterface):
     # ========================== 04 ==========================
     def render(self, mode = 'human'):
         '''for render method'''
+        base_env_render(self)
         
 if __name__ == "__main__":
     # --------------------- 05.01 --------------------- 
@@ -136,8 +139,15 @@ if __name__ == "__main__":
     env = BaseEnv()
     env.reset()
     for i in range(int(1e6)):
+        print("-"*20) #$
         action = Action(side = 'bid', quantity = 1, price_delta = 1)
+        print(action) #$
+        # breakpoint() #$
         state, reward, done, info = env.step(action.to_array)
+        print(state) #$
+        print(reward) #$
+        print(done) #$
+        print(info) #$
         env.render()
         if done:
             env.reset()

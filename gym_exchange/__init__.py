@@ -5,30 +5,23 @@ class Config:
     tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
-    # # max_episode_steps = 12000 # 10 mins
-    # max_episode_ticks = 12000 # 10 mins
-    # # max_episode_steps= 1200 # 1 min
-    # # max_episode_steps= 600 # 1/2 min
     max_horizon = 600
-
-    # skip = 1 # 50 miliseconds
-    # skip = 2 # default = 1 from step No.n to step No.n+1
-    window_size = 20 # 1 second 
-    # skip = 200 # 10 seconds
-    # skip = 1200 # 1 minute
-    # max_horizon = int(max_episode_ticks / skip) # caution, need to be integer
-    max_episode_ticks = int(max_horizon * window_size)
+    skip = 20 # 1 second 
+    max_episode_ticks = int(max_horizon * skip)
+    '''
+    max_episode_ticks = 12000 # 10 mins, 1200 # 1 min, 600 # 1/2 min
+    skip = 20 # 1 second, 1 # 50 miliseconds, 200 # 10 seconds, 1200 # 1 minute, 
+    skip # default = 1 from step No.n to step No.n+1
+    '''
     
     # --------------- 02 Reward ---------------
     low_dimension_penalty_parameter = 1 # todo not sure
     cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     phi_prime = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
-    
     # --------------- 03 Task ---------------
     num2liquidate = 2000 # 10 min
-    # num2liquidate = 200 # 1 min
-    # num2liquidate = 100 # 1/2 min
+    '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
     
     # --------------- 04 Action ---------------
     timeout = 10
@@ -48,8 +41,11 @@ class Config:
     max_num_left = num2liquidate
     min_step_left= 0
     max_step_left = max_episode_ticks
-    state_dim_1 = 2
-    state_dim_2 = 10 
+    state_dim_1 = 2 # price, quantity
+    state_dim_2 = price_level # equals 10
+    
+    # --------------- 07 Observation ---------------
+    window_size = 1200 # 1min, num_ticks
 
     # --------------- 08 Adapter ---------------
     raw_price_level = 10

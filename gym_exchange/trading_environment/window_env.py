@@ -1,9 +1,8 @@
 import numpy as np
 from gym import spaces
-from gym_exchange.trading_environment import Config
-from gym_exchange.trading_environment.utils.metric import VwapEstimator
+from gym_exchange import Config
 from gym_exchange.trading_environment.env_interface import SpaceParams
-from gym_exchange.trading_environment.base_environment import BaseEnv
+from gym_exchange.trading_environment.skip_env import SkipEnv
 
 from typing import TypeVar
 Action = TypeVar("Action")
@@ -16,14 +15,16 @@ class WindowParams(SpaceParams):
         high = SpaceParams.State.high
         shape= SpaceParams.State.shape
 
+Config.window_size
 
-class Window_Env(BaseEnv):
+class WindowEnv(SkipEnv):
     def __init__(self):
-        super(Window_Env, self).__init__()
+        super(WindowEnv, self).__init__()
         self.observation_space=spaces.Box(
-            low=WindowParams.Observation.low,
-            high=WindowParams.Observation.high,
-            dtype=np.int32,
+            low   = WindowParams.Observation.low,
+            high  = WindowParams.Observation.high,
+            shape = WindowParams.Observation.shape,
+            dtype = np.int32,
         )
         
     def observation(self, action): 

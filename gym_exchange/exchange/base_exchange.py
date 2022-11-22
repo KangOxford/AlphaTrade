@@ -13,6 +13,7 @@ from gym_exchange.data_orderbook_adapter import utils
 class BaseExchange(Exchange_Interface):
     def __init__(self):
         super().__init__()
+        print(">>> BaseExchange Initialized") #$
         
     # -------------------------- 03.01 ----------------------------
     def reset(self):
@@ -30,14 +31,22 @@ class BaseExchange(Exchange_Interface):
         
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
-        # print(f"self.index : {self.index}") #$
+        print(f">>>>>>>> self.index : {self.index}") #$
         # if self.index == 570:
         #     breakpoint()#$
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
+                    if self.index == 130:
+                        breakpoint()
+                    print(f"message:{message}") #$
+                    print(f"---before trading {utils.brief_order_book(self.order_book,message['side'])}")
                     trades, order_in_book = self.order_book.process_order(message, True, False)
+                    print(f"---after trading {utils.brief_order_book(self.order_book,message['side'])}")
+                    if len(trades) != 0:
+                        breakpoint()
+                        print() #$
                     self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market', self.index) # 2nd para: kind
                 elif item.type == 2:
                     tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
@@ -83,18 +92,19 @@ class BaseExchange(Exchange_Interface):
                         
     def step(self, action = None): # action : Action(for the definition of type)
         self.order_book = super().step(action)
-        if action == None and Debugger.BaseExchange.on == True:
+        if action == None:
             for side in ['bid', 'ask']:
-                print(f"self.index: {self.index}")#$
                 history_data = self.d2 if side == 'bid' else self.l2
                 my_list, right_list = get_two_list4compare(self.order_book, self.index, history_data, side)
                 my_list = np.array(my_list); right_list = np.array(right_list)
                 difference = my_list - right_list
                 is_the_same = (not any(difference))
-                print(my_list) #$
-                print(right_list) #$
-                print(f"is_the_same:{is_the_same}") #$
-                print() #$ #TODO
+                if Debugger.BaseExchange.on == True:
+                    print(f"self.index: {self.index}")#$
+                    print(my_list) #$
+                    print(right_list) #$
+                    print(f"is_the_same:{is_the_same}") #$
+                    print() #$ #TODO
         return self.order_book 
         
     
