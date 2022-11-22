@@ -10,6 +10,7 @@ Action = TypeVar("Action")
 State = TypeVar("State")
 
 class SkipEnv(MemoEnv):
+    '''for action/step'''
     # ========================== 01 ==========================
     def __init__(self):
         super(SkipEnv, self).__init__()
@@ -21,7 +22,7 @@ class SkipEnv(MemoEnv):
            during all the first window_size -1 steps, action is none
            then action is the params passed in at final step'''
         # ···················· 03.00.01 ···················· 
-        for i in range(Config.window_size -1):
+        for i in range(Config.skip -1):
             super().state(action = None) # no accumulator
             # state, reward, done, info = super().state(action), super().reward, super().done, super().info
         # ···················· 03.00.02 ···················· 

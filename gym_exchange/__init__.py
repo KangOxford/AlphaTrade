@@ -45,7 +45,9 @@ class Config:
     state_dim_2 = price_level # equals 10
     
     # --------------- 07 Observation ---------------
-    window_size = 1200 # 1min, num_ticks
+    lock_back_window = 60 # all the states after 60 actions was conducted
+    num_ticks =  lock_back_window * skip # 1min, num_ticks
+    '''num_ticks = 1200 # 1min, num_ticks'''
 
     # --------------- 08 Adapter ---------------
     raw_price_level = 10
