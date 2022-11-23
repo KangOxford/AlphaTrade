@@ -14,12 +14,12 @@ from gym_exchange.exchange.base_exchange import BaseExchange
 class DebugBase(BaseExchange):
     def __init__(self):
         super().__init__()
-        if Debugger.DebugBase.on: print(">>> BaseExchange Initialized") #$
+        if Debugger.on: print(">>> BaseExchange Initialized") #$
         
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
-        if Debugger.DebugBase.on == True:
+        if Debugger.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
             historical_data = (DataPipeline()())['historical_data']
@@ -30,23 +30,32 @@ class DebugBase(BaseExchange):
             self.d2 = bid_sid_historical_data; self.l2 = ask_sid_historical_data
             
     # -------------------------- 03.02 ----------------------------
+    
+    # ···················· 03.02.01 ···················· 
+    def order_book_data_consistency_check(self):
+        if Debugger.on == True:
+            pass # TODO to be implemented
+    
+    # ···················· 03.02.02 ···················· 
     def type1_handler(self, message, index):
-        print(f"message:{message}") #$
+        if Debugger.on: print(f"message:{message}") #$
         # print(f"---before trading {utils.brief_order_book(self.order_book,message['side'])}")
-        print(f"---before trading\n {(self.order_book)}")
+        if Debugger.on: print(f"---before trading\n {(self.order_book)}")
         trades, order_in_book = self.order_book.process_order(message, True, False)
-        print(f"---after trading\n {(self.order_book)}")
+        if Debugger.on: print(f"---after trading\n {(self.order_book)}")
         # print(f"---after trading {utils.brief_order_book(self.order_book,message['side'])}")
         # if len(trades) != 0:
         #     breakpoint()
         #     print() #$
+        if Debugger.on: self.order_book_data_consistency_check()
         self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market', self.index) # 2nd para: kind
         
-        
+    # ···················· 03.02.03 ····················     
     def process_tasks(self): # para: self.task_list; return: self.order_book
-        if Debugger.DebugBase.on: print(f">>>>>>>> self.index : {self.index}") #$
+        if Debugger.on: print(f">>>>>>>> self.index : {self.index}") #$
         super().process_tasks()
-                        
+        
+    # ···················· 03.02.04 ····················                     
     def step(self, action = None): # action : Action(for the definition of type)
         self.order_book = super().step(action)
         if action == None and Debugger.DebugBase.on:
@@ -67,7 +76,7 @@ class DebugBase(BaseExchange):
         
     
 if __name__ == "__main__":
-    exchange = BaseExchange()
+    exchange = DebugBase()
     exchange.reset()
     for _ in range(2048):
         exchange.step()
