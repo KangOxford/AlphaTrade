@@ -24,11 +24,11 @@ class DebugBase(BaseExchange):
         if Debugger.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-            historical_data = (DataPipeline()())['historical_data']
+            self.historical_data = (DataPipeline()())['historical_data']
             column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
-            bid_sid_historical_data = historical_data.iloc[:,column_numbers_bid]
-            ask_sid_historical_data = historical_data.iloc[:,column_numbers_ask]
+            bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid]
+            ask_sid_historical_data = self.historical_data.iloc[:,column_numbers_ask]
             self.d2 = bid_sid_historical_data; self.l2 = ask_sid_historical_data
             
     # -------------------------- 03.02 ----------------------------
