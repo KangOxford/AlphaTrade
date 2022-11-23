@@ -56,8 +56,7 @@ class Encoder():
             order_id = inside_signal['order_id'],
             size = inside_signal['quantity'],
             price = inside_signal['price'],
-            direction = inside_signal['side'],
-            # direction = (set(['bid','ask'])-set([inside_signal['side']])).pop(),
+            direction = inside_signal['side'], 
             trade_id= inside_signal['trade_id']
             )
         elif inside_signal['sign'] in (5,6,): order_flow = None

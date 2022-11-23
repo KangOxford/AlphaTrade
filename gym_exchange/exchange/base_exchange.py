@@ -13,106 +13,74 @@ from gym_exchange.data_orderbook_adapter import utils
 class BaseExchange(Exchange_Interface):
     def __init__(self):
         super().__init__()
-        print(">>> BaseExchange Initialized") #$
         
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
         self.executed_pairs_recoder = ExecutedPairsRecorder()
-        if Debugger.BaseExchange.on == True:
-            from gym_exchange import Config
-            from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-            historical_data = (DataPipeline()())['historical_data']
-            column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
-            column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
-            bid_sid_historical_data = historical_data.iloc[:,column_numbers_bid]
-            ask_sid_historical_data = historical_data.iloc[:,column_numbers_ask]
-            self.d2 = bid_sid_historical_data; self.l2 = ask_sid_historical_data
+
         
+    # -------------------------- 03.02 ----------------------------
+    def type1_handler(self, message, index):
+        trades, order_in_book = self.order_book.process_order(message, True, False)
+        self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market', self.index) # 2nd para: kind
+    
+    def type2_handler(self, message):
+        tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+        in_book_quantity = tree.get_order(message['order_id']).quantity
+        message['quantity'] = min(message['quantity'], in_book_quantity)# adjuested_message 
+        (self.order_book.bids if message['side'] == 'bid' else self.order_book.asks).update_order(message)
+        
+    def type3_handler(self, message):
+        done = False
+        right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+        if right_tree.order_exists(message['order_id']) == False:
+            try: # message['price'] in the order_book
+                right_price_list = right_tree.get_price_list(message['price']) # my_price
+                for order in right_price_list:
+                    if 90000000 <= order.order_id and order.order_id < 100000000: # if my_order_id in initial_orderbook_ids
+                        '''Initial orderbook id is created via the exchange
+                        cannot be the same with the message['order_id'].
+                        Solution: total delete the first (90000000) order in the orderlist
+                        at the price we want to totally delete.
+                        message['order_id'] not in the order_book.
+                        message['timestamp'] not in the order_book.
+                        Only tackle with single order. If found, break.
+                        Solution code: 31'''
+                        self.order_book.cancel_order(
+                            side = message['side'], 
+                            order_id = order.order_id,
+                            time = order.timestamp, 
+                        )
+                        self.cancelled_quantity = order.quantity
+                        done = True; break
+                if not done:
+                    raise NotImplementedError
+            except: # message['price'] not in the order_book
+                pass
+                # print()#$
+                # raise NotImplementedError #TODO
+        else: #right_tree.order_exists(message['order_id']) == True
+            self.order_book.cancel_order(
+                side = message['side'], 
+                order_id = message['order_id'],
+                time = message['timestamp'], 
+            )
+            self.cancelled_quantity =  message['quantity']
         
     def process_tasks(self): # para: self.task_list; return: self.order_book
-        print(f">>>>>>>> self.index : {self.index}") #$
-        # if self.index == 570:
-        #     breakpoint()#$
         for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
-                    # if message['order_id'] == 10264385:
-                    #     breakpoint() #$
-                    #     print(self.index) #$
-                    if self.index == 129:
-                        breakpoint()
-                    if self.index == 130:
-                        breakpoint()
-                    print(f"message:{message}") #$
-                    # print(f"---before trading {utils.brief_order_book(self.order_book,message['side'])}")
-                    print(f"---before trading\n {(self.order_book)}")
-                    trades, order_in_book = self.order_book.process_order(message, True, False)
-                    print(f"---after trading\n {(self.order_book)}")
-                    # print(f"---after trading {utils.brief_order_book(self.order_book,message['side'])}")
-                    if len(trades) != 0:
-                        breakpoint()
-                        print() #$
-                    self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market', self.index) # 2nd para: kind
+                    self.type1_handler(message, index)
                 elif item.type == 2:
-                    tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
-                    in_book_quantity = tree.get_order(message['order_id']).quantity
-                    message['quantity'] = min(message['quantity'], in_book_quantity)# adjuested_message 
-                    (self.order_book.bids if message['side'] == 'bid' else self.order_book.asks).update_order(message)
+                    self.type2_handler(message)
                 elif item.type == 3:
-                    done = False
-                    right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
-                    if right_tree.order_exists(message['order_id']) == False:
-                        try: # message['price'] in the order_book
-                            right_price_list = right_tree.get_price_list(message['price']) # my_price
-                            for order in right_price_list:
-                                if 90000000 <= order.order_id and order.order_id < 100000000: # if my_order_id in initial_orderbook_ids
-                                    '''Initial orderbook id is created via the exchange
-                                    cannot be the same with the message['order_id'].
-                                    Solution: total delete the first (90000000) order in the orderlist
-                                    at the price we want to totally delete.
-                                    message['order_id'] not in the order_book.
-                                    message['timestamp'] not in the order_book.
-                                    Only tackle with single order. If found, break.
-                                    Solution code: 31'''
-                                    self.order_book.cancel_order(
-                                        side = message['side'], 
-                                        order_id = order.order_id,
-                                        time = order.timestamp, 
-                                    )
-                                    self.cancelled_quantity = order.quantity
-                                    done = True; break
-                            if not done:
-                                raise NotImplementedError
-                        except: # message['price'] not in the order_book
-                            pass
-                            # print()#$
-                            # raise NotImplementedError #TODO
-                    else: #right_tree.order_exists(message['order_id']) == True
-                        self.order_book.cancel_order(
-                            side = message['side'], 
-                            order_id = message['order_id'],
-                            time = message['timestamp'], 
-                        )
-                        self.cancelled_quantity =  message['quantity']
+                    self.type3_handler(message)
                         
     def step(self, action = None): # action : Action(for the definition of type)
         self.order_book = super().step(action)
-        if action == None:
-            pass
-            # for side in ['bid', 'ask']:
-            #     history_data = self.d2 if side == 'bid' else self.l2
-            #     my_list, right_list = get_two_list4compare(self.order_book, self.index, history_data, side)
-            #     my_list = np.array(my_list); right_list = np.array(right_list)
-            #     difference = my_list - right_list
-            #     is_the_same = (not any(difference))
-            #     if Debugger.BaseExchange.on == True:
-            #         print(f"self.index: {self.index}")#$
-            #         print(my_list) #$
-            #         print(right_list) #$
-            #         print(f"is_the_same:{is_the_same}") #$
-            #         print() #$ #TODO
         return self.order_book 
         
     
