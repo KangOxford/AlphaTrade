@@ -4,9 +4,9 @@
 # from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 # from gym_exchange.exchange.utils.executed_pairs import ExecutedPairsRecorder
 # from gym_exchange.exchange.order_flow import OrderFlow
-# from gym_exchange.data_orderbook_adapter import utils
 
 from gym_exchange.exchange import Debugger
+from gym_exchange.data_orderbook_adapter import utils
 from gym_exchange.exchange.base_exchange import BaseExchange
 
 
@@ -34,7 +34,20 @@ class DebugBase(BaseExchange):
     # ···················· 03.02.01 ···················· 
     def order_book_data_consistency_check(self):
         if Debugger.on == True:
-            pass # TODO to be implemented
+            # pass # TODO to be tested
+            # ................ 03.02.01.01 ................
+            if self.order_book.bids.depth != 0:
+                single_side_historical_data = self.bid_sid_historical_data
+                assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'bid'), "the orderbook if different from the data"
+            if self.order_book.asks.depth != 0:
+                single_side_historical_data = self.ask_sid_historical_data
+                assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
+            print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
+            # ................ 03.02.01.02 ................
+            print(">>> Brief_self.order_book(self.order_book)")
+            side = 'bid' if self.historical_message[5] == 1 else 'ask'
+            print(utils.brief_order_book(self.order_book, side))
+            print("The orderbook is right!\n")
     
     # ···················· 03.02.02 ···················· 
     def type1_handler(self, message, index):
