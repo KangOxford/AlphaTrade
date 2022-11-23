@@ -38,13 +38,18 @@ class BaseExchange(Exchange_Interface):
             if item is not None:
                 message = item.to_message
                 if item.type == 1:
+                    # if message['order_id'] == 10264385:
+                    #     breakpoint() #$
+                    #     print(self.index) #$
+                    if self.index == 129:
+                        breakpoint()
                     if self.index == 130:
                         breakpoint()
                     print(f"message:{message}") #$
                     # print(f"---before trading {utils.brief_order_book(self.order_book,message['side'])}")
-                    print(f"---before trading {(self.order_book)}")
+                    print(f"---before trading\n {(self.order_book)}")
                     trades, order_in_book = self.order_book.process_order(message, True, False)
-                    print(f"---after trading {(self.order_book)}")
+                    print(f"---after trading\n {(self.order_book)}")
                     # print(f"---after trading {utils.brief_order_book(self.order_book,message['side'])}")
                     if len(trades) != 0:
                         breakpoint()

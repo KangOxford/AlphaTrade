@@ -32,20 +32,30 @@ class Exchange_Interface(abc.ABC):
     
     # -------------------------- 02.02 ----------------------------
     '''reset'''
-    def initialize_orderbook(self):
-        flow_list = next(self.flow_generator)
-        for flow in flow_list:
-            self.order_book.process_order(flow.to_message, True, False)
-        self.index += 1
         
     def reset(self):
         self.index = 0
-        self.order_book = OrderBook()
         self.flow_generator = (flow for flow in self.flow_list)
+        self.order_book = OrderBook()
         self.initialize_orderbook()
         
+    def initialize_orderbook(self):
+        '''only take the index0, the first one to init the lob'''
+        flow_list = next(self.flow_generator)
+        for flow in flow_list:
+            self.order_book.process_order(flow.to_message, True, False)
+        self.index += 1 
+        '''for this step is index0, for next step is index1'''
         
     # -------------------------- 02.03 ----------------------------
+    '''step'''
+
+    def step(self, action = None): # action : Action(for the definition of type)
+        self.update_task_list(action)
+        self.process_tasks()
+        self.accumulating()
+        return self.order_book
+
     def update_task_list(self, action = None):# action : Action(for the definition of type)
         flow_list = next(self.flow_generator)#used for historical data
         self.task_list = [action] + [flow for flow in flow_list]
@@ -56,12 +66,6 @@ class Exchange_Interface(abc.ABC):
         
     def accumulating(self):
         self.index += 1
-
-    def step(self, action = None): # action : Action(for the definition of type)
-        self.update_task_list(action)
-        self.process_tasks()
-        self.accumulating()
-        return self.order_book
 
 if __name__ == "__main__":
     
@@ -82,6 +86,14 @@ if __name__ == "__main__":
     #     for i in range(len(Ofs)):
     #         f.write(f"------ {i} ------\n")
     #         f.write(Ofs[i].__str__())
+    
+    # # -------------------------- 03.03 ----------------------------
+    # ''' self.flow_generator = (flow for flow in self.flow_list) '''
+    # Ofs = self.flow_generator
+    # with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/log_ofs_exchange_interface3.txt","w") as f:
+    #     for i in range(2049):
+    #         f.write(f"------ {i} ------\n")
+    #         f.write(next(Ofs).__str__())
     
     
     pass

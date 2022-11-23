@@ -96,17 +96,16 @@ class Decoder:
             side = 'bid' if self.historical_message[5] == 1 else 'ask'
             print(utils.brief_order_book(self.order_book, side))
             print("The orderbook is right!\n")
-        self.index += 1
         try:outside_signals = [outside_signal_bid, outside_signal_ask]
         except: 
             try:outside_signals = [outside_signal_bid]
             except: 
                 try:outside_signals = [outside_signal_bid]
                 except: outside_signals = []
+        self.index += 1
         return inside_signal, outside_signals
         
     def process(self):
-        
         for index in range(self.horizon): # size : self.horizon
             # if index == 124: breakpoint()#$
             inside_signal, outside_signals = self.step()
