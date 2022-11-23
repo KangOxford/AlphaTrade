@@ -21,9 +21,6 @@ class DebugBase(BaseExchange):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
-        if Debugger.on: 
-            from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-            _, _, self.historical_data, _ = DataPipeline()() # used for # ....... 03.02.01.01 ........
         if Debugger.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
