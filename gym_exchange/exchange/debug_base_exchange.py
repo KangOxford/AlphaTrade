@@ -24,7 +24,9 @@ class DebugBase(BaseExchange):
         if Debugger.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-            self.historical_data = (DataPipeline()())['historical_data']
+            data_pipeline = DataPipeline()()
+            self.historical_data = data_pipeline['historical_data']
+            self.data_loader = data_pipeline['data_loader']
             column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
             bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid]
@@ -38,6 +40,7 @@ class DebugBase(BaseExchange):
         if Debugger.on == True:
             # pass # TODO to be tested
             # ................ 03.02.01.01 ................
+            self.historical_message = self.data_loader.iloc[self.index,:]
             self.column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             self.column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
             self.bid_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_bid]
@@ -78,7 +81,7 @@ class DebugBase(BaseExchange):
     # ···················· 03.02.04 ····················                     
     def step(self, action = None): # action : Action(for the definition of type)
         self.order_book = super().step(action)
-        if action == None and Debugger.DebugBase.on:
+        if action == None and Debugger.on:
             pass
             # for side in ['bid', 'ask']:
             #     history_data = self.d2 if side == 'bid' else self.l2
