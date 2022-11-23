@@ -9,19 +9,21 @@ from gym_exchange.data_orderbook_adapter import Configuration
 # ========================= 02 =========================
 import abc; from abc import abstractclassmethod
 class Exchange_Interface(abc.ABC):
-    def __init__(self):
-        self.index = 0
-        self.encoder, self.flow_list = self.initialization()
-    
     # -------------------------- 02.01 ----------------------------
+    '''init'''
+    def __init__(self):
+        self.flow_list = self.initialization()
+    
     def initialization(self):
         decoder   = Decoder(**DataPipeline()())
         encoder   = Encoder(decoder)
         flow_lists= encoder() 
         flow_lists= self.to_order_flow_lists(flow_lists)
-        return encoder, flow_lists
+        return flow_lists
     
     def to_order_flow_lists(self, flow_lists):
+        '''change side format from bid/ask to 1/-1
+        side = -1 if item.side == 'ask' else 1'''
         for flow_list in flow_lists:
             for item in flow_list:
                 side = -1 if item.side == 'ask' else 1
@@ -29,6 +31,7 @@ class Exchange_Interface(abc.ABC):
         return flow_lists
     
     # -------------------------- 02.02 ----------------------------
+    '''reset'''
     def initialize_orderbook(self):
         flow_list = next(self.flow_generator)
         for flow in flow_list:
@@ -36,6 +39,7 @@ class Exchange_Interface(abc.ABC):
         self.index += 1
         
     def reset(self):
+        self.index = 0
         self.order_book = OrderBook()
         self.flow_generator = (flow for flow in self.flow_list)
         self.initialize_orderbook()
@@ -59,3 +63,25 @@ class Exchange_Interface(abc.ABC):
         self.accumulating()
         return self.order_book
 
+if __name__ == "__main__":
+    
+    
+    # # -------------------------- 03.01 ----------------------------
+    # ''' flow_lists= encoder() '''
+    # Ofs = flow_lists
+    # with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/log_ofs_exchange_interface.txt","w") as f:
+    #     for i in range(len(Ofs)):
+    #         f.write(f"------ {i} ------\n")
+    #         f.write(Ofs[i].__str__())
+    
+    
+    # # -------------------------- 03.02 ----------------------------
+    # ''' flow_lists = self.to_order_flow_lists(flow_lists) '''
+    # Ofs = flow_lists
+    # with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/log_ofs_exchange_interface2.txt","w") as f:
+    #     for i in range(len(Ofs)):
+    #         f.write(f"------ {i} ------\n")
+    #         f.write(Ofs[i].__str__())
+    
+    
+    pass

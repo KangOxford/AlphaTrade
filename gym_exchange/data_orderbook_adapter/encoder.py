@@ -136,3 +136,13 @@ if __name__ == "__main__":
     # for of in Ofs:
     #     if of.length != 0:
     #         count += 1
+    
+    
+    with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/log_ofs.txt","w") as f:
+        for i in range(len(Ofs)):
+            f.write(f"------ {i} ------\n")
+            f.write(Ofs[i].__str__())
+            
+            
+            
+            

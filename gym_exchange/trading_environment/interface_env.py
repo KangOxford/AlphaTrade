@@ -32,7 +32,7 @@ class SpaceParams(object):
         shape = (2 * Config.state_dim_1,Config.state_dim_2)
 
 
-class EnvInterface(gym.Env, abc.ABC, Generic[State, Action]):
+class InterfaceEnv(gym.Env, abc.ABC, Generic[State, Action]):
 # class EnvInterface(gym.Env, abc.ABC, Generic[State, Observation, Action]):
     """A stock trading environment based on OpenAI gym"""
     metadata = {'render.modes': ['human']}
