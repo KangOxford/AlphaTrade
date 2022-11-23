@@ -5,6 +5,8 @@
 # from gym_exchange.exchange.utils.executed_pairs import ExecutedPairsRecorder
 # from gym_exchange.exchange.order_flow import OrderFlow
 
+
+from gym_exchange import Config
 from gym_exchange.exchange import Debugger
 from gym_exchange.data_orderbook_adapter import utils
 from gym_exchange.exchange.base_exchange import BaseExchange
@@ -19,6 +21,9 @@ class DebugBase(BaseExchange):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
+        if Debugger.on: 
+            from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
+            _, _, self.historical_data, _ = DataPipeline()() # used for # ....... 03.02.01.01 ........
         if Debugger.on == True:
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
@@ -36,6 +41,11 @@ class DebugBase(BaseExchange):
         if Debugger.on == True:
             # pass # TODO to be tested
             # ................ 03.02.01.01 ................
+            self.column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
+            self.column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
+            self.bid_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_bid]
+            self.ask_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_ask]
+            # ................ 03.02.01.02 ................
             if self.order_book.bids.depth != 0:
                 single_side_historical_data = self.bid_sid_historical_data
                 assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'bid'), "the orderbook if different from the data"
@@ -43,7 +53,7 @@ class DebugBase(BaseExchange):
                 single_side_historical_data = self.ask_sid_historical_data
                 assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
             print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
-            # ................ 03.02.01.02 ................
+            # ................ 03.02.01.03 ................
             print(">>> Brief_self.order_book(self.order_book)")
             side = 'bid' if self.historical_message[5] == 1 else 'ask'
             print(utils.brief_order_book(self.order_book, side))
