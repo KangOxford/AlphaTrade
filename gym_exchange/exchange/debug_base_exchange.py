@@ -39,22 +39,19 @@ class DebugBase(BaseExchange):
         if Debugger.on == True:
             # pass # TODO to be tested
             # ................ 03.02.01.01 ................
-            # ................ 03.02.01.02 ................
             if self.order_book.bids.depth != 0:
-                side = 'bid'
-                single_side_historical_data = self.d2
+                side = 'bid'; single_side_historical_data = self.d2
                 assert utils.is_right_answer(self.order_book, self.index, \
                 self.d2, side = 'bid'), "the orderbook(bid) if different from the data"
             if self.order_book.asks.depth != 0:
-                side = 'ask'
-                single_side_historical_data = self.l2
+                side = 'ask'; single_side_historical_data = self.l2
                 assert utils.is_right_answer(self.order_book, self.index, \
                 self.l2, side = 'ask'), "the orderbook(ask) if different from the data"
-            print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
+            # ................ 03.02.01.02 ................
+            print(">>> Right_order_book"); 
+            print(utils.get_right_answer(self.index, single_side_historical_data))
             # ................ 03.02.01.03 ................
             print(">>> Brief_self.order_book(self.order_book)")
-            # historical_message = self.data_loader.iloc[self.index,:]
-            # side = 'bid' if historical_message[5] == 1 else 'ask'
             print(utils.brief_order_book(self.order_book, side))
             print("The orderbook is right!\n")
     
