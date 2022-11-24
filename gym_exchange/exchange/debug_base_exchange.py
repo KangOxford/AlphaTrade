@@ -33,6 +33,8 @@ class DebugBase(BaseExchange):
             # # ⋀⋀⋀⋀⋀⋀⋀⋀ index_alignment ⋀⋀⋀⋀⋀⋀⋀⋀
             column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
+            # bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid].shift(1)
+            # ask_sid_historical_data = self.historical_data.iloc[:,column_numbers_ask].shift(1)
             bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid]
             ask_sid_historical_data = self.historical_data.iloc[:,column_numbers_ask]
             self.d2 = bid_sid_historical_data; self.l2 = ask_sid_historical_data
@@ -46,8 +48,8 @@ class DebugBase(BaseExchange):
             self.historical_message = self.data_loader.iloc[self.index,:]
             self.column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             self.column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
-            self.bid_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_bid]
-            self.ask_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_ask]
+            self.bid_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_bid].shift(1)
+            self.ask_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_ask].shift(1)
             # ................ 03.02.01.02 ................
             if self.order_book.bids.depth != 0:
                 single_side_historical_data = self.bid_sid_historical_data
