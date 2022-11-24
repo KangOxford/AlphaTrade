@@ -27,10 +27,10 @@ class DebugBase(BaseExchange):
             data_pipeline = DataPipeline()()
             self.historical_data = data_pipeline['historical_data']
             self.data_loader = data_pipeline['data_loader']
-            # ⋁⋁⋁⋁⋁⋁⋁⋁ index_alignment ⋁⋁⋁⋁⋁⋁⋁⋁ 
-            self.data_loader.index += 1; 
-            self.historical_data.index += 1 
-            # ⋀⋀⋀⋀⋀⋀⋀⋀ index_alignment ⋀⋀⋀⋀⋀⋀⋀⋀
+            # # ⋁⋁⋁⋁⋁⋁⋁⋁ index_alignment ⋁⋁⋁⋁⋁⋁⋁⋁ 
+            # self.data_loader.index += 1; 
+            # self.historical_data.index += 1 
+            # # ⋀⋀⋀⋀⋀⋀⋀⋀ index_alignment ⋀⋀⋀⋀⋀⋀⋀⋀
             column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
             bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid]
