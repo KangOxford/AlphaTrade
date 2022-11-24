@@ -54,6 +54,8 @@ def get_two_list4compare(order_book, index, d2, side):
     
 def is_right_answer(order_book, index, d2, side):
     my_list, right_list = get_two_list4compare(order_book, index, d2, side)
+    print("---my_list") ; print(my_list) #$
+    print('---right_list'); print(right_list) #$
     return len(list(set(right_list) - set(my_list))) == 0
     
     

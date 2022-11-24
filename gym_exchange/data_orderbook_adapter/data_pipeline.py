@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-
+import itertools
 import pandas as pd
+import numpy as np
 from gym_exchange import Config
 class DataPipeline:
     def __init__(self):
@@ -21,3 +22,41 @@ class DataPipeline:
                 'horizon':Config.raw_horizon, 
                 'historical_data':self.historical_data, 
                 'data_loader':self.data_loader}
+    
+if __name__ == "__main__":
+    ob = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
+    bid_columns =list(itertools.chain(*[[4*i+2, 4*i+3] for i in range(ob.shape[1]//4)])) 
+    ask_columns =list(itertools.chain(*[[4*i+0, 4*i+1] for i in range(ob.shape[1]//4)]))
+    bid = ob.iloc[:,bid_columns]
+    ask = ob.iloc[:,ask_columns]    
+    bid.to_csv("/Users/kang/Data/bid.csv", header = None)
+    ask.to_csv("/Users/kang/Data/ask.csv", header = None)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
