@@ -25,16 +25,10 @@ class DebugBase(BaseExchange):
             from gym_exchange import Config
             from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
             data_pipeline = DataPipeline()()
-            self.historical_data = data_pipeline['historical_data']
+            self.historical_data = data_pipeline['historical_data'].shift(1).fillna(0).astype(int)
             self.data_loader = data_pipeline['data_loader']
-            # # ⋁⋁⋁⋁⋁⋁⋁⋁ index_alignment ⋁⋁⋁⋁⋁⋁⋁⋁ 
-            # self.data_loader.index += 1; 
-            # self.historical_data.index += 1 
-            # # ⋀⋀⋀⋀⋀⋀⋀⋀ index_alignment ⋀⋀⋀⋀⋀⋀⋀⋀
             column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
             column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
-            # bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid].shift(1)
-            # ask_sid_historical_data = self.historical_data.iloc[:,column_numbers_ask].shift(1)
             bid_sid_historical_data = self.historical_data.iloc[:,column_numbers_bid]
             ask_sid_historical_data = self.historical_data.iloc[:,column_numbers_ask]
             self.d2 = bid_sid_historical_data; self.l2 = ask_sid_historical_data
@@ -45,24 +39,22 @@ class DebugBase(BaseExchange):
         if Debugger.on == True:
             # pass # TODO to be tested
             # ................ 03.02.01.01 ................
-            self.historical_message = self.data_loader.iloc[self.index,:]
-            self.column_numbers_bid = [i for i in range(Config.price_level * 4) if i%4==2 or i%4==3]
-            self.column_numbers_ask = [i for i in range(Config.price_level * 4) if i%4==0 or i%4==1]
-            self.bid_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_bid].shift(1)
-            self.ask_sid_historical_data = self.historical_data.iloc[:,self.column_numbers_ask].shift(1)
             # ................ 03.02.01.02 ................
             if self.order_book.bids.depth != 0:
-                single_side_historical_data = self.bid_sid_historical_data
+                side = 'bid'
+                single_side_historical_data = self.d2
                 assert utils.is_right_answer(self.order_book, self.index, \
-                single_side_historical_data, side = 'bid'), "the orderbook(bid) if different from the data"
+                self.d2, side = 'bid'), "the orderbook(bid) if different from the data"
             if self.order_book.asks.depth != 0:
-                single_side_historical_data = self.ask_sid_historical_data
+                side = 'ask'
+                single_side_historical_data = self.l2
                 assert utils.is_right_answer(self.order_book, self.index, \
-                single_side_historical_data, side = 'ask'), "the orderbook(ask) if different from the data"
+                self.l2, side = 'ask'), "the orderbook(ask) if different from the data"
             print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
             # ................ 03.02.01.03 ................
             print(">>> Brief_self.order_book(self.order_book)")
-            side = 'bid' if self.historical_message[5] == 1 else 'ask'
+            # historical_message = self.data_loader.iloc[self.index,:]
+            # side = 'bid' if historical_message[5] == 1 else 'ask'
             print(utils.brief_order_book(self.order_book, side))
             print("The orderbook is right!\n")
     
