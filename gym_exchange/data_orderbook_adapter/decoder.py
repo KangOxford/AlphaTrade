@@ -106,22 +106,20 @@ class Decoder:
         return inside_signal, outside_signals
         
     def process(self):
-        inside_signal_list = []
-        outside_signals_list = []
+        signals_list = []
         for index in range(self.horizon): # size : self.horizon
             # if index == 124: breakpoint()#$
             signals = self.step()
             # print()
             # _, _ = self.step()
-            inside_signal_list.append(inside_signal)
-            outside_signals_list.append(outside_signals)
+            signals_list.append(signals)
                     
 if __name__ == "__main__":
     # =============================================================================
     # 02 REVISING OF ORDERBOOK
     # =============================================================================
     decoder = Decoder(**DataPipeline()())
-    inside_signal_list, outside_signals_list = decoder.process()
+    signals_list = decoder.process()
     # breakpoint() # tbd
     
         
