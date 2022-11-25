@@ -72,7 +72,6 @@ class DebugBase(BaseExchange):
         if Debugger.on: 
             if len(trades) != 0: 
                 print("*** trades"); print(trades) 
-            self.order_book_data_consistency_check()
         self.executed_pairs_recoder.step(trades, 'agent' if index == 0 else 'market', self.index) # 2nd para: kind
         
     # ···················· 03.02.03 ····················     
@@ -83,6 +82,7 @@ class DebugBase(BaseExchange):
                 print("...")
                 print(item[1])
         super().process_tasks()
+        self.order_book_data_consistency_check()
         
     # ···················· 03.02.04 ····················                     
     def step(self, action = None): # action : Action(for the definition of type)
@@ -99,8 +99,8 @@ if __name__ == "__main__":
     exchange = DebugBase()
     exchange.reset()
     for i in range(2048):
-        if i == 85:
-            breakpoint() #$
+        # if i == 85:
+        #     breakpoint() #$
         exchange.step()
         
     # print(self.order_book) #$
