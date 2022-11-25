@@ -90,11 +90,13 @@ class Decoder:
             if self.order_book.asks.depth != 0:
                 single_side_historical_data = self.ask_sid_historical_data
                 assert utils.is_right_answer(self.order_book, self.index, single_side_historical_data, side = 'ask'), "the orderbook if different from the data"
-            print(">>> Right_order_book"); print(utils.get_right_answer(self.index, single_side_historical_data))
+            print("********** Print orderbook for comparison **********");
+            print(">>> Right_order_book"); print(utils.get_right_answer(self.index, self.ask_sid_historical_data))
+            print(">>> Right_order_book"); print(utils.get_right_answer(self.index, self.bid_sid_historical_data))
             # -------------------------- 04.02 ----------------------------
             print(">>> Brief_self.order_book(self.order_book)")
-            side = 'bid' if self.historical_message[5] == 1 else 'ask'
-            print(utils.brief_order_book(self.order_book, side))
+            print(utils.brief_order_book(self.order_book, 'ask'))
+            print(utils.brief_order_book(self.order_book, 'bid'))
             print("The orderbook is right!\n")
         try:outside_signals = [outside_signal_bid, outside_signal_ask]
         except: 
