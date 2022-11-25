@@ -78,9 +78,18 @@ class BaseExchange(Exchange_Interface):
                     self.type2_handler(message)
                 elif item.type == 3:
                     self.type3_handler(message)
+                    
+
+    def update_task_list(self, action = None):# action : Action(for the definition of type)
+        flow_list = next(self.flow_generator)#used for historical data
+        self.task_list = [action] + [flow for flow in flow_list]
+    
                         
     def step(self, action = None): # action : Action(for the definition of type)
-        self.order_book = super().step(action)
+        self.update_task_list(action)
+        self.process_tasks()
+        self.accumulating()
+        return self.order_book
         return self.order_book 
         
     

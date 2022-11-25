@@ -29,8 +29,8 @@ if __name__ == "__main__":
     ask_columns =list(itertools.chain(*[[4*i+0, 4*i+1] for i in range(ob.shape[1]//4)]))
     bid = ob.iloc[:,bid_columns]
     ask = ob.iloc[:,ask_columns]    
-    bid.to_csv("/Users/kang/Data/bid.csv", header = None)
-    ask.to_csv("/Users/kang/Data/ask.csv", header = None)
+    bid.to_csv("/Users/kang/Data/bid.csv", header = None, index=False)
+    ask.to_csv("/Users/kang/Data/ask.csv", header = None, index=False)
     
     
     

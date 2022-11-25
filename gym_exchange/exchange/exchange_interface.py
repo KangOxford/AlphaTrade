@@ -50,15 +50,13 @@ class Exchange_Interface(abc.ABC):
     # -------------------------- 02.03 ----------------------------
     '''step'''
 
+    @abstractclassmethod
     def step(self, action = None): # action : Action(for the definition of type)
-        self.update_task_list(action)
-        self.process_tasks()
-        self.accumulating()
-        return self.order_book
+        pass
 
+    @abstractclassmethod
     def update_task_list(self, action = None):# action : Action(for the definition of type)
-        flow_list = next(self.flow_generator)#used for historical data
-        self.task_list = [action] + [flow for flow in flow_list]
+        pass
     
     @abstractclassmethod
     def process_tasks(self):
