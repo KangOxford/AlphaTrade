@@ -40,12 +40,10 @@ class DebugBase(BaseExchange):
             # pass # TODO to be tested
             # ................ 03.02.01.01 ................
             if self.order_book.bids.depth != 0:
-                # side = 'bid'; 
                 single_side_historical_data = self.d2
                 assert utils.is_right_answer(self.order_book, self.index, \
                 self.d2, side = 'bid'), "the orderbook(bid) if different from the data"
             if self.order_book.asks.depth != 0:
-                # side = 'ask'; 
                 single_side_historical_data = self.l2
                 assert utils.is_right_answer(self.order_book, self.index, \
                 self.l2, side = 'ask'), "the orderbook(ask) if different from the data"
@@ -64,11 +62,13 @@ class DebugBase(BaseExchange):
         if Debugger.on: 
             print(f"message:{message}") #$
             print("--- Type 1")
-        # print(f"---before trading {utils.brief_order_book(self.order_book,message['side'])}")
+        print(f"---before trading\n {utils.brief_order_book(self.order_book,message['side'])}")
+        # print(f"---before trading\n {utils.brief_order_book(self.order_book,'bid')}") #$
         # if Debugger.on: print(f"---before trading\n {(self.order_book)}")
         trades, order_in_book = self.order_book.process_order(message, True, False)
         # if Debugger.on: print(f"---after trading\n {(self.order_book)}")
-        # print(f"---after trading {utils.brief_order_book(self.order_book,message['side'])}")
+        print(f"---after trading\n {utils.brief_order_book(self.order_book,message['side'])}")
+        # print(f"---after trading\n {utils.brief_order_book(self.order_book,'bid')}")
         if Debugger.on: 
             if len(trades) != 0: 
                 print("*** trades"); print(trades) 
@@ -77,24 +77,33 @@ class DebugBase(BaseExchange):
         
     # ···················· 03.02.03 ····················     
     def process_tasks(self): # para: self.task_list; return: self.order_book
-        if Debugger.on: print(f">>>>>>>> self.index : {self.index}") #$
-        # if self.index == 11:
-        #     breakpoint() #$
+        if Debugger.on: 
+            print("--- tasks: ")
+            for item in enumerate(self.task_list):
+                print("...")
+                print(item[1])
         super().process_tasks()
         
     # ···················· 03.02.04 ····················                     
     def step(self, action = None): # action : Action(for the definition of type)
+        if Debugger.on: print(f">>>>>>>> self.index : {self.index}") #$
+        if Debugger.on: 
+            print(f"At beginning of step {self.index}\n",self.order_book)
         self.order_book = super().step(action)
+        if Debugger.on: 
+            print(f"At ending of step {self.index-1}\n",self.order_book)
         return self.order_book 
         
     
 if __name__ == "__main__":
     exchange = DebugBase()
     exchange.reset()
-    for _ in range(2048):
+    for i in range(2048):
+        if i == 85:
+            breakpoint() #$
         exchange.step()
         
-    
+    # print(self.order_book) #$
 
 
 

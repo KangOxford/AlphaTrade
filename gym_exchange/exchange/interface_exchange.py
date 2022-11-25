@@ -32,11 +32,7 @@ class InterfaceExchange(abc.ABC):
     
     # -------------------------- 02.02 ----------------------------
     '''reset'''
-        
-    @abstractclassmethod
-    def reset(self):
-        pass
-        
+    
     def initialize_orderbook(self):
         '''only take the index0, the first one to init the lob'''
         flow_list = next(self.flow_generator)
@@ -44,6 +40,10 @@ class InterfaceExchange(abc.ABC):
             self.order_book.process_order(flow.to_message, True, False)
         self.index += 1 
         '''for this step is index0, for next step is index1'''
+        
+    @abstractclassmethod
+    def reset(self):
+        pass
         
     # -------------------------- 02.03 ----------------------------
     '''step'''
@@ -60,8 +60,9 @@ class InterfaceExchange(abc.ABC):
     def process_tasks(self):
         pass
         
+    @abstractclassmethod
     def accumulating(self):
-        self.index += 1
+        pass
 
 if __name__ == "__main__":
     

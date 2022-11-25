@@ -88,12 +88,13 @@ class BaseExchange(InterfaceExchange):
         flow_list = next(self.flow_generator)#used for historical data
         self.task_list = [action] + [flow for flow in flow_list]
     
+    def accumulating(self):
+        self.index += 1
                         
     def step(self, action = None): # action : Action(for the definition of type)
         self.update_task_list(action)
         self.process_tasks()
         self.accumulating()
-        return self.order_book
         return self.order_book 
         
     
@@ -102,8 +103,10 @@ if __name__ == "__main__":
     exchange.reset()
     for _ in range(2048):
         exchange.step()
-        
-
+    
+    
+    # print(self.index) #$
+    # print(self.order_book) #$
 
 
 
