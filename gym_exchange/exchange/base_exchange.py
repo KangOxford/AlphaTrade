@@ -2,6 +2,7 @@
 import numpy as np
 from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 from gym_exchange.exchange import Debugger
+from gym_exchange.orderbook import OrderBook
 from gym_exchange.exchange.exchange_interface import Exchange_Interface
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairsRecorder
@@ -16,7 +17,10 @@ class BaseExchange(Exchange_Interface):
         
     # -------------------------- 03.01 ----------------------------
     def reset(self):
-        super().reset()
+        self.index = 0
+        self.flow_generator = (flow for flow in self.flow_list)
+        self.order_book = OrderBook()
+        self.initialize_orderbook()
         self.executed_pairs_recoder = ExecutedPairsRecorder()
 
         

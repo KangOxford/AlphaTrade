@@ -33,11 +33,9 @@ class Exchange_Interface(abc.ABC):
     # -------------------------- 02.02 ----------------------------
     '''reset'''
         
+    @abstractclassmethod
     def reset(self):
-        self.index = 0
-        self.flow_generator = (flow for flow in self.flow_list)
-        self.order_book = OrderBook()
-        self.initialize_orderbook()
+        pass
         
     def initialize_orderbook(self):
         '''only take the index0, the first one to init the lob'''
