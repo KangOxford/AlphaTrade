@@ -3,7 +3,7 @@ import numpy as np
 from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 from gym_exchange.exchange import Debugger
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.exchange.exchange_interface import Exchange_Interface
+from gym_exchange.exchange.interface_exchange import InterfaceExchange
 from gym_exchange.exchange.utils import latest_timestamp, timestamp_increase
 from gym_exchange.exchange.utils.executed_pairs import ExecutedPairsRecorder
 from gym_exchange.exchange.order_flow import OrderFlow
@@ -11,7 +11,7 @@ from gym_exchange.data_orderbook_adapter import utils
 
 
 # ========================= 03 =========================
-class BaseExchange(Exchange_Interface):
+class BaseExchange(InterfaceExchange):
     def __init__(self):
         super().__init__()
         

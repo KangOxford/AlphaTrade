@@ -8,7 +8,7 @@ from gym_exchange.data_orderbook_adapter import Configuration
 
 # ========================= 02 =========================
 import abc; from abc import abstractclassmethod
-class Exchange_Interface(abc.ABC):
+class InterfaceExchange(abc.ABC):
     # -------------------------- 02.01 ----------------------------
     '''init'''
     def __init__(self):
