@@ -64,11 +64,13 @@ class DebugBase(BaseExchange):
             print("--- Type 1")
         print(f"---before trading\n {utils.brief_order_book(self.order_book,message['side'])}")
         # print(f"---before trading\n {utils.brief_order_book(self.order_book,'bid')}") #$
+        # print(f"---after trading\n {utils.brief_order_book(self.order_book,'ask')}")
         # if Debugger.on: print(f"---before trading\n {(self.order_book)}")
         trades, order_in_book = self.order_book.process_order(message, True, False)
         # if Debugger.on: print(f"---after trading\n {(self.order_book)}")
         print(f"---after trading\n {utils.brief_order_book(self.order_book,message['side'])}")
         # print(f"---after trading\n {utils.brief_order_book(self.order_book,'bid')}")
+        # print(f"---after trading\n {utils.brief_order_book(self.order_book,'ask')}")
         if Debugger.on: 
             if len(trades) != 0: 
                 print("*** trades"); print(trades) 
@@ -77,10 +79,7 @@ class DebugBase(BaseExchange):
     # ···················· 03.02.03 ····················     
     def process_tasks(self): # para: self.task_list; return: self.order_book
         if Debugger.on: 
-            print("--- tasks: ")
-            for item in enumerate(self.task_list):
-                print("...")
-                print(item[1])
+            [print(f"--- tasks:\n ...\n {item[1]}") for item in enumerate(self.task_list)]
         super().process_tasks()
         self.order_book_data_consistency_check()
         
@@ -99,8 +98,8 @@ if __name__ == "__main__":
     exchange = DebugBase()
     exchange.reset()
     for i in range(2048):
-        # if i == 85:
-        #     breakpoint() #$
+        if i == 125:
+            breakpoint() #$
         exchange.step()
         
     # print(self.order_book) #$

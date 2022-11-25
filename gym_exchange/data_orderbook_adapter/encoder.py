@@ -138,7 +138,7 @@ if __name__ == "__main__":
     #         count += 1
     
     
-    with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/log_ofs.txt","w") as f:
+    with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/outputs/log_encoder_ofs.txt","w+") as f:
         for i in range(len(Ofs)):
             f.write(f"------ {i} ------\n")
             f.write(Ofs[i].__str__())

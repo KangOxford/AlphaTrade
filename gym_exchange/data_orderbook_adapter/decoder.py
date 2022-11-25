@@ -119,3 +119,9 @@ if __name__ == "__main__":
     decoder = Decoder(**DataPipeline()())
     decoder.process()
     # breakpoint() # tbd
+    
+        
+    # with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/outputs/log_dncoder_ofs.txt","w+") as f:
+    #     for i in range(len(Ofs)):
+    #         f.write(f"------ {i} ------\n")
+    #         f.write(Ofs[i].__str__())
