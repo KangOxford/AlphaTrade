@@ -6,6 +6,10 @@ class Debugger:
     class Encoder:
         # on = True
         on = False
+    class DebugDecoder:
+        on = True
+        # on = False
+        
     
 class Configuration:
     price_level = 10 
