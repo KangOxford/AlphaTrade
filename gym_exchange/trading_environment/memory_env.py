@@ -15,12 +15,12 @@ from gym_exchange.trading_environment.assets.renders.base_env_render import base
 from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
 
 # from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
-from gym_exchange.trading_environment.env_interface import SpaceParams, EnvInterface
-from gym_exchange.trading_environment.env_interface import State # types
+from gym_exchange.trading_environment.interface_env import SpaceParams, InterfaceEnv
+from gym_exchange.trading_environment.interface_env import State # types
 from gym_exchange.trading_environment.base_env import BaseEnv
 
 
-
+# *************************** 3 *************************** #
 class MemoEnv(BaseEnv):
     # ========================== 01 ==========================
     def __init__(self):

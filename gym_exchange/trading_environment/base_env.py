@@ -20,7 +20,7 @@ from gym_exchange.trading_environment.interface_env import State # types
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
 
 
-
+# *************************** 2 *************************** #
 class BaseEnv(InterfaceEnv):
     # ========================== 01 ==========================
     def __init__(self):
@@ -135,19 +135,20 @@ if __name__ == "__main__":
     from stable_baselines3.common.env_checker import check_env
     env = BaseEnv()
     check_env(env)
+    print("="*20+" ENV CHECKED "+"="*20)
     # --------------------- 05.02 --------------------- 
     env = BaseEnv()
     env.reset()
     for i in range(int(1e6)):
-        print("-"*20) #$
+        print("-"*20 + f'=> {i} <=' +'-'*20) #$
         action = Action(side = 'bid', quantity = 1, price_delta = 1)
         print(action) #$
         # breakpoint() #$
         state, reward, done, info = env.step(action.to_array)
-        print(state) #$
-        print(reward) #$
-        print(done) #$
-        print(info) #$
+        print(f"state: {state}") #$
+        print(f"reward: {reward}") #$
+        print(f"done: {done}") #$
+        print(f"info: {info}") #$
         env.render()
         if done:
             env.reset()
