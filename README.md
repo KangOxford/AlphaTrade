@@ -13,4 +13,4 @@ Outlines for our work:
 * Representing the order book
 
 ### Slides for Week.01 Meeting `20.Feb~26.Feb`
-[Overleaf](https://www.overleaf.com/7842834529bwxpvqnsdqsv)
+* [Overleaf](https://www.overleaf.com/7842834529bwxpvqnsdqsv)
