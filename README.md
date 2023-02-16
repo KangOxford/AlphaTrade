@@ -14,3 +14,5 @@ Outlines for our work:
 
 ### Slides for Week.01 Meeting `20.Feb~26.Feb`
 * [Overleaf](https://www.overleaf.com/7842834529bwxpvqnsdqsv)
+
+### Anyone who might conribute codes to this repositry, please send email to me: kang.li@stats.ox.ac.uk An email with subject and empty content would be enough. I will add you into the collaborator list.
