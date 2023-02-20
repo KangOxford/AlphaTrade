@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
 class Debugger: 
-    on = True # by default
-    # on = False
+    # on = True # by default
+    on = False
     class Encoder:
         # on = True
         on = False
     class DebugDecoder:
-        on = True
-        # on = False
+        # on = True
+        on = False
         
     
 class Configuration:

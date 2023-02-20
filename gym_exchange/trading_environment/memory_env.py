@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
@@ -48,12 +50,16 @@ class MemoEnv(BaseEnv):
         
 if __name__ == "__main__":
     # --------------------- 05.01 --------------------- 
-    from stable_baselines3.common.env_checker import check_env
-    env = MemoEnv()
-    check_env(env)
+    # from stable_baselines3.common.env_checker import check_env
+    # env = MemoEnv()
+    # check_env(env)
+    # print("++++ Finish Checking the Environment")
+    # import time; time.sleep(5)
     # --------------------- 05.02 --------------------- 
     env = MemoEnv()
     env.reset()
+    # print("++++ Finish Reseting the Environment");import time; time.sleep(5)
+    breakpoint()#$
     for i in range(int(1e6)):
         # print("-"*20) #$
         action = None
@@ -66,7 +72,8 @@ if __name__ == "__main__":
         # print(info) #$
         env.render()
         if done:
-            env.reset()
+            print("++++ Encounter Done");import time;time.sleep(5)
+            # env.reset();print("++++ Finish Reseting the Environment");import time;time.sleep(5)
             break #$
     # --------------------- 05.02 --------------------- 
     # env = MemoEnv()

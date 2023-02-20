@@ -132,13 +132,13 @@ class BaseEnv(InterfaceEnv):
         
 if __name__ == "__main__":
     # --------------------- 05.01 --------------------- 
-    from stable_baselines3.common.env_checker import check_env
-    env = BaseEnv()
-    check_env(env)
-    print("="*20+" ENV CHECKED "+"="*20)
+    # from stable_baselines3.common.env_checker import check_env
+    # env = BaseEnv()
+    # check_env(env)
+    # print("="*20+" ENV CHECKED "+"="*20)
     # --------------------- 05.02 --------------------- 
     env = BaseEnv()
-    env.reset()
+    env.reset();print("="*20+" ENV RESTED "+"="*20);import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         action = Action(side = 'bid', quantity = 1, price_delta = 1)
