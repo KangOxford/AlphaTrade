@@ -1,14 +1,16 @@
 import numpy as np
 from gym import spaces
 from gym_exchange import Config
-from gym_exchange.trading_environment.utils.metric import VwapEstimator
-from gym_exchange.trading_environment.env_interface import SpaceParams
-from gym_exchange.trading_environment.memoryview import MemoEnv
+from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
+from gym_exchange.trading_environment.interface_env import SpaceParams
+from gym_exchange.trading_environment.memory_env import MemoEnv
+from gym_exchange.trading_environment.assets.action import Action
+# from typing import TypeVar
+# Action = TypeVar("Action")
+# State = TypeVar("State")
 
-from typing import TypeVar
-Action = TypeVar("Action")
-State = TypeVar("State")
 
+# *************************** 4 *************************** #
 class SkipEnv(MemoEnv):
     '''for action/step'''
     # ========================== 01 ==========================
@@ -43,17 +45,40 @@ class SkipEnv(MemoEnv):
         
 if __name__ == "__main__":
     # --------------------- 05.01 --------------------- 
-    from stable_baselines3.common.env_checker import check_env
-    env = SkipEnv()
-    check_env(env)
+    # from stable_baselines3.common.env_checker import check_env
+    # env = SkipEnv()
+    # check_env(env)
     # --------------------- 05.02 --------------------- 
     env = SkipEnv()
     env.reset()
     for i in range(int(1e6)):
+        # breakpoint()#$
         action = Action(side = 'bid', quantity = 1, price_delta = 1)
         state, reward, done, info = env.step(action.to_array)
         env.render()
         if done:
             env.reset()
             break #$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

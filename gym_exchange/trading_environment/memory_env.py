@@ -59,10 +59,11 @@ if __name__ == "__main__":
     env = MemoEnv()
     env.reset()
     # print("++++ Finish Reseting the Environment");import time; time.sleep(5)
-    breakpoint()#$
+    # breakpoint()#$
     for i in range(int(1e6)):
         # print("-"*20) #$
-        action = None
+        # action = None
+        action = Action(side = 'bid', quantity = 1, price_delta = 1)
         # print(action) #$
         # breakpoint() #$
         state, reward, done, info = env.step(action)

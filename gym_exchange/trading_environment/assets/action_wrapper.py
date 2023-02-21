@@ -48,6 +48,7 @@ class OrderFlowGenerator(object):
         
     def step(self, action: np.ndarray, price_list) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
+        if action == None: return None, None
         self.action = action # [side, quantity, price_delta]
         self.price_list = price_list
         content_dict, revised_content_dict = self.get_content_dicts()
