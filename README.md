@@ -1,4 +1,4 @@
-# AlphaTrader
+# AlphaTrade
 
 Research in Limit Order Book
 
