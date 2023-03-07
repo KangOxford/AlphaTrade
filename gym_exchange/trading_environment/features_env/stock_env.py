@@ -1,9 +1,8 @@
 import numpy as np
 from gym import spaces
 from gym_exchange.trading_environment import Config
-from gym_exchange.trading_environment.utils.metric import VwapEstimator
 from gym_exchange.trading_environment.env_interface import SpaceParams
-from gym_exchange.trading_environment.window_env import WindowEnv
+from gym_exchange.trading_environment.features_env.window_env import WindowEnv
 
 from typing import TypeVar
 State = TypeVar("State")

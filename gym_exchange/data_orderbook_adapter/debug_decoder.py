@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # breakpoint() # tbd
     
         
-    with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/outputs/log_decoder_ofs.txt","w+") as f:
+    with open("/Users/kang/AlphaTrade/gym_exchange/outputs/log_decoder_ofs.txt","w+") as f:
         for i in range(len(signals_list)):
             f.write(f"\n------ {i} ------\n")
             f.write(signals_list[i].__str__())

@@ -1,6 +1,6 @@
 import numpy as np
 from gym_exchange import Config
-from gym_exchange.trading_environment.interface_env import SpaceParams
+from gym_exchange.trading_environment.basic_env.interface_env import SpaceParams
 # ========================== 01 ==========================
 
 class BaseAction():

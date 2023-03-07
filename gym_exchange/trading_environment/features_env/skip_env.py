@@ -1,10 +1,6 @@
-import numpy as np
-from gym import spaces
 from gym_exchange import Config
-from gym_exchange.trading_environment.metrics.vwap import VwapEstimator
-from gym_exchange.trading_environment.interface_env import SpaceParams
-from gym_exchange.trading_environment.memory_env import MemoEnv
-from gym_exchange.trading_environment.assets.action import Action
+from gym_exchange.trading_environment.features_env.memory_env import MemoEnv
+from gym_exchange.trading_environment.basic_env.assets import Action
 # from typing import TypeVar
 # Action = TypeVar("Action")
 # State = TypeVar("State")
