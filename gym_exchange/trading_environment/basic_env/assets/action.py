@@ -18,31 +18,6 @@ class BaseAction():
         return fstring
 
 
-# -------------------------- 01 ----------------------------    
-class SideAction(BaseAction):
-    def __init__(self,side,quantity):
-        super.__init__(side, quantity, price_delta = 0)
-        ''''side = 'bid' or 'ask'
-            quantity = 0 ~ num2liquidate (int)
-            price_delta = 0 # fixed
-            auto_cancel = 10 # fixed'''
-    
-# class DeltaAction(BaseAction):
-#     def __init__(self,quantity,price_delta):
-#         super.__init__(side, quantity, price_delta, side = 'ask')
-#         ''''quantity = 0 ~ num2liquidate (int)
-#             price_delta = -1, 0, 1 
-#             side = 'ask' # fixed
-#             auto_cancel = 10 # fixed'''
-# # -------------------------- 02 ----------------------------    
-# class SimpleAction(BaseAction):
-#     def __init__(self,quantity):
-#         super.__init__(side, quantity, price_delta = 0, side = 'ask')
-#         ''''quantity = 0 ~ num2liquidate (int)
-#             side =  'ask' # fixed
-#             price_delta = 0 # fixed
-#             auto_cancel = 10 # fixed'''
-
 # ========================== 02 ==========================
 class PriceDelta():
     def __init__(self, price_list):

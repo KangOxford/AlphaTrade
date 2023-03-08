@@ -153,7 +153,8 @@ if __name__ == "__main__":
     env.reset();print("="*20+" ENV RESTED "+"="*20);import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        action = Action(side = 'bid', quantity = 1, price_delta = 1)
+        action = Action(side = 'bid', quantity = -4, price_delta = 1)
+        # action = Action(side = 'bid', quantity = 1, price_delta = 1)
         # action = None
         print(action) #$
         # breakpoint() #$
