@@ -14,10 +14,11 @@ Action = TypeVar("Action")
 class SpaceParams(object):
     class Action:
         price_delta_size_one_side = 3
-        price_delta_size = 2 * price_delta_size_one_side + 1
-        side_size = 2
         quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
+
+        side_size = 2
         quantity_size = 2*quantity_size_one_side + 1
+        price_delta_size = 2 * price_delta_size_one_side + 1
     class State:
         low = np.array([Config.min_price] * 10 +\
                         [Config.min_quantity]*10 +\
@@ -47,7 +48,7 @@ class InterfaceEnv(gym.Env, abc.ABC, Generic[State, Action]):
         self.seed()
     # --------------------- 01.03 ---------------------
     def space_definition(self):
-        action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size, 
+        action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size,
                                              SpaceParams.Action.quantity_size,
                                              SpaceParams.Action.price_delta_size])
         state_space = spaces.Box(

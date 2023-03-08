@@ -2,7 +2,7 @@
 import numpy as np
 from gym_exchange import Config
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
-from gym_exchange.trading_environment.basic_env.assets.action import PriceDelta
+from gym_exchange.trading_environment.basic_env.assets.price_delta import PriceDelta
 from gym_exchange.trading_environment.basic_env.interface_env import SpaceParams
 from gym_exchange.trading_environment.basic_env.baselines.residual_policy import ResidualPolicy_Factory
 
@@ -48,26 +48,29 @@ class OrderFlowGenerator(object):
         
     def step(self, action: np.ndarray, price_list) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
-        if action is None: return None, None
         self.action = action # [side, quantity, price_delta]
         self.price_list = price_list
         content_dict, revised_content_dict = self.get_content_dicts()
         order_flow = OrderFlow(**content_dict)
-        auto_cancel = OrderFlow(**revised_content_dict) # TODO 
+        auto_cancel = OrderFlow(**revised_content_dict) # TODO
+        if order_flow['size'] == 0 : return None, None # Important: used for Action(None)
         return order_flow, auto_cancel
      
     def get_content_dicts(self):
         residual_action, residual_done = self.residual_policy.step()
         content_dict = {
             "Type" : 1, # submission of a new limit order
-            "direction" : -1 if self.action[0] == 0 else 1,
+            "direction" : self.action[0],
+            "size": min(0, self.action[1] + residual_action),
+            # "size": self.action[1] + residual_action,
             # "size" :  (self.action[1] - SpaceParams.Action.quantity_size_one_side) + residual_action,
-            "size" :  (self.action[1] - SpaceParams.Action.quantity_size_one_side)//2 + residual_action, #change restricted within the half
-            "price": self.price,
+            # "size" :  (self.action[1] - SpaceParams.Action.quantity_size_one_side)//2 + residual_action, #change restricted within the half
+            "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,
             "time":self.time,
         }
+        '''used for to-be-sumbmitted oreders'''
         revised_content_dict = {
             "Type" : 3, # total deletion of a limit order
             "direction" : content_dict['direction'], # keep the same direction
@@ -76,7 +79,8 @@ class OrderFlowGenerator(object):
             "trade_id"  : content_dict['trade_id'],
             "order_id"  : content_dict['order_id'],
             "time"      : content_dict['time'],
-        } 
+        }
+        '''used for generating autocancel oreders'''
         # try: #4
         #     assert content_dict['size'] >= 0, "The real quote size should be non-negative"
         # except: 
@@ -88,7 +92,7 @@ class OrderFlowGenerator(object):
     
     @property
     def price(self):
-        return PriceDelta(self.price_list)('ask' if self.action[0]==0 else 'bid', self.action[2]) # side, price_delta 
+        return PriceDelta(self.price_list)(side = 'ask' if self.action[0]==0 else 'bid', price_delta = self.action[2]) # side, price_delta
     @property
     def trade_id(self):
         return self.trade_id_generator.step()

@@ -67,8 +67,8 @@ class BaseEnv(InterfaceEnv):
            return: observation, reward, done, info'''
 
         # ···················· 03.00.03 ···················· 
-        if action is not None: action = action.to_array
-        state = self.state(action)
+        decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
+        state = self.state(decoded_action)
         reward = self.reward
         done = self.done
         info = self.info
@@ -88,8 +88,8 @@ class BaseEnv(InterfaceEnv):
         if action is not None:
             # generate_wrapped_order_flow {
             price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
-            order_flows = self.order_flow_generator.step(action, price_list)# price list is used for PriceDelta, only one side is needed
-            order_flow  = order_flows[0] # order_flows consists of order_flow, auto_cancel
+            order_flows = self.order_flow_generator.step(action, price_list) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+            order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
             wrapped_order_flow = self.exchange.time_wrapper(order_flow)
             # generate_wrapped_order_flow }
         else: wrapped_order_flow = None
@@ -153,12 +153,14 @@ if __name__ == "__main__":
     env.reset();print("="*20+" ENV RESTED "+"="*20);import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        action = Action(side = 'bid', quantity = -4, price_delta = 1)
+        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0)
         # action = Action(side = 'bid', quantity = 1, price_delta = 1)
-        # action = None
+        # action = None # Wrong, as gym check_env would not accept None!!!!
+        # action = Action(None).decoded
         print(action) #$
         # breakpoint() #$
-        state, reward, done, info = env.step(action)
+        encoded_action = action.encoded
+        state, reward, done, info = env.step(encoded_action)
         print(f"state: {state}") #$
         print(f"reward: {reward}") #$
         print(f"done: {done}") #$
