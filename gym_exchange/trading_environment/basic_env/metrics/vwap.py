@@ -1,6 +1,8 @@
 # ========================== 01 ==========================
 import abc
+import numpy as np
 from gym_exchange.trading_environment.basic_env.utils import vwap_price
+
 class Vwap(abc.ABC):
     def __init__(self):
         pass
@@ -142,7 +144,6 @@ class VwapEstimator():
         
 if __name__ == "__main__":
     # vwap_price testing
-    import numpy as np
     pairs = np.array([[1,2],[1,23],[1,3],[1.1,21],[0.9,3]]).T
     
     

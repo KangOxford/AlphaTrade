@@ -5,11 +5,9 @@
 # from gym_exchange.exchange.order_flow import OrderFlow
 
 
-import numpy as np
-from gym_exchange import Config
 from gym_exchange.exchange import Debugger
 from gym_exchange.data_orderbook_adapter import utils
-from gym_exchange.exchange.base_exchange import BaseExchange
+from gym_exchange.exchange.basic_exc.base_exchange import BaseExchange
 
 
 # ========================= 03 =========================

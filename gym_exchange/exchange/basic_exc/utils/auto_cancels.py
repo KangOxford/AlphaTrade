@@ -1,5 +1,5 @@
 from gym_exchange import Config
-from gym_exchange.exchange.order_flow import OrderFlow
+from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 
 # class CancellationDeterminants():
 #     def __init__(self): 
@@ -79,4 +79,3 @@ class AutoCancels():
         
 if __name__ == '__main__':
     auto_cancels = AutoCancels()        
-        

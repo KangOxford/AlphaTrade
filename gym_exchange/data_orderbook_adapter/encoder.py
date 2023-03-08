@@ -5,12 +5,11 @@
 #     def 
 
 # @Order_Flow_Interface.register
-import numpy as np
-from gym_exchange.data_orderbook_adapter import Configuration, Debugger 
+from gym_exchange.data_orderbook_adapter import Configuration, Debugger
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gym_exchange.exchange.order_flow import OrderFlow
-from gym_exchange.exchange.order_flow_list import FlowList
+from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
+from gym_exchange.exchange.basic_exc.assets.order_flow_list import FlowList
 
     
 class Encoder():

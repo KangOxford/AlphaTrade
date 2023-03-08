@@ -1,7 +1,7 @@
 # ========================== 04 ==========================
 import numpy as np
 from gym_exchange import Config
-from gym_exchange.exchange.order_flow import OrderFlow
+from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 from gym_exchange.trading_environment.basic_env.assets.action import PriceDelta
 from gym_exchange.trading_environment.basic_env.interface_env import SpaceParams
 from gym_exchange.trading_environment.basic_env.baselines.residual_policy import ResidualPolicy_Factory
@@ -48,7 +48,7 @@ class OrderFlowGenerator(object):
         
     def step(self, action: np.ndarray, price_list) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
-        if action == None: return None, None
+        if action is None: return None, None
         self.action = action # [side, quantity, price_delta]
         self.price_list = price_list
         content_dict, revised_content_dict = self.get_content_dicts()

@@ -1,14 +1,12 @@
 import numpy as np
 
+from gym_exchange import Config
+
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
-
-from gym_exchange.exchange.autocancel_exchange import Exchange
-
-from gym_exchange import Config 
 
 from gym_exchange.trading_environment.basic_env.assets.reward import RewardGenerator
 from gym_exchange.trading_environment.basic_env.assets.action import Action
-from gym_exchange.trading_environment.basic_env.assets.action_wrapper import OrderFlowGenerator
+from gym_exchange.trading_environment.basic_env.assets.orderflow import OrderFlowGenerator
 from gym_exchange.trading_environment.basic_env.assets.task import NumLeftProcessor
 from gym_exchange.trading_environment.basic_env.assets.renders import base_env_render
 
@@ -18,6 +16,7 @@ from gym_exchange.trading_environment.basic_env.metrics.vwap import VwapEstimato
 from gym_exchange.trading_environment.basic_env.interface_env import InterfaceEnv
 from gym_exchange.trading_environment.basic_env.interface_env import State # types
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
+from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 
 
 # *************************** 2 *************************** #
@@ -69,7 +68,11 @@ class BaseEnv(InterfaceEnv):
 
         # ···················· 03.00.03 ···················· 
         if action is not None: action = action.to_array
-        state, reward, done, info = self.state(action), self.reward, self.done, self.info
+        state = self.state(action)
+        reward = self.reward
+        done = self.done
+        info = self.info
+        # state, reward, done, info = self.state(action), self.reward, self.done, self.info
         # observation, reward, done, info = self.observation(action), self.reward, self.done, self.info
         self.accumulator()
         return state, reward, done, info
@@ -135,8 +138,10 @@ class BaseEnv(InterfaceEnv):
     # ========================== 04 ==========================
     def render(self, mode = 'human'):
         '''for render method'''
-        base_env_render(self)
-        
+        # base_env_render(self)
+        pass
+
+
 if __name__ == "__main__":
     # --------------------- 05.01 --------------------- 
     # from stable_baselines3.common.env_checker import check_env
@@ -148,8 +153,8 @@ if __name__ == "__main__":
     env.reset();print("="*20+" ENV RESTED "+"="*20);import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        # action = Action(side = 'bid', quantity = 1, price_delta = 1)
-        action = None
+        action = Action(side = 'bid', quantity = 1, price_delta = 1)
+        # action = None
         print(action) #$
         # breakpoint() #$
         state, reward, done, info = env.step(action)

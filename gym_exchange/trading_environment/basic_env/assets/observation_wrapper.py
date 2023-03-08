@@ -13,5 +13,4 @@ def delta_encoding():
     '''encoding only the difference from different ticks of observation'''
     
 def sparse_transformer():
-    '''sparse_transformer from Chriss'''
-    
+    '''sparse_transformer from Christian'''
