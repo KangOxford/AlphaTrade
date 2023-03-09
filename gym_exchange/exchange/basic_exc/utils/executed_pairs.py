@@ -19,10 +19,6 @@ class ExecutedPairsRecorder():
                 else: kind = 'market'
                 pair = {kind:value}
                 pairs.append(pair)
-        # pairs = [[trade['price'], trade['quantity']] for trade in trades] # comments for older version
-        # '''the format of pair['value'], for pair in pairs
-        # pairs   | 3000 | 3001    =>    pairs   | 3000
-        # quantity|   1  |  2      =>    quantity|   1 '''
         return pairs
     
     # def update(self, pairs, kind): # to be used in step
