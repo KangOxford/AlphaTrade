@@ -91,9 +91,10 @@ class BaseEnv(InterfaceEnv):
         order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
+        print(f">>> composite action: {wrapped_order_flow}")
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ····················
-        auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
+        auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
         print(f"self.exchange.index: {self.exchange.index}")#$
@@ -154,7 +155,7 @@ if __name__ == "__main__":
         # action = Action(side = 'bid', quantity = 1, price_delta = 1)
         # action = None # Wrong, as gym check_env would not accept None!!!!
         # action = Action(None).decoded
-        print(action) #$
+        print(f">>> delta_action: {action}") #$
         # breakpoint() #$
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
