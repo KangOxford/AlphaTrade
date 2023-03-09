@@ -28,8 +28,10 @@ class ExecutedPairsRecorder():
                 if   key == "market": self.market_pairs[self.index] = self.market_pairs.get(self.index, []) + [value]
                 elif key == "agent" : self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
                 else: raise NotImplementedError
-        self.market_pairs[self.index] = np.array(self.market_pairs[self.index] ).T # Apply lambda function to all values in dict
-        self.agent_pairs[self.index] = np.array(self.agent_pairs[self.index] ).T # Apply lambda function to all values in dict
+        try:
+            self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T # Apply lambda function to all values in dict
+            self.agent_pairs[self.index]  = np.array(self.agent_pairs[self.index]).T # Apply lambda function to all values in dict
+        except: pass # eg. self.market_pairs is not None, while self.agent_pairs is None
 
     def step(self, trades, index):
         """two function:
@@ -40,8 +42,8 @@ class ExecutedPairsRecorder():
         02: record the last_executed_pairs of market_agent"""
         # ----------- 01 ------------
         self.index = index # keep the same with the exchange index
-        if index == 191:
-            print() #$
+        # if index == 86: # 191
+        #     print() #$
         if len(trades) == 0: 
             pass
         else: # len(trades) == 1 or 3
