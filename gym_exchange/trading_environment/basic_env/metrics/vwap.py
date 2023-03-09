@@ -121,6 +121,9 @@ class VwapEstimator():
     def executed_pairs_adapter(self, executed_pairs):
         market_pairs_dict = executed_pairs.market_pairs
         agent_pairs_dict = executed_pairs.agent_pairs
+        # try: concat_pairs = lambda pairs_dict: np.concatenate(list(pairs_dict.values()),axis = 1)
+        # except:
+        #     breakpoint() #$
         concat_pairs = lambda pairs_dict: np.concatenate(list(pairs_dict.values()),axis = 1)
         return_dict = {
             "market_pairs": concat_pairs(market_pairs_dict),

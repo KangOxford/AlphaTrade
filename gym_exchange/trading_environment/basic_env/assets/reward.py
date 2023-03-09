@@ -27,6 +27,7 @@ class RewardFunctional():
         sum_ = 0
         for i in range(self.num_own_trades):
             sum_ += self.q(i) * (self.p_market - self.p_0)
+        return sum_
     
     def __call__(self):
         reward = self.advantage + self.lambda_ * self.drift
@@ -45,14 +46,14 @@ class RewardGenerator():
             else:
                 p_market = vwap_price(executed_pairs_bigram['market_pairs'])
             return p_market
-        if executed_pairs_bigram['market_pairs'] == None and executed_pairs_bigram['agent_pairs'] == None:
+        if executed_pairs_bigram['market_pairs'] is None and executed_pairs_bigram['agent_pairs'] is None:
             # no executed pairs in this step
             # raise NotImplementedError
             # pass #%
             self.reward_functional = -1 #%
         else:
             p_market = get_p_market(executed_pairs_bigram, mid_price)
-            if len(executed_pairs_bigram['agent_pairs']) != 0: 
+            if executed_pairs_bigram['agent_pairs'] is not None:
                 signals = {
                     "p_0" : self.p_0,
                     "p_market" : p_market,

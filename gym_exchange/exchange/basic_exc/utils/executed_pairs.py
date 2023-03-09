@@ -27,6 +27,8 @@ class ExecutedPairsRecorder():
                 if   key == "market": self.market_pairs[self.index] = self.market_pairs.get(self.index, []) + [value]
                 elif key == "agent" : self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
                 else: raise NotImplementedError
+        self.market_pairs = {k: (lambda x: np.array(x).T)(v) for k, v in self.market_pairs.items()} # Apply lambda function to all values in dict
+        self.agent_pairs  = {k: (lambda x: np.array(x).T)(v) for k, v in self.agent_pairs.items()} # Apply lambda function to all values in dict
 
     def step(self, trades, index):
         """two function:

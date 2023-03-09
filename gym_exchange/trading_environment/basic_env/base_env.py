@@ -68,9 +68,16 @@ class BaseEnv(InterfaceEnv):
 
         # ···················· 03.00.03 ···················· 
         decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
+        if self.exchange.index == 601:
+            # breakpoint() #$
+            print() #$
         state = self.state(decoded_action)
         reward = self.reward
+        # self.done {
         done = self.done
+        print(f"$$$ num_left_processor.num_left {self.num_left_processor.num_left} / <=0 ") #$
+        print(f"$$$ cur_step {self.cur_step} / Config.max_horizon {Config.max_horizon}") #$
+        # self.done }
         info = self.info
         # state, reward, done, info = self.state(action), self.reward, self.done, self.info
         # observation, reward, done, info = self.observation(action), self.reward, self.done, self.info
@@ -115,13 +122,13 @@ class BaseEnv(InterfaceEnv):
     @property
     def done(self):
         if self.num_left_processor.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
-        else : return False
-    # --------------------- 03.04 ---------------------  
+        else: return False
+
+    # --------------------- 03.04 ---------------------
     @property
     def info(self):
         self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
         step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
-        print(f"self.done:{self.done}")#$
         if epoch_vwap_info_dict is None:
             return {}
         else:
