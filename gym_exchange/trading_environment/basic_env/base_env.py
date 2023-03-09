@@ -82,13 +82,13 @@ class BaseEnv(InterfaceEnv):
         order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
-        print(f">>> composite action: {wrapped_order_flow}")
+        print(f">>> composite action: {wrapped_order_flow}") #$
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
-        print(f"self.exchange.index: {self.exchange.index}")#$
+        print(f"self.exchange.index: {self.exchange.index}") #$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
@@ -144,8 +144,8 @@ if __name__ == "__main__":
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1)
-        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0)
-        # action = Action(side = 'bid', quantity = 1, price_delta = 1)
+        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
+        # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
         print(f">>> delta_action: {action}") #$
         # breakpoint() #$
         encoded_action = action.encoded

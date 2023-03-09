@@ -21,16 +21,6 @@ class BaseExchange(InterfaceExchange):
     # -------------------------- 03.02 ----------------------------
     def type1_handler(self, message, index):
         trades, order_in_book = self.order_book.process_order(message, True, False)
-        # if index == 0:
-        #     # print(f"message: {message}")
-        #     # print(f"orderbook: {self.order_book}")
-        #     print() #$
-        # if len(trades) != 0:
-        #     for trade in trades:
-        #         print(f"++++ trade: {trade}")
-        #     print(f"order_in_book: {order_in_book}")
-        #     print() #$
-        # self.executed_pairs_recoder.step(trades, trader_type, self.index) # 2nd para: kind
         self.executed_pairs_recoder.step(trades, self.index) # 2nd para: kind
 
     def type2_handler(self, message):
