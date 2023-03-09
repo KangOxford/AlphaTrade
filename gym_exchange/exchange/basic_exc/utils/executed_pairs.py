@@ -20,19 +20,15 @@ class ExecutedPairsRecorder():
                 pair = {kind:value}
                 pairs.append(pair)
         return pairs
-    
-    # def update(self, pairs, kind): # to be used in step
-    #     if   kind == "market": self.market_pairs[self.index] =  pairs
-    #     elif kind =="agent"  : self.agent_pairs[self.index]  =  pairs
-    #     else: raise NotImplementedError
-    #
+
     def update(self, pairs): # to be used in step
         for pair in pairs:
-            if   pair.key == "market": self.market_pairs[self.index] =  pair.value
-            elif pair.key == "agent" : self.agent_pairs[self.index]  =  pair.value
-            else: raise NotImplementedError
+            for key,value in pair.items(): # Pseudo for loop, one pair dict
+                if   key == "market": self.market_pairs[self.index] = self.market_pairs.get(self.index, []) + [value]
+                elif key == "agent" : self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
+                else: raise NotImplementedError
 
-    def step(self, trades, kind, index):
+    def step(self, trades, index):
         """two function:
         01: record market pairs and agent pairs, e.g.
         [In]  self.market_pairs
