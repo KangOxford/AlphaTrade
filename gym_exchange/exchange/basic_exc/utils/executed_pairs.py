@@ -6,26 +6,50 @@ class ExecutedPairsRecorder():
         self.agent_pairs  = {}
         
 
-    def trades2pairs(self, trades):
-        pairs = [[trade['price'], trade['quantity']] for trade in trades]
-        formatted_pairs = np.array(pairs).T
-        '''pairs   | 3000 | 3001
-           quantity|   1  |  2  '''
-        return formatted_pairs 
+    def trades2pairs(self, trades): # to be used in step
+        pairs = []
+        for trade in trades:
+            value = np.array([trade['price'], trade['quantity']]).T
+            parties = [trade['party1'], trade['party1']]
+            for party in parties:
+                """ trade_id_generator = 80000000
+                    order_id_generator = 88000000 """
+                if len(str(party[0])) == 8 and str(party[0])[:2] in ("80","88"): # party[0] is trade id ,Not sure, perhpas order id
+                    kind = 'agent'
+                else: kind = 'market'
+                pair = {kind:value}
+                pairs.append(pair)
+        # pairs = [[trade['price'], trade['quantity']] for trade in trades] # comments for older version
+        # '''the format of pair['value'], for pair in pairs
+        # pairs   | 3000 | 3001    =>    pairs   | 3000
+        # quantity|   1  |  2      =>    quantity|   1 '''
+        return pairs
     
-    def update(self, pairs, kind):
-        if kind == "market": self.market_pairs[self.index] =  pairs
-        elif kind=="agent" : self.agent_pairs[self.index] =  pairs
-        else: raise NotImplementedError
+    # def update(self, pairs, kind): # to be used in step
+    #     if   kind == "market": self.market_pairs[self.index] =  pairs
+    #     elif kind =="agent"  : self.agent_pairs[self.index]  =  pairs
+    #     else: raise NotImplementedError
+    #
+    def update(self, pairs): # to be used in step
+        for pair in pairs:
+            if   pair.key == "market": self.market_pairs[self.index] =  pair.value
+            elif pair.key == "agent" : self.agent_pairs[self.index]  =  pair.value
+            else: raise NotImplementedError
 
     def step(self, trades, kind, index):
+        """two function:
+        01: record market pairs and agent pairs, e.g.
+        [In]  self.market_pairs
+        [Out] {86: array([[31179100],
+                        [       9]])}
+        02: record the last_executed_pairs of market_agent"""
         # ----------- 01 ------------
         self.index = index # keep the same with the exchange index
         if len(trades) == 0: 
             pass
         else: # len(trades) == 1 or 3
-            batch = self.trades2pairs(trades)
-            self.update(batch, kind)
+            pairs = self.trades2pairs(trades)
+            self.update(pairs)
         # ----------- 02 ------------
         try:
             self.market_agent_executed_pairs_in_last_step = [
