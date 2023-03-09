@@ -12,7 +12,6 @@ from gym_exchange.trading_environment.basic_env.assets.renders import base_env_r
 
 from gym_exchange.trading_environment.basic_env.metrics.vwap import VwapEstimator
 
-# from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
 from gym_exchange.trading_environment.basic_env.interface_env import InterfaceEnv
 from gym_exchange.trading_environment.basic_env.interface_env import State # types
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
@@ -41,7 +40,6 @@ class BaseEnv(InterfaceEnv):
     def init_components(self):
         self.vwap_estimator = VwapEstimator()
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
-        # self.state_generator = StateGenerator() # Used for State
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
     def initial_state(self) -> State:
@@ -68,30 +66,16 @@ class BaseEnv(InterfaceEnv):
 
         # ···················· 03.00.03 ···················· 
         decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
-        if self.exchange.index == 601:
-            # breakpoint() #$
-            print() #$
-        state = self.state(decoded_action)
-        reward = self.reward
-        # self.done {
-        done = self.done
-        print(f"$$$ num_left_processor.num_left {self.num_left_processor.num_left} / <=0 ") #$
-        print(f"$$$ cur_step {self.cur_step} / Config.max_horizon {Config.max_horizon}") #$
-        # self.done }
-        info = self.info
-        # state, reward, done, info = self.state(action), self.reward, self.done, self.info
-        # observation, reward, done, info = self.observation(action), self.reward, self.done, self.info
+        state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
         self.accumulator()
         return state, reward, done, info
-        # return observation, reward, done, info
     def accumulator(self):
         self.num_left_processor.step(self)
         self.cur_step += 1
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
-        # self.action = action # record action for render use #$
-        # ···················· 03.00.01 ···················· 
+        # ···················· 03.00.01 ····················
         # generate_wrapped_order_flow {
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
         order_flows = self.order_flow_generator.step(action, price_list) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
@@ -103,8 +87,6 @@ class BaseEnv(InterfaceEnv):
         # ···················· 03.00.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
-        # ···················· 03.00.03 ····················
-        # self.order_flows = np.array() #executed pairs info should come from exchange
         # ···················· 03.00.03 ····················
         print(f"self.exchange.index: {self.exchange.index}")#$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
@@ -127,6 +109,9 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.04 ---------------------
     @property
     def info(self):
+        """in an liquidation task the market_vwap ought to be
+        higher, as they are not eagle to takt the liquidity,
+        and can be executed at higher price."""
         self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
         step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
         if epoch_vwap_info_dict is None:
@@ -138,9 +123,7 @@ class BaseEnv(InterfaceEnv):
         #     return {**step_vwap_info_dict}
         # else:
         #     return {**step_vwap_info_dict, **epoch_vwap_info_dict}
-        '''in an liquidation task the market_vwap ought to be
-        higher, as they are not eagle to takt the liquidity, 
-        and can be executed at higher price.'''
+
     # ========================== 04 ==========================
     def render(self, mode = 'human'):
         '''for render method'''
@@ -163,8 +146,6 @@ if __name__ == "__main__":
         action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1)
         # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0)
         # action = Action(side = 'bid', quantity = 1, price_delta = 1)
-        # action = None # Wrong, as gym check_env would not accept None!!!!
-        # action = Action(None).decoded
         print(f">>> delta_action: {action}") #$
         # breakpoint() #$
         encoded_action = action.encoded

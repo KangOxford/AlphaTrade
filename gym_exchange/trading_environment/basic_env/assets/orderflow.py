@@ -62,9 +62,6 @@ class OrderFlowGenerator(object):
             "Type" : 1, # submission of a new limit order
             "direction" : self.action[0],
             "size": max(0, self.action[1] + residual_action),
-            # "size": self.action[1] + residual_action,
-            # "size" :  (self.action[1] - SpaceParams.Action.quantity_size_one_side) + residual_action,
-            # "size" :  (self.action[1] - SpaceParams.Action.quantity_size_one_side)//2 + residual_action, #change restricted within the half
             "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,
@@ -81,11 +78,6 @@ class OrderFlowGenerator(object):
             "time"      : content_dict['time'],
         }
         '''used for generating autocancel oreders'''
-        # try: #4
-        #     assert content_dict['size'] >= 0, "The real quote size should be non-negative"
-        # except: 
-        #     breakpoint()
-        #     print()#$
         assert content_dict['size'] >= 0, "The real quote size should be non-negative"
         return content_dict, revised_content_dict
     

@@ -42,8 +42,6 @@ class ExecutedPairsRecorder():
         02: record the last_executed_pairs of market_agent"""
         # ----------- 01 ------------
         self.index = index # keep the same with the exchange index
-        # if index == 86: # 191
-        #     print() #$
         if len(trades) == 0: 
             pass
         else: # len(trades) == 1 or 3
