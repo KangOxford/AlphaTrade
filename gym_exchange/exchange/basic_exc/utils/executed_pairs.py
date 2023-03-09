@@ -44,14 +44,15 @@ class ExecutedPairsRecorder():
             self.update(pairs)
         # ----------- 02 ------------
         try:
-            self.market_agent_executed_pairs_in_last_step = [
-                self.index,
-                [self.market_pairs[self.index],
-                 self.agent_pairs[self.index]]
-                ]
+            self.market_agent_executed_pairs_in_last_step = {
+                "index":self.index,
+                "market_pairs":self.market_pairs[self.index],
+                "agent_pairs" :self.agent_pairs[self.index]}
         except:
-            self.market_agent_executed_pairs_in_last_step = [
-                self.index, None]
+            self.market_agent_executed_pairs_in_last_step = {
+                "index":self.index,
+                "market_pairs":None,
+                "agent_pairs" :None}
         
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'
