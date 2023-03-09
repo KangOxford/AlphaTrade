@@ -53,7 +53,6 @@ class OrderFlowGenerator(object):
         content_dict, revised_content_dict = self.get_content_dicts()
         order_flow = OrderFlow(**content_dict)
         auto_cancel = OrderFlow(**revised_content_dict) # TODO
-        if order_flow['size'] == 0 : return None, None # Important: used for Action(None)
         return order_flow, auto_cancel
      
     def get_content_dicts(self):

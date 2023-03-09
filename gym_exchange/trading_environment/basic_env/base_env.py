@@ -85,20 +85,16 @@ class BaseEnv(InterfaceEnv):
     def state(self, action: Action) -> State:
         # self.action = action # record action for render use #$
         # ···················· 03.00.01 ···················· 
-        if action is not None:
-            # generate_wrapped_order_flow {
-            price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers    
-            order_flows = self.order_flow_generator.step(action, price_list) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
-            order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
-            wrapped_order_flow = self.exchange.time_wrapper(order_flow)
-            # generate_wrapped_order_flow }
-        else: wrapped_order_flow = None
+        # generate_wrapped_order_flow {
+        price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
+        order_flows = self.order_flow_generator.step(action, price_list) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+        order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
+        wrapped_order_flow = self.exchange.time_wrapper(order_flow)
+        # generate_wrapped_order_flow }
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ····················
-        try:
-            auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
-            self.exchange.auto_cancels.add(auto_cancel) 
-        except: assert action == None# Means the action is None
+        auto_cancel = order_flows[1] # order_flows consists of order_flow, auto_cancel
+        self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
         print(f"self.exchange.index: {self.exchange.index}")#$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
@@ -150,7 +146,8 @@ if __name__ == "__main__":
     # print("="*20+" ENV CHECKED "+"="*20)
     # --------------------- 05.02 --------------------- 
     env = BaseEnv()
-    env.reset();print("="*20+" ENV RESTED "+"="*20);import time;time.sleep(5)
+    env.reset();print("="*20+" ENV RESTED "+"="*20);
+    # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0)

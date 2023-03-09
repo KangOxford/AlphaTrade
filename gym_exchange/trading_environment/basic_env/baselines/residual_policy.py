@@ -32,7 +32,7 @@ class Twap():
     
 class ResidualPolicy_Factory():
     '''factory methods/ or interface methods
-    TWAP is a kind of implemention of ResidualPolicy'''
+    TWAP is one implemention of ResidualPolicy'''
     @staticmethod
     def produce(name):
         if name == "Twap":

@@ -78,8 +78,8 @@ class BaseExchange(InterfaceExchange):
                     self.type3_handler(message)
                     
 
-    def update_task_list(self, action = None):# action : Action(for the definition of type)
-        flow_list = next(self.flow_generator)#used for historical data
+    def update_task_list(self, action = None): # action : Action(for the definition of type)
+        flow_list = next(self.flow_generator) #used for historical data
         self.task_list = [action] + [flow for flow in flow_list]
     
     def accumulating(self):
