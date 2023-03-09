@@ -10,7 +10,7 @@ class ExecutedPairsRecorder():
         pairs = []
         for trade in trades:
             value = np.array([trade['price'], trade['quantity']]).T
-            parties = [trade['party1'], trade['party1']]
+            parties = [trade['party1'], trade['party2']]
             for party in parties:
                 """ trade_id_generator = 80000000
                     order_id_generator = 88000000 """
