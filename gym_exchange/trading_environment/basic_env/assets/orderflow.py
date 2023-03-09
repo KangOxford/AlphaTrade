@@ -57,7 +57,7 @@ class OrderFlowGenerator(object):
      
     def get_content_dicts(self):
         residual_action, residual_done = self.residual_policy.step()
-        print(f">>> residual_action: Quantity: {residual_action}, done: {residual_done}") #$
+        print(f">>> residual_action: Quantity: {residual_action}, residual_policy_done: {residual_done}") #$
         content_dict = {
             "Type" : 1, # submission of a new limit order
             "direction" : self.action[0],

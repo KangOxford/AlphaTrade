@@ -97,6 +97,8 @@ class BaseEnv(InterfaceEnv):
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
+        # self.order_flows = np.array() #executed pairs info should come from exchange
+        # ···················· 03.00.03 ····················
         print(f"self.exchange.index: {self.exchange.index}")#$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
@@ -151,7 +153,8 @@ if __name__ == "__main__":
     # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0)
+        action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1)
+        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0)
         # action = Action(side = 'bid', quantity = 1, price_delta = 1)
         # action = None # Wrong, as gym check_env would not accept None!!!!
         # action = Action(None).decoded
