@@ -1,6 +1,8 @@
 # AlphaTrade
 
-Research in Limit Order Book
+## Research in Limit Order Book
+
+## jax version codes would be in the jaxen directory
 
 This is a lean version of the `main` branch, primarily intended for the development of simulation environments.
 
