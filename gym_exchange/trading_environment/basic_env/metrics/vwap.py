@@ -144,7 +144,40 @@ class VwapEstimator():
 if __name__ == "__main__":
     # vwap_price testing
     pairs = np.array([[1,2],[1,23],[1,3],[1.1,21],[0.9,3]]).T
-    
+
+    # ======================================= plot ============================
+    recorder = self.exchange.executed_pairs_recoder
+    agent_pairs = recorder.agent_pairs
+    market_pairs = recorder.market_pairs
+    from gym_exchange.trading_environment.basic_env.utils import vwap_price
+    agent_step_vwap = {k:vwap_price(v) for k,v in agent_pairs.items()}
+    market_step_vwap = {k:vwap_price(v) for k,v in market_pairs.items()}
+    # ----------------------- fig ---------------------
+    import matplotlib.pyplot as plt
+    # plt.rcParams["figure.figsize"] = (80, 40)
+    plt.rcParams["figure.figsize"] = (40, 20)
+    def curve_interpolation(market_step_vwap):
+        from scipy.interpolate import interp1d
+        x = np.array(list(market_step_vwap.keys()))
+        y = np.array(list(market_step_vwap.values()))
+        f = interp1d(x, y, kind='cubic')
+        x_new = np.linspace(x.min(), x.max(), num=10000)
+        y_new = f(x_new)
+        plt.plot(x_new, y_new, label='Market_Interpolated', color='orange')
+    curve_interpolation(market_step_vwap)
+    # plt.scatter(market_step_vwap.keys(),market_step_vwap.values(),label='Market')
+    # plt.plot(market_step_vwap.keys(),market_step_vwap.values(),label='Market')
+    # plt.plot(agent_step_vwap.keys(),agent_step_vwap.values(),label='Agent')
+    plt.scatter(agent_step_vwap.keys(),agent_step_vwap.values(),label='Agent', color='blue')
+    plt.legend()
+    # plt.title("Action(direction = 'ask', quantity_delta = 0, price_delta = 1)")
+    # plt.title("Action(direction = 'ask', quantity_delta = 0, price_delta = -1)")
+    # plt.title("Action(direction = 'ask', quantity_delta = 0, price_delta = 0)")
+    plt.title("Action(direction = 'bid', quantity_delta = 0, price_delta = 0)")
+    # plt.title("Action(direction = 'bid', quantity_delta = 5, price_delta = -1)")
+    # plt.savefig("")
+    plt.show()
+
     
     
     

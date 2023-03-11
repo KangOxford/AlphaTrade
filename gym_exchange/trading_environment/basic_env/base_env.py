@@ -103,7 +103,9 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.03  ---------------------
     @property
     def done(self):
-        if self.num_left_processor.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
+        # if self.num_left_processor.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
+        if self.num_left_processor.num_left <= 0 or self.cur_step >= Config.max_horizon :
+            return True #$
         else: return False
 
     # --------------------- 03.04 ---------------------
@@ -143,8 +145,11 @@ if __name__ == "__main__":
     # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1)
-        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
+        # action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1) #$
+        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
         # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
         print(f">>> delta_action: {action}") #$
         # breakpoint() #$
@@ -158,3 +163,4 @@ if __name__ == "__main__":
         if done:
             env.reset()
             break #$
+
