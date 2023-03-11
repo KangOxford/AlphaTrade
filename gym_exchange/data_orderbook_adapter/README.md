@@ -1,4 +1,4 @@
-## Outlines for the code:
+## Outlines for the codes:
 
 1 `data_pipeline.py` used for defining the data path of your reading data. You should config it before runnning.
 
@@ -12,5 +12,6 @@
     * e.g. some order is partly cancelled outside the price level
   * `SignalPorcessor` is a class used to ensure the trading signals is right by executing the trading signals and then get the orderbook and then compare the generated orderbook with the l2 data.
   
-3 `encoder.py` is used for transfer the `trading signals` into `order flows`, the later is the machine readable for the package `orderbook/jaxob`
+3 `encoder.py` is used for transfer the `trading signals` into `order flows`, the later is machine-readable for the package `orderbook/jaxob`
   * `decoder = Decoder(**DataPipeline()()); encoder = Encoder(decoder); Ofs = encoder()`
+
