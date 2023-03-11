@@ -1,5 +1,5 @@
 from gym_exchange import Config
-from gym_exchange.trading_environment.features_env.memory_env import MemoEnv
+from gym_exchange.more_features.features_env.memory_env import MemoEnv
 from gym_exchange.trading_environment.basic_env.assets import Action
 # from typing import TypeVar
 # Action = TypeVar("Action")
