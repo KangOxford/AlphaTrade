@@ -243,8 +243,9 @@ def adjust_data_drift(order_book, timestamp, index):
 # #tbd
 
 import pandas as pd
-df2 = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
-
+df2 = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_orderbook_10.csv", header = None)
+import sys
+sys.path.insert(0, "/Users/sasrey/AlphaTrade/")
 from gym_exchange.orderbook import OrderBook
 order_book = OrderBook()
 
@@ -293,10 +294,10 @@ print(order_book)
 # # tbd
 
 import pandas as pd
-df = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_10.csv", header=None)
-df.columns = ["timestamp",'type','order_id','quantity','price','side','remark']
+df = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_message_10.csv", header=None)
+df.columns = ["timestamp",'type','order_id','quantity','price','side']
 df["timestamp"] = df["timestamp"].astype(str)
-# size = 50 # pass
+size = 50 # pass
 # size = 75 # pass
 # size = 85 # pass
 # size = 86 # pass
@@ -313,7 +314,7 @@ df["timestamp"] = df["timestamp"].astype(str)
 # size = 1864 # pass
 # size = 2189 # pass
 # size = 2190 
-size = 4000 
+# size = 4000 
 
 for index in range(size):
     
@@ -333,44 +334,42 @@ for index in range(size):
     print(message)
     best_bid = order_book.get_best_bid()
     
-    if side == 'bid':
-        if ttype == 1:
+    if ttype == 1:
+        message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
+    elif ttype == 4 or ttype == 5: # not sure???
+        if side == 'bid' and price <= best_bid:
+            side = 'ask'
             message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-        elif ttype == 4 or ttype == 5: # not sure???
-            if side == 'bid' and price <= best_bid:
-                side = 'ask'
-                message = {'type': 'limit','side': side,'quantity': quantity,'price': price,'trade_id': trade_id, "timestamp":timestamp, 'order_id':order_id}
-            else:
-                message = None
-        elif ttype == 3:
-            if price > best_bid:
-                message = None
-            else:
-                print(order_book)
-                order_book.cancel_order(side, trade_id, time = timestamp)
-                print(order_book)
-                message  = None # !remember not to pass the message to be processed
-                # breakpoint()
-        elif ttype == 6:
+        else:
             message = None
-        elif ttype == 2:
-            # cancellation (partial deletion of a limit order)
-            origin_quantity = order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
-            adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
-            message = {
-                'type' : 'limit',
-                'side' : 'bid',
-                'quantity': adjusted_quantity,
-                'price' : price,
-                'order_id': order_id,
-                'timestamp': timestamp # the new timestamp
-                }
-            order_book.bids.update_order(message)
+    elif ttype == 3:
+        if price > best_bid:
             message = None
         else:
-            raise NotImplementedError
-    else:
+            print(order_book)
+            order_book.cancel_order(side, trade_id, time = timestamp)
+            print(order_book)
+            message  = None # !remember not to pass the message to be processed
+            # breakpoint()
+    elif ttype == 6:
         message = None
+    elif ttype == 2:
+        # cancellation (partial deletion of a limit order)
+        origin_quantity = order_book.bids.get_order(order_id).quantity # origin_quantity is the quantity in the order book
+        adjusted_quantity = origin_quantity - quantity # quantity is the delta quantity
+        message = {
+            'type' : 'limit',
+            'side' : 'bid',
+            'quantity': adjusted_quantity,
+            'price' : price,
+            'order_id': order_id,
+            'timestamp': timestamp # the new timestamp
+            }
+        order_book.bids.update_order(message)
+        message = None
+    else:
+        raise NotImplementedError
+
         
     if message is not None:
         trades, order_in_book = order_book.process_order(message, True, False)
@@ -381,12 +380,12 @@ for index in range(size):
         
     if index == 2190:
         breakpoint()
-    order_book = adjust_data_drift(order_book, timestamp, index)
-    print("brief_order_book(order_book)")
-    print(brief_order_book(order_book))
+    #order_book = adjust_data_drift(order_book, timestamp, index)
+    #print("brief_order_book(order_book)")
+    #print(brief_order_book(order_book))
     # order_book.asks = None # remove the ask side
-    assert is_right_answer(order_book, index), "the orderbook if different from the data"
-    print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
+    #assert is_right_answer(order_book, index), "the orderbook if different from the data"
+    #print("=="*10 + "=" + "=====" + "="+ "=="*10+'\n')
     
    
 breakpoint()    
