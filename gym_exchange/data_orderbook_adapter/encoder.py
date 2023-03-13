@@ -5,12 +5,11 @@
 #     def 
 
 # @Order_Flow_Interface.register
-import numpy as np
-from gym_exchange.data_orderbook_adapter import Configuration, Debugger 
+from gym_exchange.data_orderbook_adapter import Configuration, Debugger
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gym_exchange.exchange.order_flow import OrderFlow
-from gym_exchange.exchange.order_flow_list import FlowList
+from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
+from gym_exchange.exchange.basic_exc.assets.order_flow_list import FlowList
 
     
 class Encoder():
@@ -138,11 +137,10 @@ if __name__ == "__main__":
     #         count += 1
     
     
-    with open("/Users/kang/GitHub/NeuralLOB/gym_exchange/outputs/log_encoder_ofs.txt","w+") as f:
+    with open("/Users/kang/AlphaTrade/gym_exchange/outputs/log_encoder_ofs.txt","w+") as f:
         for i in range(len(Ofs)):
             f.write(f"------ {i} ------\n")
             f.write(Ofs[i].__str__())
-            
             
             
             
