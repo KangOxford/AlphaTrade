@@ -2,7 +2,6 @@ import jax.numpy as jnp
 import sys
 import jax
 from jax import lax
-from jax import jit
 import collections
 
 INITID=-999999

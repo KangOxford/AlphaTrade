@@ -141,7 +141,7 @@ if __name__ == "__main__":
     # print("="*20+" ENV CHECKED "+"="*20)
     # --------------------- 05.02 --------------------- 
     env = BaseEnv()
-    env.reset();print("="*20+" ENV RESTED "+"="*20);
+    env.reset();print("="*20+" ENV RESTED "+"="*20)
     # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
