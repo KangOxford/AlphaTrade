@@ -18,7 +18,8 @@ class DataPipeline:
             #self.historical_data = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_50.csv", header = None)
             #self.data_loader = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_50.csv", header=None)
         else: raise NotImplementedError    
-        
+
+        self.data_loader.dropna(axis = 1,inplace=True);assert len(self.data_loader.columns) == len(["timestamp",'type','order_id','quantity','price','side'])
         self.data_loader.columns = ["timestamp",'type','order_id','quantity','price','side']
         self.data_loader["timestamp"] = self.data_loader["timestamp"].astype(str)
         
