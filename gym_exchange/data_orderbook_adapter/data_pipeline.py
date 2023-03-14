@@ -1,21 +1,28 @@
 # -*- coding: utf-8 -*-
 import itertools
+from tkinter.messagebox import NO
 import pandas as pd
 import numpy as np
 from gym_exchange import Config
 class DataPipeline:
     def __init__(self):
         if Config.raw_price_level == 10:
+# <<<<<<< HEAD
             # symbol = "TSLA";date = "2015-01-02"
             symbol = "AMZN";date = "2021-04-01"
             self.historical_data = pd.read_csv("/Users/kang/Data/"+symbol+"_"+date+"_34200000_57600000_orderbook_10.csv", header = None)
             self.data_loader = pd.read_csv("/Users/kang/Data/"+symbol+"_"+date+"_34200000_57600000_message_10.csv", header=None)
+# =======
+#             self.historical_data = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_orderbook_10.csv", header = None)
+#             self.data_loader = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_message_10.csv", header=None)
+# >>>>>>> c94b047f641aa07a4e8f912805e310a49f3436c0
         elif Config.raw_price_level == 50:
-            self.historical_data = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_50.csv", header = None)
-            self.data_loader = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_50.csv", header=None)
+            raise NotImplementedError
+            #self.historical_data = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_50.csv", header = None)
+            #self.data_loader = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_50.csv", header=None)
         else: raise NotImplementedError    
         
-        self.data_loader.columns = ["timestamp",'type','order_id','quantity','price','side','remark']
+        self.data_loader.columns = ["timestamp",'type','order_id','quantity','price','side']
         self.data_loader["timestamp"] = self.data_loader["timestamp"].astype(str)
         
     def __call__(self):
