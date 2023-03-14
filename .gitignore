@@ -5,3 +5,8 @@
 .spyproject/**
 **.txt
 .DS_Store
+.DS_Store
+gym_exchange/.DS_Store
+gym_exchange/data_orderbook_adapter/.DS_Store
+gym_exchange/orderbook/.DS_Store
+jaxen/.DS_Store
