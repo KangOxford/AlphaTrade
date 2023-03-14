@@ -75,6 +75,8 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
+        print(f"$$$ num_left_processor.num_left {self.num_left_processor.num_left} / <=0 ") #$
+        print(f"$$$ cur_step {self.cur_step} / Config.max_horizon {Config.max_horizon}") #$
         # ···················· 03.00.01 ····················
         # generate_wrapped_order_flow {
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
