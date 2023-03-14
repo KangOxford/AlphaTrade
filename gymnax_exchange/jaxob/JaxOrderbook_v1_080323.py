@@ -1,17 +1,18 @@
-import jax.numpy as jnp
+import gymnax_exchange.numpy as jnp
 import sys
-import jax
-from jax import lax
+import gymnax_exchange
+from gymnax_exchange import lax
+from gymnax_exchange import jit
 import collections
 
 INITID=-999999
 
-@jax.jit
+@gymnax_exchange.jit
 def convertOrder(dictQuote:collections.OrderedDict):
     order=jnp.array(list(dictQuote.values()))
     return order
 
-@jax.jit
+@gymnax_exchange.jit
 def addOrder(order,orderbook):
     def nonZeroQuant(order,orderbook,idx,bidAsk):
         def addPriceLevel(order,orderbook,idx,bidAsk):
@@ -42,13 +43,13 @@ def addOrder(order,orderbook):
     orderbook=lax.cond(order[2]==0,lambda order,orderbook,idx,bidAsk: orderbook,nonZeroQuant,*(order,orderbook,idx,bidAsk))
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def newPrice(order,orderbook):
     orderlist=jnp.ones_like(orderbook[0,0,:,:])*-1
     orderlist=orderlist.at[0,:].set(order[2:7])
     return orderlist
 
-@jax.jit
+@gymnax_exchange.jit
 def add_to_orderlist(order,orderbook,list_index,bidAskidx):
     #Retrieve the appropriate list (Correct side / price)
     orderlist=orderbook[bidAskidx,list_index,:,:]
@@ -65,9 +66,22 @@ def add_to_orderlist(order,orderbook,list_index,bidAskidx):
     orderlist=jnp.delete(orderlist,jnp.shape(orderlist)[0]-1,axis=0)
     return orderlist
 
+@gymnax_exchange.jit
+def delOrder_2arg(order,orderbook):
 
+    def newID(order,orderbook,loc):
+        #The order you're looking for has the INIT ID
+        locnew=jnp.where((orderbook[:,:,:,3]==INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
+        return locnew
+    
+    orderID=order[5]
+    
+    idx=jnp.where(orderbook[:,:,:,3]==orderID,size=1,fill_value=-1)
+    loc=lax.cond(idx[0][0]==-1,newID,lambda x,y,z:z,order,orderbook,idx)
+    orderbook=delOrder_3arg(order,orderbook,loc)
+    return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def delOrder_3arg(order,orderbook,idx):
     def emptyList(args):
         orderside=delPrice(args[0],*args[1])
@@ -83,7 +97,7 @@ def delOrder_3arg(order,orderbook,idx):
     orderbook=lax.cond(orderlist[0,0]==-1,emptyList,nonEmptyList,(orderbook,idx,orderlist))
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     #Retrieve appropriate orderside
     orderside=orderbook[bidAskidx[0],:,:,:]
@@ -102,7 +116,7 @@ def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     
     return orderside
 
-@jax.jit
+@gymnax_exchange.jit
 def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
     bidAskidx=bidAskidx[0]
     list_index=list_index[0]
@@ -120,89 +134,8 @@ def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
     orderlist=orderlist[out,:]
     return orderlist
 
-
-
-@jax.jit
-def processOrderList(toMatch):
-    
-    def while_cond(toMatch):
-        return (toMatch[0][0,0]!=-1) & (toMatch[1] >0)
-
-    def while_body(toMatch):
-        def matchTopOrder(toMatch):
-            quantToMatch=toMatch[1]-toMatch[0][0,0]
-            trade=jnp.array([toMatch[0][0,0],toMatch[0][0,1],toMatch[0][0,3],0,0,0])#TODO: will still have to fill in agressing ID, trade ID, time
-            trades=jnp.delete(toMatch[2],-1,axis=0)
-            trades=jnp.insert(trades,0,trade,axis=0)
-            orderlist=jnp.delete(toMatch[0],0,axis=0)
-            orderlist=jnp.append(orderlist,jnp.ones([1,orderlist.shape[1]])*-1,axis=0)
-            
-            return (orderlist,quantToMatch,trades)
-
-        def partialMatchTopOrder(toMatch):
-            trade=jnp.array([toMatch[1],toMatch[0][0,1],toMatch[0][0,3],0,0,0])   
-            trades=jnp.delete(toMatch[2],-1,axis=0)
-            trades=jnp.insert(trades,0,trade,axis=0)
-            quantToMatch=jnp.float32(0)
-            orderlist=toMatch[0].at[0,0].set(toMatch[0][0,0]-toMatch[1])
-            return (orderlist,quantToMatch,trades)
-    
-        #condition is: quant to match is bigger or equal to quant in first order. DO: remove the top order.
-        # else: quant to match is smaller than top order: just reduce the volume. 
-        toMatch=lax.cond(toMatch[1]>=toMatch[0][0,0],matchTopOrder,partialMatchTopOrder,toMatch)
-        return toMatch
-    
-    #Aim: given a quantity left to match, run through the orderlist
-    #and remove the orders in question until the quant to match is 0 or the whole list is empty.
-    toMatch_ret=lax.while_loop(while_cond, while_body, toMatch)
-    return toMatch_ret
-
-
-#LIMIT ORDER - LOBSTER ID = 1
-@jax.jit
-def processLMTOrder(order,orderbook,trades): #limside should be -1/1
-    def while_cond(toMatch):
-        #Condition to keep matching: remaining quant at best price, remaining quant to match, price better than lim price.
-        default=(toMatch[0][0,0,0]!=-1) & (toMatch[1] >0)
-        
-        #condition to make sure limit order price is still sufficient to match an order on other book side. 
-        cond=lax.cond(toMatch[3]==0,lambda x: x[0][0,0,1]>=x[2],lambda x: x[0][0,0,1]<=x[2],toMatch)
-        return default&cond
-    
-    def while_body(toMatch): #(args: orderside,quant,price,matchside)
-        def list_empty(toMatch):
-            orderside=jnp.delete(toMatch[0][0],0,axis=0)
-            orderside=jnp.append(orderside,jnp.ones([1,orderside.shape[1],orderside.shape[2]])*-1,axis=0)
-            return (orderside,toMatch[1][1],toMatch[0][2],toMatch[0][3],toMatch[1][2])#returning orderside, quant,price,side
-        
-        def list_nonempty(toMatch):
-            orderside=toMatch[0][0].at[0,:,:].set(toMatch[1][0])
-            return (orderside,toMatch[1][1],toMatch[0][2],toMatch[0][3],toMatch[1][2])
-        
-        ret=processOrderList((toMatch[0][0,:,:],toMatch[1],toMatch[4])) #process top order list. (Args: orderlist, quant)
-        
-        return_val=lax.cond(ret[0][0,0]==-1,list_empty,list_nonempty,(toMatch,ret))
-        return return_val
-    
-    
-    
-    matchSide=((-order[1]+1)/2).astype(int)
-    limSide=((order[1]+1)/2).astype(int)
-    orderside=orderbook[matchSide,:,:,:]
-    
-    toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,order[2],order[3],limSide,trades)) #sidedata to match from,quant,price,side of limOrder
-    orderbook=orderbook.at[matchSide,:,:,:].set(toMatch_ret[0])
-    trades=toMatch_ret[4]
-    trades=trades.at[:,5].set(order[6]).at[:,3].set(order[5])
-    order=order.at[2].set(toMatch_ret[1])
-    
-    orderbook=addOrder(order,orderbook)
-    
-    return orderbook,trades
-
-#CANCEL ORDER - LOBSTER ID = 2
-@jax.jit
-def cancelOrder(order,orderbook,trades): 
+@gymnax_exchange.jit
+def cancelOrder(order,orderbook): 
     orderID=order[5]
     cancelQuant=order[2]
     #Basically just reducing the quantity posted in a given order.
@@ -230,28 +163,37 @@ def cancelOrder(order,orderbook,trades):
         return orderbook
     loc=lax.cond(orderLoc[0][0]==-1,newID,lambda x,y,z:z,order,orderbook,orderLoc)
     orderbook=goodID(order,orderbook,loc)
-    return orderbook,trades
+    return orderbook
 
-
-#DELETE ORDER - LOBSTER ID = 3
-@jax.jit
-def delOrder_2arg(order,orderbook,trades):
-
-    def newID(order,orderbook,loc):
-        #The order you're looking for has the INIT ID
-        locnew=jnp.where((orderbook[:,:,:,3]==INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
-        return locnew
+@gymnax_exchange.jit
+def processOrderList(toMatch):
     
-    orderID=order[5]
-    
-    idx=jnp.where(orderbook[:,:,:,3]==orderID,size=1,fill_value=-1)
-    loc=lax.cond(idx[0][0]==-1,newID,lambda x,y,z:z,order,orderbook,idx)
-    orderbook=delOrder_3arg(order,orderbook,loc)
-    return orderbook,trades
+    def while_cond(toMatch):
+        return (toMatch[0][0,0]!=-1) & (toMatch[1] >0)
 
-#MARKET ORDER - LOBSTER ID = 4
-@jax.jit
-def processMKTOrder(order,orderbook,trades):
+    def while_body(toMatch):
+        def matchTopOrder(toMatch):
+            quantToMatch=toMatch[1]-toMatch[0][0,0]
+            orderlist=jnp.delete(toMatch[0],0,axis=0)
+            orderlist=jnp.append(orderlist,jnp.ones([1,orderlist.shape[1]])*-1,axis=0)
+            return (orderlist,quantToMatch)
+
+        def partialMatchTopOrder(toMatch):
+            quantToMatch=jnp.float32(0)
+            orderlist=toMatch[0].at[0,0].set(toMatch[0][0,0]-toMatch[1])
+            return (orderlist,quantToMatch)
+    
+        #condition is: quant to match is bigger or equal to quant in first order. DO: remove the top order.
+        # else: quant to match is smaller than top order: just reduce the volume. 
+        toMatch=lax.cond(toMatch[1]>=toMatch[0][0,0],matchTopOrder,partialMatchTopOrder,toMatch)
+        return toMatch
+    
+    #Aim: given a quantity left to match, run through the orderlist
+    #and remove the orders in question until the quant to match is 0 or the whole list is empty.
+    toMatch_ret=lax.while_loop(while_cond, while_body, toMatch)
+    return toMatch_ret
+@gymnax_exchange.jit
+def processMKTOrder(order,orderbook):
     def while_cond(toMatch):
         #The best price must have some quant, and the mktorder must still want to match some quant. 
         return (toMatch[0][0,0,0]!=-1) & (toMatch[1] >0)
@@ -260,13 +202,13 @@ def processMKTOrder(order,orderbook,trades):
         def list_empty(toMatch):
             orderside=jnp.delete(toMatch[0][0],0,axis=0)
             orderside=jnp.append(orderside,jnp.ones([1,orderside.shape[1],orderside.shape[2]])*-1,axis=0)
-            return (orderside,toMatch[1][1],toMatch[1][2])
+            return (orderside,toMatch[1][1])
         
         def list_nonempty(toMatch):
             orderside=toMatch[0][0].at[0,:,:].set(toMatch[1][0])
-            return (orderside,toMatch[1][1],toMatch[1][2])
+            return (orderside,toMatch[1][1])
         
-        ret=processOrderList((toMatch[0][0,:,:],toMatch[1],toMatch[2])) #process top order list.
+        ret=processOrderList((toMatch[0][0,:,:],toMatch[1])) #process top order list.
         
         toMatch=lax.cond(ret[0][0,0]==-1,list_empty,list_nonempty,(toMatch,ret))
         return toMatch
@@ -277,21 +219,57 @@ def processMKTOrder(order,orderbook,trades):
     side=((side+1)/2).astype(int)
     orderside=orderbook[side,:,:,:]
     
-    toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,quant,trades))
-    trades=toMatch_ret[2]
-    trades=trades.at[:,5].set(order[6]).at[:,3].set(order[5])
+    toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,quant))
     orderbook=orderbook.at[side,:,:,:].set(toMatch_ret[0])
-    return orderbook,trades
+    return orderbook
+@gymnax_exchange.jit
+def processLMTOrder(order,orderbook): #limside should be -1/1
+    def while_cond(toMatch):
+        #Condition to keep matching: remaining quant at best price, remaining quant to match, price better than lim price.
+        default=(toMatch[0][0,0,0]!=-1) & (toMatch[1] >0)
+        
+        #true: side is 
+        cond=lax.cond(toMatch[3]==0,lambda x: x[0][0,0,1]>=x[2],lambda x: x[0][0,0,1]<=x[2],toMatch)
+        return default&cond
+    
+    def while_body(toMatch): #(args: orderside,quant,price,matchside)
+        def list_empty(toMatch):
+            orderside=jnp.delete(toMatch[0][0],0,axis=0)
+            orderside=jnp.append(orderside,jnp.ones([1,orderside.shape[1],orderside.shape[2]])*-1,axis=0)
+            return (orderside,toMatch[1][1],toMatch[0][2],toMatch[0][3])#returning orderside, quant,price,side
+        
+        def list_nonempty(toMatch):
+            orderside=toMatch[0][0].at[0,:,:].set(toMatch[1][0])
+            return (orderside,toMatch[1][1],toMatch[0][2],toMatch[0][3])
+        
+        ret=processOrderList((toMatch[0][0,:,:],toMatch[1])) #process top order list. (Args: orderlist, quant)
+        
+        return_val=lax.cond(ret[0][0,0]==-1,list_empty,list_nonempty,(toMatch,ret))
+        return return_val
+    
+    
+    
+    matchSide=((-order[1]+1)/2).astype(int)
+    limSide=((order[1]+1)/2).astype(int)
+    orderside=orderbook[matchSide,:,:,:]
+    
+    toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,order[2],order[3],limSide))
+    orderbook=orderbook.at[matchSide,:,:,:].set(toMatch_ret[0])
+    
+    order=order.at[2].set(toMatch_ret[1])
+    
+    #orderbook=lax.cond(toMatch_ret[1]==0,lambda x,y: y,addOrder,*(order,orderbook))
+    orderbook=addOrder(order,orderbook)
+    
+    return orderbook
 
-#PLACEHOLDER NOTHING - LOBSTER ID = 5,6,7
-@jax.jit
-def doNothing(order,orderbook,trades):
-    return orderbook,trades
+@gymnax_exchange.jit
+def doNothing(order,orderbook):
+    return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def processOrder(orderbook,order):
-    trades=jnp.ones([5,6])*-1 #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
-    orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
-    return orderbook,trades
+    orderbook=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook)
+    return orderbook,0
 
 
