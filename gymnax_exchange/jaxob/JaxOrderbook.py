@@ -1,7 +1,7 @@
-import gymnax_exchange.numpy as jnp
+import jax.numpy as jnp
 import sys
-import gymnax_exchange
-from gymnax_exchange import lax
+import jax
+from jax import lax
 import collections
 
 from numpy import float32, int32
@@ -13,12 +13,12 @@ ORDERSIZE=5
 '''Module Name'''
 
 
-@gymnax_exchange.jit
+@jax.jit
 def convertOrder(dictQuote:collections.OrderedDict):
     order=jnp.array(list(dictQuote.values()))
     return order
 
-@gymnax_exchange.jit
+@jax.jit
 def addOrder(order,orderbook):
     def nonZeroQuant(order,orderbook,idx,bidAsk):
         def addPriceLevel(order,orderbook,idx,bidAsk):
@@ -49,13 +49,13 @@ def addOrder(order,orderbook):
     orderbook=lax.cond(order[2]==0,lambda order,orderbook,idx,bidAsk: orderbook,nonZeroQuant,*(order,orderbook,idx,bidAsk))
     return orderbook
 
-@gymnax_exchange.jit
+@jax.jit
 def newPrice(order,orderbook):
     orderlist=jnp.ones_like(orderbook[0,0,:,:])*-1
     orderlist=orderlist.at[0,:].set(order[2:7])
     return orderlist
 
-@gymnax_exchange.jit
+@jax.jit
 def add_to_orderlist(order,orderbook,list_index,bidAskidx):
     #Retrieve the appropriate list (Correct side / price)
     orderlist=orderbook[bidAskidx,list_index,:,:]
@@ -74,7 +74,7 @@ def add_to_orderlist(order,orderbook,list_index,bidAskidx):
 
 
 
-@gymnax_exchange.jit
+@jax.jit
 def delOrder_3arg(order,orderbook,idx):
     def emptyList(args):
         orderside=delPrice(args[0],*args[1])
@@ -90,7 +90,7 @@ def delOrder_3arg(order,orderbook,idx):
     orderbook=lax.cond(orderlist[0,0]==-1,emptyList,nonEmptyList,(orderbook,idx,orderlist))
     return orderbook
 
-@gymnax_exchange.jit
+@jax.jit
 def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     #Retrieve appropriate orderside
     orderside=orderbook[bidAskidx[0],:,:,:]
@@ -109,7 +109,7 @@ def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     
     return orderside
 
-@gymnax_exchange.jit
+@jax.jit
 def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
     bidAskidx=bidAskidx[0]
     list_index=list_index[0]
@@ -129,7 +129,7 @@ def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
 
 
 
-@gymnax_exchange.jit
+@jax.jit
 def processOrderList(toMatch):
     
     def while_cond(toMatch):
@@ -166,7 +166,7 @@ def processOrderList(toMatch):
 
 
 #LIMIT ORDER - LOBSTER ID = 1
-@gymnax_exchange.jit
+@jax.jit
 def processLMTOrder(order,orderbook,trades): #limside should be -1/1
     def while_cond(toMatch):
         #Condition to keep matching: remaining quant at best price, remaining quant to match, price better than lim price.
@@ -208,7 +208,7 @@ def processLMTOrder(order,orderbook,trades): #limside should be -1/1
     return orderbook,trades
 
 #CANCEL ORDER - LOBSTER ID = 2
-@gymnax_exchange.jit
+@jax.jit
 def cancelOrder(order,orderbook,trades): 
     orderID=order[5]
     cancelQuant=order[2]
@@ -241,7 +241,7 @@ def cancelOrder(order,orderbook,trades):
 
 
 #DELETE ORDER - LOBSTER ID = 3
-@gymnax_exchange.jit
+@jax.jit
 def delOrder_2arg(order,orderbook,trades):
 
     def newID(order,orderbook,loc):
@@ -257,7 +257,7 @@ def delOrder_2arg(order,orderbook,trades):
     return orderbook,trades
 
 #MARKET ORDER - LOBSTER ID = 4
-@gymnax_exchange.jit
+@jax.jit
 def processMKTOrder(order,orderbook,trades):
     def while_cond(toMatch):
         #The best price must have some quant, and the mktorder must still want to match some quant. 
@@ -291,20 +291,14 @@ def processMKTOrder(order,orderbook,trades):
     return orderbook,trades
 
 #PLACEHOLDER NOTHING - LOBSTER ID = 5,6,7
-@gymnax_exchange.jit
+@jax.jit
 def doNothing(order,orderbook,trades):
     return orderbook,trades
 
-<<<<<<< HEAD:jaxen/jaxob/JaxOrderbook.py
 @jax.jit
 def processOrder(orderbook,order,tradesLen=5):
     trades=jnp.ones([tradesLen,6])*-1. #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
     order=order.astype(float32)
-=======
-@gymnax_exchange.jit
-def processOrder(orderbook,order):
-    trades=jnp.ones([5,6])*-1 #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
->>>>>>> 13162990c8af84df941d35406b4c0aff31999a4d:gymnax_exchange/jaxob/JaxOrderbook.py
     orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
     return orderbook,trades
 
