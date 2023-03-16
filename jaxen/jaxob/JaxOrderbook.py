@@ -5,7 +5,14 @@ from jax import lax
 from jax import jit
 import collections
 
+from numpy import float32, int32
+
+
 INITID=-999999
+ORDERSIZE=5
+
+'''Module Name'''
+
 
 @jax.jit
 def convertOrder(dictQuote:collections.OrderedDict):
@@ -138,7 +145,7 @@ def processOrderList(toMatch):
             orderlist=jnp.delete(toMatch[0],0,axis=0)
             orderlist=jnp.append(orderlist,jnp.ones([1,orderlist.shape[1]])*-1,axis=0)
             
-            return (orderlist,quantToMatch,trades)
+            return (orderlist,quantToMatch.astype(float),trades)
 
         def partialMatchTopOrder(toMatch):
             trade=jnp.array([toMatch[1],toMatch[0][0,1],toMatch[0][0,3],0,0,0])   
@@ -146,7 +153,7 @@ def processOrderList(toMatch):
             trades=jnp.insert(trades,0,trade,axis=0)
             quantToMatch=jnp.float32(0)
             orderlist=toMatch[0].at[0,0].set(toMatch[0][0,0]-toMatch[1])
-            return (orderlist,quantToMatch,trades)
+            return (orderlist,quantToMatch.astype(float),trades)
     
         #condition is: quant to match is bigger or equal to quant in first order. DO: remove the top order.
         # else: quant to match is smaller than top order: just reduce the volume. 
@@ -180,7 +187,7 @@ def processLMTOrder(order,orderbook,trades): #limside should be -1/1
             orderside=toMatch[0][0].at[0,:,:].set(toMatch[1][0])
             return (orderside,toMatch[1][1],toMatch[0][2],toMatch[0][3],toMatch[1][2])
         
-        ret=processOrderList((toMatch[0][0,:,:],toMatch[1],toMatch[4])) #process top order list. (Args: orderlist, quant)
+        ret=processOrderList((toMatch[0][0,:,:],toMatch[1].astype(float),toMatch[4])) #process top order list. (Args: orderlist, quant)
         
         return_val=lax.cond(ret[0][0,0]==-1,list_empty,list_nonempty,(toMatch,ret))
         return return_val
@@ -290,8 +297,9 @@ def doNothing(order,orderbook,trades):
     return orderbook,trades
 
 @jax.jit
-def processOrder(orderbook,order):
-    trades=jnp.ones([5,6])*-1 #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
+def processOrder(orderbook,order,tradesLen=5):
+    trades=jnp.ones([tradesLen,6])*-1. #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
+    order=order.astype(float32)
     orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
     return orderbook,trades
 
