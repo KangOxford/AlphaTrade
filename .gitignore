@@ -4,3 +4,4 @@
 .idea/**
 .spyproject/**
 **.txt
+.DS_Store
