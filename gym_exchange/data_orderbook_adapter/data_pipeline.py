@@ -7,14 +7,19 @@ from gym_exchange import Config
 class DataPipeline:
     def __init__(self):
         if Config.raw_price_level == 10:
-            self.historical_data = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_orderbook_10.csv", header = None)
-            self.data_loader = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_message_10.csv", header=None)
+            symbol = "TSLA";date = "2015-01-02"
+            # symbol = "AMZN";date = "2021-04-01"
+            self.historical_data = pd.read_csv("/Users/kang/Data/"+symbol+"_"+date+"_34200000_57600000_orderbook_10.csv", header = None)
+            self.data_loader = pd.read_csv("/Users/kang/Data/"+symbol+"_"+date+"_34200000_57600000_message_10.csv", header=None)
+            # self.historical_data = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_orderbook_10.csv", header = None)
+            # self.data_loader = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_message_10.csv", header=None)
         elif Config.raw_price_level == 50:
             raise NotImplementedError
             #self.historical_data = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_50.csv", header = None)
             #self.data_loader = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_message_50.csv", header=None)
         else: raise NotImplementedError    
-        
+
+        self.data_loader.dropna(axis = 1,inplace=True);assert len(self.data_loader.columns) == len(["timestamp",'type','order_id','quantity','price','side'])
         self.data_loader.columns = ["timestamp",'type','order_id','quantity','price','side']
         self.data_loader["timestamp"] = self.data_loader["timestamp"].astype(str)
         
@@ -33,7 +38,6 @@ if __name__ == "__main__":
     ask = ob.iloc[:,ask_columns]    
     bid.to_csv("/Users/kang/Data/bid.csv", header = None, index=False)
     ask.to_csv("/Users/kang/Data/ask.csv", header = None, index=False)
-    
     
     
     

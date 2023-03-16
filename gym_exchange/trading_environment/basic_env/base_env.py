@@ -75,6 +75,8 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
+        print(f"$$$ num_left_processor.num_left {self.num_left_processor.num_left} / <=0 ") #$
+        print(f"$$$ cur_step {self.cur_step} / Config.max_horizon {Config.max_horizon}") #$
         # ···················· 03.00.01 ····················
         # generate_wrapped_order_flow {
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
@@ -141,7 +143,7 @@ if __name__ == "__main__":
     # print("="*20+" ENV CHECKED "+"="*20)
     # --------------------- 05.02 --------------------- 
     env = BaseEnv()
-    env.reset();print("="*20+" ENV RESTED "+"="*20);
+    env.reset();print("="*20+" ENV RESTED "+"="*20)
     # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$

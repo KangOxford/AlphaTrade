@@ -1,18 +1,18 @@
-import jax.numpy as jnp
+import gymnax_exchange.numpy as jnp
 import sys
-import jax
-from jax import lax
-from jax import jit
+import gymnax_exchange
+from gymnax_exchange import lax
+from gymnax_exchange import jit
 import collections
 
 INITID=-999999
 
-@jax.jit
+@gymnax_exchange.jit
 def convertOrder(dictQuote:collections.OrderedDict):
     order=jnp.array(list(dictQuote.values()))
     return order
 
-@jax.jit
+@gymnax_exchange.jit
 def addOrder(order,orderbook):
     def nonZeroQuant(order,orderbook,idx,bidAsk):
         def addPriceLevel(order,orderbook,idx,bidAsk):
@@ -43,13 +43,13 @@ def addOrder(order,orderbook):
     orderbook=lax.cond(order[2]==0,lambda order,orderbook,idx,bidAsk: orderbook,nonZeroQuant,*(order,orderbook,idx,bidAsk))
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def newPrice(order,orderbook):
     orderlist=jnp.ones_like(orderbook[0,0,:,:])*-1
     orderlist=orderlist.at[0,:].set(order[2:7])
     return orderlist
 
-@jax.jit
+@gymnax_exchange.jit
 def add_to_orderlist(order,orderbook,list_index,bidAskidx):
     #Retrieve the appropriate list (Correct side / price)
     orderlist=orderbook[bidAskidx,list_index,:,:]
@@ -66,7 +66,7 @@ def add_to_orderlist(order,orderbook,list_index,bidAskidx):
     orderlist=jnp.delete(orderlist,jnp.shape(orderlist)[0]-1,axis=0)
     return orderlist
 
-@jax.jit
+@gymnax_exchange.jit
 def delOrder_2arg(order,orderbook):
 
     def newID(order,orderbook,loc):
@@ -81,7 +81,7 @@ def delOrder_2arg(order,orderbook):
     orderbook=delOrder_3arg(order,orderbook,loc)
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def delOrder_3arg(order,orderbook,idx):
     def emptyList(args):
         orderside=delPrice(args[0],*args[1])
@@ -97,7 +97,7 @@ def delOrder_3arg(order,orderbook,idx):
     orderbook=lax.cond(orderlist[0,0]==-1,emptyList,nonEmptyList,(orderbook,idx,orderlist))
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     #Retrieve appropriate orderside
     orderside=orderbook[bidAskidx[0],:,:,:]
@@ -116,7 +116,7 @@ def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     
     return orderside
 
-@jax.jit
+@gymnax_exchange.jit
 def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
     bidAskidx=bidAskidx[0]
     list_index=list_index[0]
@@ -134,7 +134,7 @@ def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
     orderlist=orderlist[out,:]
     return orderlist
 
-@jax.jit
+@gymnax_exchange.jit
 def cancelOrder(order,orderbook): 
     orderID=order[5]
     cancelQuant=order[2]
@@ -165,7 +165,7 @@ def cancelOrder(order,orderbook):
     orderbook=goodID(order,orderbook,loc)
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def processOrderList(toMatch):
     
     def while_cond(toMatch):
@@ -192,7 +192,7 @@ def processOrderList(toMatch):
     #and remove the orders in question until the quant to match is 0 or the whole list is empty.
     toMatch_ret=lax.while_loop(while_cond, while_body, toMatch)
     return toMatch_ret
-@jax.jit
+@gymnax_exchange.jit
 def processMKTOrder(order,orderbook):
     def while_cond(toMatch):
         #The best price must have some quant, and the mktorder must still want to match some quant. 
@@ -222,7 +222,7 @@ def processMKTOrder(order,orderbook):
     toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,quant))
     orderbook=orderbook.at[side,:,:,:].set(toMatch_ret[0])
     return orderbook
-@jax.jit
+@gymnax_exchange.jit
 def processLMTOrder(order,orderbook): #limside should be -1/1
     def while_cond(toMatch):
         #Condition to keep matching: remaining quant at best price, remaining quant to match, price better than lim price.
@@ -263,11 +263,11 @@ def processLMTOrder(order,orderbook): #limside should be -1/1
     
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def doNothing(order,orderbook):
     return orderbook
 
-@jax.jit
+@gymnax_exchange.jit
 def processOrder(orderbook,order):
     orderbook=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook)
     return orderbook,0
