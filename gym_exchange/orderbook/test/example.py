@@ -317,7 +317,6 @@ size = 50 # pass
 # size = 4000 
 
 for index in range(size):
-    
     print("=="*10 + " " + str(index) + " "+ "=="*10)
     print("The order book used to be:")
     print(order_book)
