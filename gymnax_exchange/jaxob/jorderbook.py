@@ -11,6 +11,7 @@ import collections
 
 class OrderBook(object):
     def __init__(self, price_levels=10,orderQueueLen=10,):
+        self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1
 
@@ -54,3 +55,11 @@ class OrderBook(object):
     def tape_dump(self, filename, filemode, tapemode):
         '''Not really sure what to do with this'''
         return 0
+
+
+    def get_L2_state(self):
+        levels=jnp.resize(jnp.array([0,self.price_levels*2,self.price_levels,self.price_levels*3]),(1,4*self.price_levels)).squeeze()
+        index=jnp.resize(jnp.arange(0,self.price_levels,1),(4,self.price_levels)).transpose().reshape(1,4*self.price_levels).squeeze()
+        prices=jnp.squeeze(self.orderbook_array[:,:,0,1])
+        volumes=jnp.squeeze(jnp.sum(self.orderbook_array[:,:,:,0].at[self.orderbook_array[:,:,:,0]==-1].set(0),axis=2))
+        return jnp.concatenate([prices,volumes]).flatten()[index+levels]
