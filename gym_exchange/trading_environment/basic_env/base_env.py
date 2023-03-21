@@ -75,8 +75,6 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
-        print(f"$$$ num_left_processor.num_left {self.num_left_processor.num_left} / <=0 ") #$
-        print(f"$$$ cur_step {self.cur_step} / Config.max_horizon {Config.max_horizon}") #$
         # ···················· 03.00.01 ····················
         # generate_wrapped_order_flow {
         price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
@@ -125,7 +123,7 @@ class BaseEnv(InterfaceEnv):
                 return {**epoch_vwap_info_dict}
             return epoch_vwap_info_dict
         epoch_vwap_info_dict = get_returned_epoch_vwap_info_dict(self)
-        step_cur_executed = {"Step/Current_executed": self.num_left_processor.agent_executed_pairs_in_last_step is None}
+        step_cur_executed = {"Step/Current_executed": self.num_left_processor.agent_executed_pairs_in_last_step is not None}
         step_cur_step = {"Step/Current_step": self.cur_step}
         step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
         returned_info = {**step_num_left_dict, **step_cur_step, **step_cur_executed,
