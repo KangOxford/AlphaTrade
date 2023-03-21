@@ -12,7 +12,7 @@ class BaseExchange(InterfaceExchange):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         self.index = 0
-        self.flow_generator = (flow for flow in self.flow_list)
+        self.flow_generator = (flow for flow in self.flow_lists)
         self.order_book = OrderBook()
         self.initialize_orderbook()
         self.executed_pairs_recoder = ExecutedPairsRecorder()

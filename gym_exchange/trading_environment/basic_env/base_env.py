@@ -82,13 +82,13 @@ class BaseEnv(InterfaceEnv):
         order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
-        print(f">>> composite action: {wrapped_order_flow}") #$
+        self.wrapped_order_flow = wrapped_order_flow
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.00.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
-        print(f"self.exchange.index: {self.exchange.index}") #$
+        # print(f"self.exchange.index: {self.exchange.index}") #$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
@@ -126,8 +126,12 @@ class BaseEnv(InterfaceEnv):
         step_cur_executed_dict = {"Step/Current_executed": self.num_left_processor.num_executed_in_last_step}
         step_cur_step_dict = {"Step/Current_step": self.cur_step}
         step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
-        residual_action_dict ={"Residual_action/Quantity":0}
-        returned_info = {**residual_action_dict,
+        residual_action_dict ={"Residual_action/Quantity": self.order_flow_generator.residual_action}
+        composite_action_dict = {"Composite_action/Price":self.wrapped_order_flow.price,
+                                 "Composite_action/Quantity":self.wrapped_order_flow.quantity}
+        returned_info = {
+            **composite_action_dict,
+            **residual_action_dict,
             **step_num_left_dict, **step_cur_step_dict, **step_cur_executed_dict,
             **epoch_vwap_info_dict}
         return returned_info
@@ -162,13 +166,13 @@ if __name__ == "__main__":
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
         # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
-        print(f">>> delta_action: {action}") #$
+        # print(f">>> delta_action: {action}") #$
         # breakpoint() #$
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
         # print(f"state: {state}") #$
-        print(f"reward: {reward}") #$
-        print(f"done: {done}") #$
+        # print(f"reward: {reward}") #$
+        # print(f"done: {done}") #$
         print(f"info: {info}") #$
         env.render()
         if done:

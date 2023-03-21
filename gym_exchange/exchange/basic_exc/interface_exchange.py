@@ -12,9 +12,9 @@ class InterfaceExchange(abc.ABC):
     # -------------------------- 02.01 ----------------------------
     '''init'''
     def __init__(self):
-        self.flow_list = self.initialization()
+        self.flow_lists = self.flow_lists_initialization()
     
-    def initialization(self):
+    def flow_lists_initialization(self):
         decoder   = Decoder(**DataPipeline()())
         encoder   = Encoder(decoder)
         flow_lists= encoder() 

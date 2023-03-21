@@ -46,9 +46,15 @@ class OutsideSignalEncoder:
                 signal = self.one_difference_signal_producer(self.order_book, self.my_array, self.right_array, side)
             elif np.sum(self.my_array != self.right_array) == 2:
                 signal = self.two_difference_signal_producer(self.order_book, self.my_array, self.right_array, side)
-            else: 
-                raise NotImplementedError       
-        return signal 
+            elif np.sum(self.my_array != self.right_array) == 3:
+                ''' !TODO Not implemented
+                array([False, False, False, False, False, False, False, False, False,
+                       False, False, False, False, False, False, False, True, False,
+                       True, True])'''
+                raise NotImplementedError
+            else:
+                raise NotImplementedError
+        return signal
 
     def one_difference_signal_producer(self, order_book, my_array, right_array, side):
         timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
@@ -262,4 +268,3 @@ class OutsideSignalEncoder:
         return signal
 
 
-    
