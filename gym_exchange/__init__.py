@@ -52,6 +52,7 @@ class Config:
     # --------------- 08 Adapter ---------------
     raw_price_level = 10
     raw_horizon = 2048
+    # raw_horizon = 4096
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
 

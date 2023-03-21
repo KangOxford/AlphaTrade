@@ -24,12 +24,18 @@ class BaseExchange(InterfaceExchange):
         self.executed_pairs_recoder.step(trades, self.index) # 2nd para: kind
 
     def type2_handler(self, message):
+        ''' Cancellation (Partial deletion of a limit order)'''
         tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
-        in_book_quantity = tree.get_order(message['order_id']).quantity
-        message['quantity'] = min(message['quantity'], in_book_quantity)# adjuested_message 
-        (self.order_book.bids if message['side'] == 'bid' else self.order_book.asks).update_order(message)
-        
+        try:
+            in_book_quantity = tree.get_order(message['order_id']).quantity
+            message['quantity'] = min(message['quantity'], in_book_quantity)# adjuested_message
+            (self.order_book.bids if message['side'] == 'bid' else self.order_book.asks).update_order(message)
+        except:
+            '''EXAMPLE: in get_order return self.order_map[order_id] KeyError: 17142637'''
+            pass #TODO
+
     def type3_handler(self, message):
+        '''Deletion (Total deletion of a limit order)'''
         done = False
         right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
         if right_tree.order_exists(message['order_id']) == False:

@@ -15,7 +15,7 @@ class Configuration:
     price_level = 10 
     horizon = 2048
     # horizon = 4000
-    # horizon = 4048
+    # horizon = 4096
     # side_list = ['Bids']
     class Adapter:
         type5_id_bid = 30000000  # caution about the volumn for valid numbers

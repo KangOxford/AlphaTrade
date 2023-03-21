@@ -3,6 +3,7 @@
 from gym_exchange.orderbook import OrderBook
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
+from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder,RawEncoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.data_orderbook_adapter import Configuration
 
@@ -15,12 +16,21 @@ class InterfaceExchange(abc.ABC):
         self.flow_lists = self.flow_lists_initialization()
     
     def flow_lists_initialization(self):
-        decoder   = Decoder(**DataPipeline()())
-        encoder   = Encoder(decoder)
-        flow_lists= encoder() 
+        # decoder   = Decoder(**DataPipeline()())
+        # encoder   = Encoder(decoder)
+        decoder   = RawDecoder(**DataPipeline()())
+        encoder   = RawEncoder(decoder)
+        flow_lists= encoder()
         flow_lists= self.to_order_flow_lists(flow_lists)
         return flow_lists
-    
+
+    # def flow_lists_initialization(self):
+    #     decoder   = Decoder(**DataPipeline()())
+    #     encoder   = Encoder(decoder)
+    #     flow_lists= encoder()
+    #     flow_lists= self.to_order_flow_lists(flow_lists)
+    #     return flow_lists
+
     def to_order_flow_lists(self, flow_lists):
         '''change side format from bid/ask to 1/-1
         side = -1 if item.side == 'ask' else 1'''

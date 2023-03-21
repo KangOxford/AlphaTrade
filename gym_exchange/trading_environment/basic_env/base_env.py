@@ -90,6 +90,8 @@ class BaseEnv(InterfaceEnv):
         # ···················· 03.00.03 ····················
         # print(f"self.exchange.index: {self.exchange.index}") #$
         state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
+        if self.cur_step == 60:
+            print()#$
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
         state = state.reshape(4, Config.price_level).astype(np.int64)
