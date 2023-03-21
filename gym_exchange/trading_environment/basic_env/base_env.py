@@ -123,11 +123,13 @@ class BaseEnv(InterfaceEnv):
                 return {**epoch_vwap_info_dict}
             return epoch_vwap_info_dict
         epoch_vwap_info_dict = get_returned_epoch_vwap_info_dict(self)
-        step_cur_executed = {"Step/Current_executed": self.num_left_processor.agent_executed_pairs_in_last_step is not None}
-        step_cur_step = {"Step/Current_step": self.cur_step}
+        step_cur_executed_dict = {"Step/Current_executed": self.num_left_processor.num_executed_in_last_step}
+        step_cur_step_dict = {"Step/Current_step": self.cur_step}
         step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
-        returned_info = {**step_num_left_dict, **step_cur_step, **step_cur_executed,
-                         **epoch_vwap_info_dict}
+        residual_action_dict ={"Residual_action/Quantity":0}
+        returned_info = {**residual_action_dict,
+            **step_num_left_dict, **step_cur_step_dict, **step_cur_executed_dict,
+            **epoch_vwap_info_dict}
         return returned_info
 
         # if epoch_vwap_info_dict is None:

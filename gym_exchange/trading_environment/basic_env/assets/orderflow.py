@@ -56,12 +56,11 @@ class OrderFlowGenerator(object):
         return order_flow, auto_cancel
      
     def get_content_dicts(self):
-        residual_action, residual_done = self.residual_policy.step()
-        print(f">>> residual_action: Quantity: {residual_action}, residual_policy_done: {residual_done}") #$
+        self.residual_action, self.residual_done = self.residual_policy.step()
         content_dict = {
             "Type" : 1, # submission of a new limit order
             "direction" : self.action[0],
-            "size": max(0, self.action[1] + residual_action),
+            "size": max(0, self.action[1] + self.residual_action),
             "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,
