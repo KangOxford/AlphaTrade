@@ -116,13 +116,22 @@ class BaseEnv(InterfaceEnv):
         """in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity,
         and can be executed at higher price."""
-        self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
-        step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
-        if epoch_vwap_info_dict is None:
-            return {}
-        else:
-            return {**epoch_vwap_info_dict}
-        
+        def get_returned_epoch_vwap_info_dict(self):
+            self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
+            step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
+            if epoch_vwap_info_dict is None:
+                return {}
+            else:
+                return {**epoch_vwap_info_dict}
+            return epoch_vwap_info_dict
+        epoch_vwap_info_dict = get_returned_epoch_vwap_info_dict(self)
+        step_cur_executed = {"Step/Current_executed": self.num_left_processor.agent_executed_pairs_in_last_step is None}
+        step_cur_step = {"Step/Current_step": self.cur_step}
+        step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
+        returned_info = {**step_num_left_dict, **step_cur_step, **step_cur_executed,
+                         **epoch_vwap_info_dict}
+        return returned_info
+
         # if epoch_vwap_info_dict is None:
         #     return {**step_vwap_info_dict}
         # else:
