@@ -1,10 +1,16 @@
+from sre_constants import IN
 import sys
 import math
 from collections import deque # a faster insert/pop queue
 from six.moves import cStringIO as StringIO  # pyright: ignore
 from decimal import Decimal
 
+from sortedcontainers import SortedDict
+
 from .ordertree import OrderTree
+
+
+INITID=15000000
 
 class OrderBook(object):
     def __init__(self, tick_size = 0.0001):
@@ -60,11 +66,15 @@ class OrderBook(object):
             order_in_book=message
         elif type==3:
             message['type']='delete'
-            self.cancel_order(message['side'], message['order_id'], message['timestamp'])
+            self.cancel_order(message)
             trades=[]
             order_in_book=message
         elif type==4:
             message['type']='market'
+            if message['side']=='ask':
+                message['side']='bid'
+            else:
+                message['side']='ask'
             trades,order_in_book=self.process_order(message,from_data=from_data,verbose=verbose)
         elif type == 5 or type == 6 or type ==7:
             trades=[]
@@ -179,21 +189,32 @@ class OrderBook(object):
             sys.exit('process_limit_order() given neither "bid" nor "ask"')
         return trades, order_in_book
 
-    def cancel_order(self, side, order_id, time=None):
+    def cancel_order(self, order):
+        time=order['timestamp']
         if time:
             self.time = time
         else:
             self.update_time()
-        if side == 'bid':
-            if self.bids.order_exists(order_id):
-                self.bids.remove_order_by_id(order_id)
+        if order['side'] == 'bid':
+            if self.bids.order_exists(order['order_id']):
+                self.bids.remove_order_by_id(order['order_id'])
+            else:
+                orderlist=self.bids.get_price_list(order['price'])
+                print(orderlist)
+        elif order['side'] == 'ask':
+            if self.asks.order_exists(order['order_id']):
+                self.asks.remove_order_by_id(order['order_id'])
             else: 
-                raise NotImplementedError # tbd
-        elif side == 'ask':
-            if self.asks.order_exists(order_id):
-                self.asks.remove_order_by_id(order_id)
-            else: 
-                raise NotImplementedError # tbd
+                orderlist=self.asks.get_price_list(order['price'])
+                if orderlist.get_head_order().order_id>INITID:
+                    if orderlist.get_head_order().quantity==order['quantity']:
+                        self.asks.remove_order_by_id(orderlist.get_head_order().order_id)
+                    else:
+                        order['order_id']=orderlist.get_head_order().order_id
+                        self.modify_order(order['order_id'],order,order['timestamp'])
+                        print(order)
+                        #raise NotImplementedError 
+                        ##Need to just modify the order to reduce the quantity
         else:
             raise NotImplementedError # tbd
             sys.exit('cancel_order() given neither "bid" nor "ask"')
@@ -242,6 +263,21 @@ class OrderBook(object):
 
     def get_worst_ask(self):
         return self.asks.max_price()
+
+
+    def get_L2_state(self):
+        '''Function to return a 4xNlvl array that represents the orderbook state'''
+        bid_prices=list(self.bids.price_map.keys())
+        objs=self.bids.price_map.values()[:]
+        bid_quants = [o.volume for o in objs]
+
+        ask_prices=list(self.asks.price_map.keys())
+        objs=self.asks.price_map.values()[:]
+        ask_quants = [o.volume for o in objs]
+
+        bid_prices.reverse()
+        bid_quants.reverse()
+        return ask_prices,ask_quants,bid_prices,bid_quants
 
     def tape_dump(self, filename, filemode, tapemode):
         dumpfile = open(filename, filemode)
