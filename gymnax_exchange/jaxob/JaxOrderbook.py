@@ -244,16 +244,19 @@ def cancelOrder(order,orderbook,trades):
 @jax.jit
 def delOrder_2arg(order,orderbook,trades):
 
-    def newID(order,orderbook,loc):
+    def newID(order,orderbook,loc,trades):
         #The order you're looking for has the INIT ID
         locnew=jnp.where((orderbook[:,:,:,3]==INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
-        return locnew
+        orderbook,trades=cancelOrder(order,orderbook,trades)
+        return orderbook
+    
+    def goodID(order,orderbook,loc,trades):
+        orderbook=delOrder_3arg(order,orderbook,loc)
+        return orderbook
     
     orderID=order[5]
-    
     idx=jnp.where(orderbook[:,:,:,3]==orderID,size=1,fill_value=-1)
-    loc=lax.cond(idx[0][0]==-1,newID,lambda x,y,z:z,order,orderbook,idx)
-    orderbook=delOrder_3arg(order,orderbook,loc)
+    orderbook=lax.cond(idx[0][0]==-1,newID,goodID,order,orderbook,idx,trades)
     return orderbook,trades
 
 #MARKET ORDER - LOBSTER ID = 4

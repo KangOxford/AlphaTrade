@@ -42,6 +42,38 @@ class OrderBook(object):
             sys.exit("order_type for process_order() is neither 'market' or 'limit'")
         return trades, order_in_book
 
+    def processOrder(self,quote,from_data,verbose):
+        """This function assumes that the "type" field in the quote is an integer, and follows the LOBSTER convention of
+        order types."""
+        type=quote['type']
+        message=quote
+        if type==1: #Normal Limit Order
+            message['type']='limit'
+            trades,order_in_book=self.process_order(message,from_data=from_data,verbose=verbose)
+        elif type==2: #Cancellation order (partial deletion): simply update quantity
+            message['type']='cancel'
+            origin_quantity = self.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
+            adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
+            message['quantity']=adjusted_quantity
+            self.bids.update_order(message)
+            trades=[]
+            order_in_book=message
+        elif type==3:
+            message['type']='delete'
+            self.cancel_order(message['side'], message['order_id'], message['timestamp'])
+            trades=[]
+            order_in_book=message
+        elif type==4:
+            message['type']='market'
+            trades,order_in_book=self.process_order(message,from_data=from_data,verbose=verbose)
+        elif type == 5 or type == 6 or type ==7:
+            trades=[]
+            order_in_book=message
+        else:
+            sys.exit("Type is wrong")
+
+        return trades,order_in_book
+
     def process_order_list(self, side, order_list, quantity_still_to_trade, quote, verbose):
         '''
         Takes an OrderList (stack of orders at one price) and an incoming order and matches
