@@ -1,15 +1,37 @@
 # ========================= 01 =========================
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.exchange.basic_exc.interface_exchange import InterfaceExchange
+from gym_exchange.data_orderbook_adapter.decoder import Decoder
+from gym_exchange.data_orderbook_adapter.encoder import Encoder
+from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder,RawEncoder
+from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.utils.executed_pairs import ExecutedPairsRecorder
 
 
 # ========================= 03 =========================
-class BaseExchange(InterfaceExchange):
-    def __init__(self):
-        super().__init__()
-        
+class BaseExchange():
     # -------------------------- 03.01 ----------------------------
+    def __init__(self):
+        self.flow_lists = self.flow_lists_initialization()
+
+    def flow_lists_initialization(self):
+        decoder   = Decoder(**DataPipeline()())
+        encoder   = Encoder(decoder)
+        # decoder   = RawDecoder(**DataPipeline()())
+        # encoder   = RawEncoder(decoder)
+        flow_lists= encoder()
+        flow_lists= self.to_order_flow_lists(flow_lists)
+        return flow_lists
+
+    def to_order_flow_lists(self, flow_lists):
+        '''change side format from bid/ask to 1/-1
+        side = -1 if item.side == 'ask' else 1'''
+        for flow_list in flow_lists:
+            for item in flow_list:
+                side = -1 if item.side == 'ask' else 1
+                item.side = side
+        return flow_lists
+
+    # -------------------------- 03.02 ----------------------------
     def reset(self):
         self.index = 0
         self.flow_generator = (flow_list for flow_list in self.flow_lists)
@@ -17,8 +39,15 @@ class BaseExchange(InterfaceExchange):
         self.initialize_orderbook()
         self.executed_pairs_recoder = ExecutedPairsRecorder()
 
-        
-    # -------------------------- 03.02 ----------------------------
+    def initialize_orderbook(self):
+        '''only take the index0, the first one to init the lob'''
+        flow_list = next(self.flow_generator)
+        for flow in flow_list:
+            self.order_book.process_order(flow.to_message, True, False)
+        self.index += 1
+        '''for this step is index0, for next step is index1'''
+
+    # -------------------------- 03.03 ----------------------------
     def type1_handler(self, message, index):
         trades, order_in_book = self.order_book.process_order(message, True, False)
         self.executed_pairs_recoder.step(trades, self.index) # 2nd para: kind
