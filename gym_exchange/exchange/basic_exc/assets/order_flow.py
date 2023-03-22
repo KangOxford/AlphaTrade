@@ -58,7 +58,7 @@ class OrderFlow():
          'order_id':order_id}'''
         message = {
             'type'     : 'limit',
-            'side'     : 'bid' if self.side==1 else 'ask',
+            'side'     : 'ask' if self.side==1 else 'bid',
             'quantity' : self.quantity,
             'price'    : self.price,
             'trade_id' : self.trade_id,

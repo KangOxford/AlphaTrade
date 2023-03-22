@@ -57,7 +57,8 @@ class RawDecoder():
         if message['type'] in (1,2,3):
             order_flow = OrderFlow(
                 Type = message['type'],
-                direction = 'ask' if message['side'] == 1 else 'bid',
+                direction='bid' if message['side'] == 1 else 'ask' if message['side'] == -1 else 'Error',
+                # direction = 'ask' if message['side'] == 1 else 'bid',
                 size = message['quantity'],
                 price = message['price'],
                 trade_id = message['order_id'],
@@ -67,7 +68,8 @@ class RawDecoder():
         elif message['type'] in (4,):
             order_flow = OrderFlow(
                 Type = 1,
-                direction = 'ask' if (-1 * message['side']) == 1 else 'bid',
+                direction = 'bid' if (-1 * message['side']) == 1 else 'ask' if (-1 * message['side']) == -1 else 'Error',
+                # direction = 'ask' if (-1 * message['side']) == 1 else 'bid',
                 size = message['quantity'],
                 price = message['price'],
                 trade_id = message['order_id'],

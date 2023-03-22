@@ -39,8 +39,53 @@ if __name__ == "__main__":
     bid.to_csv("/Users/kang/Data/bid.csv", header = None, index=False)
     ask.to_csv("/Users/kang/Data/ask.csv", header = None, index=False)
     
+"""
+Message File:		(Matrix of size: (Nx6))
+-------------	
+        
+Name: 	TICKER_Year-Month-Day_StartTime_EndTime_message_LEVEL.csv 	
     
-    
+    StartTime and EndTime give the theoretical beginning 
+    and end time of the output file in milliseconds after 		
+    mid night. LEVEL refers to the number of levels of the 
+    requested limit order book.
+
+
+Columns:
+
+    1.) Time: 		
+            Seconds after midnight with decimal 
+            precision of at least milliseconds 
+            and up to nanoseconds depending on 
+            the requested period
+    2.) Type:
+            1: Submission of a new limit order
+            2: Cancellation (Partial deletion 
+               of a limit order)
+            3: Deletion (Total deletion of a limit order)
+            4: Execution of a visible limit order			   	 
+            5: Execution of a hidden limit order
+            6: Indicates a cross trade, e.g. auction trade
+            7: Trading halt indicator 				   
+               (Detailed information below)
+    3.) Order ID: 	
+            Unique order reference number 
+            (Assigned in order flow)
+    4.) Size: 		
+            Number of shares
+    5.) Price: 		
+            Dollar price times 10000 
+            (i.e., A stock price of $91.14 is given 
+            by 911400)
+    6.) Direction:
+            -1: Sell limit order
+            1: Buy limit order
+            
+            Note: 
+            Execution of a sell (buy) limit
+            order corresponds to a buyer (seller) 
+            initiated trade, i.e. Buy (Sell) trade.
+"""
     
     
     
