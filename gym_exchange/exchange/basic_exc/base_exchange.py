@@ -33,7 +33,7 @@ class BaseExchange():
 
     # -------------------------- 03.02 ----------------------------
     def reset(self):
-        self.index = 0
+        self.index = -1 # if initialized,index0th; else, index-1th.
         self.flow_generator = (flow_list for flow_list in self.flow_lists)
         self.order_book = OrderBook()
         self.initialize_orderbook()
