@@ -1,10 +1,8 @@
 # ========================= 01 =========================
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.data_orderbook_adapter.decoder import Decoder
-from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder,RawEncoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gym_exchange.exchange.basic_exc.utils.executed_pairs import ExecutedPairsRecorder
+from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
 
 # ========================= 03 =========================

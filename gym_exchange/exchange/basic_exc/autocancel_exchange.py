@@ -3,7 +3,7 @@
 # from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.basic_exc.base_exchange import BaseExchange
 from gym_exchange.exchange.basic_exc.utils import latest_timestamp, timestamp_increase
-from gym_exchange.exchange.basic_exc.utils.auto_cancels import AutoCancels
+from gym_exchange.exchange.basic_exc.assets.auto_cancels import AutoCancels
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 # from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order

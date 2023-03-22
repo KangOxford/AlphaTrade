@@ -1,6 +1,5 @@
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.exchange.basic_exc.interface_exchange import InterfaceExchange
-from gym_exchange.exchange.basic_exc.utils.executed_pairs import ExecutedPairsRecorder
+from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 from gymnax_exchange import jit
 
 
