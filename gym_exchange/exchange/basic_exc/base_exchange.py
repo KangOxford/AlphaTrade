@@ -14,10 +14,10 @@ class BaseExchange():
         self.flow_lists = self.flow_lists_initialization()
 
     def flow_lists_initialization(self):
-        decoder   = Decoder(**DataPipeline()())
-        encoder   = Encoder(decoder)
-        # decoder   = RawDecoder(**DataPipeline()())
-        # encoder   = RawEncoder(decoder)
+        # decoder   = Decoder(**DataPipeline()())
+        # encoder   = Encoder(decoder)
+        decoder   = RawDecoder(**DataPipeline()())
+        encoder   = RawEncoder(decoder)
         flow_lists= encoder()
         flow_lists= self.to_order_flow_lists(flow_lists)
         return flow_lists
@@ -48,6 +48,33 @@ class BaseExchange():
         '''for this step is index0, for next step is index1'''
 
     # -------------------------- 03.03 ----------------------------
+    def step(self, action=None):  # action : Action(for the definition of type)
+        self.update_task_list(action)
+        self.process_tasks()
+        self.accumulating()
+        return self.order_book
+
+    # ························ 03.03.01 ·························
+    # ··················· component of the step ·················
+    def update_task_list(self, action=None):  # action : Action(for the definition of type)
+        flow_list = next(self.flow_generator)  # used for historical data
+        self.task_list = [action] + [flow for flow in flow_list]
+    def process_tasks(self):  # para: self.task_list; return: self.order_book
+        for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
+            if item is not None:
+                message = item.to_message
+                if item.type == 1:
+                    self.type1_handler(message, index)
+                elif item.type == 2:
+                    self.type2_handler(message)
+                elif item.type == 3:
+                    self.type3_handler(message)
+    def accumulating(self):
+        self.index += 1
+
+
+    # ························ 03.03.02 ·························
+    # ··········· component of the process_tasks ················
     def type1_handler(self, message, index):
         trades, order_in_book = self.order_book.process_order(message, True, False)
         self.executed_pairs_recoder.step(trades, self.index) # 2nd para: kind
@@ -100,31 +127,10 @@ class BaseExchange():
                 time = message['timestamp'], 
             )
             self.cancelled_quantity =  message['quantity']
-        
-    def process_tasks(self): # para: self.task_list; return: self.order_book
-        for index, item in enumerate(self.task_list): # advantange for ask limit order (in liquidation problem)
-            if item is not None:
-                message = item.to_message
-                if item.type == 1:
-                    self.type1_handler(message, index)
-                elif item.type == 2:
-                    self.type2_handler(message)
-                elif item.type == 3:
-                    self.type3_handler(message)
+
                     
 
-    def update_task_list(self, action = None): # action : Action(for the definition of type)
-        flow_list = next(self.flow_generator) #used for historical data
-        self.task_list = [action] + [flow for flow in flow_list]
-    
-    def accumulating(self):
-        self.index += 1
-                        
-    def step(self, action = None): # action : Action(for the definition of type)
-        self.update_task_list(action)
-        self.process_tasks()
-        self.accumulating()
-        return self.order_book 
+
         
     
 if __name__ == "__main__":
@@ -133,9 +139,39 @@ if __name__ == "__main__":
     for _ in range(2048):
         exchange.step()
 
+"""
+=========================================================
+ORDERBOOK:(Initialized, AMZN 2021.04.01)
+31240000 4
+31237900 1
+31230000 24
+31229800 100
+31220000 4
+31214000 2
+31210000 3
+31200000 18
+31190000 2
+31180100 48
 
-
-
+31161600 3
+31160000 4
+31152200 16
+31151000 2
+31150100 2
+31150000 506
+31140000 4
+31130000 2
+31120300 35
+31120200 35
+*********************************************************
+CODES:
+lst = [$data]
+new = [[lst[2*i],lst[2*i+1]] for i in range(len(lst)//2)]
+s = sorted(new, key=lambda pair: pair[0], reverse = True)
+lst = [elem for pair in s for elem in pair]
+[print(lst[2*i], lst[2*i+1]) for i in range(len(lst))]
+=========================================================
+"""
 
 
 

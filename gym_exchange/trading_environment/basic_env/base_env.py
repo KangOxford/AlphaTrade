@@ -18,6 +18,24 @@ from gym_exchange.trading_environment.basic_env.interface_env import State # typ
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 
 
+def broadcast_lists(list1, list2):
+    len1, len2 = len(list1), len(list2)
+
+    if len1 < len2:
+        shorter, longer = list1, list2
+    else:
+        shorter, longer = list2, list1
+
+    diff = len(longer) - len(shorter)
+    last_element = shorter[-2:]
+    last_element[1] = 0
+
+    # Repeat the last 2*n elements to fill the gap
+    shorter.extend(last_element * (diff//2))
+
+    return np.array([list1, list2])
+
+
 # *************************** 2 *************************** #
 class BaseEnv(InterfaceEnv):
     # ========================== 01 ==========================
@@ -89,9 +107,12 @@ class BaseEnv(InterfaceEnv):
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
         # print(f"self.exchange.index: {self.exchange.index}") #$
-        state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
-        if self.cur_step == 60:
+        bid = brief_order_book(self.exchange.order_book, 'bid') #$
+        ask = brief_order_book(self.exchange.order_book, 'ask') #$
+        if self.cur_step == 2:
             print()#$
+        state = broadcast_lists(bid,ask)
+        # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
         state = state.reshape(4, Config.price_level).astype(np.int64)
@@ -170,6 +191,8 @@ if __name__ == "__main__":
         # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
         # print(f">>> delta_action: {action}") #$
         # breakpoint() #$
+        if i == 2:
+            print() #$
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
         # print(f"state: {state}") #$
