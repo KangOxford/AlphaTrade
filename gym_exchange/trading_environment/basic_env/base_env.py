@@ -18,22 +18,15 @@ from gym_exchange.trading_environment.basic_env.interface_env import State # typ
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 
 
+
 def broadcast_lists(list1, list2):
-    len1, len2 = len(list1), len(list2)
-    if len1 < len2:
-        shorter, longer = list1, list2
-        difference = 1000
-    else:
-        shorter, longer = list2, list1
-        difference = -1000
-    diff = len(longer) - len(shorter)
-    last_element = shorter[-2:]
-    last_element[1] = 0
-    # Repeat the last 2*n elements to fill the gap
-    for _ in range(diff // 2):
-        last_element[0] += difference
+    shorter, longer = sorted([list1, list2], key=len)
+    difference = 1000 if shorter is list1 else -1000
+    for _ in range((len(longer) - len(shorter)) // 2):
+        last_element = [shorter[-2] + difference, 0]
         shorter.extend(last_element)
     return np.array([list1, list2])
+
 
 
 # *************************** 2 *************************** #
@@ -109,8 +102,6 @@ class BaseEnv(InterfaceEnv):
         # print(f"self.exchange.index: {self.exchange.index}") #$
         bid = brief_order_book(self.exchange.order_book, 'bid') #$
         ask = brief_order_book(self.exchange.order_book, 'ask') #$
-        if self.cur_step == 2:
-            print()#$
         state = broadcast_lists(ask,bid) # must be the sequence of ask and the bid
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
@@ -191,8 +182,6 @@ if __name__ == "__main__":
         # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
         # print(f">>> delta_action: {action}") #$
         # breakpoint() #$
-        if i == 2:
-            print() #$
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
         # print(f"state: {state}") #$
