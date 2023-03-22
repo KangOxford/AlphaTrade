@@ -16,17 +16,7 @@ from gym_exchange.trading_environment.basic_env.interface_env import InterfaceEn
 from gym_exchange.trading_environment.basic_env.interface_env import State # types
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
-
-
-
-def broadcast_lists(list1, list2):
-    shorter, longer = sorted([list1, list2], key=len)
-    difference = 1000 if shorter is list1 else -1000
-    for _ in range((len(longer) - len(shorter)) // 2):
-        last_element = [shorter[-2] + difference, 0]
-        shorter.extend(last_element)
-    return np.array([list1, list2])
-
+from gym_exchange.trading_environment.basic_env.utils import broadcast_lists
 
 
 # *************************** 2 *************************** #
@@ -99,10 +89,7 @@ class BaseEnv(InterfaceEnv):
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.00.03 ····················
-        # print(f"self.exchange.index: {self.exchange.index}") #$
-        bid = brief_order_book(self.exchange.order_book, 'bid') #$
-        ask = brief_order_book(self.exchange.order_book, 'ask') #$
-        state = broadcast_lists(ask,bid) # must be the sequence of ask and the bid
+        state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
