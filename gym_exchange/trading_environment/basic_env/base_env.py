@@ -20,19 +20,19 @@ from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 
 def broadcast_lists(list1, list2):
     len1, len2 = len(list1), len(list2)
-
     if len1 < len2:
         shorter, longer = list1, list2
+        difference = 1000
     else:
         shorter, longer = list2, list1
-
+        difference = -1000
     diff = len(longer) - len(shorter)
     last_element = shorter[-2:]
     last_element[1] = 0
-
     # Repeat the last 2*n elements to fill the gap
-    shorter.extend(last_element * (diff//2))
-
+    for _ in range(diff // 2):
+        last_element[0] += difference
+        shorter.extend(last_element)
     return np.array([list1, list2])
 
 
@@ -111,7 +111,7 @@ class BaseEnv(InterfaceEnv):
         ask = brief_order_book(self.exchange.order_book, 'ask') #$
         if self.cur_step == 2:
             print()#$
-        state = broadcast_lists(bid,ask)
+        state = broadcast_lists(ask,bid) # must be the sequence of ask and the bid
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
