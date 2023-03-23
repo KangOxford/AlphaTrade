@@ -165,7 +165,7 @@ if __name__ == "__main__":
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         # action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1) #$
-        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
+        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
