@@ -58,8 +58,10 @@ class BaseExchange():
         flow_list = next(self.flow_generator)  # used for historical data
         self.task_list = [action] + [flow for flow in flow_list]
     def process_tasks(self):  # para: self.task_list; return: self.order_book
+        # if self.index ==125:
+        #     print()#$
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
-            if item is not None:
+            if not (item is None or item.quantity == 0):
                 message = item.to_message
                 if item.type == 1:
                     self.type1_handler(message, index)

@@ -5,6 +5,8 @@ class Config:
     tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
+    # max_horizon = 4096
+    # max_horizon = 2048
     max_horizon = 600
     skip = 20 # 1 second §
     max_episode_ticks = int(max_horizon * skip)
@@ -20,7 +22,7 @@ class Config:
     phi_prime = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     
     # --------------- 03 Task ---------------
-    num2liquidate = 2000 # 10 min
+    num2liquidate = 200 # 1 min
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
     
     # --------------- 04 Action ---------------

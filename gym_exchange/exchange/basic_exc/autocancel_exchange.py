@@ -23,7 +23,11 @@ class Exchange(BaseExchange):
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         super().step(action)
-        self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
+        try: #$
+            self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
+        except:
+            print() #$
+        # self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid()) / 2)
         return self.order_book
     
 
