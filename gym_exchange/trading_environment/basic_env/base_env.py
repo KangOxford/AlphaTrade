@@ -79,8 +79,8 @@ class BaseEnv(InterfaceEnv):
     def state(self, action: Action) -> State:
         # ···················· 03.00.01 ····················
         # generate_wrapped_order_flow {
-        price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
-        order_flows = self.order_flow_generator.step(action, price_list) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+        best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
+        order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
         order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
