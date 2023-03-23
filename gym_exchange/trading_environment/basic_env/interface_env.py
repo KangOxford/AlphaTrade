@@ -13,12 +13,18 @@ Action = TypeVar("Action")
 
 class SpaceParams(object):
     class Action:
-        price_delta_size_one_side = 3
+        price_delta_size_one_side = 1
         quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
 
         side_size = 2
         quantity_size = 2*quantity_size_one_side + 1
-        price_delta_size = 2 * price_delta_size_one_side + 1
+        price_delta_size = 2 * price_delta_size_one_side
+        '''
+        for Action(side = 0, price_delta = 0,quantity_delta = 0
+        side = 0 means asks, the order is a selling order.
+        price_delta = 0 means: submit a selling order at the asks side.
+        price_dleta = 1 means: submit a selling order at the bids side. (across the spread)
+        '''
     class State:
         low = np.array([Config.min_price] * 10 +\
                         [Config.min_quantity]*10 +\
