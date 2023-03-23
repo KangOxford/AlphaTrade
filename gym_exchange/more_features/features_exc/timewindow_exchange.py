@@ -30,9 +30,9 @@ class TimewindowExchange(Exchange):
     def step(self, action=None):  # action : Action(for the definition of type)
         # ···················· 01.01.01 ····················
         for i in range(time_window-1):
-            print(f"innerloop step {i}") #$
-            if i == 2:
-                print() #$
+            # print(f"innerloop step {i}") #$
+            # if i == 2:
+            #     print() #$
             super(TimewindowExchange, self).step()
             self.update_state_memos()
         super().step(action)
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     exchange = TimewindowExchange()
     exchange.reset()
     for i in range(2048):
-        print(f">>> outerloop step {i}")
+        # print(f">>> outerloop step {i}")
         exchange.step()
 
 
