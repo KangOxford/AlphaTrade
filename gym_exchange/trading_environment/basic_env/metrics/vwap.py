@@ -45,28 +45,31 @@ class Vwap(abc.ABC):
     # @abc.abstractmethod    
     # def step(self, executed_pairs):
     #     '''step'''
+
     
+# ========================== 02 ==========================
+
 # class StepVwap(Vwap):
 #     def __init__(self):
 #         super().__init__()
-    
+
 #     def update(self, executed_pairs):
 #         if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
 #             if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
 #             if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
-#             print()# % check self.market_vwap 
+#             print()# % check self.market_vwap
 #         else:
 #             self.market_pairs = executed_pairs.market_pairs[-1]
 #             self.agent_pairs  = executed_pairs.agent_pairs[-1]
-            
+
 #     @Vwap.market_vwap.setter
 #     def market_vwap(self, value):
 #         self._market_vwap = value
-        
+
 #     @Vwap.agent_vwap.setter
 #     def agent_vwap(self, value):
 #         self._agent_vwap = value
-    
+
 #     @property
 #     def info_dict(self):
 #         return {
@@ -74,9 +77,6 @@ class Vwap(abc.ABC):
 #             "StepVwap/AgentVwap"   :self.agent_vwap,
 #             "StepVwap/VwapSlippage":self.vwap_slippage
 #         }
-        
-    
-# ========================== 02 ==========================
 
 class EpochVwap(Vwap):
     def __init__(self):
@@ -114,6 +114,7 @@ class EpochVwap(Vwap):
 #     def to_array(self):
 #         result = 0 #TODO: implement
 #         return np.array(result)
+
     
 # ========================== 04 ==========================
 class VwapEstimator():

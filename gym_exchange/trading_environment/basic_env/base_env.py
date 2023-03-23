@@ -175,7 +175,7 @@ if __name__ == "__main__":
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
         # print(f"state: {state}") #$
-        # print(f"reward: {reward}") #$
+        print(f"reward: {reward}") #$
         # print(f"done: {done}") #$
         print(f"info: {info}") #$
         env.render()

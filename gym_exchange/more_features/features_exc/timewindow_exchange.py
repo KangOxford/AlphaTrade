@@ -15,20 +15,18 @@ class TimewindowExchange(Exchange):
 
     # -------------------------- 01.01 ----------------------------
     def step(self, action=None):  # action : Action(for the definition of type)
+        self.state_memos.append([]) # # init update_state_memos
         # ···················· 01.01.01 ····················
         for i in range(time_window-1):
             # print(f"innerloop step {i}") #$
             # if i == 2:
             #     print() #$
             super(TimewindowExchange, self).step()
-            self.update_state_memos()
+            self.state_memos[-1].append(get_state_memo(self.order_book)) # update_state_memos
         super().step(action)
-        self.update_state_memos()
         # ···················· 01.01.02 ····················
+        self.state_memos[-1].append(get_state_memo(self.order_book)) # update_state_memos
         return self.order_book
-    def update_state_memos(self):
-        state_memo = get_state_memo(self.order_book)
-        self.state_memos.append(state_memo)
 
     # -------------------------- 01.02 ----------------------------
     def reset(self):
@@ -40,6 +38,8 @@ if __name__ == "__main__":
     exchange.reset()
     for i in range(2048):
         # print(f">>> outerloop step {i}")
+        # if i == 2:
+        #     print() #$
         exchange.step()
 
 
