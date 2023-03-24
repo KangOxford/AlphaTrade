@@ -54,21 +54,25 @@ class StepVwap(Vwap):
         super().__init__()
 
     def update(self, executed_pairs):
-        if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
+        if len(executed_pairs['market_pairs']) == 0 or len(executed_pairs['agent_pairs']) == 0 :
             if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
             if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
             print()# % check self.market_vwap
         else:
-            self.market_pairs = executed_pairs.market_pairs[-1]
-            self.agent_pairs  = executed_pairs.agent_pairs[-1]
+            self.market_pairs = executed_pairs['market_pairs']
+            self.agent_pairs  = executed_pairs['agent_pairs'] # TODO not sure whether need [-1](original)
+            # assert self.market_pairs.shape == self.market_pairs.shape and self.market_pairs.shape == (2,1) # TODO not sure whether need [-1](original)
+            self.market_vwap = self.get_market_vwap()
+            self.agent_vwap = self.get_agent_vwap()
+        self.vwap_slippage = self.get_vwap_slippage()
 
-    @Vwap.market_vwap.setter
-    def market_vwap(self, value):
-        self._market_vwap = value
-
-    @Vwap.agent_vwap.setter
-    def agent_vwap(self, value):
-        self._agent_vwap = value
+    # @Vwap.market_vwap.setter
+    # def market_vwap(self, value):
+    #     self._market_vwap = value
+    #
+    # @Vwap.agent_vwap.setter
+    # def agent_vwap(self, value):
+    #     self._agent_vwap = value
 
     @property
     def info_dict(self):
@@ -132,8 +136,9 @@ class VwapEstimator():
         return return_dict 
     def update(self, executed_pairs, done):
         self.done = done
+        executed_pairs = self.executed_pairs_adapter(executed_pairs)
+        self.step_vwap.update(executed_pairs)
         if done:
-            executed_pairs = self.executed_pairs_adapter(executed_pairs)
             self.epoch_vwap.update(executed_pairs)
     def step(self):
         if not self.done:
