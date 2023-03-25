@@ -61,6 +61,8 @@ class Config:
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
 
+    # --------------- 09 Output ---------------
+    out_path = '/Users/kang/AlphaTrade/gym_exchange/outputs/'
 
     
 
