@@ -54,11 +54,11 @@ class StepVwap(Vwap):
         super().__init__()
 
     def update(self, executed_pairs):
-        if len(executed_pairs['market_pairs']) == 0 or len(executed_pairs['agent_pairs']) == 0 :
-            if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
-            if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
-            print()# % check self.market_vwap
-        else:
+        if executed_pairs['market_pairs'] is None:
+            self.market_vwap = 0
+        if executed_pairs['agent_pairs'] is None:
+            self.agent_vwap = 0
+        if executed_pairs['agent_pairs'] is not None and executed_pairs['market_pairs'] is not None:
             self.market_pairs = executed_pairs['market_pairs']
             self.agent_pairs  = executed_pairs['agent_pairs'] # TODO not sure whether need [-1](original)
             # assert self.market_pairs.shape == self.market_pairs.shape and self.market_pairs.shape == (2,1) # TODO not sure whether need [-1](original)
@@ -130,7 +130,7 @@ class VwapEstimator():
         agent_pairs_dict = executed_pairs.agent_pairs
         concat_pairs = lambda pairs_dict: np.concatenate(list(pairs_dict.values()),axis = 1)
         return_dict = {
-            "market_pairs": concat_pairs(market_pairs_dict),
+            "market_pairs": concat_pairs(market_pairs_dict) if len(agent_pairs_dict) !=0 else None,
             "agent_pairs" : concat_pairs(agent_pairs_dict) if len(agent_pairs_dict) !=0 else None
             }        
         return return_dict 

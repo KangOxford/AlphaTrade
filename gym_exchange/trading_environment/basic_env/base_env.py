@@ -116,15 +116,14 @@ class BaseEnv(InterfaceEnv):
         """in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity,
         and can be executed at higher price."""
-        def get_returned_epoch_vwap_info_dict(self):
+        def get_returned_vwap_info_dict(self):
             self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
             step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
             if epoch_vwap_info_dict is None:
-                return {}
+                return step_vwap_info_dict, {}
             else:
-                return {**epoch_vwap_info_dict}
-            return epoch_vwap_info_dict
-        epoch_vwap_info_dict = get_returned_epoch_vwap_info_dict(self)
+                return step_vwap_info_dict, epoch_vwap_info_dict
+        step_vwap_info_dict, epoch_vwap_info_dict = get_returned_vwap_info_dict(self)
         step_cur_executed_dict = {"Step/Current_executed": self.num_left_processor.num_executed_in_last_step}
         step_cur_step_dict = {"Step/Current_step": self.cur_step}
         step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
@@ -135,6 +134,7 @@ class BaseEnv(InterfaceEnv):
             **composite_action_dict,
             **residual_action_dict,
             **step_num_left_dict, **step_cur_step_dict, **step_cur_executed_dict,
+            **step_vwap_info_dict,
             **epoch_vwap_info_dict}
         return returned_info
 
@@ -165,7 +165,8 @@ if __name__ == "__main__":
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         # action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1) #$
-        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$
+        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$
+        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
