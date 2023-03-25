@@ -66,14 +66,6 @@ class StepVwap(Vwap):
             self.agent_vwap = self.get_agent_vwap()
         self.vwap_slippage = self.get_vwap_slippage()
 
-    # @Vwap.market_vwap.setter
-    # def market_vwap(self, value):
-    #     self._market_vwap = value
-    #
-    # @Vwap.agent_vwap.setter
-    # def agent_vwap(self, value):
-    #     self._agent_vwap = value
-
     @property
     def info_dict(self):
         return {
