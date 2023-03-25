@@ -29,7 +29,7 @@ class Vwap(abc.ABC):
         if self.agent_vwap is not None and self.market_vwap is not None:
             vwap_slippage = self.market_vwap - self.agent_vwap
         else:
-            vwap_slippage = None
+            vwap_slippage = None # TODO whether it would be called
         self.vwap_slippage = vwap_slippage
         return vwap_slippage
     
@@ -136,10 +136,9 @@ class VwapEstimator():
         return return_dict 
     def update(self, executed_pairs, done):
         self.done = done
-        executed_pairs = self.executed_pairs_adapter(executed_pairs)
-        self.step_vwap.update(executed_pairs)
+        self.step_vwap.update(executed_pairs.market_agent_executed_pairs_in_last_step)
         if done:
-            self.epoch_vwap.update(executed_pairs)
+            self.epoch_vwap.update(executed_pairs = self.executed_pairs_adapter(executed_pairs))
     def step(self):
         if not self.done:
             # return None, None

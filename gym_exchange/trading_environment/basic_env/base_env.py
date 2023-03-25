@@ -8,7 +8,6 @@ from gym_exchange.trading_environment.basic_env.assets.reward import RewardGener
 from gym_exchange.trading_environment.basic_env.assets.action import Action
 from gym_exchange.trading_environment.basic_env.assets.orderflow import OrderFlowGenerator
 from gym_exchange.trading_environment.basic_env.assets.task import NumLeftProcessor
-from gym_exchange.trading_environment.basic_env.assets.renders import base_env_render
 
 from gym_exchange.trading_environment.basic_env.metrics.vwap import VwapEstimator
 
@@ -69,15 +68,12 @@ class BaseEnv(InterfaceEnv):
         # ···················· 03.00.03 ···················· 
         decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
-        self.accumulator()
         return state, reward, done, info
-    def accumulator(self):
-        self.num_left_processor.step(self)
-        self.cur_step += 1
+
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
-        # ···················· 03.00.01 ····················
+        # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
         order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
@@ -86,15 +82,20 @@ class BaseEnv(InterfaceEnv):
         # generate_wrapped_order_flow }
         self.wrapped_order_flow = wrapped_order_flow
         self.exchange.step(wrapped_order_flow)
-        # ···················· 03.00.02 ····················
+        # ···················· 03.01.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
-        # ···················· 03.00.03 ····················
+        # ···················· 03.01.03 ····················
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
         state = state.reshape(4, Config.price_level).astype(np.int64)
+        # ···················· 03.01.04 ····················
+        # self.accumulator {
+        self.num_left_processor.step(self)
+        self.cur_step += 1
+        # self.accumulator }
         return state
     # --------------------- 03.02 ---------------------
     @property
@@ -117,31 +118,28 @@ class BaseEnv(InterfaceEnv):
         higher, as they are not eagle to takt the liquidity,
         and can be executed at higher price."""
         def get_returned_vwap_info_dict(self):
+            # self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
             self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
             step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
             if epoch_vwap_info_dict is None:
-                return step_vwap_info_dict, {}
+                return {**step_vwap_info_dict}
             else:
-                return step_vwap_info_dict, epoch_vwap_info_dict
-        step_vwap_info_dict, epoch_vwap_info_dict = get_returned_vwap_info_dict(self)
+                return {**step_vwap_info_dict, **epoch_vwap_info_dict}
+        step_epoch_vwap_info_dict = get_returned_vwap_info_dict(self)
         step_cur_executed_dict = {"Step/Current_executed": self.num_left_processor.num_executed_in_last_step}
         step_cur_step_dict = {"Step/Current_step": self.cur_step}
         step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
         residual_action_dict ={"Residual_action/Quantity": self.order_flow_generator.residual_action}
-        composite_action_dict = {"Composite_action/Price":self.wrapped_order_flow.price,
-                                 "Composite_action/Quantity":self.wrapped_order_flow.quantity}
+        actual_action_dict = {"Actual_action/Price":self.wrapped_order_flow.price,
+                              "Actual_action/Quantity":self.wrapped_order_flow.quantity}
         returned_info = {
-            **composite_action_dict,
+            **actual_action_dict,
             **residual_action_dict,
             **step_num_left_dict, **step_cur_step_dict, **step_cur_executed_dict,
-            **step_vwap_info_dict,
-            **epoch_vwap_info_dict}
+            **step_epoch_vwap_info_dict}
         return returned_info
 
-        # if epoch_vwap_info_dict is None:
-        #     return {**step_vwap_info_dict}
-        # else:
-        #     return {**step_vwap_info_dict, **epoch_vwap_info_dict}
+
 
     # ========================== 04 ==========================
     def render(self, mode = 'human'):

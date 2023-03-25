@@ -7,7 +7,10 @@ class Config:
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     # max_horizon = 4096
     # max_horizon = 2048
-    max_horizon = 600
+    max_horizon = 2048
+    # max_horizon = 1600
+    # max_horizon = 800
+    # max_horizon = 600
     skip = 20 # 1 second §
     max_episode_ticks = int(max_horizon * skip)
     '''
