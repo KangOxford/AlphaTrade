@@ -29,9 +29,12 @@ class ExecutedPairsRecorder():
                 elif key == "agent" : self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
                 else: raise NotImplementedError
         try:
-            self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T # Apply lambda function to all values in dict
-            self.agent_pairs[self.index]  = np.array(self.agent_pairs[self.index]).T # Apply lambda function to all values in dict
-        except: pass # eg. self.market_pairs is not None, while self.agent_pairs is None
+            if 'market' in [list(pair.keys())[0] for pair in pairs]: self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T
+            else: pass
+            if 'agent' in [list(pair.keys())[0] for pair in pairs]: self.agent_pairs[self.index] = np.array(self.agent_pairs[self.index]).T
+            else: pass
+        except:
+            raise NotImplementedError
 
     def step(self, trades, index):
         """two function:
@@ -52,8 +55,6 @@ class ExecutedPairsRecorder():
             "index":self.index,
             "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
             "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
-        # if self.index == 95:
-        #     breakpoint()
 
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'
