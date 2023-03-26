@@ -48,16 +48,10 @@ class ExecutedPairsRecorder():
             pairs = self.trades2pairs(trades)
             self.update(pairs)
         # ----------- 02 ------------
-        try:
-            self.market_agent_executed_pairs_in_last_step = {
-                "index":self.index,
-                "market_pairs":self.market_pairs[self.index],
-                "agent_pairs" :self.agent_pairs[self.index]}
-        except:
-            self.market_agent_executed_pairs_in_last_step = {
-                "index":self.index,
-                "market_pairs":None,
-                "agent_pairs" :None}
+        self.market_agent_executed_pairs_in_last_step = {
+            "index":self.index,
+            "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
+            "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
         
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'

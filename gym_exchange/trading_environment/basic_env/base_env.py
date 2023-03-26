@@ -146,8 +146,8 @@ if __name__ == "__main__":
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         # action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1) #$
         # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$
-        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
-        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
+        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
+        action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
         # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
         # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
@@ -156,9 +156,9 @@ if __name__ == "__main__":
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
         # print(f"state: {state}") #$
-        print(f"reward: {reward}") #$
+        # print(f"reward: {reward}") #$
         # print(f"done: {done}") #$
-        print(f"info: {info}") #$
+        # print(f"info: {info}") #$
         env.render()
         if done:
             env.reset()
