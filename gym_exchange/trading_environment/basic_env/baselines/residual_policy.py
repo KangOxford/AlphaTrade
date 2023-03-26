@@ -1,7 +1,7 @@
 from fractions import Fraction
 import numpy as np
-import random
 from gym_exchange import Config
+import random;random.seed(Config.seed)
 
 
 class Twap():

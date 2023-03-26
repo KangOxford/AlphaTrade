@@ -58,6 +58,9 @@ class Config:
     # --------------- 08 Output ---------------
     out_path = '/Users/kang/AlphaTrade/gym_exchange/outputs/'
 
+    # --------------- 09 Random ---------------
+    seed = 1234
+
 
 
 register(

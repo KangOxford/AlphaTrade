@@ -42,7 +42,7 @@ class ExecutedPairsRecorder():
         02: record the last_executed_pairs of market_agent"""
         # ----------- 01 ------------
         self.index = index # keep the same with the exchange index
-        if len(trades) == 0: 
+        if len(trades) == 0:
             pass
         else: # len(trades) == 1 or 3
             pairs = self.trades2pairs(trades)
@@ -52,7 +52,9 @@ class ExecutedPairsRecorder():
             "index":self.index,
             "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
             "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
-        
+        # if self.index == 95:
+        #     breakpoint()
+
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'
         return fstring
