@@ -75,6 +75,8 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
+        if self.cur_step == 3718:
+            print()#$
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
@@ -88,8 +90,6 @@ class BaseEnv(InterfaceEnv):
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.01.03 ····················
-        if self.cur_step == 3718:
-            print()#$
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
@@ -144,13 +144,13 @@ if __name__ == "__main__":
     # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        # action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1) #$
-        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$
-        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
-        action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
-        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
-        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
-        # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
+        # action = Action(direction = 'bid', quantity_delta = 5, price_delta = 1) #$ 03 tested
+        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$ # 04 testesd
+        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$ 01 tested
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$ 02 tested
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$ 05 tested
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$ 06 tested
+        # action = Action(direction = 'bid', quantity_delta = 1, price_delta = 1) #$ 07 tested
         # print(f">>> delta_action: {action}") #$
         # breakpoint() #$
         encoded_action = action.encoded

@@ -1,13 +1,18 @@
 from gym.envs.registration import register
 
 class Config:
-    # --------------- 00 Adapter ---------------
+    # --------------- 00 Data ---------------
+    # ············· 00.01 Adapter ············
     raw_price_level = 10
     # raw_horizon = 2048
-    raw_horizon = 3700
-    # raw_horizon = 4096
+    # raw_horizon = 3700
+    raw_horizon = 4096
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
+    # ············· 00.02 Source ············
+    exchange_data_source = "raw_encoder"
+    # exchange_data_source = "encoder"
+
 
     # --------------- 01 Basic ---------------
     tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
@@ -19,6 +24,7 @@ class Config:
     # max_horizon = 1600
     # max_horizon = 800
     # max_horizon = 600
+
 
     # --------------- 02 Reward ---------------
     low_dimension_penalty_parameter = 1 # todo not sure

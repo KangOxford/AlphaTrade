@@ -9,11 +9,12 @@ class Twap():
         self.initialize() # return self.num_list
         self.step_index = 0
     def initialize(self):
-        step_integer = Config.num2liquidate // Config.max_horizon
-        arr = np.full(Config.max_horizon, step_integer)
-        selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon * step_integer)
-        arr[selected_indices] += 1
-        assert arr.sum() == Config.num2liquidate
+        # step_integer = Config.num2liquidate // Config.max_horizon
+        # arr = np.full(Config.max_horizon, step_integer)
+        # selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon * step_integer)
+        # arr[selected_indices] += 1
+        # assert arr.sum() == Config.num2liquidate
+        arr = np.full(Config.max_horizon, 0) #$ for masked testing
         self.num_list = arr
 
     @property
