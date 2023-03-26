@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from gym_exchange import Config
 
 class Debugger: 
     # on = True # by default
@@ -13,7 +14,7 @@ class Debugger:
     
 class Configuration:
     price_level = 10 
-    horizon = 2048
+    horizon = Config.raw_horizon
     # horizon = 4000
     # horizon = 4096
     # side_list = ['Bids']

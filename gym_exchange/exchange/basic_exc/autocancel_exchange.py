@@ -26,13 +26,6 @@ class Exchange(BaseExchange):
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         super().step(action)
-        try: #$
-            self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
-            self.best_bids.append(self.order_book.get_best_bid())
-            self.best_asks.append(self.order_book.get_best_ask())
-        except:
-            print() #$
-        # self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid()) / 2)
         return self.order_book
     
 

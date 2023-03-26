@@ -60,8 +60,8 @@ class OrderFlowGenerator(object):
         content_dict = {
             "Type" : 1, # submission of a new limit order
             "direction" : self.action[0],
-            "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
-            # "size": max(0, self.action[1] + self.residual_action), # original
+            # "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
+            "size": max(0, self.action[1] + self.residual_action), # original
             "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,

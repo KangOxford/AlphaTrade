@@ -1,5 +1,5 @@
 import numpy as np
-
+import sys; sys.path.append('/Users/kang/AlphaTrade/')
 from gym_exchange import Config
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
@@ -17,6 +17,7 @@ from gym_exchange.trading_environment.basic_env.interface_env import State # typ
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.trading_environment.basic_env.utils import broadcast_lists
 from gym_exchange.trading_environment.basic_env.assets.renders.plot_render import plot_render
+from gym_exchange.trading_environment.basic_env.assets.info import InfoGenerator
 
 
 # *************************** 2 *************************** #
@@ -43,6 +44,7 @@ class BaseEnv(InterfaceEnv):
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
+        self.info_generator = InfoGenerator()
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 
@@ -86,6 +88,8 @@ class BaseEnv(InterfaceEnv):
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
         # ···················· 03.01.03 ····················
+        if self.cur_step == 3718:
+            print()#$
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
@@ -114,29 +118,7 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.04 ---------------------
     @property
     def info(self):
-        """in an liquidation task the market_vwap ought to be
-        higher, as they are not eagle to takt the liquidity,
-        and can be executed at higher price."""
-        def get_returned_vwap_info_dict(self):
-            # self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
-            self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
-            step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
-            if epoch_vwap_info_dict is None:
-                return {**step_vwap_info_dict}
-            else:
-                return {**step_vwap_info_dict, **epoch_vwap_info_dict}
-        step_epoch_vwap_info_dict = get_returned_vwap_info_dict(self)
-        step_cur_executed_dict = {"Step/Current_executed": self.num_left_processor.num_executed_in_last_step}
-        step_cur_step_dict = {"Step/Current_step": self.cur_step}
-        step_num_left_dict = {"Step/Num_left": self.num_left_processor.num_left}
-        residual_action_dict ={"Residual_action/Quantity": self.order_flow_generator.residual_action}
-        actual_action_dict = {"Actual_action/Price":self.wrapped_order_flow.price,
-                              "Actual_action/Quantity":self.wrapped_order_flow.quantity}
-        returned_info = {
-            **actual_action_dict,
-            **residual_action_dict,
-            **step_num_left_dict, **step_cur_step_dict, **step_cur_executed_dict,
-            **step_epoch_vwap_info_dict}
+        returned_info = self.info_generator.step(self)
         return returned_info
 
 

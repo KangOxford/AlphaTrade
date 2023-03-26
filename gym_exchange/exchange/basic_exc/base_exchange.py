@@ -70,6 +70,13 @@ class BaseExchange():
                 elif item.type == 3:
                     self.type3_handler(message)
     def accumulating(self):
+        try: #$
+            self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
+            self.best_bids.append(self.order_book.get_best_bid())
+            self.best_asks.append(self.order_book.get_best_ask())
+            # print(self.order_book) #$
+        except:
+            print() #$
         self.index += 1
 
 

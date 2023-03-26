@@ -1,24 +1,21 @@
 from fractions import Fraction
+import numpy as np
+import random
 from gym_exchange import Config
 
 
 class Twap():
     def __init__(self):
-        self.step_integer, self.numerator, self.denominator = self.initialize()
-        self.numerator_list = [i for i in range(self.numerator)]
+        self.initialize() # return self.num_list
         self.step_index = 0
     def initialize(self):
-        step_integer = Config.num2liquidate//Config.max_horizon
-        step_fraction= Fraction(Config.num2liquidate, Config.max_horizon)
-        numerator = (step_fraction - step_integer).numerator
-        denominator = (step_fraction - step_integer).denominator
-        return step_integer, numerator, denominator
-    
-    @property
-    def supplement(self):
-        if self.step_index % self.denominator in self.numerator_list: return 1
-        else: return 0
-        
+        step_integer = Config.num2liquidate // Config.max_horizon
+        arr = np.full(Config.max_horizon, step_integer)
+        selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon * step_integer)
+        arr[selected_indices] += 1
+        assert arr.sum() == Config.num2liquidate
+        self.num_list = arr
+
     @property
     def done(self):
         if self.step_index < Config.max_horizon: return False
@@ -26,9 +23,9 @@ class Twap():
         
     def step(self) -> int:
         """Return the simple actions: numbers to sell/buy"""
-        action = self.step_integer + self.supplement
+        self.action = self.num_list[self.step_index]
         self.step_index +=1
-        return action, self.done
+        return self.action, self.done
     
 class ResidualPolicy_Factory():
     '''factory methods/ or interface methods
@@ -48,3 +45,5 @@ if __name__ == '__main__':
         action_list.append(action)
         if done: break
     print(sum(action_list) == Config.num2liquidate)
+
+
