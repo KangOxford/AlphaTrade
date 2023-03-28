@@ -18,6 +18,7 @@ from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.trading_environment.basic_env.utils import broadcast_lists
 from gym_exchange.trading_environment.basic_env.assets.renders.plot_render import plot_render
 from gym_exchange.trading_environment.basic_env.assets.info import InfoGenerator
+from gym_exchange.trading_environment.basic_env.metrics.measure import OrderbookDistance
 
 
 # *************************** 2 *************************** #
@@ -45,6 +46,7 @@ class BaseEnv(InterfaceEnv):
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
         self.info_generator = InfoGenerator()
+        self.orderbook_distance = OrderbookDistance()
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 

@@ -1,4 +1,3 @@
-from gym_exchange.trading_environment.basic_env.metrics.measure import orderbook_distance
 class InfoGenerator():
     def __init__(self):
         self.info_index = 0
@@ -15,7 +14,7 @@ class InfoGenerator():
         residual_action_dict ={"Residual_action/Quantity": Self.order_flow_generator.residual_action}
         actual_action_dict = {"Actual_action/Price":Self.wrapped_order_flow.price,
                               "Actual_action/Quantity":Self.wrapped_order_flow.quantity}
-        orderbook_distance_dict = {"Orderbook/Distance": orderbook_distance(Self)}
+        orderbook_distance_dict = {"Orderbook/Distance": Self.orderbook_distance.get_distance(Self)}
         returned_info = {
             **orderbook_distance_dict,
             **actual_action_dict,
