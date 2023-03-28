@@ -196,20 +196,38 @@ class OrderBook(object):
         else:
             self.update_time()
         if order['side'] == 'bid':
+            print('got to the bid arm')
             if self.bids.order_exists(order['order_id']):
                 self.bids.remove_order_by_id(order['order_id'])
-            else:
+            else: 
+                print('got to the no ID issue')
                 orderlist=self.bids.get_price_list(order['price'])
                 print(orderlist)
+                if orderlist.get_head_order().order_id>=INITID:
+                    if orderlist.get_head_order().quantity==order['quantity']:
+                        print('Deleting whole order')
+                        self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
+                    else:
+                        print('Trying to cancel partial order')
+                        order['order_id']=orderlist.get_head_order().order_id
+                        self.modify_order(order['order_id'],order,order['timestamp'])
+                        print(order)
+                        #raise NotImplementedError 
+                        ##Need to just modify the order to reduce the quantity
         elif order['side'] == 'ask':
+            print('got to the ask arm')
             if self.asks.order_exists(order['order_id']):
                 self.asks.remove_order_by_id(order['order_id'])
             else: 
+                print('got to the no ID issue')
                 orderlist=self.asks.get_price_list(order['price'])
-                if orderlist.get_head_order().order_id>INITID:
+                print(orderlist)
+                if orderlist.get_head_order().order_id>=INITID:
                     if orderlist.get_head_order().quantity==order['quantity']:
+                        print('Deleting whole order')
                         self.asks.remove_order_by_id(orderlist.get_head_order().order_id)
                     else:
+                        print('Trying to cancel partial order')
                         order['order_id']=orderlist.get_head_order().order_id
                         self.modify_order(order['order_id'],order,order['timestamp'])
                         print(order)
