@@ -1,4 +1,4 @@
-Welcome to Lumache's documentation!
+Welcome to AlphaTrade's documentation!
 ===================================
 
 **AlphaTrade** is a Python library for cooks and food lovers
