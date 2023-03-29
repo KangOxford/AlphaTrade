@@ -20,4 +20,6 @@ Contents
 
    usage
    api
+   gym_exchange
+   gymnax_exchange
    future_research
