@@ -12,7 +12,7 @@ To use AlphaTrade, first install it using pip:
 
    (.venv) $ pip install gym_exchange
 
-Creating recipes
+Optimal Execution 
 ----------------
 
 To retrieve a list of random ingredients,
@@ -33,3 +33,9 @@ For example:
 
 ['shells', 'gorgonzola', 'parsley']
 
+
+Order-flow Generating 
+---------
+
+Price Impact Research through Market Clearing
+----------
