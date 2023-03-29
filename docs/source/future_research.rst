@@ -1,9 +1,9 @@
-Usage
+Future Research
 =====
 
 .. _installation:
 
-Installation
+Future Research Topics
 ------------
 
 To use AlphaTrade, first install it using pip:
