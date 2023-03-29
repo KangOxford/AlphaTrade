@@ -3,14 +3,13 @@ Gym_exchange
 
 data_orderbook_adapter
 ---------
-.. mdinclude:: ../../README.md
-
-.. mdinclude:: /AlphaTrade/gym_exchange/data_orderbook_adapter/README.md
 
 
+.. include:: /AlphaTrade/gym_exchange/data_orderbook_adapter/README.md
+   :parser: myst_parser.sphinx_
 
-.. mdinclude:: ../../gym_exchange/data_orderbook_adapter/README.md
-
+.. include:: ../../README.md
+   :parser: myst_parser.sphinx_
 
 
 order_book
