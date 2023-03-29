@@ -14,7 +14,7 @@ class Twap():
         # selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon * step_integer)
         # arr[selected_indices] += 1
         # assert arr.sum() == Config.num2liquidate
-        arr = np.full(Config.max_horizon, 0) #$ for masked testing
+        arr = np.full(Config.max_horizon, 0) #$ masked for testing
         self.num_list = arr
 
     @property

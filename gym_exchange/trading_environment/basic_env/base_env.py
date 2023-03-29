@@ -160,7 +160,7 @@ if __name__ == "__main__":
         # print(f"state: {state}") #$
         # print(f"reward: {reward}") #$
         # print(f"done: {done}") #$
-        # print(f"info: {info}") #$
+        print(f"info: {info}") #$
         env.render()
         if done:
             env.reset()
