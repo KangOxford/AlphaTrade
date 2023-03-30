@@ -1,9 +1,7 @@
 Welcome to AlphaTrade's documentation!
 ===================================
 
-**AlphaTrade** is a Python library for cooks and food lovers
-that creates recipes mixing random ingredients.
-It pulls data from the `Open Food Facts database <https://world.openfoodfacts.org/>`_
+**AlphaTrade** is a Python library for training RL algorithms for optimal execution,
 and offers a *simple* and *intuitive* API.
 
 Check out the :doc:`usage` section for further information, including
@@ -17,9 +15,24 @@ Contents
 --------
 
 .. toctree::
-   introduction
-   usage
-   api
+   architecture
+   future_research
+
+
+Usage
+--------
+.. toctree::
    gym_exchange
    gymnax_exchange
-   future_research
+
+
+API Reference
+--------
+
+.. autosummary::
+   :toctree: _api
+   :caption: API Reference
+   :recursive:
+   :template: module.rst
+
+   gym_exchange

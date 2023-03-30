@@ -1,8 +1,0 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
-[project]
-name = "AlphaTrade"
-authors = [{name = "Kang", email = "kang@robots.ox.ac.uk"}]
-dynamic = ["version", "description"]

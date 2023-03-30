@@ -15,16 +15,6 @@ To use AlphaTrade, first install it using pip:
 Optimal Execution 
 ----------------
 
-To retrieve a list of random ingredients,
-you can use the ``gym_exchange.make()`` function:
-
-.. autofunction:: gym_exchange.make()
-
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`gym_exchange.make()`
-will raise an exception.
-
-.. autoexception:: gym_exchange.make()
 
 For example:
 
@@ -37,4 +27,7 @@ Order-flow Generating
 ---------
 
 Price Impact Research through Market Clearing
+----------
+
+Unsupervised Environment Design
 ----------
