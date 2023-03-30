@@ -31,7 +31,6 @@ For example:
 >>> import gym_exchange
 >>> gym_exchange.make()
 
-['shells', 'gorgonzola', 'parsley']
 
 
 Order-flow Generating 

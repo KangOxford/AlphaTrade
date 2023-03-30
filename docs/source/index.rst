@@ -17,7 +17,7 @@ Contents
 --------
 
 .. toctree::
-
+   introduction
    usage
    api
    gym_exchange
