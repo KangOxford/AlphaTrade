@@ -21,7 +21,6 @@ Order-flow Generating
 * Time-series Forecasting for Order Flow
 * Order Flow Generating by Large Language Models
 
-
 Representation Learning
 ----------
 * Representation Learning for the States
@@ -44,4 +43,18 @@ Unsupervised Environment Design
 * Adversarial Learning by the differentiable environment
 
 
-
+Related Papers
+------
+* ICAIF2022
+   * High Related
+       * Dynamic Calibration of Order Flow Models with Generative Adversarial Networks.
+       * Learning to simulate realistic limit order book markets from data as a World Agent
+   * Mid Related
+       * Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment
+       * Market Making under Order Stacking Framework: A Deep Reinforcement Learning Approach
+   * Low Related
+       * Graph and tensor-train recurrent neural networks for high-dimensional models of limit order books
+       * Computationally Efficient Feature Significance and Importance for Predictive Models
+       * LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering
+       * Deep Hedging: Continuous Reinforcement Learning for Hedging of General Portfolios across Multiple Risk Aversions
+       * Efficient Calibration of Multi-Agent Simulation Models from Output Series with Bayesian Optimization
