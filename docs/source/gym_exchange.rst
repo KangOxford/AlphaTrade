@@ -38,7 +38,7 @@ data_orderbook_adapter
    ../../README.md
 
 
-Outlines for the codes:
+outlines for the codes
 ^^^^^
 
 1 ``data_pipeline.py`` used for defining the data path of your reading data. You should config it before runnning.
