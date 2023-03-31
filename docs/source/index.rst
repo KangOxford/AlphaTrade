@@ -1,8 +1,9 @@
 Welcome to AlphaTrade's documentation!
 ===================================
 
-**AlphaTrade** is a Python library for training RL algorithms for optimal execution,
-and offers a *simple* and *intuitive* API.
+**AlphaTrade** is a Python library for training RL algorithms for optimal execution and offers a *simple* and *intuitive* API.
+
+The environment is **Vectorized** and **Differentiable**.
 
 Check out the :doc:`usage` section for further information, including
 how to :ref:`installation` the project.
