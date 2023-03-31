@@ -28,9 +28,11 @@ Price Impact Research through Market Clearing
 ----------
 * Calculate the price impact without the assumption of impact function
 
-Agent's Cross Impact
-----------
+
+Indirect Market Impact
+----------------------
 * Agent's Impact on Triggering the Modification of other Agents
+    * different from the price impact, which is the direct maret impact.
 
 
 Unsupervised Environment Design
