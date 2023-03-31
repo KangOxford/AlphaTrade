@@ -1,16 +1,6 @@
-Future Research
+Future Research Topics
 =====
 
-.. _installation:
-
-Future Research Topics
-------------
-
-To use AlphaTrade, first install it using pip:
-
-.. code-block:: console
-
-   (.venv) $ pip install gym_exchange
 
 Optimal Execution 
 ----------------
