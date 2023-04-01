@@ -1,10 +1,11 @@
 Future Research Topics
 =====
 
+Related Topics
+==============
 
 Optimal Execution 
-----------------
-
+^^^^^^^^^^
 
 For example:
 
@@ -12,45 +13,45 @@ For example:
 >>> gym_exchange.make()
 
 Optimal Scheduling with Predicted Trading Volume
----------------
+^^^^^^^^^^
 * In vwap replicate strategies, split the task into smaller sizes according to the predicted trading volume.
 
 Order-flow Generating 
----------
+^^^^^^^^^^
 * Mathematical Perspective: Order flow as a general spatial point process
 * Time-series Forecasting for Order Flow
 * Order Flow Generating by Large Language Models
 
 Representation Learning
-----------
+^^^^^^^^^^
 * Representation Learning for the States
 * VAE, GAN and other encoder models.
 
 
 Price Impact Research through Market Clearing
-----------
+^^^^^^^^^^
 * Mathematical Perspective: Market clearing as a deterministic operator acting on the distributions of buy and sell orders.
 * Calculate the price impact without the assumption of impact function
 
 
 Indirect Market Impact
-----------------------
+^^^^^^^^^^
 * Agent's Impact on Triggering the Modification of other Agents' Actions
     * Different from the price impact, which is the direct maret impact.
 
 Agent Based Modelling/Simulation
------------------------
+^^^^^^^^^^
 * Generative adversarial network approach simulation
 * Market Simulation
 
 Unsupervised Environment Design
-----------
+^^^^^^^^^^
 * Adversarial Learning by the differentiable environment
 
 
 
 Related Papers
-------
+==========
 * Related Sections
    * Simulated Markets
    * Learning Trading Strategies
@@ -98,6 +99,6 @@ Related Papers
    * Dynamic prediction length for time series with sequence to sequence network
 
 Related Techniques
-----------
+==========
 * Long Sequence Modelling
    * :doc:`_s5`
