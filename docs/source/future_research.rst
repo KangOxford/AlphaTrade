@@ -1,8 +1,9 @@
 Future Research Topics
 =====
 
+**************
 Related Topics
-==============
+**************
 
 Optimal Execution 
 ^^^^^^^^^^
@@ -49,9 +50,10 @@ Unsupervised Environment Design
 * Adversarial Learning by the differentiable environment
 
 
-
+**************
 Related Papers
-==========
+**************
+
 * Related Sections
    * Simulated Markets
    * Learning Trading Strategies
@@ -98,8 +100,10 @@ Related Papers
    * A tabular sarsa-based stock market agent
    * Dynamic prediction length for time series with sequence to sequence network
 
+**************
 Related Techniques
-==========
+**************
+
 * Long Sequence Modelling
    * :doc:`_efficiently`
    * :doc:`_s5`
