@@ -9,42 +9,30 @@ with open(input, 'r') as file:
 lines = text.splitlines()
 lines[0] = lines[0]+"\n"+"="*20
 text = "\n".join(lines)
+
+import re
+# define the regular expression pattern
+pattern = r'(\d+\.\s\w+:\s)'
+replace = r'\1' + "\n" +'-'*20 + "\n\n"
+text = re.sub(pattern, replace, text)
+
+text = text.replace("7. Methods:","\n7. Methods:")
+text = re.sub(r'- \((\d+)\):', r'\1.', text)
+text = re.sub(r'\n', r'\n\n', text)
+text = text.replace("\n===", "===")
+text = text.replace("\n---", "---")
+try:
+    for i in [3,4,5]:
+        tobe_replaced = '\n' * i
+        while tobe_replaced in text:
+            text = text.replace(tobe_replaced, "\n\n")
+except:
+    pass
+text = ".. "+output.split("/")[-1][:-4]+":\n\n" + text
+# Replace "digit. word:" with "digit-1. word:"
+text = re.sub(r'(\d+)\. (\w+):', lambda match: f'{int(match.group(1))-1}. {match.group(2)}:', text)
 print(text)
-
-text = text.replace("\n","\n\n")
-# Replace the existing formatting with the desired formatting, maintaining the indentation for list items
-text = text.replace("6. Summary:\n", "\nSummary:\n-----\n")
-text = text.replace("7. Background:\n", "\nBackground:\n-----\n")
-text = text.replace("8. Methods:\n", "\nMethods:\n-----\n")
-text = text.replace("9. Conclusion:\n", "\nConclusion:\n-----\n")
-
-text = text.replace("(1):", "\n1.")
-text = text.replace("(2):", "\n2.")
-text = text.replace("(3):", "\n3.")
-text = text.replace("(4):", "\n4.")
-
-text = text.replace("a.", "\na.")
-text = text.replace("b.", "\nb.")
-text = text.replace("c.", "\nc.")
-text = text.replace("d.", "\nd.")
-text = text.replace("e.", "\ne.")
-
-lines = text.split("\n")
-new_lines = []
-start_lines = ["   ", "Background:", "Summary:", "Methods:", "Conclusion:", "a.", "b.", "c.", "d.", "e.", "f.", "g.", "---", "===", ".. ", "  ","1.","2.","3.","4.","5."]
-for line in lines:
-    if line == "" or line.startswith(tuple(start_lines)):
-        new_lines.append(line)
-    else:
-        new_lines.append("   * " + line)
-
-# Join the new lines back into a single string
-new_text = "\n".join(new_lines)
-
-title = "Towards Realistic Market Simulations: a Generative Adversarial Networks Approach"
-new_text = ".. "+input.split("/")[-1][:-4]+":\n\n"+title+"==========================\n\n" + new_text
-print(new_text)
 
 # Write the updated text back to the file
 with open(output, 'w') as file:
-    file.write(new_text)
+    file.write(text)
