@@ -21,7 +21,7 @@ Related Topics
    * Calculate the price impact without the assumption of impact function
 * Indirect Market Impact
    * Agent's Impact on Triggering the Modification of other Agents' Actions
-  * Different from the price impact, which is the direct maret impact.
+   * Different from the price impact, which is the direct maret impact.
 * Agent Based Modelling/Simulation
    * Generative adversarial network approach simulation
    * Market Simulation
@@ -92,7 +92,7 @@ Related Techniques
 * Transformers
    * Time Series Forecasting with Transformers
       * :doc:`_transformers_tsf`
-   * Transformer in low Signal-noise Ratio System
+   * Transformer in Low Signal-noise Ratio System
       * Sparse Transfomer: :doc:`_sparse_tf`
 * Long Sequence Modelling
    * :doc:`_efficiently`
