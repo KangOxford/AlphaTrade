@@ -93,8 +93,8 @@ Related Techniques
 * Long Sequence Modelling
    * :doc:`_efficiently`
    * :doc:`_s5`
-* BC-IRL
-   * :doc:`_bc`
 * Time Series Forecasting with Transformers
    * :doc:`_transformers_tsf`
+* Behavior Cloning
+   * :doc:`_bc`
 
