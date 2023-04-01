@@ -6,6 +6,7 @@ Related Topics
 **************
 
 * Optimal Execution
+   * This project
 * Optimal Scheduling with Predicted Trading Volume
    * In vwap replicate strategies, split the task into smaller sizes according to the predicted trading volume.
 * Order-flow Generating
