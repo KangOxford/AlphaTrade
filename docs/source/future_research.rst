@@ -101,4 +101,5 @@ Related Papers
 Related Techniques
 ==========
 * Long Sequence Modelling
+   * :doc:`_efficiently`
    * :doc:`_s5`
