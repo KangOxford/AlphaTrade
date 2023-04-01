@@ -1,6 +1,6 @@
 .. _cost:
 
-Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment (Chinese translation: 成本效率强化学习用于动态市场的优化交易执行)
+Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment
 ====================
 
 1. Authors: 
