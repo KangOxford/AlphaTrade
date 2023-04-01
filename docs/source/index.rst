@@ -16,13 +16,14 @@ Contents
 --------
 
 .. toctree::
-   architecture
+   introduction
    future_research
 
 
 Usage
 --------
 .. toctree::
+   architecture
    gym_exchange
    gymnax_exchange
 
