@@ -98,7 +98,7 @@ Related Techniques
    * :doc:`_efficiently`
    * :doc:`_s5`
 * Unsupervised Environment Design
- * :doc:`_ued`
+   * :doc:`_ued`
 * Behavior Cloning
    * :doc:`_bc`
 

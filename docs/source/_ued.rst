@@ -1,6 +1,6 @@
 .. _ued:
 
-Emergent Complexity and Zero-shot Transfer via
+Emergent Complexity and Zero-shot Transfer via Unsupervised Environment Design
 ====================
 
 1. Authors: 
