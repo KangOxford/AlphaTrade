@@ -5,11 +5,11 @@ Future Research Topics
 Related Topics
 **************
 
-* Optimal Execution
+* **Optimal Execution**
    * Optimal liquidation or acqurization within 15-30 minutes with agent trained on the simulated environment.
-* Optimal Scheduling with Predicted Trading Volume
+* **Optimal Scheduling with Predicted Trading Volume**
    * In vwap replicate strategies, split the task into smaller sizes according to the predicted trading volume.
-* Order-flow Generating
+* **Order-flow Generating**
    * Mathematical Perspective: Order flow as a general spatial point process
    * Time-series Forecasting for Order Flow
    * Order Flow Generating by Large Language Models
@@ -21,10 +21,12 @@ Related Topics
    * Calculate the price impact without the assumption of impact function
 * Indirect Market Impact
    * Agent's Impact on Triggering the Modification of other Agents' Actions
-      * Different from the price impact, which is the direct maret impact.
+  * Different from the price impact, which is the direct maret impact.
 * Agent Based Modelling/Simulation
    * Generative adversarial network approach simulation
    * Market Simulation
+* Recover Trader's Reward Function
+   * Recover Trader's Reward Function by Inverse RL
 * Unsupervised Environment Design
    * Adversarial Learning by the differentiable environment
 
@@ -79,7 +81,10 @@ Related Papers
    * Mid Related
       * A tabular sarsa-based stock market agent
       * Dynamic prediction length for time series with sequence to sequence network
-* :doc:`_stock`
+* Other related papers
+   * :doc:`_stock`
+   * :doc:`_generating`
+   * :doc:`_deeprl`
 
 **************
 Related Techniques
@@ -88,3 +93,7 @@ Related Techniques
 * Long Sequence Modelling
    * :doc:`_efficiently`
    * :doc:`_s5`
+* BC-IRL
+   * :doc:`_bc`
+   * :doc:``
+
