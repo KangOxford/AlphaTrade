@@ -62,9 +62,9 @@ Related Papers
    * High Related
        * :doc:`_dyn`
        * :doc:`_learn`
-       * Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment
-       * Market Making under Order Stacking Framework: A Deep Reinforcement Learning Approach
+       * :doc:`_cost`
    * Mid Related
+       * Market Making under Order Stacking Framework: A Deep Reinforcement Learning Approach
        * Graph and tensor-train recurrent neural networks for high-dimensional models of limit order books
        * Computationally Efficient Feature Significance and Importance for Predictive Models
        * LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering
@@ -100,6 +100,7 @@ Related Papers
    * Mid Related
       * A tabular sarsa-based stock market agent
       * Dynamic prediction length for time series with sequence to sequence network
+* :doc:`_stock`
 
 **************
 Related Techniques

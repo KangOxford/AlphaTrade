@@ -1,6 +1,6 @@
 .. _bit:
 
-Bit by Bit: How to realistically simulate a Crypto-Exchange (区块链交易所的真实模拟方法)
+Bit by Bit: How to realistically simulate a Crypto-Exchange
 ====================
 
 1. Authors: 
