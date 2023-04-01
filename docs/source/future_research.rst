@@ -95,5 +95,6 @@ Related Techniques
    * :doc:`_s5`
 * BC-IRL
    * :doc:`_bc`
-   * :doc:``
+* Time Series Forecasting with Transformers
+   * :doc:`_transformers_tsf`
 
