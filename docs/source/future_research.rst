@@ -6,7 +6,7 @@ Related Topics
 **************
 
 * Optimal Execution
-   * This project
+   * Optimal liquidation or acqurization within 15-30 minutes with agent trained on the simulated environment.
 * Optimal Scheduling with Predicted Trading Volume
    * In vwap replicate strategies, split the task into smaller sizes according to the predicted trading volume.
 * Order-flow Generating
