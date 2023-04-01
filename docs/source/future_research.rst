@@ -70,7 +70,7 @@ Related Papers
        * Efficient Calibration of Multi-Agent Simulation Models from Output Series with Bayesian Optimization
 * ICAIF2021
    * High Related
-      * Towards a fully rl-based market simulator
+      * :doc:`_towards_fully`
       * :doc:`_towards`
       * FinRL: deep reinforcement learning framework to automate trading in quantitative finance
       * Bit by bit: how to realistically simulate a crypto-exchange
