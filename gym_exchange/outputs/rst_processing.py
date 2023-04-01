@@ -1,41 +1,30 @@
-input = "/Users/kang/AlphaTrade/docs/source/papers/s5.rst"
+# input = "/Users/kang/AlphaTrade/docs/source/papers/s5.rst"
+input = "/Users/kang/dotfiles/docs/source/_dyn.rst"
 
-# read input file
-with open("/Users/kang/AlphaTrade/docs/source/papers/s5.rst", "r") as file:
-    data = file.readlines()
+# Open the file and read the contents
+with open(input, 'r') as file:
+    text = file.read()
 
-# initialize variables to keep track of section headers
-summary = False
-background = False
-methods = False
-conclusion = False
+# Replace the existing formatting with the desired formatting, maintaining the indentation for list items
+text = text.replace("Summary:\n(1):", "Summary:\n-----\n1.")
+text = text.replace("(2):", "\n2.")
+text = text.replace("(3):", "\n3.")
+text = text.replace("(4):", "\n4.")
 
-# loop through each line in the file
-for i in range(len(data)):
-    # check if current line is a section header
-    if data[i].startswith("Summary:"):
-        summary = True
-    elif data[i].startswith("Background:"):
-        background = True
-    elif data[i].startswith("Methods:"):
-        methods = True
-    elif data[i].startswith("Conclusion:"):
-        conclusion = True
+text = text.replace("Background:\na.", "Background:\n-----\na.")
+text = text.replace("b.", "\nb.")
+text = text.replace("c.", "\nc.")
+text = text.replace("d.", "\nd.")
+text = text.replace("e.", "\ne.")
 
-    # add separator line and empty line after section header if found
-    if summary and not data[i + 1].startswith("-"):
-        data.insert(i + 1, "\n----------\n")
-        summary = False
-    elif background and not data[i + 1].startswith("-"):
-        data.insert(i + 1, "\n----------\n")
-        background = False
-    elif methods and not data[i + 1].startswith("-"):
-        data.insert(i + 1, "\n----------\n")
-        methods = False
-    elif conclusion and not data[i + 1].startswith("-"):
-        data.insert(i + 1, "\n----------\n")
-        conclusion = False
+text = text.replace("Methods:\na.", "Methods:\n-----\na.")
+text = text.replace("b.", "\nb.")
 
-# write modified data back to file
-with open("/Users/kang/AlphaTrade/docs/source/papers/s5.rst", "w") as file:
-    file.writelines(data)
+text = text.replace("Conclusion:\na.", "Conclusion:\n-----\na.")
+text = text.replace("b.", "\nb.")
+text = text.replace("c.", "\nc.")
+text = text.replace("   *", "      *")
+
+# Write the updated text back to the file
+with open(input, 'w') as file:
+    file.write(text)

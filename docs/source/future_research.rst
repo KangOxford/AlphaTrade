@@ -56,7 +56,7 @@ Related Papers
    * Forecasting Financial Data
 * ICAIF2022
    * High Related
-       * Dynamic Calibration of Order Flow Models with Generative Adversarial Networks.
+       * :doc:`_dyn`
        * Learning to simulate realistic limit order book markets from data as a World Agent
    * Mid Related
        * Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment
@@ -99,4 +99,4 @@ Related Papers
 Related Techniques
 ----------
 * Long Sequence Modelling
-   *
+   * :doc:`_s5`
