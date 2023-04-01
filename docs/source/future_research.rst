@@ -89,14 +89,14 @@ Related Papers
 **************
 Related Techniques
 **************
-
+* Transformers
+   * Time Series Forecasting with Transformers
+      * :doc:`_transformers_tsf`
+   * Transformer in low Signal-noise Ratio System
+      * Sparse Transfomer: :doc:`_sparse_tf`
 * Long Sequence Modelling
    * :doc:`_efficiently`
    * :doc:`_s5`
-* Time Series Forecasting with Transformers
-   * :doc:`_transformers_tsf`
-* Transformer in low Signal-noise Ratio System
-   * Sparse Transfomer: :doc:` _sparse_tf`
 * Behavior Cloning
    * :doc:`_bc`
 
