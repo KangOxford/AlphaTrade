@@ -95,6 +95,8 @@ Related Techniques
    * :doc:`_s5`
 * Time Series Forecasting with Transformers
    * :doc:`_transformers_tsf`
+* Transformer in low Signal-noise Ratio System
+   * Sparse Transfomer: :doc:` _sparse_tf`
 * Behavior Cloning
    * :doc:`_bc`
 
