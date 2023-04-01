@@ -1,6 +1,6 @@
 .. _s5:
 
-Simplified state space layers for sequence modeling
+Simplified state space layers for sequence modeling(s5)
 ================================================================
 
 Summary:

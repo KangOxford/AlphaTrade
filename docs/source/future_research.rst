@@ -62,10 +62,9 @@ Related Papers
    * High Related
        * :doc:`_dyn`
        * :doc:`_learn`
-   * Mid Related
        * Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment
        * Market Making under Order Stacking Framework: A Deep Reinforcement Learning Approach
-   * Low Related
+   * Mid Related
        * Graph and tensor-train recurrent neural networks for high-dimensional models of limit order books
        * Computationally Efficient Feature Significance and Importance for Predictive Models
        * LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering
@@ -75,11 +74,11 @@ Related Papers
    * High Related
       * :doc:`_towards_fully`
       * :doc:`_towards`
-      * FinRL: deep reinforcement learning framework to automate trading in quantitative finance
-      * Bit by bit: how to realistically simulate a crypto-exchange
-      * Deep Q-learning market makers in a multi-agent simulated stock market
       * :doc:`_learning`
+      * :doc:`_bit`
    * Mid Related
+      * Deep Q-learning market makers in a multi-agent simulated stock market
+      * FinRL: deep reinforcement learning framework to automate trading in quantitative finance
       * Sig-wasserstein GANs for time series generation
       * Agent-based markets: equilibrium strategies and robustness
       * Intelligent trading systems: a sentiment-aware reinforcement learning approach
@@ -94,11 +93,13 @@ Related Papers
       * FinRL-podracer: high performance and scalable deep reinforcement learning for quantitative finance
       * Stability effects of arbitrage in exchange traded funds: an agent-based model
 * ICAIF2020
-   * Get real: realism metrics for robust limit order book market simulations
-   * Multi-agent reinforcement learning in a realistic limit order book market simulation
-   * Deep reinforcement learning for automated stock trading: an ensemble strategy
-   * A tabular sarsa-based stock market agent
-   * Dynamic prediction length for time series with sequence to sequence network
+   * High Related
+      * :doc:`_get`
+      * :doc:`_multi`
+      * :doc:`_deep`
+   * Mid Related
+      * A tabular sarsa-based stock market agent
+      * Dynamic prediction length for time series with sequence to sequence network
 
 **************
 Related Techniques

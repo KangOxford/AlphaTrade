@@ -1,6 +1,6 @@
 .. _efficiently:
 
-Efficiently Modeling Long Sequences with Structured State Spaces
+Efficiently Modeling Long Sequences with Structured State Spaces(S4)
 ===================
 
 1. Authors:
