@@ -35,17 +35,18 @@ Price Impact Research through Market Clearing
 
 Indirect Market Impact
 ----------------------
-* Agent's Impact on Triggering the Modification of other Agents
+* Agent's Impact on Triggering the Modification of other Agents' Actions
     * Different from the price impact, which is the direct maret impact.
 
 Agent Based Modelling/Simulation
-______
+-----------------------
 * Generative adversarial network approach simulation
 * Market Simulation
 
 Unsupervised Environment Design
 ----------
 * Adversarial Learning by the differentiable environment
+
 
 
 Related Papers
@@ -57,7 +58,7 @@ Related Papers
 * ICAIF2022
    * High Related
        * :doc:`_dyn`
-       * Learning to simulate realistic limit order book markets from data as a World Agent
+       * :doc:`_learn`
    * Mid Related
        * Cost-Efficient Reinforcement Learning for Optimal Trade Execution on Dynamic Market Environment
        * Market Making under Order Stacking Framework: A Deep Reinforcement Learning Approach
