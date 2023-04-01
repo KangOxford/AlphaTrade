@@ -24,6 +24,7 @@ Order-flow Generating
 Representation Learning
 ----------
 * Representation Learning for the States
+* VAE, GAN and other encoder models.
 
 
 Price Impact Research through Market Clearing
@@ -35,8 +36,12 @@ Price Impact Research through Market Clearing
 Indirect Market Impact
 ----------------------
 * Agent's Impact on Triggering the Modification of other Agents
-    * different from the price impact, which is the direct maret impact.
+    * Different from the price impact, which is the direct maret impact.
 
+Agent Based Modelling/Simulation
+______
+* Generative adversarial network approach simulation
+* Market Simulation
 
 Unsupervised Environment Design
 ----------
@@ -45,6 +50,10 @@ Unsupervised Environment Design
 
 Related Papers
 ------
+* Related Sections
+   * Simulated Markets
+   * Learning Trading Strategies
+   * Forecasting Financial Data
 * ICAIF2022
    * High Related
        * Dynamic Calibration of Order Flow Models with Generative Adversarial Networks.
@@ -58,3 +67,31 @@ Related Papers
        * LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering
        * Deep Hedging: Continuous Reinforcement Learning for Hedging of General Portfolios across Multiple Risk Aversions
        * Efficient Calibration of Multi-Agent Simulation Models from Output Series with Bayesian Optimization
+* ICAIF2021
+   * High Related
+      * Towards a fully rl-based market simulator
+      * Towards realistic market simulations: a generative adversarial networks approach
+      * FinRL: deep reinforcement learning framework to automate trading in quantitative finance
+      * Bit by bit: how to realistically simulate a crypto-exchange
+      * Deep Q-learning market makers in a multi-agent simulated stock market
+      * Learning to classify and imitate trading agents in continuous double auction markets
+   * Mid Related
+      * Sig-wasserstein GANs for time series generation
+      * Agent-based markets: equilibrium strategies and robustness
+      * Intelligent trading systems: a sentiment-aware reinforcement learning approach
+      * High frequency automated market making algorithms with adverse selection risk control via reinforcement learning
+   * Low Realted
+      * An automated portfolio trading system with feature preprocessing and recurrent reinforcement learning
+      * Monte carlo tree search for trading and hedging
+      * Visual time series forecasting: an image-driven approach
+      * Trading via selective classification
+      * Timing is money: the impact of arrival order in beta-bernoulli prediction markets
+      * An agent-based model of strategic adoption of real-time payments
+      * FinRL-podracer: high performance and scalable deep reinforcement learning for quantitative finance
+      * Stability effects of arbitrage in exchange traded funds: an agent-based model
+* ICAIF2020
+   * Get real: realism metrics for robust limit order book market simulations
+   * Multi-agent reinforcement learning in a realistic limit order book market simulation
+   * Deep reinforcement learning for automated stock trading: an ensemble strategy
+   * A tabular sarsa-based stock market agent
+   * Dynamic prediction length for time series with sequence to sequence network
