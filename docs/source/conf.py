@@ -174,3 +174,6 @@ def setup(app):
         "autodoc-process-docstring",
         no_namedtuple_attrib_docstring,
     )
+
+# ==============================================================================
+pygments_style = "sphinx"

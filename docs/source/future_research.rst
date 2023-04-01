@@ -71,7 +71,7 @@ Related Papers
 * ICAIF2021
    * High Related
       * Towards a fully rl-based market simulator
-      * Towards realistic market simulations: a generative adversarial networks approach
+      * :doc:`_towards`
       * FinRL: deep reinforcement learning framework to automate trading in quantitative finance
       * Bit by bit: how to realistically simulate a crypto-exchange
       * Deep Q-learning market makers in a multi-agent simulated stock market
