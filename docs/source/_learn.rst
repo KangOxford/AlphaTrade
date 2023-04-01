@@ -8,13 +8,13 @@ Learning to simulate realistic limit order book markets from data as a World Age
 Summary:
 -----
 
-   * 1. The original text discusses the use of conditional generative adversarial networks (CGAN) for generating market actions.
+1. The original text discusses the use of conditional generative adversarial networks (CGAN) for generating market actions.
 
-   * 2. The article compares different existing methods for market modeling and highlights the shortcomings. The world model approach is proposed and evaluated against existing simulators.
+2. The article compares different existing methods for market modeling and highlights the shortcomings. The world model approach is proposed and evaluated against existing simulators.
 
-   * 3. The paper proposes two world models based on a CGAN and a mixture of parametric distributions, which show the ability to simulate realistic markets without the need for access to proprietary strategies.
+3. The paper proposes two world models based on a CGAN and a mixture of parametric distributions, which show the ability to simulate realistic markets without the need for access to proprietary strategies.
 
-   * 4. The models achieve more realistic simulations and improved performance compared to existing solutions.
+4. The models achieve more realistic simulations and improved performance compared to existing solutions.
 
 Background:
 -----
