@@ -6,10 +6,6 @@ Related Topics
 **************
 
 * Optimal Execution
-   * For example:
-
-     >>> import gym_exchange
-     >>> gym_exchange.make()
 * Optimal Scheduling with Predicted Trading Volume
    * In vwap replicate strategies, split the task into smaller sizes according to the predicted trading volume.
 * Order-flow Generating
