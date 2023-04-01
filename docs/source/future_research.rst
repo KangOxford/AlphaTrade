@@ -75,7 +75,7 @@ Related Papers
       * FinRL: deep reinforcement learning framework to automate trading in quantitative finance
       * Bit by bit: how to realistically simulate a crypto-exchange
       * Deep Q-learning market makers in a multi-agent simulated stock market
-      * Learning to classify and imitate trading agents in continuous double auction markets
+      * :doc:`_learning`
    * Mid Related
       * Sig-wasserstein GANs for time series generation
       * Agent-based markets: equilibrium strategies and robustness
