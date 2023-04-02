@@ -8,7 +8,7 @@ Related Topics
 * **Optimal Execution**
    * Optimal liquidation or acqurization within 15-30 minutes with agent trained on the simulated environment.
 * **Optimal Scheduling with Predicted Trading Volume**
-   * In :doc:`_vwap_strategies`, split the task into smaller sizes according to the :doc:`_predicted_volume`.
+   * In :doc:`_vwap_strategies`, split the task into smaller sizes according to the :doc:`_volume`.
 * **Order-flow Generating**
    * Mathematical Perspective: Order flow as a general spatial point process
    * Time-series Forecasting for Order Flow
