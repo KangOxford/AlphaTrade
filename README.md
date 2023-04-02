@@ -29,4 +29,4 @@ Previous document refers to `main` branch
 
 ### Slides for `20.Feb~26.Feb` Meeting 
 * [Overleaf](https://www.overleaf.com/7842834529bwxpvqnsdqsv)
-* Anyone who might conribute codes to this repositry, please send email to me: kang.li@stats.ox.ac.uk An email with subject and empty content would be enough. I will add you into the collaborator list.
+* Anyone who might conribute codes to this repositry, please send email to me: kang.li@stats.ox.ac.uk 
