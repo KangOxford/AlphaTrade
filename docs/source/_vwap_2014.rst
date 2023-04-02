@@ -1,0 +1,47 @@
+.. _vwap_2014:
+
+VWAP Execution and Guaranteed VWAP, 2014
+====================
+
+1. Authors: 
+--------------------
+
+Olivier Guéant, Guillaume Royer
+
+2. Affiliation: 
+--------------------
+
+Olivier Guéant: Laboratoire Jacques-Louis Lions, Université Paris-Diderot, Paris, France
+
+Guillaume Royer: CMAP, Ecole Polytechnique Paris, Palaiseau, France
+
+3. Keywords: 
+--------------------
+
+optimal liquidation, VWAP strategy, guaranteed VWAP contract, optimal control, indifference pricing
+
+4. Urls: 
+--------------------
+
+Article: https://epubs.siam.org/doi/10.1137/130924676
+
+Github: None
+
+5. Summary: 
+--------------------
+
+(1): The article studies optimal liquidation using volume weighted average price (VWAP) strategies, which is a popular execution algorithm used by traders in financial markets.
+
+(2): Previous studies have only considered VWAP strategies without permanent market impact and rarely with execution costs. Additionally, the pricing of guaranteed VWAP contracts has never been addressed. The article motivates the need to develop a model to price guaranteed VWAP contracts and study the differences between an agency VWAP and a guaranteed VWAP contract.
+
+(3): The article develops a model to price guaranteed VWAP contracts in the presence of permanent market impact and any form of execution costs, using optimal control and indifference pricing in a CARA framework. Numerical methods and applications are also provided.
+
+(4): The models in this article aim to find the optimal strategy and pricing of guaranteed VWAP contracts. Specific performance results are not provided, but the article highlights the differences between an agency VWAP and a guaranteed VWAP contract, providing insights for traders and asset managers.  Overall, the approach is well motivated and provides a novel contribution to the study of optimal liquidation in financial markets.
+
+6. Conclusion:
+--------------------
+
+(1): The significance of this piece of work is that it develops a model to price guaranteed VWAP contracts in the presence of permanent market impact and execution costs, which is a novel contribution to the study of optimal liquidation in financial markets.
+
+(2): Innovation point: This article innovatively studies guaranteed VWAP contracts and provides a model to price them in the presence of market impact and execution costs. (3): Performance: While specific performance results are not provided, the article provides insights into the differences between an agency VWAP and a guaranteed VWAP contract. (4): Workload: The article involves the use of optimal control and indifference pricing in a CARA framework and requires numerical methods and applications, which may be complex. Overall, the article provides a valuable contribution to the study of optimal liquidation using VWAP strategies.
+

@@ -1,0 +1,56 @@
+.. _vwap_2015:
+
+Optimal Execution of a VWAP Order: A Stochastic Control Approach, 2015
+====================
+
+1. Authors: 
+--------------------
+
+Johan Tysk, Gunnar W. Raetsch
+
+2. Affiliation: 
+--------------------
+
+Johan Tysk Department of Mathematical and Statistical Sciences, University of Alberta; Gunnar W. Raetsch Deutsche Bank AG, London
+
+3. Keywords: 
+--------------------
+
+VWAP, stochastic control, temporary market impact model, arrival price benchmark, algorithmic trading
+
+4. Urls: 
+--------------------
+
+Paper https://arxiv.org/abs/1305.4854 
+
+Github Code None
+
+5. Summary:
+--------------------
+
+(1): The paper focuses on how a broker should optimally schedule a VWAP-benchmarked trade. 
+
+(2): The past methods mainly used deterministic models and were limited in their ability to consider a linear temporary market impact model. The proposed stochastic control approach is motivated by the need to consider market fluctuations and uncertainties in making trade decisions. 
+
+(3): The research methodology proposed in this paper is a stochastic control approach that allows for a linear temporary market impact model and utilizes a VWAP benchmark in trade execution. 
+
+(4): The methods presented in this paper are evaluated on minimizing the expected slippage (difference between executed and VWAP prices) and performance is compared using Monte Carlo simulations. The results show that the proposed stochastic control approach outperforms traditional algorithms in minimizing slippage.
+
+6. Methods:
+--------------------
+
+(1): The research methodology proposed in this paper is a stochastic control approach for optimizing the execution of VWAP-benchmarked trades.
+
+(2): The proposed approach includes a linear temporary market impact model, which takes into account market fluctuations and uncertainties in making trade decisions.
+
+(3): The optimization problem is tackled by deriving and solving the corresponding Hamilton-Jacobi-Bellman equation to provide an explicit characterization of the optimal trading rate and liquidation trajectory.
+
+(4): The model is evaluated using Monte Carlo simulations to compare the performance of the proposed stochastic control approach with traditional algorithms in minimizing slippage.
+
+7. Conclusion: 
+--------------------
+
+(1): The significance of the work lies in proposing a stochastic control approach that incorporates market uncertainties and fluctuations for optimizing the execution of VWAP-benchmarked trades. The model's ability to minimize slippage makes it relevant to algorithmic trading strategies aimed at executing large trades with minimal market impact.
+
+(2): Innovation point: The proposed stochastic control approach with a linear temporary market impact model is innovative and addresses the limitations of deterministic models used in previous studies. (3): Performance: Monte Carlo simulations show that the proposed model outperforms traditional algorithms in minimizing slippage. (4): Workload: The complexity of the stochastic control approach used in the model requires significant mathematical understanding and expertise, which may pose a challenge for practical application.
+

@@ -1,6 +1,6 @@
 .. _vwap_2007:
 
-Improving VWAP strategies: A dynamic volume approach 2007
+Improving VWAP strategies: A dynamic volume approach, 2007
 ====================
 
 1. Authors:

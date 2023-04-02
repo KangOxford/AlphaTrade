@@ -1,0 +1,43 @@
+.. _vwap_2020:
+
+Volume-weighted average price tracking: A theoretical and empirical study, 2020
+====================
+
+1. Authors: 
+--------------------
+
+Daniel Mitchell, Jędrzej Białkowski & Stathis Tompaidis
+
+2. Affiliation: 
+--------------------
+
+Daniel Mitchell University of Warwick, Jędrzej Białkowski Aarhus University, Stathis Tompaidis National and Kapodistrian University of Athens
+
+3. Keywords: 
+--------------------
+
+Trade execution, algorithmic trading, volume-weighted average price, trading costs
+
+4. Urls: 
+--------------------
+
+https://doi.org/10.1080/24725854.2019.1688896 or Github: None
+
+5. Summary:
+--------------------
+
+(1): The research background of this article is to propose a new Volume-Weighted Average Price (VWAP) tracking model that aims to improve the execution quality for large orders used by institutional investors.
+
+(2): The paper compares the performance of dynamic and static strategies and investigates the impact of market impact models and the relationship between trading volume and the variance of stock price returns on optimizing VWAP execution. The previous approach lacked analysis of trading volume impact and the relationship between the variance of stock price returns and VWAP execution. The new approach is well-motivated since it aims to improve execution quality for large orders.
+
+(3): The paper proposes a VWAP tracking model with general price and volume dynamics and transaction costs. The theoretically optimal VWAP tracking strategy is found in several special cases using the proposed solutions.
+
+(4): The methods are evaluated on the task of VWAP execution with optimal performance achieved. The study shows that static strategies are better than dynamic ones, simpler market impact models perform as well as more sophisticated ones, and capturing the relationship between trading volume and the variance of stock price returns significantly improves the performance of VWAP execution. The performance of the methods supports the goal of improving execution quality for large orders.
+
+6. Conclusion:
+--------------------
+
+(1): This piece of work is significant in proposing an improved Volume-Weighted Average Price (VWAP) tracking model that aims to enhance the execution quality for large orders used by institutional investors. 
+
+(2): Innovation point: The article proposes a VWAP tracking model with general price and volume dynamics and transaction costs, and derives optimal trading strategies to track market VWAP for different models of transaction costs. (3): Performance: The study shows that static strategies are better than dynamic ones, simpler market impact models perform as well as more sophisticated ones, and capturing the relationship between trading volume and the variance of stock price returns significantly improves the performance of VWAP execution. (4): Workload: Although challenges remain in incorporating limit orders and limit order book dynamics, the proposed strategies could serve as a guide for the total number of shares to trade in each bucket. Additionally, it would be interesting to use a proprietary data set of actual VWAP trades belonging to a large institutional trader in future research.
+

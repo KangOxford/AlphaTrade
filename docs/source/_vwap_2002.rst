@@ -1,6 +1,6 @@
 .. _vwap_2002:
 
-VWAP Strategies 2002
+VWAP Strategies, 2002
 ====================
 
 1. Authors: 
