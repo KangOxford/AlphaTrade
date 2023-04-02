@@ -1,0 +1,43 @@
+.. _vwap_2007:
+
+Improving VWAP strategies: A dynamic volume approach 2007
+====================
+
+1. Authors:
+--------------------
+
+Jedrzej Bialkowski, Serge Darolles, Gaelle Le Fol
+
+2. Affiliation:
+--------------------
+
+Department of Finance, School of Business, Auckland University of Technology, New Zealand
+
+3. Keywords:
+--------------------
+
+Intraday volume, Factor models, Volume Weighted Average Price, VWAP strategies
+
+4. Urls:
+--------------------
+
+https://www.sciencedirect.com/science/article/pii/S0378426607005128
+
+5. Summary:
+--------------------
+
+(1): The research background of this article is the need for traders to lower the execution risk in VWAP orders.
+
+(2): Past methods have not focused much on modeling intraday volume, which is an important market characteristic for traders aiming to lower the market impact of their trades. The approach proposed in this paper is motivated by the need to reduce the execution risk in VWAP orders.
+
+(3): The research methodology proposed in this paper is a new methodology for modeling intraday volume, which allows for a reduction of the execution risk in VWAP orders. The idea of considered models is based on the decomposition of traded volume into two parts using ARMA and SETAR models.
+
+(4): The methods in this paper are tested on all the stocks included in the CAC40 index at the beginning of September 2004, and dynamic adjustments during the day improve tracking of the end-of-day VWAP. The performance supports the goals of reducing execution risk and improving tracking of the VWAP benchmark.
+
+6. Conclusion:
+--------------------
+
+(1): The significance of this piece of work is to propose a new methodology for modeling intraday volume, which can reduce the execution risk in VWAP orders and improve tracking of the VWAP benchmark.
+
+(2): Innovation point: The proposed methodology for modeling intraday volume is innovative and has not been extensively explored in the past. (3): Performance: The methods in this paper were tested on all stocks included in the CAC40 index, and the dynamic adjustments during the day improved tracking of the end-of-day VWAP. (4): Workload: The workload required to implement this methodology is not explicitly stated in the article, but it can be assumed that it may require significant computational resources and expertise in statistical modeling.
+
