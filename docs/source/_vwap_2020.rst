@@ -39,5 +39,9 @@ https://doi.org/10.1080/24725854.2019.1688896 or Github: None
 
 (1): This piece of work is significant in proposing an improved Volume-Weighted Average Price (VWAP) tracking model that aims to enhance the execution quality for large orders used by institutional investors. 
 
-(2): Innovation point: The article proposes a VWAP tracking model with general price and volume dynamics and transaction costs, and derives optimal trading strategies to track market VWAP for different models of transaction costs. (3): Performance: The study shows that static strategies are better than dynamic ones, simpler market impact models perform as well as more sophisticated ones, and capturing the relationship between trading volume and the variance of stock price returns significantly improves the performance of VWAP execution. (4): Workload: Although challenges remain in incorporating limit orders and limit order book dynamics, the proposed strategies could serve as a guide for the total number of shares to trade in each bucket. Additionally, it would be interesting to use a proprietary data set of actual VWAP trades belonging to a large institutional trader in future research.
+(2): Innovation point: The article proposes a VWAP tracking model with general price and volume dynamics and transaction costs, and derives optimal trading strategies to track market VWAP for different models of transaction costs.
+
+(3): Performance: The study shows that static strategies are better than dynamic ones, simpler market impact models perform as well as more sophisticated ones, and capturing the relationship between trading volume and the variance of stock price returns significantly improves the performance of VWAP execution.
+
+(4): Workload: Although challenges remain in incorporating limit orders and limit order book dynamics, the proposed strategies could serve as a guide for the total number of shares to trade in each bucket. Additionally, it would be interesting to use a proprietary data set of actual VWAP trades belonging to a large institutional trader in future research.
 
