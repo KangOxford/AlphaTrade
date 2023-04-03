@@ -14,7 +14,8 @@ Related Topics
    * Time-series Forecasting for Order Flow
    * Order Flow Generating by Large Language Models
 * Representation Learning
-   * Representation Learning for the States
+   * Representation Learning for the States/Observations
+   * In the Optimal Execution, e.g. the all snapshots of limit order book in the past 30 seconds.
    * VAE, GAN and other encoder models.
 * Price Impact Research through Market Clearing
    * Mathematical Perspective: Market clearing as a deterministic operator acting on the distributions of buy and sell orders.
