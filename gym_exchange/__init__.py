@@ -1,12 +1,10 @@
-from gym.envs.registration import register
-
 class Config:
     # --------------- 00 Data ---------------
     # ············· 00.01 Adapter ············
     raw_price_level = 10
-    # raw_horizon = 2048
+    raw_horizon = 2048
     # raw_horizon = 3700
-    raw_horizon = 4096
+    # raw_horizon = 4096
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
     # ············· 00.02 Source ············
@@ -68,13 +66,13 @@ class Config:
     seed = 1234
 
 
-
+from gym.envs.registration import register
 register(
     id = "GymExchange-v1",
     # path to the class for creating the env
     # Note: entry_point also accept a class as input (and not only a string)
-    entry_point="gym_exchange.trading_environments.stock_env:StockEnv", # TODO
-    kwargs={'Flow': True},
+    entry_point="gym_exchange.trading_environments.basic_env.base_env:BaseEnv",
     # Max number of steps per episode, using a `TimeLimitWrapper`
     max_episode_steps=Config.max_horizon,
     )
+

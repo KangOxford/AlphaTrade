@@ -68,17 +68,17 @@ class BaseEnv(InterfaceEnv):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
-
         # ···················· 03.00.03 ···················· 
-        decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
+        decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
         return state, reward, done, info
 
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
-        if self.cur_step == 3718:
-            print()#$
+        # if self.cur_step == 3718:
+        #     print()#$
+        # print(action) #$
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}

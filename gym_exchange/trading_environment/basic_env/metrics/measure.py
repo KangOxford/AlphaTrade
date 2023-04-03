@@ -12,7 +12,7 @@ def distance(generated_orderbook, data_orderbook):
         if g_pair[0] in d_prices:
             d_quantity = data_orderbook[np.where(data_orderbook[:, 0] == g_pair[0])[0][0], 1]
             result += 1 * (d_quantity != g_pair[1])
-        elif g_pair[0] not in generated_orderbook:
+        elif g_pair[0] not in d_prices:
             result += 2  # 1+1: price and quantity
         else:
             raise NotImplementedError

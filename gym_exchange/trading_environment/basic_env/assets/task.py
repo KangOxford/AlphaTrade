@@ -13,11 +13,8 @@ class NumLeftProcessor():
             # print("*** no agent_executed_pairs in the last step")
             pass
         else:
-            try:
-                self.num_left -= agent_executed_pairs_in_last_step[1].sum()
-                print(agent_executed_pairs_in_last_step) #$
-                print(agent_executed_pairs_in_last_step.shape) #$
-            except:
-                print() #$
-
+            self.num_left -= agent_executed_pairs_in_last_step[1].sum()
+        try:assert self.num_left >= 0 #$
+        except:
+            pass #$
         self.num_executed_in_last_step = 0 if agent_executed_pairs_in_last_step is None else agent_executed_pairs_in_last_step[1].sum()

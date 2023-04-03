@@ -48,9 +48,10 @@ class OrderFlowGenerator(object):
         
     def step(self, action: np.ndarray, best_ask_bid_dict) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
-        self.action = action # [side, quantity, price_delta]
+        self.action = action # [side, quantity_delta, price_delta]
         self.best_ask_bid_dict = best_ask_bid_dict
         content_dict, revised_content_dict = self.get_content_dicts()
+        # [side, quantity_delta, price_delta] => [side, quantity, price]
         order_flow = OrderFlow(**content_dict)
         auto_cancel = OrderFlow(**revised_content_dict) # TODO
         return order_flow, auto_cancel
