@@ -103,3 +103,10 @@ Related Techniques
    * :doc:`_bc`
 
 
+**************
+Related Issues
+**************
+* **Hard to generalize**. There might be several reasons jointly contribute to this situation:
+   1. The **signal-to-noise ratio** of financial market data is much lower than that of other artificial intelligence fields.
+   2. The financial market is not a closed system and will **evolve** on its own.
+   3. The financial market is a derivative of the economy and therefore can be impacted by **external factors**.
