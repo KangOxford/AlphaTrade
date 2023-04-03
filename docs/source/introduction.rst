@@ -3,7 +3,7 @@ Introduction
 
 :doc:`_framework` proposed a mathematical framework to define orderbook dynamics, which involves two crucial components: market clearing and order flow generating. In the following, I will elaborate on this package from these two perspectives.
 
-The package comprises three main components based on the terminology used in :doc:`_framework`.
+The package comprises three main components.
 
 * The first part is the Order-Book, which acts as the matching engine for market clearing.
 
