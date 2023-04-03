@@ -46,9 +46,15 @@ class OutsideSignalEncoder:
                 signal = self.one_difference_signal_producer(self.order_book, self.my_array, self.right_array, side)
             elif np.sum(self.my_array != self.right_array) == 2:
                 signal = self.two_difference_signal_producer(self.order_book, self.my_array, self.right_array, side)
-            else: 
-                raise NotImplementedError       
-        return signal 
+            elif np.sum(self.my_array != self.right_array) == 3:
+                ''' !TODO Not implemented
+                array([False, False, False, False, False, False, False, False, False,
+                       False, False, False, False, False, False, False, True, False,
+                       True, True])'''
+                raise NotImplementedError
+            else:
+                raise NotImplementedError
+        return signal
 
     def one_difference_signal_producer(self, order_book, my_array, right_array, side):
         timestamp, order_id, trade_id = self.timestamp, self.order_id, self.trade_id
@@ -94,18 +100,41 @@ class OutsideSignalEncoder:
                     # breakpoint()#tbd
         
             elif my_array[-1] == right_array[-1]:
-                # Submission of a new limit order, price does not exist(outside lob)
-                # =============================================================================
-                # my_array
-                # [31169900        1 31169800        1 31167000        3 31161600        3
-                #  31160800        1 31160000       37 31158000        7 31155500       70
-                #  31155100       51 31152200       16]
-                # right_array
-                # [31169900        1 31169800        1 31167000        3 31161600        3
-                #  31160800        1 31160000       37 31158000        7 31155500       70
-                #  31155100       51 31154300       16]
-                # =============================================================================
-                sign = 11
+                ascending = +1  if side == 'ask' else -1
+                if ascending*my_array[-2] < ascending*right_array[-2]:
+                    # Deletion of an existed limit order
+                    # =============================================================================
+                    # >> > my_array(ask)
+                    # [31211200       15 31212200        2 31212300       15 31213000        1
+                    #  31214000        2 31215000       10 31216800        6 31218000        1
+                    #  31218300        2 31218500        1]
+                    # >> > right_array(ask)
+                    # [31211200       15 31212200        2 31212300       15 31213000        1
+                    #  31214000        2 31215000       10 31216800        6 31218000        1
+                    #  31218300        2 31218700        1]
+                    # =============================================================================
+                    tree = order_book.asks if side == 'ask' else order_book.bids
+                    price_list= tree.get_price_list(my_array[-2])
+                    if len(price_list) == 1:
+                        order = price_list.head_order
+                    else:
+                        raise NotImplementedError
+                    message = {'type': 'limit', 'timestamp': order.timestamp, 'order_id': order.order_id, 'trade_id': order.order_id,\
+                               'price':my_array[-2],'quantity':my_array[-1],'side':side}
+                    sign = 3
+                elif ascending * my_array[-2] >= ascending * right_array[-2]:
+                    # Submission of a new limit order, price does not exist(outside lob)
+                    # =============================================================================
+                    # my_array(bid)
+                    # [31169900        1 31169800        1 31167000        3 31161600        3
+                    #  31160800        1 31160000       37 31158000        7 31155500       70
+                    #  31155100       51 31152200       16]
+                    # right_array(bid)
+                    # [31169900        1 31169800        1 31167000        3 31161600        3
+                    #  31160800        1 31160000       37 31158000        7 31155500       70
+                    #  31155100       51 31154300       16]
+                    # =============================================================================
+                    sign = 11
             elif my_array[-1] != right_array[-1] and  my_array[-2] != right_array[-2]: raise NotImplementedError # two actions needs to be taken in this step
             else: raise NotImplementedError
         elif my_array.size == (Configuration.price_level - 1) * 2:
@@ -262,4 +291,3 @@ class OutsideSignalEncoder:
         return signal
 
 
-    

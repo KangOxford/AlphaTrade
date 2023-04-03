@@ -1,0 +1,45 @@
+.. _vwap_2004:
+
+Competitive Algorithms for VWAP, 2004
+====================
+
+1. Authors: 
+--------------------
+
+Sham M. Kakade, Michael Kearns, Yishay Mansour, Luis E. Ortiz
+
+2. Affiliation: 
+--------------------
+
+Sham M. Kakade is affiliated with the University of Washington
+
+3. Keywords: 
+--------------------
+
+Online Trading, Competitive Analysis, VWAP
+
+4. Urls: 
+--------------------
+
+Paper: https://link.springer.com/chapter/10.1007/11876748_17
+
+Github: None
+
+5. Summary:
+--------------------
+
+(1): This article is about competitive algorithms for Volume Weighted Average Price (VWAP) trading, a model for stock trading that takes into account both volume and price. 
+
+(2): The past methods for VWAP trading have been based on minimizing the deviation between the algorithm's cost and the market's VWAP. However, these methods are not competitive and can result in a high cost for the algorithm. The proposed approach in this paper is well motivated by the need for a competitive algorithm for VWAP trading.
+
+(3): The research methodology proposed in this paper includes both lower and upper bounds on the competitive ratio of online algorithms for VWAP trading. The lower bounds prove that any online algorithm for VWAP trading must have a competitive ratio of at least logarithmic in the time horizon T and square root of the volume V. The upper bounds provide algorithms with a competitive ratio of square root of the volume V and (logarithmic in the time horizon T)/Q, where Q is the number of VWAP quotes received.
+
+(4): The proposed methods achieve competitive ratios of square root of the volume V and (logarithmic in the time horizon T)/Q, which are shown to be tight within a constant factor. The performance supports the goal of finding a competitive algorithm for VWAP trading.
+
+6. Conclusion:
+--------------------
+
+(1): This piece of work proposes competitive algorithms for VWAP trading, which is significant as it addresses the limitations of past methods for VWAP trading and provides a competitive approach that can result in a lower cost for the algorithm.
+
+(2): Innovation point: The proposed approach provides a competitive algorithm for VWAP trading, which is an innovative step in the field. (3): Performance: The proposed methods achieve competitive ratios that are tight within a constant factor, which is a strong performance indicator. (4): Workload: The research methodology proposed in this paper includes both lower and upper bounds, which can make the workload of designing online algorithms for VWAP trading more manageable.
+

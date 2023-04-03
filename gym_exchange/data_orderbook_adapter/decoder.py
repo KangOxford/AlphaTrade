@@ -61,9 +61,9 @@ class Decoder:
         # -------------------------- 01 ----------------------------
         if Debugger.on: 
             print("##"*25 + '###' + "##"*25);print("=="*25 + " " + str(self.index) + " "+ "=="*25)
-            print("##"*25 + '###' + "##"*25+'\n');print("The order book used to be:"); print(self.order_book)
+            print("##"*25 + '###' + "##"*25+'\n');
+            # print("The order book used to be:"); print(self.order_book)
         self.historical_message = self.data_loader.iloc[self.index,:]
-        historical_message = list(self.historical_message) # tbd 
         inside_signal = InsideSignalEncoder(self.order_book, self.historical_message)()
         self.order_book = SignalProcessor(self.order_book)(inside_signal)
         
@@ -118,3 +118,17 @@ if __name__ == "__main__":
         for i in range(len(signals_list)):
             f.write(f"\n------ {i} ------\n")
             f.write(signals_list[i].__str__())
+
+
+    '''
+    # =============================================================================
+    # ***************************** DEBUGGING LOG *********************************
+    # =============================================================================
+    # --------------------------------- 3073 --------------------------------------
+    # last time the (3121850,1) was seen:
+    # [index 2787]31211200,15,31212200,2,31212300,15,31213000,1,31214000,2,
+    #             31215000,10,31216800,6,31218000,1, 31218300,2,31218500,1
+    # it should be already cancelled outside the order_book.
+    # Problem comes down to the outside signal
+    # =============================================================================
+    '''

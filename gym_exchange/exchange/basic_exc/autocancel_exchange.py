@@ -3,7 +3,7 @@
 # from gym_exchange.exchange import Debugger
 from gym_exchange.exchange.basic_exc.base_exchange import BaseExchange
 from gym_exchange.exchange.basic_exc.utils import latest_timestamp, timestamp_increase
-from gym_exchange.exchange.basic_exc.utils.auto_cancels import AutoCancels
+from gym_exchange.exchange.basic_exc.assets.auto_cancels import AutoCancels
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 # from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
@@ -17,13 +17,15 @@ class Exchange(BaseExchange):
     # -------------------------- 03.01 ----------------------------
     def reset(self):
         super().reset()
+        # self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2] #$ origin should it be []???? TODO
         self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2]
+        self.best_bids = [self.order_book.get_best_bid()]
+        self.best_asks = [self.order_book.get_best_ask()]
         self.auto_cancels = AutoCancels()
 
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)
         super().step(action)
-        self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
         return self.order_book
     
 

@@ -1,6 +1,8 @@
 # ========================== 01 ==========================
 import abc
 import numpy as np
+import pandas as pd
+
 from gym_exchange.trading_environment.basic_env.utils import vwap_price
 
 class Vwap(abc.ABC):
@@ -27,7 +29,7 @@ class Vwap(abc.ABC):
         if self.agent_vwap is not None and self.market_vwap is not None:
             vwap_slippage = self.market_vwap - self.agent_vwap
         else:
-            vwap_slippage = None
+            vwap_slippage = None # TODO whether it would be called
         self.vwap_slippage = vwap_slippage
         return vwap_slippage
     
@@ -43,38 +45,34 @@ class Vwap(abc.ABC):
     # @abc.abstractmethod    
     # def step(self, executed_pairs):
     #     '''step'''
-    
-# class StepVwap(Vwap):
-#     def __init__(self):
-#         super().__init__()
-    
-#     def update(self, executed_pairs):
-#         if len(executed_pairs.market_pairs) == 0 or len(executed_pairs.agent_pairs) == 0 :
-#             if len(executed_pairs.market_pairs) == 0: self.market_vwap = 0
-#             if len(executed_pairs.agent_pairs) == 0: self.agent_vwap = 0
-#             print()# % check self.market_vwap 
-#         else:
-#             self.market_pairs = executed_pairs.market_pairs[-1]
-#             self.agent_pairs  = executed_pairs.agent_pairs[-1]
-            
-#     @Vwap.market_vwap.setter
-#     def market_vwap(self, value):
-#         self._market_vwap = value
-        
-#     @Vwap.agent_vwap.setter
-#     def agent_vwap(self, value):
-#         self._agent_vwap = value
-    
-#     @property
-#     def info_dict(self):
-#         return {
-#             "StepVwap/MarketVwap"  :self.market_vwap,
-#             "StepVwap/AgentVwap"   :self.agent_vwap,
-#             "StepVwap/VwapSlippage":self.vwap_slippage
-#         }
-        
+
     
 # ========================== 02 ==========================
+
+class StepVwap(Vwap):
+    def __init__(self):
+        super().__init__()
+
+    def update(self, executed_pairs):
+        if executed_pairs['market_pairs'] is None:
+            self.market_vwap = 0
+        if executed_pairs['agent_pairs'] is None:
+            self.agent_vwap = 0
+        if executed_pairs['agent_pairs'] is not None and executed_pairs['market_pairs'] is not None:
+            self.market_pairs = executed_pairs['market_pairs']
+            self.agent_pairs  = executed_pairs['agent_pairs'] # TODO not sure whether need [-1](original)
+            # assert self.market_pairs.shape == self.market_pairs.shape and self.market_pairs.shape == (2,1) # TODO not sure whether need [-1](original)
+            self.market_vwap = self.get_market_vwap()
+            self.agent_vwap = self.get_agent_vwap()
+        self.vwap_slippage = self.get_vwap_slippage()
+
+    @property
+    def info_dict(self):
+        return {
+            "StepVwap/MarketVwap"  :self.market_vwap,
+            "StepVwap/AgentVwap"   :self.agent_vwap,
+            "StepVwap/VwapSlippage":self.vwap_slippage
+        }
 
 class EpochVwap(Vwap):
     def __init__(self):
@@ -112,71 +110,40 @@ class EpochVwap(Vwap):
 #     def to_array(self):
 #         result = 0 #TODO: implement
 #         return np.array(result)
+
     
 # ========================== 04 ==========================
 class VwapEstimator():
     def __init__(self):
-        # self.step_vwap = StepVwap() # Used for info
+        self.step_vwap = StepVwap() # Used for info
         self.epoch_vwap= EpochVwap()# Used for info
     def executed_pairs_adapter(self, executed_pairs):
         market_pairs_dict = executed_pairs.market_pairs
         agent_pairs_dict = executed_pairs.agent_pairs
         concat_pairs = lambda pairs_dict: np.concatenate(list(pairs_dict.values()),axis = 1)
         return_dict = {
-            "market_pairs": concat_pairs(market_pairs_dict),
+            "market_pairs": concat_pairs(market_pairs_dict) if len(agent_pairs_dict) !=0 else None,
             "agent_pairs" : concat_pairs(agent_pairs_dict) if len(agent_pairs_dict) !=0 else None
             }        
         return return_dict 
     def update(self, executed_pairs, done):
         self.done = done
+        self.step_vwap.update(executed_pairs.market_agent_executed_pairs_in_last_step)
         if done:
-            executed_pairs = self.executed_pairs_adapter(executed_pairs)
-            self.epoch_vwap.update(executed_pairs)
+            self.epoch_vwap.update(executed_pairs = self.executed_pairs_adapter(executed_pairs))
     def step(self):
         if not self.done:
-            return None, None
-            # return self.step_vwap.info_dict, None
+            # return None, None
+            return self.step_vwap.info_dict, None
         else:
-            return None, self.epoch_vwap.info_dict
-            # return self.step_vwap.info_dict, self.epoch_vwap.info_dict
+            # return None, self.epoch_vwap.info_dict
+            return self.step_vwap.info_dict, self.epoch_vwap.info_dict
         
         
 if __name__ == "__main__":
     # vwap_price testing
     pairs = np.array([[1,2],[1,23],[1,3],[1.1,21],[0.9,3]]).T
 
-    # ======================================= plot ============================
-    recorder = self.exchange.executed_pairs_recoder
-    agent_pairs = recorder.agent_pairs
-    market_pairs = recorder.market_pairs
-    from gym_exchange.trading_environment.basic_env.utils import vwap_price
-    agent_step_vwap = {k:vwap_price(v) for k,v in agent_pairs.items()}
-    market_step_vwap = {k:vwap_price(v) for k,v in market_pairs.items()}
-    # ----------------------- fig ---------------------
-    import matplotlib.pyplot as plt
-    # plt.rcParams["figure.figsize"] = (80, 40)
-    plt.rcParams["figure.figsize"] = (40, 20)
-    def curve_interpolation(market_step_vwap):
-        from scipy.interpolate import interp1d
-        x = np.array(list(market_step_vwap.keys()))
-        y = np.array(list(market_step_vwap.values()))
-        f = interp1d(x, y, kind='cubic')
-        x_new = np.linspace(x.min(), x.max(), num=10000)
-        y_new = f(x_new)
-        plt.plot(x_new, y_new, label='Market_Interpolated', color='orange')
-    curve_interpolation(market_step_vwap)
-    # plt.scatter(market_step_vwap.keys(),market_step_vwap.values(),label='Market')
-    # plt.plot(market_step_vwap.keys(),market_step_vwap.values(),label='Market')
-    # plt.plot(agent_step_vwap.keys(),agent_step_vwap.values(),label='Agent')
-    plt.scatter(agent_step_vwap.keys(),agent_step_vwap.values(),label='Agent', color='blue')
-    plt.legend()
-    # plt.title("Action(direction = 'ask', quantity_delta = 0, price_delta = 1)")
-    # plt.title("Action(direction = 'ask', quantity_delta = 0, price_delta = -1)")
-    # plt.title("Action(direction = 'ask', quantity_delta = 0, price_delta = 0)")
-    plt.title("Action(direction = 'bid', quantity_delta = 0, price_delta = 0)")
-    # plt.title("Action(direction = 'bid', quantity_delta = 5, price_delta = -1)")
-    # plt.savefig("")
-    plt.show()
 
     
     

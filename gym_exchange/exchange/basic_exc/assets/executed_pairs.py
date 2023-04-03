@@ -29,9 +29,12 @@ class ExecutedPairsRecorder():
                 elif key == "agent" : self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
                 else: raise NotImplementedError
         try:
-            self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T # Apply lambda function to all values in dict
-            self.agent_pairs[self.index]  = np.array(self.agent_pairs[self.index]).T # Apply lambda function to all values in dict
-        except: pass # eg. self.market_pairs is not None, while self.agent_pairs is None
+            if 'market' in [list(pair.keys())[0] for pair in pairs]: self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T
+            else: pass
+            if 'agent' in [list(pair.keys())[0] for pair in pairs]: self.agent_pairs[self.index] = np.array(self.agent_pairs[self.index]).T
+            else: pass
+        except:
+            raise NotImplementedError
 
     def step(self, trades, index):
         """two function:
@@ -42,23 +45,17 @@ class ExecutedPairsRecorder():
         02: record the last_executed_pairs of market_agent"""
         # ----------- 01 ------------
         self.index = index # keep the same with the exchange index
-        if len(trades) == 0: 
+        if len(trades) == 0:
             pass
         else: # len(trades) == 1 or 3
             pairs = self.trades2pairs(trades)
             self.update(pairs)
         # ----------- 02 ------------
-        try:
-            self.market_agent_executed_pairs_in_last_step = {
-                "index":self.index,
-                "market_pairs":self.market_pairs[self.index],
-                "agent_pairs" :self.agent_pairs[self.index]}
-        except:
-            self.market_agent_executed_pairs_in_last_step = {
-                "index":self.index,
-                "market_pairs":None,
-                "agent_pairs" :None}
-        
+        self.market_agent_executed_pairs_in_last_step = {
+            "index":self.index,
+            "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
+            "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
+
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'
         return fstring

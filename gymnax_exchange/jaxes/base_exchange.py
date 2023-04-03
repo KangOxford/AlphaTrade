@@ -1,7 +1,7 @@
 # ========================= 01 =========================
 from gymnax_exchange.jaxob.jaxOrderbook import *
 from gym_exchange.exchange.basic_exc.interface_exchange import InterfaceExchange
-from gym_exchange.exchange.basic_exc.utils.executed_pairs import ExecutedPairsRecorder
+from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
 
 # ========================= 03 =========================

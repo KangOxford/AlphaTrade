@@ -1,7 +1,5 @@
-from gym_exchange.orderbook import OrderBook
-from gym_exchange.exchange.basic_exc.interface_exchange import InterfaceExchange
-from gym_exchange.exchange.basic_exc.utils.executed_pairs import ExecutedPairsRecorder
-from gymnax_exchange import jit
+from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
+from gymnax_exchange.jaxob.jorderbook import OrderBook
 
 
 class BaseExchange():
@@ -53,7 +51,7 @@ class BaseExchange():
             )
             self.cancelled_quantity = message['quantity']
 
-    @jit
+    # @jit
     def process_tasks(self):
         for index, item in enumerate(self.task_list):
             if item is not None:
