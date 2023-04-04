@@ -52,6 +52,7 @@ if __name__ == "__main__":
     # initial model
 
 
+
     model.learn(
         total_timesteps=int(1e8),
         tb_log_name="RNN_PPO_initial",
