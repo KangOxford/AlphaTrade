@@ -64,6 +64,7 @@ class OrderTree(object):
             self.insert_order(order_update)
         else:
             # Quantity changed. Price is the same.
+            
             order.update_quantity(order_update['quantity'], order_update['timestamp'])
         self.volume += order.quantity - original_quantity
 
