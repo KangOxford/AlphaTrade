@@ -82,7 +82,8 @@ class BaseExchange():
             self.best_asks.append(self.order_book.get_best_ask())
             # print(self.order_book) #$
         except:
-            print() #$
+            # print() #$
+            pass
         self.index += 1
 
 
