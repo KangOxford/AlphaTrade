@@ -23,6 +23,7 @@ class OrderBook(object):
         self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1
+        self.orderbook_array=self.orderbook_array.astype(int)
 
     def process_order(self,quote:Dict,from_data=False,verbose=False):
         '''Wrapper function for the object class that takes a Dict Object as the quote,
