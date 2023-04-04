@@ -9,6 +9,7 @@ class NumLeftProcessor():
     def step(self,Self):
         # self.num_left -= self.cur_action
         agent_executed_pairs_in_last_step = Self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step['agent_pairs']
+        print(f"agent_executed_pairs_in_last_step:{agent_executed_pairs_in_last_step}")#$
         if agent_executed_pairs_in_last_step is None:
             # print("*** no agent_executed_pairs in the last step")
             pass

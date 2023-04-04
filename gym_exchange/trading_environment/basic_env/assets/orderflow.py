@@ -60,7 +60,8 @@ class OrderFlowGenerator(object):
         self.residual_action, self.residual_done = self.residual_policy.step()
         content_dict = {
             "Type" : 1, # submission of a new limit order
-            "direction" : self.action[0],
+            # "direction" : self.action[0], # TODO should be right
+            "direction" : self.action[0], # TODO masked for oneside task
             # "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
             "size": max(0, self.action[1] + self.residual_action), # original
             "price": self.price, # call @property: price(self)
