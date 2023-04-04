@@ -68,17 +68,18 @@ class BaseEnv(InterfaceEnv):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
-
+        print(action)  #$
         # ···················· 03.00.03 ···················· 
-        decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
+        decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
         return state, reward, done, info
 
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
-        if self.cur_step == 3718:
-            print()#$
+        # if self.cur_step == 3718:
+        #     print()#$
+        print(self.cur_step) #$
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
@@ -135,6 +136,7 @@ class BaseEnv(InterfaceEnv):
 
 
 if __name__ == "__main__":
+    '''
     # --------------------- 05.01 --------------------- 
     # from stable_baselines3.common.env_checker import check_env
     # env = BaseEnv()
@@ -165,4 +167,19 @@ if __name__ == "__main__":
         if done:
             env.reset()
             break #$
-
+    '''
+    import numpy as np
+    arr = np.loadtxt("/Users/kang/AlphaTrade/gym_exchange/outputs/actions", dtype=np.int64)
+    env = BaseEnv()
+    env.reset();print("="*20+" ENV RESTED "+"="*20)
+    for i in range(len(arr)):
+        print("-"*20 + f'=> {i} <=' +'-'*20) #$
+        encoded_action = arr[i]
+        if i == 320:
+            breakpoint()
+        state, reward, done, info = env.step(encoded_action)
+        # print(f"info: {info}") #$
+        env.render()
+        if done:
+            env.reset()
+            break #$

@@ -48,9 +48,10 @@ class OrderFlowGenerator(object):
         
     def step(self, action: np.ndarray, best_ask_bid_dict) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
-        self.action = action # [side, quantity, price_delta]
+        self.action = action # [side, quantity_delta, price_delta]
         self.best_ask_bid_dict = best_ask_bid_dict
         content_dict, revised_content_dict = self.get_content_dicts()
+        # [side, quantity_delta, price_delta] => [side, quantity, price]
         order_flow = OrderFlow(**content_dict)
         auto_cancel = OrderFlow(**revised_content_dict) # TODO
         return order_flow, auto_cancel
@@ -59,7 +60,8 @@ class OrderFlowGenerator(object):
         self.residual_action, self.residual_done = self.residual_policy.step()
         content_dict = {
             "Type" : 1, # submission of a new limit order
-            "direction" : self.action[0],
+            # "direction" : self.action[0], # TODO should be right
+            "direction" : self.action[0], # TODO masked for oneside task
             # "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
             "size": max(0, self.action[1] + self.residual_action), # original
             "price": self.price, # call @property: price(self)

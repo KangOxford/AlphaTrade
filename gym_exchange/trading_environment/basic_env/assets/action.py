@@ -45,7 +45,8 @@ class Action(BaseAction): # more precise class name: DeltaAction
     def decode(cls,action):  # to_human_readable
         direction = -1 if action[0] == 0 else 1
         quantity_delta = action[1] - SpaceParams.Action.quantity_size_one_side
-        price_delta = action[2] - SpaceParams.Action.price_delta_size_one_side
+        # price_delta = action[2] - SpaceParams.Action.price_delta_size_one_side
+        price_delta = action[2]
         return np.array([direction,quantity_delta,price_delta])
 
     def __str__(self):

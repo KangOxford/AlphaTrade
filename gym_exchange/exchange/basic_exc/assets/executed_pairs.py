@@ -25,8 +25,10 @@ class ExecutedPairsRecorder():
     def update(self, pairs): # to be used in step
         for pair in pairs:
             for key,value in pair.items(): # Pseudo for loop, one pair dict
-                if   key == "market": self.market_pairs[self.index] = self.market_pairs.get(self.index, []) + [value]
-                elif key == "agent" : self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
+                if   key == "market":
+                    self.market_pairs[self.index] = self.market_pairs.get(self.index, []) + [value]
+                elif key == "agent" :
+                    self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
                 else: raise NotImplementedError
         try:
             if 'market' in [list(pair.keys())[0] for pair in pairs]: self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T
@@ -35,7 +37,12 @@ class ExecutedPairsRecorder():
             else: pass
         except:
             raise NotImplementedError
-
+        try:
+            # print(f"{self.index},{self.agent_pairs[self.index]}") #$
+            # print(f"{self.index},{self.market_pairs[self.index]}") #$
+            pass#$
+        except:
+            pass #$
     def step(self, trades, index):
         """two function:
         01: record market pairs and agent pairs, e.g.
