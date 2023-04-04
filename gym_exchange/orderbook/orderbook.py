@@ -58,10 +58,22 @@ class OrderBook(object):
             trades,order_in_book=self.process_order(message,from_data=from_data,verbose=verbose)
         elif type==2: #Cancellation order (partial deletion): simply update quantity
             message['type']='cancel'
-            origin_quantity = self.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
-            adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
-            message['quantity']=adjusted_quantity
-            self.bids.update_order(message)
+            if message['side']=='bid':
+                try:
+                    origin_quantity = self.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
+                    adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
+                    message['quantity']=adjusted_quantity
+                    self.bids.update_order(message)
+                except:
+                    print("Could not find the order ID to cancel")
+            else:
+                try:
+                    origin_quantity = self.asks.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
+                    adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
+                    message['quantity']=adjusted_quantity
+                    self.asks.update_order(message)
+                except:
+                    print("Could not find the order ID to cancel")
             trades=[]
             order_in_book=message
         elif type==3:
@@ -201,19 +213,23 @@ class OrderBook(object):
                 self.bids.remove_order_by_id(order['order_id'])
             else: 
                 print('got to the no ID issue')
-                orderlist=self.bids.get_price_list(order['price'])
-                print(orderlist)
-                if orderlist.get_head_order().order_id>=INITID:
-                    if orderlist.get_head_order().quantity==order['quantity']:
-                        print('Deleting whole order')
-                        self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
-                    else:
-                        print('Trying to cancel partial order')
-                        order['order_id']=orderlist.get_head_order().order_id
-                        self.modify_order(order['order_id'],order,order['timestamp'])
-                        print(order)
-                        #raise NotImplementedError 
-                        ##Need to just modify the order to reduce the quantity
+                try:
+                    orderlist=self.bids.get_price_list(order['price'])
+                    print(orderlist)
+                    if orderlist.get_head_order().order_id>=INITID:
+                        if orderlist.get_head_order().quantity<=order['quantity']:
+                            print('Deleting whole order')
+                            self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
+                        else:
+                            print('Trying to cancel partial order')
+                            order['order_id']=orderlist.get_head_order().order_id
+                            self.modify_order(order['order_id'],order,order['timestamp'])
+                            print(order)
+                            #raise NotImplementedError 
+                            ##Need to just modify the order to reduce the quantity
+                except:
+                    print("Couldn't find the price in the price list")
+                
         elif order['side'] == 'ask':
             print('got to the ask arm')
             if self.asks.order_exists(order['order_id']):
