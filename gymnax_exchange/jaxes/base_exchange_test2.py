@@ -6,7 +6,8 @@ from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
-from gymnax_exchange.jaxob.jorderbook import OrderBook
+from gym_exchange.orderbook.orderbook import OrderBook
+# from gymnax_exchange.jaxob.jorderbook import OrderBook
 
 # ========================= 03 =========================
 class BaseExchange():
