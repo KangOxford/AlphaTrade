@@ -7,7 +7,8 @@ from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
 # from gym_exchange.orderbook.orderbook import OrderBook
-from gymnax_exchange.jaxob.jorderbook import OrderBook
+from gymnax_exchange.jaxob.wrapped_jorderbook import OrderBook
+# import gymnax_exchange.jaxob.JaxOrderbook as job
 
 # ========================= 03 =========================
 class BaseExchange():
@@ -113,8 +114,36 @@ class BaseExchange():
     def type3_handler(self, message):
         '''Deletion (Total deletion of a limit order)'''
         done = False
+        print("=========")
+        print(self.order_book.orderbook_array)
+        quote = {**message, 'type': 'delete'}
+        self.order_book.process_order(quote)
+        print("=========")
+        print(self.order_book.orderbook_array)
+
+
+
+
+
+
+
         right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+        # if right_tree.order_exists(message['order_id']) == False:
         if right_tree.order_exists(message['order_id']) == False:
+            ''' right_tree
+            Array([[[      48, 31180100, 90000000, 90000000,    34200,        1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1]],
+                   [[       2, 31190000, 90000000, 90000001,    34200,        1],
+                    [      -1,       -1,       -1,       -1,       -1,       -1],
+            '''
             try:  # message['price'] in the order_book
                 right_price_list = right_tree.get_price_list(message['price'])  # my_price
                 for order in right_price_list:
@@ -156,39 +185,39 @@ if __name__ == "__main__":
     for _ in range(2048):
         exchange.step()
 
-"""
-=========================================================
-ORDERBOOK:(Initialized, AMZN 2021.04.01)
-31240000 4
-31237900 1
-31230000 24
-31229800 100
-31220000 4
-31214000 2
-31210000 3
-31200000 18
-31190000 2
-31180100 48
-
-31161600 3
-31160000 4
-31152200 16
-31151000 2
-31150100 2
-31150000 506
-31140000 4
-31130000 2
-31120300 35
-31120200 35
-*********************************************************
-CODES:
-lst = [$data]
-new = [[lst[2*i],lst[2*i+1]] for i in range(len(lst)//2)]
-s = sorted(new, key=lambda pair: pair[0], reverse = True)
-lst = [elem for pair in s for elem in pair]
-[print(lst[2*i], lst[2*i+1]) for i in range(len(lst))]
-=========================================================
-"""
+    """
+    =========================================================
+    ORDERBOOK:(Initialized, AMZN 2021.04.01)
+    31240000 4
+    31237900 1
+    31230000 24
+    31229800 100
+    31220000 4
+    31214000 2
+    31210000 3
+    31200000 18
+    31190000 2
+    31180100 48
+    
+    31161600 3
+    31160000 4
+    31152200 16
+    31151000 2
+    31150100 2
+    31150000 506
+    31140000 4
+    31130000 2
+    31120300 35
+    31120200 35
+    *********************************************************
+    CODES:
+    lst = [$data]
+    new = [[lst[2*i],lst[2*i+1]] for i in range(len(lst)//2)]
+    s = sorted(new, key=lambda pair: pair[0], reverse = True)
+    lst = [elem for pair in s for elem in pair]
+    [print(lst[2*i], lst[2*i+1]) for i in range(len(lst))]
+    =========================================================
+    """
 
 
 
