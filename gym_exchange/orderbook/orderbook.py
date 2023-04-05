@@ -52,33 +52,22 @@ class OrderBook(object):
         """This function assumes that the "type" field in the quote is an integer, and follows the LOBSTER convention of
         order types."""
         type=quote['type']
-        message=quote
-        if type==1: #Normal Limit Order
-            message['type']='limit'
-            trades,order_in_book=self.process_order(message,from_data=from_data,verbose=verbose)
-        elif type==2: #Cancellation order (partial deletion): simply update quantity
-            message['type']='cancel'
-            origin_quantity = self.bids.get_order(message['order_id']).quantity # origin_quantity is the quantity in the order book
-            adjusted_quantity = origin_quantity - message['quantity'] # quantity is the delta quantity
-            message['quantity']=adjusted_quantity
-            self.bids.update_order(message)
+        if type=='limit' or type=='market': #Normal Limit Order
+            trades,order_in_book=self.process_order(quote,from_data=from_data,verbose=verbose)
+        elif type=='cancel': #Cancellation order (partial deletion): simply update quantity
+            origin_quantity = self.bids.get_order(quote['order_id']).quantity # origin_quantity is the quantity in the order book
+            adjusted_quantity = origin_quantity - quote['quantity'] # quantity is the delta quantity
+            quote['quantity']=adjusted_quantity
+            self.bids.update_order(quote)
             trades=[]
-            order_in_book=message
-        elif type==3:
-            message['type']='delete'
-            self.cancel_order(message)
+            order_in_book=quote
+        elif type=='delete':
+            self.cancel_order(quote)
             trades=[]
-            order_in_book=message
-        elif type==4:
-            message['type']='market'
-            if message['side']=='ask':
-                message['side']='bid'
-            else:
-                message['side']='ask'
-            trades,order_in_book=self.process_order(message,from_data=from_data,verbose=verbose)
-        elif type == 5 or type == 6 or type ==7:
+            order_in_book=quote
+        elif type=='skip':
             trades=[]
-            order_in_book=message
+            order_in_book=quote
         else:
             sys.exit("Type is wrong")
 
