@@ -5,11 +5,9 @@
 .spyproject/**
 **.txt
 .DS_Store
-<<<<<<< HEAD
-=======
-.DS_Store
+
 gym_exchange/.DS_Store
 gym_exchange/data_orderbook_adapter/.DS_Store
 gym_exchange/orderbook/.DS_Store
 gymnax_exchange/.DS_Store
->>>>>>> 13162990c8af84df941d35406b4c0aff31999a4d
+**.xml
