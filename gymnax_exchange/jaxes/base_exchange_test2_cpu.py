@@ -79,6 +79,8 @@ class BaseExchange():
                 elif item.type == 3:
                     self.type3_handler(message)
 
+                    
+
     def accumulating(self):
         try:  # $
             self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid()) / 2)
@@ -86,8 +88,10 @@ class BaseExchange():
             self.best_asks.append(self.order_book.get_best_ask())
             # print(self.order_book) #$
         except:
-            print()  # $
+            # print()  # $
+            pass
         self.index += 1
+
 
     # ························ 03.03.02 ·························
     # ··········· component of the process_tasks ················
