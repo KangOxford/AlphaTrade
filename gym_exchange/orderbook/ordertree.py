@@ -42,8 +42,8 @@ class OrderTree(object):
         return order in self.order_map
 
     def insert_order(self, quote):
-        if self.order_exists(quote['order_id']):
-            self.remove_order_by_id(quote['order_id'])
+        #if self.order_exists(quote['order_id']):
+        #    self.remove_order_by_id(quote['order_id'])
         self.num_orders += 1
         if quote['price'] not in self.price_map:
             self.create_price(quote['price']) # If price not in Price Map, create a node in RBtree

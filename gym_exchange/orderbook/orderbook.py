@@ -55,14 +55,66 @@ class OrderBook(object):
         if type=='limit' or type=='market': #Normal Limit Order
             trades,order_in_book=self.process_order(quote,from_data=from_data,verbose=verbose)
         elif type=='cancel': #Cancellation order (partial deletion): simply update quantity
-            origin_quantity = self.bids.get_order(quote['order_id']).quantity # origin_quantity is the quantity in the order book
-            adjusted_quantity = origin_quantity - quote['quantity'] # quantity is the delta quantity
-            quote['quantity']=adjusted_quantity
-            self.bids.update_order(quote)
+            if quote['side']=='bid':
+                if self.bids.order_exists(quote['order_id']):
+                    if self.bids.get_order(quote['order_id']).quantity<=quote['quantity']:
+                            self.bids.remove_order_by_id(quote['order_id'])
+                    else:
+                        #remove as normal
+                        origin_quantity = self.bids.get_order(quote['order_id']).quantity # origin_quantity is the quantity in the order book
+                        adjusted_quantity = origin_quantity - quote['quantity'] # quantity is the delta quantity
+                        quote['quantity']=adjusted_quantity
+                        self.bids.update_order(quote)
+                    
+                elif self.bids.price_exists(quote['price']):
+                    #Try to find price to cancel and check if it contains an initial order. 
+                    orderlist=self.bids.get_price_list(quote['price'])
+                    if orderlist.get_head_order().order_id>=INITID: #assumes INITID is the start of a sequence of integers that grow - better convention might be to use continuous INITID for all. 
+                        if orderlist.get_head_order().quantity<=quote['quantity']:
+                            self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
+                        else:
+                            quote['order_id']=orderlist.get_head_order().order_id
+                            origin_quantity = self.bids.get_order(quote['order_id']).quantity # origin_quantity is the quantity in the order book
+                            adjusted_quantity = origin_quantity - quote['quantity'] # quantity is the delta quantity
+                            quote['quantity']=adjusted_quantity
+                            self.bids.update_order(quote)
+                else:
+                    #IGNORE cancel order
+                    pass
+                
+            elif quote['side']=='ask':
+                if self.asks.order_exists(quote['order_id']):
+                    if self.asks.get_order(quote['order_id']).quantity<=quote['quantity']:
+                            self.asks.remove_order_by_id(quote['order_id'])
+                    else:
+                        #remove as normal
+                        origin_quantity = self.asks.get_order(quote['order_id']).quantity # origin_quantity is the quantity in the order book
+                        adjusted_quantity = origin_quantity - quote['quantity'] # quantity is the delta quantity
+                        quote['quantity']=adjusted_quantity
+                        self.asks.update_order(quote)
+                elif self.asks.price_exists(quote['price']):
+                    #Try to find price to cancel and check if it contains an initial order. 
+                    orderlist=self.asks.get_price_list(quote['price'])
+                    if orderlist.get_head_order().order_id>=INITID: #assumes INITID is the start of a sequence of integers that grow - better convention might be to use continuous INITID for all. 
+                        if orderlist.get_head_order().quantity<=quote['quantity']:
+                            self.asks.remove_order_by_id(orderlist.get_head_order().order_id)
+                        else:
+                            quote['order_id']=orderlist.get_head_order().order_id
+                            origin_quantity = self.asks.get_order(quote['order_id']).quantity # origin_quantity is the quantity in the order book
+                            adjusted_quantity = origin_quantity - quote['quantity'] # quantity is the delta quantity
+                            quote['quantity']=adjusted_quantity
+                            self.asks.update_order(quote)
+                else:
+                    #IGNORE cancel order
+                    pass
+            else:
+                sys.exit('cancel_order() given neither "bid" nor "ask"')
+                pass
+                
             trades=[]
             order_in_book=quote
         elif type=='delete':
-            self.cancel_order(quote)
+            self.cancel_order(quote) #this will work as-is, any issues with messages will be flagged. 
             trades=[]
             order_in_book=quote
         elif type=='skip':
@@ -184,44 +236,39 @@ class OrderBook(object):
             self.time = time
         else:
             self.update_time()
+
         if order['side'] == 'bid':
-            print('got to the bid arm')
             if self.bids.order_exists(order['order_id']):
+                #Order ID is found, and order can be cancelled (deleted) by ID
                 self.bids.remove_order_by_id(order['order_id'])
-            else: 
-                print('got to the no ID issue')
+            elif self.bids.price_exists(order['price']):
+                #Order ID is not found, but price is. Proceed to check if price contains an initial order. 
                 orderlist=self.bids.get_price_list(order['price'])
-                print(orderlist)
                 if orderlist.get_head_order().order_id>=INITID:
-                    if orderlist.get_head_order().quantity==order['quantity']:
-                        print('Deleting whole order')
+                    if orderlist.get_head_order().quantity<=order['quantity']:
                         self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
                     else:
-                        print('Trying to cancel partial order')
                         order['order_id']=orderlist.get_head_order().order_id
                         self.modify_order(order['order_id'],order,order['timestamp'])
-                        print(order)
-                        #raise NotImplementedError 
-                        ##Need to just modify the order to reduce the quantity
+            else:
+                #No matching lim order found to cancel - ignore message. 
+                pass
         elif order['side'] == 'ask':
-            print('got to the ask arm')
             if self.asks.order_exists(order['order_id']):
+                #Order ID is found, and order can be cancelled (deleted) by ID
                 self.asks.remove_order_by_id(order['order_id'])
-            else: 
-                print('got to the no ID issue')
+            elif self.asks.price_exists(order['price']):
+                #Order ID is not found, but price is. Proceed to check if price contains an initial order. 
                 orderlist=self.asks.get_price_list(order['price'])
-                print(orderlist)
                 if orderlist.get_head_order().order_id>=INITID:
-                    if orderlist.get_head_order().quantity==order['quantity']:
-                        print('Deleting whole order')
+                    if orderlist.get_head_order().quantity<=order['quantity']:
                         self.asks.remove_order_by_id(orderlist.get_head_order().order_id)
                     else:
-                        print('Trying to cancel partial order')
                         order['order_id']=orderlist.get_head_order().order_id
                         self.modify_order(order['order_id'],order,order['timestamp'])
-                        print(order)
-                        #raise NotImplementedError 
-                        ##Need to just modify the order to reduce the quantity
+            else:
+                #No matching lim order found to cancel - ignore message. 
+                pass
         else:
             raise NotImplementedError # tbd
             sys.exit('cancel_order() given neither "bid" nor "ask"')
