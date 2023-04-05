@@ -11,3 +11,6 @@ gym_exchange/data_orderbook_adapter/.DS_Store
 gym_exchange/orderbook/.DS_Store
 gymnax_exchange/.DS_Store
 **.xml
+**/.idea/**/
+gymnax_exchange/.idea/
+gymnax_exchange/.idea/**
