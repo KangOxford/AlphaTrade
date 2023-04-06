@@ -152,7 +152,7 @@ def processOrderList(toMatch):
             return (orderlist.astype('int32'),quantToMatch.astype('int32'),trades)
 
         def partialMatchTopOrder(toMatch):
-            trade=jnp.array([toMatch[1],toMatch[0][0,1],toMatch[0][0,3],0,0,0,0])   
+            trade=jnp.array([toMatch[1],toMatch[0][0,1],toMatch[0][0,3],0,0,0,0]) #Quant, Price, Standing ID, Agr ID, Trade ID, Time, Time (ns)
             trades=jnp.delete(toMatch[2],-1,axis=0)
             trades=jnp.insert(trades,0,trade,axis=0)
             quantToMatch=jnp.int32(0)
@@ -312,7 +312,7 @@ def processLOBSTERexecution(order,orderbook,trades):
 
 @jax.jit
 def processOrder(orderbook,order,tradesLen=5):
-    trades=(jnp.ones([tradesLen,7])*-1).astype('int32') #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
+    trades=(jnp.ones([tradesLen,7])*-1).astype('int32') #Quant, Price, Standing ID, Agr ID, Trade ID, Time, Time (ns)
     order=order.astype('int32')
     orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
     return orderbook,trades
