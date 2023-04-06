@@ -1,4 +1,9 @@
 # ========================= 01 =========================
+import sys
+sys.path.append('/Users/sasrey/AlphaTrade/gym_exchange')
+sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('/Users/sasrey/AlphaTrade/gymnax_exchange')
+
 from gym_exchange import Config
 from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder, RawEncoder
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
@@ -6,8 +11,8 @@ from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
-from gym_exchange.orderbook.orderbook import OrderBook
-# from gymnax_exchange.jaxob.jorderbook import OrderBook
+#from gym_exchange.orderbook.orderbook import OrderBook
+from gymnax_exchange.jaxob.jorderbook import OrderBook
 
 # ========================= 03 =========================
 class BaseExchange():
@@ -72,6 +77,7 @@ class BaseExchange():
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
+                print(message)
                 if item.type == 1:
                     self.type1_handler(message, index)
                 elif item.type == 2:
@@ -86,17 +92,21 @@ class BaseExchange():
             self.best_asks.append(self.order_book.get_best_ask())
             # print(self.order_book) #$
         except:
-            print()  # $
+            print('issue')  # $
         self.index += 1
 
     # ························ 03.03.02 ·························
     # ··········· component of the process_tasks ················
     def type1_handler(self, message, index):
         trades, order_in_book = self.order_book.process_order(message, True, False)
-        self.executed_pairs_recoder.step(trades, self.index)  # 2nd para: kind
+        #self.executed_pairs_recoder.step(trades, self.index)  # 2nd para: kind
 
     def type2_handler(self, message):
         ''' Cancellation (Partial deletion of a limit order)'''
+        trades, order_in_book = self.order_book.process_order(message, True, False)
+        
+        
+        """
         tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
         try:
             in_book_quantity = tree.get_order(message['order_id']).quantity
@@ -105,9 +115,14 @@ class BaseExchange():
         except:
             '''EXAMPLE: in get_order return self.order_map[order_id] KeyError: 17142637'''
             pass  # TODO
+        """
 
     def type3_handler(self, message):
         '''Deletion (Total deletion of a limit order)'''
+        trades, order_in_book = self.order_book.process_order(message, True, False)
+        
+
+        """
         done = False
         right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
         if right_tree.order_exists(message['order_id']) == False:
@@ -144,13 +159,16 @@ class BaseExchange():
                 time=message['timestamp'],
             )
             self.cancelled_quantity = message['quantity']
+        """
 
 
 if __name__ == "__main__":
     exchange = BaseExchange()
     exchange.reset()
+    print('reset complete')
     for _ in range(2048):
         exchange.step()
+    print('run complete')
 
 """
 =========================================================

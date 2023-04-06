@@ -1,8 +1,11 @@
+from sre_constants import IN
 import sys
 import math
 from collections import deque # a faster insert/pop queue
 from six.moves import cStringIO as StringIO  # pyright: ignore
 from decimal import Decimal
+
+from sortedcontainers import SortedDict
 
 from .ordertree import OrderTree
 
@@ -229,9 +232,10 @@ class OrderBook(object):
             sys.exit('process_limit_order() given neither "bid" nor "ask"')
         return trades, order_in_book
 
-    def cancel_order(self, order,time=None):
-        if order['timestamp']:
-            self.time = order['timestamp']
+    def cancel_order(self, order):
+        time=order['timestamp']
+        if time:
+            self.time = time
         else:
             self.update_time()
 
@@ -319,6 +323,21 @@ class OrderBook(object):
 
     def get_worst_ask(self):
         return self.asks.max_price()
+
+
+    def get_L2_state(self):
+        '''Function to return a 4xNlvl array that represents the orderbook state'''
+        bid_prices=list(self.bids.price_map.keys())
+        objs=self.bids.price_map.values()[:]
+        bid_quants = [o.volume for o in objs]
+
+        ask_prices=list(self.asks.price_map.keys())
+        objs=self.asks.price_map.values()[:]
+        ask_quants = [o.volume for o in objs]
+
+        bid_prices.reverse()
+        bid_quants.reverse()
+        return ask_prices,ask_quants,bid_prices,bid_quants
 
     def tape_dump(self, filename, filemode, tapemode):
         dumpfile = open(filename, filemode)
