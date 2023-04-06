@@ -229,9 +229,9 @@ class OrderBook(object):
             sys.exit('process_limit_order() given neither "bid" nor "ask"')
         return trades, order_in_book
 
-    def cancel_order(self, side, order_id, time=None):
-        if time:
-            self.time = time
+    def cancel_order(self, order,time=None):
+        if order['timestamp']:
+            self.time = order['timestamp']
         else:
             self.update_time()
 
