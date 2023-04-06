@@ -18,10 +18,8 @@ class Exchange(BaseExchange):
     def reset(self):
         super().reset()
         # self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2] #$ origin should it be []???? TODO
-        self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2]
-        self.best_bids = [self.order_book.get_best_bid()]
-        self.best_asks = [self.order_book.get_best_ask()]
         self.auto_cancels = AutoCancels()
+
 
     # -------------------------- 03.02 ----------------------------
     def step(self, action = None): # action : Action(for the definition of type)

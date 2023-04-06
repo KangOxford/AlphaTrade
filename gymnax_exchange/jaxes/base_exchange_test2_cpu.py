@@ -1,13 +1,12 @@
 # ========================= 01 =========================
 from gym_exchange import Config
+from gym_exchange.orderbook import OrderBook
 from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder, RawEncoder
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
+from gymnax_exchange.jaxes.assets.executed_pairs import ExecutedPairsRecorder
 
-from gym_exchange.orderbook.orderbook import OrderBook
-# from gymnax_exchange.jaxob.jorderbook import OrderBook
 
 # ========================= 03 =========================
 class BaseExchange():
@@ -44,6 +43,9 @@ class BaseExchange():
         self.order_book = OrderBook()
         self.initialize_orderbook()
         self.executed_pairs_recoder = ExecutedPairsRecorder()
+        self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid()) / 2]
+        self.best_bids = [self.order_book.get_best_bid()]
+        self.best_asks = [self.order_book.get_best_ask()]
 
     def initialize_orderbook(self):
         '''only take the index0, the first one to init the lob'''
@@ -79,8 +81,6 @@ class BaseExchange():
                 elif item.type == 3:
                     self.type3_handler(message)
 
-                    
-
     def accumulating(self):
         try:  # $
             self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid()) / 2)
@@ -88,10 +88,9 @@ class BaseExchange():
             self.best_asks.append(self.order_book.get_best_ask())
             # print(self.order_book) #$
         except:
-            # print()  # $
+            # print() #$
             pass
         self.index += 1
-
 
     # ························ 03.03.02 ·························
     # ··········· component of the process_tasks ················
@@ -189,46 +188,3 @@ lst = [elem for pair in s for elem in pair]
 [print(lst[2*i], lst[2*i+1]) for i in range(len(lst))]
 =========================================================
 """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

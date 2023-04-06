@@ -42,6 +42,9 @@ class BaseExchange():
         self.order_book = OrderBook()
         self.initialize_orderbook()
         self.executed_pairs_recoder = ExecutedPairsRecorder()
+        self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2]
+        self.best_bids = [self.order_book.get_best_bid()]
+        self.best_asks = [self.order_book.get_best_ask()]
 
     def initialize_orderbook(self):
         '''only take the index0, the first one to init the lob'''
