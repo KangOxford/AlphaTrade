@@ -10,7 +10,7 @@ from sortedcontainers import SortedDict
 from .ordertree import OrderTree
 
 
-INITID=15000000
+INITID=90000000
 
 class OrderBook(object):
     def __init__(self, tick_size = 0.0001):
@@ -138,6 +138,7 @@ class OrderBook(object):
             counter_party = head_order.trade_id
             new_book_quantity = None
             if quantity_to_trade < head_order.quantity:
+                #Less to trade than size of order: match partially
                 traded_quantity = quantity_to_trade
                 # Do the transaction
                 new_book_quantity = head_order.quantity - quantity_to_trade
@@ -146,16 +147,16 @@ class OrderBook(object):
             elif quantity_to_trade == head_order.quantity:
                 traded_quantity = quantity_to_trade
                 if side == 'bid':
-                    self.bids.remove_order_by_id(head_order.order_id)
+                    self.bids.remove_order_by_obj(head_order)
                 else:
-                    self.asks.remove_order_by_id(head_order.order_id)
+                    self.asks.remove_order_by_obj(head_order)
                 quantity_to_trade = 0
             else: # quantity to trade is larger than the head order
                 traded_quantity = head_order.quantity
                 if side == 'bid':
-                    self.bids.remove_order_by_id(head_order.order_id)
+                    self.bids.remove_order_by_obj(head_order)
                 else:
-                    self.asks.remove_order_by_id(head_order.order_id)
+                    self.asks.remove_order_by_obj(head_order)
                 quantity_to_trade -= traded_quantity
             if verbose:
                 print(("TRADE: Time - {}, Price - {}, Quantity - {}, TradeID - {}, Matching TradeID - {}".format(self.time, traded_price, traded_quantity, counter_party, quote['trade_id'])))
@@ -220,6 +221,7 @@ class OrderBook(object):
                 quantity_to_trade, new_trades = self.process_order_list('bid', best_price_bids, quantity_to_trade, quote, verbose)
                 trades += new_trades
             # If volume remains, need to update the book with new quantity
+            best_price_bids = self.bids.max_price_list()
             if quantity_to_trade > 0:
                 if not from_data:
                     quote['order_id'] = self.next_order_id
@@ -239,12 +241,16 @@ class OrderBook(object):
 
         if order['side'] == 'bid':
             if self.bids.order_exists(order['order_id']):
+                print('should not be here')
+                print(self.bids.order_map[order['order_id']])
                 #Order ID is found, and order can be cancelled (deleted) by ID
                 self.bids.remove_order_by_id(order['order_id'])
             elif self.bids.price_exists(order['price']):
+                print('should be here')
                 #Order ID is not found, but price is. Proceed to check if price contains an initial order. 
                 orderlist=self.bids.get_price_list(order['price'])
                 if orderlist.get_head_order().order_id>=INITID:
+                    print('but should never get here as',orderlist.get_head_order().order_id,'is smalled than',INITID)
                     if orderlist.get_head_order().quantity<=order['quantity']:
                         self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
                     else:

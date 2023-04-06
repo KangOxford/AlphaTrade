@@ -1,3 +1,6 @@
+from os import remove
+
+
 class OrderList(object):
     '''
     A doubly linked list of Orders. Used to iterate through Orders when
@@ -53,6 +56,10 @@ class OrderList(object):
             self.tail_order = order
         self.length +=1
         self.volume += order.quantity
+
+    def remove_head_order(self):
+        self.remove_order(self.head_order)
+
 
     def remove_order(self, order):
         self.volume -= order.quantity

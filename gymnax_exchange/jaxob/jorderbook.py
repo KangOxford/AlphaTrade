@@ -19,7 +19,21 @@ class OrderBook(object):
     def process_order(self,quote:Dict,from_data=False,verbose=False):
         '''Wrapper function for the object class that takes a Dict Object as the quote,
          ensures the order is conserved and turns the values into a jnp array which is passed to the JNP ProcessOrder function'''
-        order_array=jnp.array(list(collections.OrderedDict(quote).values()))
+        #Type, Side,quant,price
+        inttype=5
+        if quote['type']=='limit':
+            inttype=1
+        elif quote['type']=='cancel':
+            inttype=2
+        elif quote['type']=='delete':
+            inttype=3
+        elif quote['type']=='market':
+            inttype=4
+        intside=-1
+        if quote['side']=='bid':
+            intside=1
+                
+        order_array=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
         self.orderbook_array,trades=job.processOrder(self.orderbook_array,order_array)
         return trades,order_array
 
