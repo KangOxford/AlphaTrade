@@ -24,7 +24,7 @@ class OrderBook(object):
         self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1
-        self.orderbook_array=self.orderbook_array.astype(int)
+        self.orderbook_array=self.orderbook_array.astype('int32')
 
     def process_order(self,quote:Dict,from_data=False,verbose=False):
         '''Wrapper function for the object class that takes a Dict Object as the quote,
@@ -48,7 +48,7 @@ class OrderBook(object):
         return trades,order_array
 
     def process_orders_array(self,msgs):
-        '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx7), and applies them, in sequence, to the orderbook'''
+        '''Wrapper function for the object class that takes a JNP Array of orders (Shape=Nx8), and applies them, in sequence, to the orderbook'''
         self.orderbook_array,trades=lax.scan(job.processOrder,self.orderbook_array,msgs)
         return trades
 

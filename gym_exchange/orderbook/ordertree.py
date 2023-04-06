@@ -76,14 +76,7 @@ class OrderTree(object):
         if len(order.order_list) == 0:
             self.remove_price(order.price)
         del self.order_map[order_id]
-    
-    def remove_order_by_obj(self,order):
-        self.num_orders -= 1
-        self.volume -= order.quantity
-        order.order_list.remove_order(order)
-        if len(order.order_list) == 0:
-            self.remove_price(order.price)
-        del order
+
 
     def max_price(self):
         if self.depth > 0:

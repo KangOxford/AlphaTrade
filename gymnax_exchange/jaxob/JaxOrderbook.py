@@ -9,9 +9,9 @@ from traitlets import Int
 
 
 INITID=-999999
-ORDERSIZE=6
+ORDERSIZE=6 #Size of an order in the book: Quant/Price/Trader ID/Order ID/Time (s)/Time (ns)
 
-'''Module Name'''
+'''Functions implementing changes to the orderbook array and generating arrays of trades.'''
 
 
 @jax.jit
@@ -205,7 +205,7 @@ def processLMTOrder(order,orderbook,trades): #limside should be -1/1
     toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,order[2],order[3],limSide,trades)) #sidedata to match from,quant,price,side of limOrder
     orderbook=orderbook.at[matchSide,:,:,:].set(toMatch_ret[0])
     trades=toMatch_ret[4]
-    trades=trades.at[:,5].set(order[6]).at[:,3].set(order[5])
+    trades=trades.at[:,5].set(order[6]).at[:,3].set(order[5]).at[:,6].set(order[7])
     order=order.at[2].set(toMatch_ret[1])
     
     orderbook=addOrder(order,orderbook)
@@ -248,7 +248,6 @@ def cancelOrder(order,orderbook,trades):
 #DELETE ORDER - LOBSTER ID = 3
 @jax.jit
 def delOrder_2arg(order,orderbook,trades):
-
     def newID(order,orderbook,loc,trades):
         #The order you're looking for has the INIT ID
         locnew=jnp.where((orderbook[:,:,:,3]==INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
@@ -294,7 +293,7 @@ def processMKTOrder(order,orderbook,trades):
     
     toMatch_ret=lax.while_loop(while_cond,while_body,(orderside,quant,trades))
     trades=toMatch_ret[2]
-    trades=trades.at[:,5].set(order[6]).at[:,3].set(order[5])
+    trades=trades.at[:,5].set(order[6]).at[:,3].set(order[5]).at[:,6].set(order[7])
     orderbook=orderbook.at[side,:,:,:].set(toMatch_ret[0])
     return orderbook,trades
 
@@ -312,9 +311,9 @@ def processLOBSTERexecution(order,orderbook,trades):
 
 @jax.jit
 def processOrder(orderbook,order,tradesLen=5):
-    trades=(jnp.ones([tradesLen,6])*-1).astype('int32') #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
+    trades=(jnp.ones([tradesLen,7])*-1).astype('int32') #Time,Time n_s, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
     order=order.astype(int32)
-    orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processLOBSTERexecution,doNothing,doNothing,doNothing],order,orderbook,trades)
+    orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
     return orderbook,trades
 
 

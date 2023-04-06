@@ -10,7 +10,7 @@ from sortedcontainers import SortedDict
 from .ordertree import OrderTree
 
 
-INITID=90000000
+INITID=90000000 #90 Million
 
 class OrderBook(object):
     def __init__(self, tick_size = 0.0001):
@@ -49,8 +49,7 @@ class OrderBook(object):
         return trades, order_in_book
 
     def processOrder(self,quote,from_data,verbose):
-        """This function assumes that the "type" field in the quote is an integer, and follows the LOBSTER convention of
-        order types."""
+        """This function assumes that the quote is in the standard form."""
         type=quote['type']
         if type=='limit' or type=='market': #Normal Limit Order
             trades,order_in_book=self.process_order(quote,from_data=from_data,verbose=verbose)
@@ -110,7 +109,6 @@ class OrderBook(object):
             else:
                 sys.exit('cancel_order() given neither "bid" nor "ask"')
                 pass
-                
             trades=[]
             order_in_book=quote
         elif type=='delete':
@@ -147,16 +145,16 @@ class OrderBook(object):
             elif quantity_to_trade == head_order.quantity:
                 traded_quantity = quantity_to_trade
                 if side == 'bid':
-                    self.bids.remove_order_by_obj(head_order)
+                    self.bids.remove_order_by_id(head_order.order_id)
                 else:
-                    self.asks.remove_order_by_obj(head_order)
+                    self.asks.remove_order_by_id(head_order.order_id)
                 quantity_to_trade = 0
             else: # quantity to trade is larger than the head order
                 traded_quantity = head_order.quantity
                 if side == 'bid':
-                    self.bids.remove_order_by_obj(head_order)
+                    self.bids.remove_order_by_id(head_order.order_id)
                 else:
-                    self.asks.remove_order_by_obj(head_order)
+                    self.asks.remove_order_by_id(head_order.order_id)
                 quantity_to_trade -= traded_quantity
             if verbose:
                 print(("TRADE: Time - {}, Price - {}, Quantity - {}, TradeID - {}, Matching TradeID - {}".format(self.time, traded_price, traded_quantity, counter_party, quote['trade_id'])))
