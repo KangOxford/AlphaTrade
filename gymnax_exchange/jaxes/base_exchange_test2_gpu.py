@@ -95,7 +95,7 @@ class BaseExchange():
             self.best_asks.append(self.order_book.get_best_ask())
             # print(self.order_book) #$
         except:
-            # print()  # $
+            print('issue')  # $
             pass
         self.index += 1
 
@@ -181,6 +181,7 @@ if __name__ == "__main__":
     exchange.reset()
     for _ in range(2048):
         exchange.step()
+    print(exchange.mid_prices)
 
     """
     =========================================================

@@ -10,13 +10,13 @@ class ExecutedPairsRecorder():
     def trades2pairs(self, trades):  # to be used in step
         pairs = []
         for trade in trades:
-            value = np.array([trade['price'], trade['quantity']])
+            value = np.array([trade[1], trade[0]]) #price, quant
             # value = np.array([trade['price'], trade['quantity']]).T
-            parties = [trade['party1'], trade['party2']]
+            parties = [trade[2], trade[3]] #standing, agressing 
             for party in parties:
                 """ trade_id_generator = 80000000
                     order_id_generator = 88000000 """
-                if len(str(party[0])) == 8 and str(party[0])[:2] in (
+                if len(str(party)) == 8 and str(party)[:2] in (
                 "80", "88"):  # party[0] is trade id ,Not sure, perhpas order id
                     kind = 'agent'
                 else:
