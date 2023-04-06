@@ -6,7 +6,6 @@ from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
-# from gym_exchange.orderbook.orderbook import OrderBook
 from gymnax_exchange.jaxob.wrapped_jorderbook import OrderBook
 # import gymnax_exchange.jaxob.JaxOrderbook as job
 
@@ -96,9 +95,11 @@ class BaseExchange():
 
     # ························ 03.03.02 ·························
     # ··········· component of the process_tasks ················
+
     def type1_handler(self, message, index):
         trades, order_in_book = self.order_book.process_order(message, True, False)
         self.executed_pairs_recoder.step(trades, self.index)  # 2nd para: kind
+
 
     def type2_handler(self, message):
         ''' Cancellation (Partial deletion of a limit order)'''
@@ -111,9 +112,11 @@ class BaseExchange():
             '''EXAMPLE: in get_order return self.order_map[order_id] KeyError: 17142637'''
             pass  # TODO
 
+
     def type3_handler(self, message):
         '''Deletion (Total deletion of a limit order)'''
         done = False
+
         print("=========")
         print(self.order_book.orderbook_array)
         quote = {**message, 'type': 'delete'}
@@ -121,62 +124,63 @@ class BaseExchange():
         print("=========")
         print(self.order_book.orderbook_array)
 
+        # # raise NotImplementedError
+        # assert order_book[0:] == -1
 
 
 
 
 
-
-        right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+        # right_tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
+        # # if right_tree.order_exists(message['order_id']) == False:
         # if right_tree.order_exists(message['order_id']) == False:
-        if right_tree.order_exists(message['order_id']) == False:
-            ''' right_tree
-            Array([[[      48, 31180100, 90000000, 90000000,    34200,        1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1]],
-                   [[       2, 31190000, 90000000, 90000001,    34200,        1],
-                    [      -1,       -1,       -1,       -1,       -1,       -1],
-            '''
-            try:  # message['price'] in the order_book
-                right_price_list = right_tree.get_price_list(message['price'])  # my_price
-                for order in right_price_list:
-                    if 90000000 <= order.order_id and order.order_id < 100000000:  # if my_order_id in initial_orderbook_ids
-                        '''Initial orderbook id is created via the exchange
-                        cannot be the same with the message['order_id'].
-                        Solution: total delete the first (90000000) order in the orderlist
-                        at the price we want to totally delete.
-                        message['order_id'] not in the order_book.
-                        message['timestamp'] not in the order_book.
-                        Only tackle with single order. If found, break.
-                        Solution code: 31'''
-                        self.order_book.cancel_order(
-                            side=message['side'],
-                            order_id=order.order_id,
-                            time=order.timestamp,
-                        )
-                        self.cancelled_quantity = order.quantity
-                        done = True;
-                        break
-                if not done:
-                    raise NotImplementedError
-            except:  # message['price'] not in the order_book
-                pass
-                # print()#$
-                # raise NotImplementedError #TODO
-        else:  # right_tree.order_exists(message['order_id']) == True
-            self.order_book.cancel_order(
-                side=message['side'],
-                order_id=message['order_id'],
-                time=message['timestamp'],
-            )
-            self.cancelled_quantity = message['quantity']
+        #     ''' right_tree
+        #     Array([[[      48, 31180100, 90000000, 90000000,    34200,        1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1]],
+        #            [[       2, 31190000, 90000000, 90000001,    34200,        1],
+        #             [      -1,       -1,       -1,       -1,       -1,       -1],
+        #     '''
+        #     try:  # message['price'] in the order_book
+        #         right_price_list = right_tree.get_price_list(message['price'])  # my_price
+        #         for order in right_price_list:
+        #             if 90000000 <= order.order_id and order.order_id < 100000000:  # if my_order_id in initial_orderbook_ids
+        #                 '''Initial orderbook id is created via the exchange
+        #                 cannot be the same with the message['order_id'].
+        #                 Solution: total delete the first (90000000) order in the orderlist
+        #                 at the price we want to totally delete.
+        #                 message['order_id'] not in the order_book.
+        #                 message['timestamp'] not in the order_book.
+        #                 Only tackle with single order. If found, break.
+        #                 Solution code: 31'''
+        #                 self.order_book.cancel_order(
+        #                     side=message['side'],
+        #                     order_id=order.order_id,
+        #                     time=order.timestamp,
+        #                 )
+        #                 self.cancelled_quantity = order.quantity
+        #                 done = True;
+        #                 break
+        #         if not done:
+        #             raise NotImplementedError
+        #     except:  # message['price'] not in the order_book
+        #         pass
+        #         # print()#$
+        #         # raise NotImplementedError #TODO
+        # else:  # right_tree.order_exists(message['order_id']) == True
+        #     self.order_book.cancel_order(
+        #         side=message['side'],
+        #         order_id=message['order_id'],
+        #         time=message['timestamp'],
+        #     )
+        #     self.cancelled_quantity = message['quantity']
 
 
 if __name__ == "__main__":
