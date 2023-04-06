@@ -186,6 +186,8 @@ if __name__ == "__main__":
         exchange.step()
     print(exchange.mid_prices)
 
+
+
     """
     =========================================================
     ORDERBOOK:(Initialized, AMZN 2021.04.01)
