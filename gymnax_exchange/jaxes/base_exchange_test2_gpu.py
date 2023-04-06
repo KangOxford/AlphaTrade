@@ -1,10 +1,17 @@
 # ========================= 01 =========================
+import sys
+sys.path.append('/Users/sasrey/AlphaTrade/gym_exchange')
+sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('/Users/sasrey/AlphaTrade/gymnax_exchange')
+
+
+
 from gym_exchange import Config
 from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder, RawEncoder
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
+from gymnax_exchange.jaxes.assets.executed_pairs import ExecutedPairsRecorder
 
 from gymnax_exchange.jaxob.wrapped_jorderbook import OrderBook
 # import gymnax_exchange.jaxob.JaxOrderbook as job
@@ -103,26 +110,12 @@ class BaseExchange():
 
     def type2_handler(self, message):
         ''' Cancellation (Partial deletion of a limit order)'''
-        tree = self.order_book.bids if message['side'] == 'bid' else self.order_book.asks
-        try:
-            in_book_quantity = tree.get_order(message['order_id']).quantity
-            message['quantity'] = min(message['quantity'], in_book_quantity)  # adjuested_message
-            (self.order_book.bids if message['side'] == 'bid' else self.order_book.asks).update_order(message)
-        except:
-            '''EXAMPLE: in get_order return self.order_map[order_id] KeyError: 17142637'''
-            pass  # TODO
+        trades, order_in_book = self.order_book.process_order(message, True, False)
 
 
     def type3_handler(self, message):
         '''Deletion (Total deletion of a limit order)'''
-        done = False
-
-        print("=========")
-        print(self.order_book.orderbook_array)
-        quote = {**message, 'type': 'delete'}
-        self.order_book.process_order(quote)
-        print("=========")
-        print(self.order_book.orderbook_array)
+        trades, order_in_book = self.order_book.process_order(message, True, False)
 
         # # raise NotImplementedError
         # assert order_book[0:] == -1
