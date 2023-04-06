@@ -1,0 +1,47 @@
+.. _vwap_2002:
+
+VWAP Strategies, 2002
+====================
+
+1. Authors: 
+--------------------
+
+Ananth Madhavan
+
+2. Affiliation: 
+--------------------
+
+ITG Inc., New York City.
+
+3. Keywords: 
+--------------------
+
+VWAP benchmark, trading strategies, automated VWAP, tracking error, trading costs.
+
+4. Urls: 
+--------------------
+
+None
+
+5. Summary: 
+--------------------
+
+(1): This paper focuses on the volume-weighted average price (VWAP) benchmark and examines its effectiveness in evaluating traders' performance in global markets. 
+
+(2): The paper presents three possible trading strategies to achieve the VWAP benchmark, including selling the order to a broker-dealer who guarantees VWAP; crossing the order for execution at a future date at VWAP; and trading the order to achieve the benchmark or better. The paper argues that the uncritical use of VWAP as a benchmark can promote trading behavior that actually increases costs and risk. The approach is well motivated because VWAP benchmarks are prevalent outside the U.S., especially in Japan and continental Europe, and the widespread use of VWAP benchmarks raises several natural questions. 
+
+(3): The paper reviews the logic of the VWAP benchmark and the extent to which it can be meaningfully defined. It then examines the advantages and disadvantages of alternative strategies (forward VWAP crosses, automated participation strategies, guaranteed VWAP bids, and agency trading) to achieve execution close to VWAP. An especially attractive alternative is an automated VWAP strategy. 
+
+(4): The paper shows that while VWAP strategies are conceptually straightforward, their implementation is more difficult than commonly believed. Traders and portfolio managers should exercise considerable caution when trying to achieve VWAP benchmarks. The paper does not report numerical results but rather provides insights and recommendations for traders and portfolio managers.
+
+6. Conclusion:
+--------------------
+
+(1): The significance of this work lies in its examination of the volume-weighted average price (VWAP) benchmark, which is extensively used to evaluate traders' performance in global markets. The paper presents alternative trading strategies to achieve VWAP, and evaluates their effectiveness in achieving execution close to VWAP.
+
+(2): Innovation point: The paper presents an alternative approach to achieving the VWAP benchmark that is different from the conventional approach of trading the order to achieve the benchmark or better. 
+
+(3): Performance: The paper provides an insightful analysis of the advantages and disadvantages of alternative VWAP strategies, including automated participation strategies, guaranteed VWAP bids, and agency trading. It also highlights the implementation challenges that arise when traders try to achieve VWAP benchmarks.
+
+(4): Workload: The paper does not report numerical results, but provides valuable insights and recommendations for traders and portfolio managers to help them exercise caution when trying to achieve VWAP benchmarks. The paper is well-written and easy to read, with clear and concise explanations of concepts.
+

@@ -46,22 +46,24 @@ class OrderFlowGenerator(object):
         self.order_id_generator = OrderIdGenerator()
     
         
-    def step(self, action: np.ndarray, price_list) -> OrderFlow:
+    def step(self, action: np.ndarray, best_ask_bid_dict) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
-        self.action = action # [side, quantity, price_delta]
-        self.price_list = price_list
+        self.action = action # [side, quantity_delta, price_delta]
+        self.best_ask_bid_dict = best_ask_bid_dict
         content_dict, revised_content_dict = self.get_content_dicts()
+        # [side, quantity_delta, price_delta] => [side, quantity, price]
         order_flow = OrderFlow(**content_dict)
         auto_cancel = OrderFlow(**revised_content_dict) # TODO
         return order_flow, auto_cancel
      
     def get_content_dicts(self):
-        residual_action, residual_done = self.residual_policy.step()
-        print(f">>> residual_action: Quantity: {residual_action}, residual_policy_done: {residual_done}") #$
+        self.residual_action, self.residual_done = self.residual_policy.step()
         content_dict = {
             "Type" : 1, # submission of a new limit order
-            "direction" : self.action[0],
-            "size": max(0, self.action[1] + residual_action),
+            # "direction" : self.action[0], # TODO should be right
+            "direction" : self.action[0], # TODO masked for oneside task
+            # "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
+            "size": max(0, self.action[1] + self.residual_action), # original
             "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,
@@ -81,10 +83,10 @@ class OrderFlowGenerator(object):
         assert content_dict['size'] >= 0, "The real quote size should be non-negative"
         return content_dict, revised_content_dict
     
-    
+
     @property
     def price(self):
-        return PriceDelta(self.price_list)(side = 'ask' if self.action[0]==0 else 'bid', price_delta = self.action[2]) # side, price_delta
+        return PriceDelta(self.best_ask_bid_dict)(side = 'ask' if self.action[0]==0 else 'bid', price_delta = self.action[2]) # side, price_delta
     @property
     def trade_id(self):
         return self.trade_id_generator.step()

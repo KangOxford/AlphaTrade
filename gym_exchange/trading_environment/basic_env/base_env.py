@@ -1,5 +1,5 @@
 import numpy as np
-
+import sys; sys.path.append('/Users/kang/AlphaTrade/')
 from gym_exchange import Config
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
@@ -8,7 +8,6 @@ from gym_exchange.trading_environment.basic_env.assets.reward import RewardGener
 from gym_exchange.trading_environment.basic_env.assets.action import Action
 from gym_exchange.trading_environment.basic_env.assets.orderflow import OrderFlowGenerator
 from gym_exchange.trading_environment.basic_env.assets.task import NumLeftProcessor
-from gym_exchange.trading_environment.basic_env.assets.renders import base_env_render
 
 from gym_exchange.trading_environment.basic_env.metrics.vwap import VwapEstimator
 
@@ -16,6 +15,10 @@ from gym_exchange.trading_environment.basic_env.interface_env import InterfaceEn
 from gym_exchange.trading_environment.basic_env.interface_env import State # types
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
+from gym_exchange.trading_environment.basic_env.utils import broadcast_lists
+from gym_exchange.trading_environment.basic_env.assets.renders.plot_render import plot_render
+from gym_exchange.trading_environment.basic_env.assets.info import InfoGenerator
+from gym_exchange.trading_environment.basic_env.metrics.measure import OrderbookDistance
 
 
 # *************************** 2 *************************** #
@@ -42,6 +45,8 @@ class BaseEnv(InterfaceEnv):
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
+        self.info_generator = InfoGenerator()
+        self.orderbook_distance = OrderbookDistance()
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ···················· 
@@ -63,38 +68,41 @@ class BaseEnv(InterfaceEnv):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
-
+        print(action)  #$
         # ···················· 03.00.03 ···················· 
-        decoded_action = Action.decode(action)  # [side, quantity_delta, price_delta]
+        decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
-        self.accumulator()
         return state, reward, done, info
-    def accumulator(self):
-        self.num_left_processor.step(self)
-        self.cur_step += 1
+
     # --------------------- 03.01 ---------------------
 
     def state(self, action: Action) -> State:
-        print(f"$$$ num_left_processor.num_left {self.num_left_processor.num_left} / <=0 ") #$
-        print(f"$$$ cur_step {self.cur_step} / Config.max_horizon {Config.max_horizon}") #$
-        # ···················· 03.00.01 ····················
+        # if self.cur_step == 3718:
+        #     print()#$
+        print(self.cur_step) #$
+        # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
-        price_list = np.array(brief_order_book(self.exchange.order_book, 'bid' if action[0] == 1 else 'ask'))[::2] # slice all odd numbers
-        order_flows = self.order_flow_generator.step(action, price_list) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+        best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
+        order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
         order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
-        print(f">>> composite action: {wrapped_order_flow}") #$
+        self.wrapped_order_flow = wrapped_order_flow
         self.exchange.step(wrapped_order_flow)
-        # ···················· 03.00.02 ····················
+        # ···················· 03.01.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel)
-        # ···················· 03.00.03 ····················
-        print(f"self.exchange.index: {self.exchange.index}") #$
-        state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
+        # ···················· 03.01.03 ····················
+        state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
+        # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
         state = state.reshape(4, Config.price_level).astype(np.int64)
+        # ···················· 03.01.04 ····················
+        # self.accumulator {
+        self.num_left_processor.step(self)
+        self.cur_step += 1
+        # self.accumulator }
         return state
     # --------------------- 03.02 ---------------------
     @property
@@ -113,29 +121,22 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.04 ---------------------
     @property
     def info(self):
-        """in an liquidation task the market_vwap ought to be
-        higher, as they are not eagle to takt the liquidity,
-        and can be executed at higher price."""
-        self.vwap_estimator.update(self.exchange.executed_pairs_recoder, self.done)
-        step_vwap_info_dict, epoch_vwap_info_dict = self.vwap_estimator.step()
-        if epoch_vwap_info_dict is None:
-            return {}
-        else:
-            return {**epoch_vwap_info_dict}
-        
-        # if epoch_vwap_info_dict is None:
-        #     return {**step_vwap_info_dict}
-        # else:
-        #     return {**step_vwap_info_dict, **epoch_vwap_info_dict}
+        returned_info = self.info_generator.step(self)
+        return returned_info
+
+
 
     # ========================== 04 ==========================
     def render(self, mode = 'human'):
         '''for render method'''
         # base_env_render(self)
+        if self.done:
+            plot_render(self)
         pass
 
 
 if __name__ == "__main__":
+    '''
     # --------------------- 05.01 --------------------- 
     # from stable_baselines3.common.env_checker import check_env
     # env = BaseEnv()
@@ -147,22 +148,38 @@ if __name__ == "__main__":
     # import time;time.sleep(5)
     for i in range(int(1e6)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        # action = Action(direction = 'bid', quantity_delta = 5, price_delta = -1) #$
-        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$
-        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$
-        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = -1) #$
-        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$
-        # action = Action(side = 'bid', quantity = 1, price_delta = 1) #$
-        print(f">>> delta_action: {action}") #$
+        # action = Action(direction = 'bid', quantity_delta = 5, price_delta = 1) #$ 03 tested
+        # action = Action(direction = 'bid', quantity_delta = 0, price_delta = 1) #$ # 04 testesd
+        action = Action(direction = 'bid', quantity_delta = 0, price_delta = 0) #$ 01 tested
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 0) #$ 02 tested
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$ 05 tested
+        # action = Action(direction = 'ask', quantity_delta = 0, price_delta = 1) #$ 06 tested
+        # action = Action(direction = 'bid', quantity_delta = 1, price_delta = 1) #$ 07 tested
+        # print(f">>> delta_action: {action}") #$
         # breakpoint() #$
         encoded_action = action.encoded
         state, reward, done, info = env.step(encoded_action)
         # print(f"state: {state}") #$
-        print(f"reward: {reward}") #$
-        print(f"done: {done}") #$
+        # print(f"reward: {reward}") #$
+        # print(f"done: {done}") #$
         print(f"info: {info}") #$
         env.render()
         if done:
             env.reset()
             break #$
-
+    '''
+    import numpy as np
+    arr = np.loadtxt("/Users/kang/AlphaTrade/gym_exchange/outputs/actions", dtype=np.int64)
+    env = BaseEnv()
+    env.reset();print("="*20+" ENV RESTED "+"="*20)
+    for i in range(len(arr)):
+        print("-"*20 + f'=> {i} <=' +'-'*20) #$
+        encoded_action = arr[i]
+        if i == 320:
+            breakpoint()
+        state, reward, done, info = env.step(encoded_action)
+        # print(f"info: {info}") #$
+        env.render()
+        if done:
+            env.reset()
+            break #$

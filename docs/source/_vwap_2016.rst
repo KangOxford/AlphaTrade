@@ -1,0 +1,47 @@
+.. _vwap_2016:
+
+A Closed-Form Execution Strategy to Target VWAP, 2016
+====================
+
+1. Authors: 
+--------------------
+
+Álvaro Cartea, Sebastian Jaimungal
+
+2. Affiliation: 
+--------------------
+
+Álvaro Cartea University of Oxford, Sebastian Jaimungal University of Toronto
+
+3. Keywords: 
+--------------------
+
+VWAP, POV, TWAP, algorithmic trading, high-frequency trading, acquisition, liquidation
+
+4. Urls: 
+--------------------
+
+http://www.siam.org/journals/sifin/7/M105840.html, Github:None
+
+5. Summary: 
+--------------------
+
+(1): The paper addresses the problem of optimally executing a large order in algorithmic trading to target volume-weighted average price (VWAP).
+
+(2): Previous methods have tackled this problem, but have not taken into account the general stochastic process followed by the traded volume and the permanent price impact stemming from order flow. The paper proposes two closed-form optimal execution strategies that account for these factors and aim to outperform the benchmark VWAP. The approach is well motivated because VWAP is a widely used benchmark for measuring algorithmic trading performance.
+
+(3): The authors assume a general stochastic process for volume and provide a closed-form expression for the optimal execution strategy, which is dynamic and accounts for the impact of the agent's trading and that of other traders on the market. The first strategy consists of time-weighted average price adjusted upward by a fraction of instantaneous order flow and downward by the average order flow expected over the remaining life of the strategy. The second strategy consists of the Almgren-Chriss execution strategy adjusted by the expected volume and net order flow during the remaining life of the strategy.
+
+(4): The methods are calibrated to five stocks traded in Nasdaq and are shown to on average outperform the benchmark VWAP by between 0.10 and 8 basis points. The performance can support the goals of designing optimal execution strategies that target VWAP and account for stochastic volume and permanent price impact.
+
+6. Conclusion:
+--------------------
+
+(1): This piece of work proposes two closed-form optimal execution strategies that account for stochastic volume and permanent price impact, aiming to outperform the benchmark volume-weighted average price (VWAP) in algorithmic trading. This innovation is significant because it addresses the limitations of previous methods and provides a more accurate approach to measuring algorithmic trading performance.
+
+(2): Innovation point: The closed-form expressions for the optimal execution strategies account for both stochastic volume and permanent price impact, which is an improvement over previous methods.
+
+(3): Performance: The proposed methods are shown to outperform the benchmark VWAP on average, with a range of 0.10 to 8 basis points, indicating their effectiveness in optimizing execution strategies in algorithmic trading.
+
+(4): Workload: The study only calibrates the methods to five stocks traded on Nasdaq, which may limit the generalizability of the findings to other markets and securities.
+
