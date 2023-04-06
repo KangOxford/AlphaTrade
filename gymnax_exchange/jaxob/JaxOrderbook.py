@@ -142,7 +142,8 @@ def processOrderList(toMatch):
     def while_body(toMatch):
         def matchTopOrder(toMatch):
             quantToMatch=toMatch[1]-toMatch[0][0,0]
-            trade=jnp.array([toMatch[0][0,0],toMatch[0][0,1],toMatch[0][0,3],0,0,0])#TODO: will still have to fill in agressing ID, trade ID, time
+            trade=jnp.array([toMatch[0][0,0],toMatch[0][0,1],toMatch[0][0,3],0,0,0])
+            #TODO: will still have to fill in agressing ID, trade ID, time
             trades=jnp.delete(toMatch[2],-1,axis=0)
             trades=jnp.insert(trades,0,trade,axis=0)
             orderlist=jnp.delete(toMatch[0],0,axis=0)
@@ -190,7 +191,7 @@ def processLMTOrder(order,orderbook,trades): #limside should be -1/1
             orderside=toMatch[0][0].at[0,:,:].set(toMatch[1][0])
             return (orderside,toMatch[1][1],toMatch[0][2],toMatch[0][3],toMatch[1][2])
         
-        ret=processOrderList((toMatch[0][0,:,:],toMatch[1].astype(int),toMatch[4])) #process top order list. (Args: orderlist, quant)
+        ret=processOrderList((toMatch[0][0,:,:],toMatch[1].astype(int),toMatch[4])) #process top order list. (Args: orderlist, quant,trades)
         
         return_val=lax.cond(ret[0][0,0]==-1,list_empty,list_nonempty,(toMatch,ret))
         return return_val
@@ -303,10 +304,17 @@ def doNothing(order,orderbook,trades):
     return orderbook,trades
 
 @jax.jit
+def processLOBSTERexecution(order,orderbook,trades):
+    #just flipping the side of the book and submitting as a limorder which should immediately match. 
+    order=order.at[1].set((order[1]*-1).astype('int32'))
+    return processLMTOrder(order,orderbook,trades)
+
+
+@jax.jit
 def processOrder(orderbook,order,tradesLen=5):
     trades=(jnp.ones([tradesLen,6])*-1).astype('int32') #Time, Standing Order ID (order in book), Aggressing Order ID (order arriving), Trade ID, Price, Quantity 
     order=order.astype(int32)
-    orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
+    orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processLOBSTERexecution,doNothing,doNothing,doNothing],order,orderbook,trades)
     return orderbook,trades
 
 
