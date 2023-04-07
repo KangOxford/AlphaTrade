@@ -1,6 +1,6 @@
 .. _many:
 
-Many learning agents interacting with an agent-based market model
+Many learning agents interacting with an agent-based market model, April 2023
 ====================
 
 1. Authors: 

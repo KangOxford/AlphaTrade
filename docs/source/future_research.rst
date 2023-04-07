@@ -36,6 +36,8 @@ Related Topics
 Related Papers
 **************
 
+All related ICAIF and OMI Research Newsletter papers are included.
+
 * Related Sections
    * Simulated Markets
    * Learning Trading Strategies
@@ -82,11 +84,25 @@ Related Papers
    * Mid Related
       * A tabular sarsa-based stock market agent
       * Dynamic prediction length for time series with sequence to sequence network
+* OMI Research Newsletter
+   * Market Microstructure
+      * :doc:`_many`
+      * :doc:`_peer`
+      * :doc:`_liquidation_signals`
+      * :doc:`_stochastic_liquidity`
+      * :doc:`_exogenous`
+      * :doc:`_towards_multi`
+      * :doc:`_model_based_env`
+      * :doc:`_simple`
+   * Time Series Forecasting
+      * :doc:`_scale`
+      * :doc:`_lob_hft`
+      * :doc:`_generative_tsf`
+      * :doc:`_shortterm_predictability`
 * Other related papers
    * :doc:`_stock`
    * :doc:`_generating`
    * :doc:`_deeprl`
-   * :doc:`_many` <br/> from **OMI Research Newsletter – April 2023**
 
 
 
