@@ -70,11 +70,7 @@ High Related ICAIF Papers
       * :doc:`_towards_multi`
       * :doc:`_model_based_env`
       * :doc:`_simple`
-   * Time Series Forecasting
-      * :doc:`_scale`
-      * :doc:`_lob_hft`
-      * :doc:`_generative_tsf`
-      * :doc:`_shortterm_predictability`
+   * :doc:`_tsf_omi`
 * Other related papers
    * :doc:`_stock`
    * :doc:`_generating`
