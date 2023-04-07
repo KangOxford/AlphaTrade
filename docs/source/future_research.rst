@@ -86,8 +86,7 @@ Related Papers
    * :doc:`_stock`
    * :doc:`_generating`
    * :doc:`_deeprl`
-   * :doc:`_many`
-     from **OMI Research Newsletter – April 2023**
+   * :doc:`_many` <br/> from **OMI Research Newsletter – April 2023**
 
 
 
