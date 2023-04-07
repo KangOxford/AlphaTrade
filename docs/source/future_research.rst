@@ -37,7 +37,7 @@ Related Topics
 
    * Recover Trader's Reward Function by Inverse RL
 #. Unsupervised Environment Design
-x
+
    * Adversarial Learning by the differentiable environment
 
 
