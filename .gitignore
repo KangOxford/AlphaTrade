@@ -19,3 +19,5 @@ gymnax_exchange/.idea/**
 **/.DS_Store
 gymnax_exchange/.DS_Store
 .vscode/**
+**/.ipynb_checkpoints/**
+gymnax_exchange/jaxob/.ipynb_checkpoints/**
