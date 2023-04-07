@@ -1,51 +1,34 @@
 Future Research Topics
 =====
 
-
 **************
 Related Topics
 **************
 
-#. **Optimal Execution**
-
+* **Optimal Execution**
    * Optimal liquidation or acqurization within 15-30 minutes with agent trained on the simulated environment.
-
-#. **Optimal Scheduling with Predicted Trading Volume**
-
+* **Optimal Scheduling with Predicted Trading Volume**
    * In :doc:`_vwap_strategies`, split the task into smaller sizes according to the :doc:`_volume`.
-#. **Order-flow Generating**
-
+* **Order-flow Generating**
    * Mathematical Perspective: Order flow as a general spatial point process
    * Time-series Forecasting for Order Flow
    * Order Flow Generating by Large Language Models
-
-#. Representation Learning
-
+* Representation Learning
    * Representation Learning for the States/Observations
    * In the Optimal Execution, e.g. the all snapshots of limit order book in the past 30 seconds.
    * VAE, GAN and other encoder models.
-
-#. Price Impact Research through Market Clearing
-
+* Price Impact Research through Market Clearing
    * Mathematical Perspective: Market clearing as a deterministic operator acting on the distributions of buy and sell orders.
    * Calculate the price impact without the assumption of impact function
-
-#. Indirect Market Impact
-
+* Indirect Market Impact
    * Agent's Impact on Triggering the Modification of other Agents' Actions
    * Different from the price impact, which is the direct maret impact.
-
-#. Agent Based Modelling/Simulation
-
+* Agent Based Modelling/Simulation
    * Generative adversarial network approach simulation
    * Market Simulation
-
-#. Recover Trader's Reward Function
-
+* Recover Trader's Reward Function
    * Recover Trader's Reward Function by Inverse RL
-
-#. Unsupervised Environment Design
-
+* Unsupervised Environment Design
    * Adversarial Learning by the differentiable environment
 
 
