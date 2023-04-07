@@ -43,14 +43,13 @@ All related ICAIF and OMI Research Newsletter papers are included.
    * Learning Trading Strategies
    * Forecasting Financial Data
 
-High Related ICAIF Papers
+High Related ICAIF Papers:
 
 * ICAIF2022
     * :doc:`_dyn`
     * :doc:`_learn`
     * :doc:`_cost`
 * ICAIF2021
-   * High Related
    * :doc:`_towards_fully`
    * :doc:`_towards`
    * :doc:`_learning`
@@ -61,12 +60,9 @@ High Related ICAIF Papers
    * :doc:`_deep`
 * :doc:`_mid_related_icaif`
 * OMI Research Newsletter
-   * Market Microstructure
+   * :doc:`_omi_microstructure`
       * :doc:`_many`
       * :doc:`_peer`
-      * :doc:`_liquidation_signals`
-      * :doc:`_stochastic_liquidity`
-      * :doc:`_exogenous`
       * :doc:`_towards_multi`
       * :doc:`_model_based_env`
       * :doc:`_simple`
@@ -82,10 +78,10 @@ High Related ICAIF Papers
 Related Techniques
 **************
 * Transformers
-   * Time Series Forecasting with Transformers
-      * :doc:`_transformers_tsf`
-   * Transformer in Low Signal-noise Ratio System
-      * Sparse Transfomer: :doc:`_sparse_tf`
+   * Time Series Forecasting with Transformers:
+   * :doc:`_transformers_tsf`
+   * Transformer in Low Signal-noise Ratio System:
+   * :doc:`_sparse_tf`
 * Long Sequence Modelling
    * :doc:`_efficiently`
    * :doc:`_s5`
