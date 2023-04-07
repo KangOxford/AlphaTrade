@@ -63,7 +63,6 @@ High Related ICAIF Papers:
    * :doc:`_omi_microstructure`
       * :doc:`_many`
       * :doc:`_peer`
-      * :doc:`_towards_multi`
       * :doc:`_model_based_env`
       * :doc:`_simple`
    * :doc:`_tsf_omi`
