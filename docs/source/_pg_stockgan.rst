@@ -50,5 +50,9 @@ https://arxiv.org/abs/2204.13338v1
 
 (1): This piece of work proposes a Policy Gradient Stock GAN for Realistic Discrete Order Data Generation in Financial Markets, which aims to generate realistic orders for financial markets and address the issue of generating orders in discrete spaces using policy gradient. 
 
-(2): Innovation Point: the article employs policy gradient for the learning algorithm to generate realistic orders in financial markets, which has not been explored in the past due to GAN architectures' learning limitations. (3): Performance: the proposed model outperforms previous models in generated order distribution, simulated P/L, and trade frequency, demonstrating its effectiveness for generating realistic orders in financial markets. (4): Workload: the study uses a real-world dataset for evaluation and proposes a combination of adversarial objective and policy gradient loss for optimization, but the workloads are not explicitly mentioned in the article.
+(2): Innovation Point: the article employs policy gradient for the learning algorithm to generate realistic orders in financial markets, which has not been explored in the past due to GAN architectures' learning limitations.
+
+(3): Performance: the proposed model outperforms previous models in generated order distribution, simulated P/L, and trade frequency, demonstrating its effectiveness for generating realistic orders in financial markets.
+
+(4): Workload: the study uses a real-world dataset for evaluation and proposes a combination of adversarial objective and policy gradient loss for optimization, but the workloads are not explicitly mentioned in the article.
 

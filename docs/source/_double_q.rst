@@ -56,5 +56,9 @@ https://www.tandfonline.com/doi/abs/10.1080/1350486X.2022.2077783
 
 (1): The significance of this piece of work is proposing a novel model-free approach using Double Deep Q-Learning for the problem of optimal trade execution in algorithmic trading. The proposed methodology shows improvements in performance compared to existing methods, and supports the goal of achieving optimal trade execution.
 
-(2): Innovation point: The article proposes a model-free approach using Double Deep Q-Learning, which is a novel method for the problem of optimal trade execution. (3): Performance: The proposed approach shows improved performance compared to a standard benchmark method in terms of mean and median out-performance, probability of out-performance, and gain-loss ratios. (4): Workload: The proposed methodology includes carefully selected hyperparameters and requires the training of a fully connected Neural Network, which may increase computational workload compared to simpler methods.
+(2): Innovation point: The article proposes a model-free approach using Double Deep Q-Learning, which is a novel method for the problem of optimal trade execution.
+
+(3): Performance: The proposed approach shows improved performance compared to a standard benchmark method in terms of mean and median out-performance, probability of out-performance, and gain-loss ratios.
+
+(4): Workload: The proposed methodology includes carefully selected hyperparameters and requires the training of a fully connected Neural Network, which may increase computational workload compared to simpler methods.
 
