@@ -10,4 +10,7 @@ Market Microstructure
 * :doc:`_towards_multi`
 * :doc:`_model_based_env`
 * :doc:`_simple`
+* :doc:`_double_q`
+* :doc:`_pg_stockgan`
+
 
