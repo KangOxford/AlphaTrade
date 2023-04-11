@@ -6,6 +6,7 @@ from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gymnax_exchange.jaxes.assets.executed_pairs import ExecutedPairsRecorder
+import orderbook
 
 
 # ========================= 03 =========================
@@ -154,6 +155,7 @@ if __name__ == "__main__":
     exchange.reset()
     for _ in range(2048):
         exchange.step()
+    print(exchange.order_book.)
 
 """
 =========================================================
