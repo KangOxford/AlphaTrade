@@ -23,7 +23,7 @@ import collections
 
 
 class OrderBook(object):
-    def __init__(self, price_levels=10,orderQueueLen=10,):
+    def __init__(self, price_levels=10,orderQueueLen=10):
         self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1

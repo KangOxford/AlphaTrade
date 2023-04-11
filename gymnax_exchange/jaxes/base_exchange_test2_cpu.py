@@ -155,7 +155,6 @@ if __name__ == "__main__":
     exchange.reset()
     for _ in range(2048):
         exchange.step()
-    print(exchange.order_book.)
 
 """
 =========================================================
