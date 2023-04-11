@@ -184,7 +184,7 @@ if __name__ == "__main__":
     exchange.reset()
     for _ in range(2048):
         exchange.step()
-    print(exchange.mid_prices)
+    print(exchange.order_book.get_L2_state())
 
 
 

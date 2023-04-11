@@ -48,7 +48,7 @@ class OrderBook(object):
         return trades,order_array
 
     def process_orders_array(self,msgs):
-        '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx7), and applies them, in sequence, to the orderbook'''
+        '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
         self.orderbook_array,trades=lax.scan(job.processOrder,self.orderbook_array,msgs)
         return trades
 

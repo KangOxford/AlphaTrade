@@ -16,6 +16,7 @@ print('imports complete')
 print(DataPipeline().data_loader)
 
 decoder = RawDecoder(**DataPipeline()())
-#encoder = RawEncoder(decoder)
+encoder = RawEncoder(decoder)
 
-print(decoder.data_loader_iterrows)
+
+print(encoder())
