@@ -4,6 +4,8 @@ sys.path.append('/Users/sasrey/AlphaTrade/gym_exchange')
 sys.path.append('/Users/sasrey/AlphaTrade')
 sys.path.append('/Users/sasrey/AlphaTrade/gymnax_exchange')
 
+from itertools import zip_longest
+from jax import numpy as jnp
 
 
 from gym_exchange import Config
@@ -59,6 +61,8 @@ class BaseExchange():
         '''only take the index0, the first one to init the lob'''
         flow_list = next(self.flow_generator)
         for flow in flow_list:
+            print(flow)
+            print(flow.to_message)
             self.order_book.process_order(flow.to_message, True, False)
         self.index += 1
         '''for this step is index0, for next step is index1'''
@@ -182,9 +186,10 @@ class BaseExchange():
 if __name__ == "__main__":
     exchange = BaseExchange()
     exchange.reset()
-    for _ in range(2048):
-        exchange.step()
-    print(exchange.order_book.get_L2_state())
+    #for _ in range(5):
+    #    exchange.step()
+    #gpuOB=exchange.order_book.get_L2_state()
+    #print(gpuOB.reshape(10,4))
 
 
 

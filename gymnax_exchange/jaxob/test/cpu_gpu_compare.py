@@ -17,6 +17,3 @@ print(DataPipeline().data_loader)
 
 decoder = RawDecoder(**DataPipeline()())
 encoder = RawEncoder(decoder)
-
-
-print(encoder())

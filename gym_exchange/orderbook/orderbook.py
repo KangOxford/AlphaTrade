@@ -227,6 +227,20 @@ class OrderBook(object):
         if tapemode == 'wipe':
             self.tape = []
 
+    def get_L2_state(self):
+        '''Function to return a 4xNlvl array that represents the orderbook state'''
+        bid_prices=list(self.bids.price_map.keys())
+        objs=self.bids.price_map.values()[:]
+        bid_quants = [o.volume for o in objs]
+
+        ask_prices=list(self.asks.price_map.keys())
+        objs=self.asks.price_map.values()[:]
+        ask_quants = [o.volume for o in objs]
+
+        bid_prices.reverse()
+        bid_quants.reverse()
+        return ask_prices,ask_quants,bid_prices,bid_quants
+
     def __str__(self):
         tempfile = StringIO()
 
