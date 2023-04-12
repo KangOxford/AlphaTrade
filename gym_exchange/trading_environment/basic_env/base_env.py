@@ -171,6 +171,7 @@ if __name__ == "__main__":
             env.reset()
             break #$
     '''
+    '''
     import numpy as np
     arr = np.loadtxt("/Users/kang/AlphaTrade/gym_exchange/outputs/actions", dtype=np.int64)
     env = BaseEnv()
@@ -183,6 +184,24 @@ if __name__ == "__main__":
         state, reward, done, info = env.step(encoded_action)
         # print(f"info: {info}") #$
         print(f"reward: {reward}") #$
+        env.render()
+        if done:
+            env.reset()
+            break #$
+    '''
+    import numpy as np
+    arr = np.loadtxt("/Users/kang/AlphaTrade/gym_exchange/outputs/actions", dtype=np.int64)
+    arr = np.repeat(arr, 2, axis=0)
+    env = BaseEnv()
+    env.reset();print("="*20+" ENV RESTED "+"="*20)
+    for i in range(len(arr)):
+        print("-"*20 + f'=> {i} <=' +'-'*20) #$
+        encoded_action = arr[i]
+        # if i == 320:
+        #     breakpoint()
+        state, reward, done, info = env.step(encoded_action)
+        print(f"reward: {reward}") #$
+        print(f"info: {info}") #$
         env.render()
         if done:
             env.reset()
