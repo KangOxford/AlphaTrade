@@ -23,26 +23,36 @@ class ExecutedPairsRecorder():
         return pairs
 
     def update(self, pairs): # to be used in step
+        # if len(pairs) > 2: #$
+        #     breakpoint()
         for pair in pairs:
             for key,value in pair.items(): # Pseudo for loop, one pair dict
                 if   key == "market":
-                    self.market_pairs[self.index] = self.market_pairs.get(self.index, []) + [value]
+                    # self.market_pairs[self.index] = np.append(self.market_pairs.get(self.index, np.array([])), np.array(value))[np.newaxis, :]
+                    # self.market_pairs[self.index] = np.append(self.market_pairs.get(self.index, np.array([])), np.array(value))[:,np.newaxis].reshape(2,-1)
+                    try:
+                        self.market_pairs[self.index] = np.concatenate((self.market_pairs.get(self.index), value.reshape(2,1)), axis=1)
+                    except:
+                        self.market_pairs[self.index] = value.reshape(2,1)
                 elif key == "agent" :
-                    self.agent_pairs[self.index]  = self.agent_pairs.get(self.index, [])  + [value]
+                    try:
+                        self.agent_pairs[self.index] = np.concatenate((self.agent_pairs.get(self.index), value.reshape(2,1)), axis=1)
+                    except:
+                        self.agent_pairs[self.index] = value.reshape(2,1)
                 else: raise NotImplementedError
-        try:
-            if 'market' in [list(pair.keys())[0] for pair in pairs]: self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T
-            else: pass
-            if 'agent' in [list(pair.keys())[0] for pair in pairs]: self.agent_pairs[self.index] = np.array(self.agent_pairs[self.index]).T
-            else: pass
-        except:
-            raise NotImplementedError
-        try:
-            # print(f"{self.index},{self.agent_pairs[self.index]}") #$
-            # print(f"{self.index},{self.market_pairs[self.index]}") #$
-            pass#$
-        except:
-            pass #$
+        # try:
+        #     if 'market' in [list(pair.keys())[0] for pair in pairs]: self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T
+        #     else: pass
+        #     if 'agent' in [list(pair.keys())[0] for pair in pairs]: self.agent_pairs[self.index] = np.array(self.agent_pairs[self.index]).T
+        #     else: pass
+        # except:
+        #     raise NotImplementedError
+        # try:
+        #     # print(f"{self.index},{self.agent_pairs[self.index]}") #$
+        #     # print(f"{self.index},{self.market_pairs[self.index]}") #$
+        #     pass#$
+        # except:
+        #     pass #$
     def step(self, trades, index):
         """two function:
         01: record market pairs and agent pairs, e.g.

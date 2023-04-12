@@ -5,7 +5,7 @@ from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder, RawEncod
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
-from gymnax_exchange.jaxes.assets.executed_pairs import ExecutedPairsRecorder
+from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 import orderbook
 
 
@@ -152,6 +152,11 @@ class BaseExchange():
 
 if __name__ == "__main__":
     exchange = BaseExchange()
+    """
+    for i in range(100):
+        exchange.reset()
+        for _ in range(2048):
+            exchange.step()"""
     exchange.reset()
     for _ in range(2048):
         exchange.step()

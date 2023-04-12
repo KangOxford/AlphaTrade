@@ -38,6 +38,7 @@ class BaseEnv(InterfaceEnv):
         assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
         # observation = self.obs_from_state(self.cur_state)
         state = self.cur_state
+        assert self.cur_step == 0
         return state
     # ------------------------- 02.01 ------------------------
     def init_components(self):
@@ -88,6 +89,8 @@ class BaseEnv(InterfaceEnv):
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
         self.wrapped_order_flow = wrapped_order_flow
+        if self.cur_step == 156:
+            print()#$
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.01.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
@@ -175,10 +178,11 @@ if __name__ == "__main__":
     for i in range(len(arr)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         encoded_action = arr[i]
-        if i == 320:
-            breakpoint()
+        # if i == 320:
+        #     breakpoint()
         state, reward, done, info = env.step(encoded_action)
         # print(f"info: {info}") #$
+        print(f"reward: {reward}") #$
         env.render()
         if done:
             env.reset()
