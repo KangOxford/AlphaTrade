@@ -2,9 +2,9 @@
 import numpy as np
 from gym_exchange import Config
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
-from gym_exchange.trading_environment.basic_env.assets.price_delta import PriceDelta
-from gym_exchange.trading_environment.basic_env.interface_env import SpaceParams
-from gym_exchange.trading_environment.basic_env.baselines.residual_policy import ResidualPolicy_Factory
+from gym_exchange.trading_environment.base_env.assets.price_delta import PriceDelta
+from gym_exchange.trading_environment.base_env.interface_env import SpaceParams
+from gym_exchange.trading_environment.base_env.baselines.residual_policy import ResidualPolicy_Factory
 
 
 def singleton(cls):

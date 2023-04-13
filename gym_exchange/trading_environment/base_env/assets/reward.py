@@ -1,4 +1,4 @@
-from gym_exchange.trading_environment.basic_env.utils import vwap_price
+from gym_exchange.trading_environment.base_env.utils import vwap_price
 
     
 class RewardFunctional():

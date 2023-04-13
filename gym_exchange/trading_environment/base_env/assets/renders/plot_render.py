@@ -23,7 +23,7 @@ def plot_render(self):
     recorder = self.exchange.executed_pairs_recoder
     agent_pairs = recorder.agent_pairs
     market_pairs = recorder.market_pairs
-    from gym_exchange.trading_environment.basic_env.utils import vwap_price
+    from gym_exchange.trading_environment.base_env.utils import vwap_price
 
     agent_step_vwap = {k: vwap_price(v) for k, v in agent_pairs.items()}
     market_step_vwap = {k: vwap_price(v) for k, v in market_pairs.items()}

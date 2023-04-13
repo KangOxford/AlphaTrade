@@ -3,7 +3,7 @@ import abc
 import numpy as np
 import pandas as pd
 
-from gym_exchange.trading_environment.basic_env.utils import vwap_price
+from gym_exchange.trading_environment.base_env.utils import vwap_price
 
 class Vwap(abc.ABC):
     def __init__(self):

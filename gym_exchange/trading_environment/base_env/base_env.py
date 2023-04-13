@@ -4,21 +4,21 @@ from gym_exchange import Config
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
-from gym_exchange.trading_environment.basic_env.assets.reward import RewardGenerator
-from gym_exchange.trading_environment.basic_env.assets.action import Action
-from gym_exchange.trading_environment.basic_env.assets.orderflow import OrderFlowGenerator
-from gym_exchange.trading_environment.basic_env.assets.task import NumLeftProcessor
+from gym_exchange.trading_environment.base_env.assets.reward import RewardGenerator
+from gym_exchange.trading_environment.base_env.assets.action import Action
+from gym_exchange.trading_environment.base_env.assets.orderflow import OrderFlowGenerator
+from gym_exchange.trading_environment.base_env.assets.task import NumLeftProcessor
 
-from gym_exchange.trading_environment.basic_env.metrics.vwap import VwapEstimator
+from gym_exchange.trading_environment.base_env.metrics.vwap import VwapEstimator
 
-from gym_exchange.trading_environment.basic_env.interface_env import InterfaceEnv
-from gym_exchange.trading_environment.basic_env.interface_env import State # types
+from gym_exchange.trading_environment.base_env.interface_env import InterfaceEnv
+from gym_exchange.trading_environment.base_env.interface_env import State # types
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
-from gym_exchange.trading_environment.basic_env.utils import broadcast_lists
-from gym_exchange.trading_environment.basic_env.assets.renders.plot_render import plot_render
-from gym_exchange.trading_environment.basic_env.assets.info import InfoGenerator
-from gym_exchange.trading_environment.basic_env.metrics.measure import OrderbookDistance
+from gym_exchange.trading_environment.base_env.utils import broadcast_lists
+from gym_exchange.trading_environment.base_env.assets.renders.plot_render import plot_render
+from gym_exchange.trading_environment.base_env.assets.info import InfoGenerator
+from gym_exchange.trading_environment.base_env.metrics.measure import OrderbookDistance
 
 
 # *************************** 2 *************************** #
