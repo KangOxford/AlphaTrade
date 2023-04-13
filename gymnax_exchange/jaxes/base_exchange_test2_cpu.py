@@ -1,4 +1,10 @@
 # ========================= 01 =========================
+import sys
+from itertools import zip_longest
+sys.path.append('/Users/sasrey/AlphaTrade')
+from jax import numpy as jnp
+
+
 from gym_exchange import Config
 from gym_exchange.orderbook import OrderBook
 from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder, RawEncoder
@@ -6,7 +12,6 @@ from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
-import orderbook
 
 
 # ========================= 03 =========================
@@ -73,6 +78,7 @@ class BaseExchange():
         # if self.index ==125:
         #     print()#$
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
+            print(self.index,index,item)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
                 if item.type == 1:
@@ -158,9 +164,10 @@ if __name__ == "__main__":
         for _ in range(2048):
             exchange.step()"""
     exchange.reset()
-    for _ in range(2048):
+    for _ in range(40):
         exchange.step()
-
+    cpuOB=jnp.array(list(zip_longest(*exchange.order_book.get_L2_state(), fillvalue=-1)))
+    print(cpuOB)
 """
 =========================================================
 ORDERBOOK:(Initialized, AMZN 2021.04.01)

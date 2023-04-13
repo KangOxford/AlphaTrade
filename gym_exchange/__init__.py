@@ -1,3 +1,7 @@
+import os
+
+
+
 class Config:
     # --------------- 00 Data ---------------
     # ············· 00.01 Adapter ············
@@ -10,6 +14,8 @@ class Config:
     # ············· 00.02 Source ············
     exchange_data_source = "raw_encoder"
     # exchange_data_source = "encoder"
+
+    AlphaTradeRoot=os.path.join(os.path.dirname(__file__),'../')
 
 
     # --------------- 01 Basic ---------------

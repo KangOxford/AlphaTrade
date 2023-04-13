@@ -1,29 +1,18 @@
-# import importlib
-# from typing import Dict
-# import JaxOrderbook as job
-# job=importlib.reload(job)
-# from jax import numpy as jnp
-# from jax import lax
-# import collections
-
-
 import importlib
 from os import remove
 from readline import remove_history_item
 from typing import Dict
 from unicodedata import bidirectional
 import gymnax_exchange.jaxob.JaxOrderbook as job
-from orderbook import order
 job=importlib.reload(job)
 from jax import numpy as jnp
 from jax import lax
-import collections
 
 
 
 
 class OrderBook(object):
-    def __init__(self, price_levels=10,orderQueueLen=10):
+    def __init__(self, price_levels=100,orderQueueLen=100):
         self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1
@@ -47,9 +36,7 @@ class OrderBook(object):
             intside=1
                 
         order_array=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
-        print(order_array)
         self.orderbook_array,trades=job.processOrder(self.orderbook_array,order_array)
-        print(self.orderbook_array)
         return trades,order_array
 
     def process_orders_array(self,msgs):
