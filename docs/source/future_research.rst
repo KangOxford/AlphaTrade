@@ -37,12 +37,13 @@ Related Papers
 **************
 
 **ChatGPT**:
+
 * :doc:`_gpt_human`
 * :doc:`_gpt_economy`
 
 All related ICAIF and OMI Research Newsletter papers are included.
 
-* Related Sections
+* Related Sections in ICAIF
    * Simulated Markets
    * Learning Trading Strategies
    * Forecasting Financial Data
