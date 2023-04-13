@@ -93,9 +93,14 @@ class BaseEnv(InterfaceEnv):
             print()#$
         print("wrapped_order_flow:",wrapped_order_flow) #$
         self.exchange.step(wrapped_order_flow)
-        # ···················· 03.01.02 ····················
+        # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
+        print(auto_cancel) #$
         self.exchange.auto_cancels.add(auto_cancel)
+        # ···················· 03.01.02.02 ····················
+        auto_cancel2process_list = self.exchange.auto_cancels.step()
+        for auto_cancel2process in auto_cancel2process_list:
+            self.exchange.step(auto_cancel2process)
         # ···················· 03.01.03 ····················
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])

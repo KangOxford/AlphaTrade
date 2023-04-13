@@ -1,5 +1,6 @@
 from gym_exchange import Config
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
+from copy import deepcopy
 
 # class CancellationDeterminants():
 #     def __init__(self): 
@@ -22,32 +23,29 @@ from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 
 class Timeout():
     def __init__(self): 
-        self.age = 0
+        self.time = 0
     
     def step(self):
-        self.age += 1
+        self.time += 1
     
     def __call__(self) -> bool:
-        return self.age > Config.timeout
-
-class CancellationDeterminants():
-            
-    def __init__(self):
-        self.timeout = Timeout()
-
+        return self.time > Config.timeout
 
 class AutoCancel():
     def __init__(self, flow: OrderFlow):
         self.flow = flow
-        self.cancellation_determinants = CancellationDeterminants()
+        self.timeout = Timeout()
+
+    def step(self):
+        self.timeout.step()
 
     @property
-    def maturity(self) -> bool:
+    def matured(self) -> bool:
         # '''determined by the price and mid-price or the exchange'''
         # '''determined by the quote age'''
-        determinant = self.cancellation_determinants.timeout
-        if determinant() == False:  return False # if all satisfied then return mature
-        else: return True  
+        if self.timeout: return True
+        else: return False
+
 
         
 class AutoCancels():
@@ -59,17 +57,17 @@ class AutoCancels():
         waited to be processed at this time step. The step should
         be in the Exchange'''
         for auto_cancel in self.auto_cancels:
-            auto_cancel.cancellation_determinants.timeout.step()
-            # try: #$
-            #     auto_cancel.cancellation_determinants.timeout.step()
-            # except:
-            #     breakpoint()
-            #     print()#$
+            auto_cancel.step()
 
         order_flow_list = []
-        for auto_cancel in self.auto_cancels:
-            if auto_cancel.maturity == True:
-                order_flow_list.append(auto_cancel.flow); self.auto_cancels.remove(auto_cancel)
+        index_list = []
+        for index, auto_cancel in enumerate(self.auto_cancels):
+            if auto_cancel.matured:
+                order_flow_list.append(auto_cancel.flow)
+                index_list.append(index)
+        for index in index_list:
+            # self.auto_cancels.remove(auto_cancel)
+            self.auto_cancels.pop(index)
         return order_flow_list
     
     def add(self, auto_cancel: OrderFlow):

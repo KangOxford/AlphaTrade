@@ -54,6 +54,8 @@ class Config:
 
     # --------------- 04 Action ---------------
     timeout = 10
+    # timeout = 2
+    # timeout = 1
 
     # --------------- 05 ActionWrapper --------
     trade_id_generator = 80000000
