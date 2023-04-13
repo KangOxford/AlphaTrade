@@ -11,11 +11,11 @@ class DataPipeline:
             # self.historical_data = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_orderbook_10.csv", header = None)
             # self.data_loader = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_message_10.csv", header=None)
 
-            symbol = "AMZN";date = "2021-04-01"
+            symbol = "TSLA";date = "2015-01-02"
             self.historical_data = pd.read_csv(
-                "/Users/kang/Data/" + symbol + "_" + date + "_34200000_57600000_orderbook_10.csv", header=None)
+                Config.AlphaTradeRoot+"data/" + symbol + "_" + date + "_34200000_57600000_orderbook_10.csv", header=None)
             self.data_loader = pd.read_csv(
-                "/Users/kang/Data/" + symbol + "_" + date + "_34200000_57600000_message_10.csv", header=None)
+                Config.AlphaTradeRoot+"data/" + symbol + "_" + date + "_34200000_57600000_message_10.csv", header=None)
 
             # self.historical_data = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_orderbook_10.csv", header = None)
             # self.data_loader = pd.read_csv("/Users/sasrey/project-RL4ABM/data_tqap/TSLA_2015-01-01_2015-01-31_10/TSLA_2015-01-02_34200000_57600000_message_10.csv", header=None)

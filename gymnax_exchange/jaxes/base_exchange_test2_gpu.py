@@ -184,6 +184,7 @@ class BaseExchange():
 
 
 if __name__ == "__main__":
+
     exchange = BaseExchange()
     exchange.reset()
     for _ in range(38):
