@@ -1,6 +1,16 @@
 import os
+from os import listdir;from os.path import isfile, join
 
-
+def get_symbol_date(AlphaTradeRoot):
+    data_path = AlphaTradeRoot+"data"
+    onlyfiles = sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
+    for filename in onlyfiles:
+        if filename != ".DS_Store":
+            symbol = filename.split("_")[0]
+            date = filename.split("_")[1]
+            # Process the file here
+            break
+    return symbol, date
 
 class Config:
     # --------------- 00 Data ---------------
@@ -16,6 +26,9 @@ class Config:
     # exchange_data_source = "encoder"
 
     AlphaTradeRoot=os.path.join(os.path.dirname(__file__),'../')
+    symbol, date = get_symbol_date(AlphaTradeRoot)
+    # symbol = "TSLA";date = "2015-01-02"
+    # symbol = "AMZN";date = "2021-04-01"
 
 
     # --------------- 01 Basic ---------------
