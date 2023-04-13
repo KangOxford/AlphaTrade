@@ -28,7 +28,7 @@ class BaseEnv(InterfaceEnv):
         super().__init__()
         self.observation_space = self.state_space
         self.exchange = Exchange()
-        
+
     # ========================== 02 ==========================
     def reset(self):
         """Reset episode and return initial observation."""
@@ -50,27 +50,27 @@ class BaseEnv(InterfaceEnv):
         self.orderbook_distance = OrderbookDistance()
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
-        # ···················· 02.01.01 ···················· 
+        # ···················· 02.01.01 ····················
         self.cur_step = 0
-        order_book = self.exchange.order_book 
+        order_book = self.exchange.order_book
         asks, bids = brief_order_book(order_book, 'ask'), brief_order_book(order_book, 'bid')
         asks, bids = np.array(asks), np.array(bids)
-        
-        # ···················· 02.01.02 ···················· 
+
+        # ···················· 02.01.02 ····················
         price_indexes, quantity_indexes = [2*i for i in range(Config.price_level)], [2*i +1 for i in range(Config.price_level)]
         asks = np.concatenate([asks[price_indexes],asks[quantity_indexes]]).reshape(-1,Config.price_level)
         bids = np.concatenate([bids[price_indexes],bids[quantity_indexes]]).reshape(-1,Config.price_level)
-        state = np.concatenate([asks, bids]) # fixed sequence: first ask, then bid 
+        state = np.concatenate([asks, bids]) # fixed sequence: first ask, then bid
         state = state.astype(np.int64)
         assert state.shape == (4, Config.price_level)
         return state
-        
+
     # ========================== 03 ==========================
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
         print(action)  #$
-        # ···················· 03.00.03 ···················· 
+        # ···················· 03.00.03 ····················
         decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
         return state, reward, done, info
@@ -91,6 +91,7 @@ class BaseEnv(InterfaceEnv):
         self.wrapped_order_flow = wrapped_order_flow
         if self.cur_step == 156:
             print()#$
+        print("wrapped_order_flow:",wrapped_order_flow) #$
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.01.02 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
@@ -189,6 +190,7 @@ if __name__ == "__main__":
             env.reset()
             break #$
     '''
+    '''
     import numpy as np
     arr = np.loadtxt("/Users/kang/AlphaTrade/gym_exchange/outputs/actions", dtype=np.int64)
     arr = np.repeat(arr, 2, axis=0)
@@ -206,3 +208,31 @@ if __name__ == "__main__":
         if done:
             env.reset()
             break #$
+    '''
+    import numpy as np
+    arr = np.array([
+        [1,1,0],
+        [1,1,0]
+    ])
+    # arr = np.array([
+    #     [0,1,0],
+    #     [0,1,0]
+    # ])
+    arr = np.repeat(arr, 2000, axis=0)
+    env = BaseEnv()
+    env.reset();print("="*20+" ENV RESTED "+"="*20)
+    sum_reward = 0
+    for i in range(len(arr)):
+        print("-"*20 + f'=> {i} <=' +'-'*20) #$
+        encoded_action = arr[i]
+        # if i == 320:
+        #     breakpoint()
+        state, reward, done, info = env.step(encoded_action)
+        print(f"reward: {reward}") #$
+        print(f"info: {info}") #$
+        sum_reward += reward
+        env.render()
+        if done:
+            env.reset()
+            break #$
+    print(sum_reward)

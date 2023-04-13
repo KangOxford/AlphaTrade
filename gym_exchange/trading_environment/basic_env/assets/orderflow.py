@@ -58,6 +58,8 @@ class OrderFlowGenerator(object):
      
     def get_content_dicts(self):
         self.residual_action, self.residual_done = self.residual_policy.step()
+        if self.residual_action !=0:
+            print()#$
         content_dict = {
             "Type" : 1, # submission of a new limit order
             # "direction" : self.action[0], # TODO should be right
@@ -69,6 +71,8 @@ class OrderFlowGenerator(object):
             "order_id":self.order_id,
             "time":self.time,
         }
+        if content_dict['size'] != 0:
+            print()#$
         '''used for to-be-sumbmitted oreders'''
         revised_content_dict = {
             "Type" : 3, # total deletion of a limit order

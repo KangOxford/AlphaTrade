@@ -36,6 +36,10 @@ Related Topics
 Related Papers
 **************
 
+**ChatGPT**:
+* :doc:`_gpt_human`
+* :doc:`_gpt_economy`
+
 All related ICAIF and OMI Research Newsletter papers are included.
 
 * Related Sections
