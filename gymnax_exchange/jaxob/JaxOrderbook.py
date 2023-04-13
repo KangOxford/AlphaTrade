@@ -5,7 +5,6 @@ from jax import lax
 import collections
 
 from numpy import float32, int32
-from traitlets import Int
 
 
 INITID=90000000
