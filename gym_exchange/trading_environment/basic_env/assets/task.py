@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 from gym_exchange import Config
 
 class NumLeftProcessor():
@@ -14,8 +15,12 @@ class NumLeftProcessor():
             # print("*** no agent_executed_pairs in the last step")
             pass
         else:
-            self.num_left -= agent_executed_pairs_in_last_step[1].sum()
-        try:assert self.num_left >= 0 #$
+            self.num_left -= agent_executed_pairs_in_last_step[1,:].sum()
+            # if agent_executed_pairs_in_last_step[1,:].__len__() != 1:
+            #     breakpoint()
+        try:
+            assert self.num_left >= 0
+            self.num_executed_in_last_step = 0 if agent_executed_pairs_in_last_step is None else agent_executed_pairs_in_last_step[1, :].sum()
         except:
-            pass #$
-        self.num_executed_in_last_step = 0 if agent_executed_pairs_in_last_step is None else agent_executed_pairs_in_last_step[1].sum()
+            self.num_executed_in_last_step = agent_executed_pairs_in_last_step[1, :].sum() + self.num_left # at this point negative
+

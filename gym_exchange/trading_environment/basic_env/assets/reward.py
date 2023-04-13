@@ -61,7 +61,8 @@ class RewardGenerator():
                     "agent_pairs":executed_pairs_bigram['agent_pairs']
                 }
                 self.reward_functional = RewardFunctional(**signals)
-            else: self.reward_functional = -1
+            else:
+                self.reward_functional = -1
             
         
     def step(self):

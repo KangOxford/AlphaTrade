@@ -70,6 +70,7 @@ High Related ICAIF Papers:
    * :doc:`_stock`
    * :doc:`_generating`
    * :doc:`_deeprl`
+   * :doc:`_delay`
 
 
 

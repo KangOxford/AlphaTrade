@@ -158,6 +158,11 @@ class BaseExchange():
 
 if __name__ == "__main__":
     exchange = BaseExchange()
+    """
+    for i in range(100):
+        exchange.reset()
+        for _ in range(2048):
+            exchange.step()"""
     exchange.reset()
     for _ in range(40):
         exchange.step()
