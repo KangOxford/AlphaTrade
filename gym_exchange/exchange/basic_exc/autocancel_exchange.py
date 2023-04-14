@@ -37,6 +37,11 @@ class Exchange(BaseExchange):
     # ···················· 03.02.02 ····················
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
         timestamp = latest_timestamp(self.order_book)
+        print(self.index) #$$
+        if self.index != 0:
+            print(self.order_book)
+            print(timestamp, self.latest_timestamp)
+            assert timestamp == self.latest_timestamp
         return timestamp_increase(timestamp, order_flow) 
     
 if __name__ == "__main__":

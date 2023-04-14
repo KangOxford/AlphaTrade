@@ -79,6 +79,11 @@ class BaseExchange():
                     self.type2_handler(message)
                 elif item.type == 3:
                     self.type3_handler(message)
+        self.set_latest_timestamp(item)
+    def set_latest_timestamp(self,item):
+        assert len(self.task_list) > 0
+        self.latest_timestamp = item.timestamp
+
     def accumulating(self):
         try: #$
             self.mid_prices.append((self.order_book.get_best_ask() + self.order_book.get_best_bid())/2)
