@@ -7,6 +7,19 @@ from train import utils
 
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 
+#System and standard inputs
+import platform
+if platform.system() == 'Darwin':
+    print("Running on MacOS")
+    path = "/Users/kang/AlphaTrade/"
+elif platform.system() == 'Linux':
+    print("Running on Linux")
+    import sys
+    path = "/home/kanli/flair/"
+    sys.path.append(path)
+    sys.path.append(path + 'gym_exchange')
+    sys.path.append(path + 'gymnax_exchange')
+else:print("Unknown operating system")
 
 
 if __name__ == "__main__":
@@ -24,13 +37,13 @@ if __name__ == "__main__":
         venv,
         verbose=1,
         learning_rate=utils.linear_schedule(1e-3),
-        tensorboard_log="/Users/kang/AlphaTrade/train/output/")
+        tensorboard_log=path + "train/output/")
 
     model.learn(
         tb_log_name="RNN_PPO_initial",
         total_timesteps = int(1e8),
         # eval_env = venv,
-        callback=utils.TensorboardCallback()
+        # callback=utils.TensorboardCallback()
     )
 
 
