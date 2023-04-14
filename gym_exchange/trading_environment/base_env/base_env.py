@@ -64,7 +64,7 @@ class BaseEnv(InterfaceEnv):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
-        print(action)  #$
+        # print(action)  #$
         # ···················· 03.00.03 ····················
         decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
@@ -75,7 +75,7 @@ class BaseEnv(InterfaceEnv):
     def state(self, action: Action) -> State:
         # if self.cur_step == 3718:
         #     print()#$
-        print(self.cur_step) #$
+        # print(self.cur_step) #$
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
@@ -84,13 +84,13 @@ class BaseEnv(InterfaceEnv):
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
         self.wrapped_order_flow = wrapped_order_flow
-        if self.cur_step == 156:
-            print()#$
-        print("wrapped_order_flow:",wrapped_order_flow) #$
+        # if self.cur_step == 156:
+        #     print()#$
+        # print("wrapped_order_flow:",wrapped_order_flow) #$
         self.exchange.step(wrapped_order_flow)
         # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
-        print(auto_cancel) #$
+        # print(auto_cancel) #$
         self.exchange.auto_cancels.add(auto_cancel) # The step of auto cancel would be in the exchange(update_task_list)
         # ···················· 03.01.02.02 ····················
         # auto_cancel2process_list = self.exchange.auto_cancels.step()
@@ -221,13 +221,13 @@ if __name__ == "__main__":
     sum_reward = 0
     state, reward, done, info = env.step([1,3,0])# for testing
     for i in range(len(arr)):
-        print("-"*20 + f'=> {i} <=' +'-'*20) #$
+        # print("-"*20 + f'=> {i} <=' +'-'*20) #$
         encoded_action = arr[i]
         # if i == 320:
         #     breakpoint()
         state, reward, done, info = env.step(encoded_action)
-        print(f"reward: {reward}") #$
-        print(f"info: {info}") #$
+        # print(f"reward: {reward}") #$
+        # print(f"info: {info}") #$
         sum_reward += reward
         env.render()
         if done:
