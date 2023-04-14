@@ -16,9 +16,6 @@ from gym_exchange.trading_environment.base_env.interface_env import State # type
 # from gym_exchange.trading_environment.env_interface import State, Observation # types
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.trading_environment.base_env.utils import broadcast_lists
-from gym_exchange.trading_environment.base_env.assets.renders.plot_render import plot_render
-from gym_exchange.trading_environment.base_env.assets.info import InfoGenerator
-from gym_exchange.trading_environment.base_env.metrics.measure import OrderbookDistance
 
 
 # *************************** 2 *************************** #
@@ -46,8 +43,6 @@ class BaseEnv(InterfaceEnv):
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
-        self.info_generator = InfoGenerator()
-        self.orderbook_distance = OrderbookDistance()
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ····················
@@ -130,7 +125,7 @@ class BaseEnv(InterfaceEnv):
     # --------------------- 03.04 ---------------------
     @property
     def info(self):
-        returned_info = self.info_generator.step(self)
+        returned_info = {}
         return returned_info
 
 
@@ -138,9 +133,6 @@ class BaseEnv(InterfaceEnv):
     # ========================== 04 ==========================
     def render(self, mode = 'human'):
         '''for render method'''
-        # base_env_render(self)
-        if self.done:
-            plot_render(self)
         pass
 
 
