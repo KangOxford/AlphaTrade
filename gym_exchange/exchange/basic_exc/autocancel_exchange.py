@@ -36,7 +36,8 @@ class Exchange(BaseExchange):
         super().update_task_list(action)
     # ···················· 03.02.02 ····················
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
-        timestamp = latest_timestamp(self.order_book)
+        # timestamp = latest_timestamp(self.order_book)
+        timestamp = self.latest_timestamp
         # print(self.index) #$$
         # print(f"right: {timestamp}, my: {self.latest_timestamp}, my is {'early' if timestamp>self.latest_timestamp else 'late'}") #$$
         # assert float(timestamp) - float(self.latest_timestamp) <= 0.000000020 #$$
