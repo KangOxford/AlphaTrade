@@ -93,26 +93,8 @@ class EpochVwap(Vwap):
         return result
     
             
-    
+
 # ========================== 03 ==========================
-# class StepVwap_MA():
-#     '''Moving average of step vwap'''
-#     def __init__(self,):
-#         pass
-
-# class VwapCurve():
-#     ''' curve format
-#         index | 0 | 1 | 2 | 3 | 4 | 5 |
-#         pirce |0.1|0.2|0.3|0.4|0.5|0.6|'''
-#     def __init__(self,):
-#         self.index = 0
-        
-#     def to_array(self):
-#         result = 0 #TODO: implement
-#         return np.array(result)
-
-    
-# ========================== 04 ==========================
 class VwapEstimator():
     def __init__(self):
         self.step_vwap = StepVwap() # Used for info

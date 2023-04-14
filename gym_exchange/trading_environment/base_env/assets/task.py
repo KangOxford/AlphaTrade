@@ -24,3 +24,8 @@ class NumLeftProcessor():
         except:
             self.num_executed_in_last_step = agent_executed_pairs_in_last_step[1, :].sum() + self.num_left # at this point negative
 
+# class NumHoldProcessor():
+#     def __init__(self):
+#         self.num_hold = Config.num2liquidate
+#     def step(self,Self):
+#         pass
