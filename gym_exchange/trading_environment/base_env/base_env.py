@@ -92,9 +92,7 @@ class BaseEnv(InterfaceEnv):
         if self.cur_step == 156:
             print()#$
         print("wrapped_order_flow:",wrapped_order_flow) #$
-        print(self.exchange.order_book) #$$
         self.exchange.step(wrapped_order_flow)
-        print(self.exchange.order_book) #$$
         # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         print(auto_cancel) #$

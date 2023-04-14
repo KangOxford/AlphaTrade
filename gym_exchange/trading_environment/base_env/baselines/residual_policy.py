@@ -17,8 +17,8 @@ class Twap():
         new_arr = np.pad(arr, (0, Config.max_horizon - len(arr)), mode='constant')
         # arr = np.full(Config.max_horizon, 0) #$ masked for testing
         assert len(new_arr) == Config.max_horizon
-        for i in range(len(new_arr)):
-            print(new_arr[i])#$
+        # for i in range(len(new_arr)):
+        #     print(new_arr[i])#$
         assert new_arr.sum() == Config.num2liquidate
         self.num_list = new_arr
     # def initialize(self):

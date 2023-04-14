@@ -20,10 +20,11 @@ class IdGenerator():
     '''singleton method
     There should always be only one id generator object'''
     def __init__(self, initial_number):
-        self.trade_id = initial_number
+        self.initial_id = initial_number
+        self.current_id = initial_number
     def step(self):
-        self.trade_id += 1
-        return self.trade_id
+        self.current_id += 1
+        return self.current_id
     
 @singleton    
 class TradeIdGenerator(IdGenerator):
