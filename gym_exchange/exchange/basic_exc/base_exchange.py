@@ -65,7 +65,8 @@ class BaseExchange():
     # ··················· component of the step ·················
     def update_task_list(self, action=None):  # action : Action(for the definition of type)
         flow_list = next(self.flow_generator)  # used for historical data
-        self.task_list = [action] + [flow for flow in flow_list]
+        try:self.task_list += [action] + [flow for flow in flow_list]
+        except:self.task_list = [action] + [flow for flow in flow_list]
     def process_tasks(self):  # para: self.task_list; return: self.order_book
         # if self.index ==125:
         #     print()#$

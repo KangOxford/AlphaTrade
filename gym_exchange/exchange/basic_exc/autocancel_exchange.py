@@ -29,10 +29,12 @@ class Exchange(BaseExchange):
 
     # ···················· 03.02.01 ···················· 
     def update_task_list(self, action = None):# action : Action(for the definition of type)
+        self.task_list = []
+        auto_cancels = self.auto_cancels.step()
+        auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
+        self.task_list += auto_cancels
         super().update_task_list(action)
-        auto_cancels = self.auto_cancels.step(); auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
-        self.task_list += auto_cancels    
-    # ···················· 03.02.02 ···················· 
+    # ···················· 03.02.02 ····················
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:
         timestamp = latest_timestamp(self.order_book)
         return timestamp_increase(timestamp, order_flow) 

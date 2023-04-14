@@ -92,15 +92,17 @@ class BaseEnv(InterfaceEnv):
         if self.cur_step == 156:
             print()#$
         print("wrapped_order_flow:",wrapped_order_flow) #$
+        print(self.exchange.order_book) #$$
         self.exchange.step(wrapped_order_flow)
+        print(self.exchange.order_book) #$$
         # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         print(auto_cancel) #$
-        self.exchange.auto_cancels.add(auto_cancel)
+        self.exchange.auto_cancels.add(auto_cancel) # The step of auto cancel would be in the exchange(update_task_list)
         # ···················· 03.01.02.02 ····················
-        auto_cancel2process_list = self.exchange.auto_cancels.step()
-        for auto_cancel2process in auto_cancel2process_list:
-            self.exchange.step(auto_cancel2process)
+        # auto_cancel2process_list = self.exchange.auto_cancels.step()
+        # for auto_cancel2process in auto_cancel2process_list:
+        #     self.exchange.step(auto_cancel2process)
         # ···················· 03.01.03 ····················
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         # state = np.array([brief_order_book(self.exchange.order_book, side) for side in ['ask', 'bid']])
@@ -227,6 +229,7 @@ if __name__ == "__main__":
     env = BaseEnv()
     env.reset();print("="*20+" ENV RESTED "+"="*20)
     sum_reward = 0
+    state, reward, done, info = env.step([1,3,0])# for testing
     for i in range(len(arr)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         encoded_action = arr[i]
