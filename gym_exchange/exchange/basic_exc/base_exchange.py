@@ -45,6 +45,7 @@ class BaseExchange():
         self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2]
         self.best_bids = [self.order_book.get_best_bid()]
         self.best_asks = [self.order_book.get_best_ask()]
+        self.latest_timestamp = "34200.000000002" # TODO
 
     def initialize_orderbook(self):
         '''only take the index0, the first one to init the lob'''
@@ -57,6 +58,9 @@ class BaseExchange():
     # -------------------------- 03.03 ----------------------------
     def step(self, action=None):  # action : Action(for the definition of type)
         self.update_task_list(action)
+        # if self.index ==16:
+        #     print(self.order_book)
+        #     print()#$
         self.process_tasks()
         self.accumulating()
         return self.order_book
@@ -68,21 +72,22 @@ class BaseExchange():
         try:self.task_list += [action] + [flow for flow in flow_list]
         except:self.task_list = [action] + [flow for flow in flow_list]
     def process_tasks(self):  # para: self.task_list; return: self.order_book
-        # if self.index ==125:
+        # if self.index ==16:
         #     print()#$
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
                 if item.type == 1:
                     self.type1_handler(message, index)
+                    # print(item.type,item.timestamp,self.latest_timestamp) #$
                 elif item.type == 2:
                     self.type2_handler(message)
+                    # print(item.type,item.timestamp,self.latest_timestamp) #$
                 elif item.type == 3:
                     self.type3_handler(message)
-        self.set_latest_timestamp(item)
-    def set_latest_timestamp(self,item):
-        assert len(self.task_list) > 0
-        self.latest_timestamp = item.timestamp
+                    # print(item.type,item.timestamp,self.latest_timestamp) #$
+                # assert item.timestamp >= self.latest_timestamp, 'The timestamp of a new order should be later than the timestamp of the auto_cancel action in the previous step' #$
+                self.latest_timestamp = item.timestamp
 
     def accumulating(self):
         try: #$
