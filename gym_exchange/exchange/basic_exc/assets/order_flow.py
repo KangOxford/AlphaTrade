@@ -56,8 +56,19 @@ class OrderFlow():
         {'type': 'limit','side': bid or ask,'quantity': quantity,\
          'price': price,'trade_id': trade_id, "timestamp":timestamp,\
          'order_id':order_id}'''
+        if self.type == 1:
+            type='limit'
+        elif self.type == 2:
+            type='cancel'
+        elif self.type == 3:
+            type='delete'
+        elif self.type == 4:
+            type='market'
+        else:
+            type='nothing'
+        
         message = {
-            'type'     : 'limit' ,
+            'type'     : type,
             # 'side'     : 'ask' if self.side== 1 else 'bid', #new
             'side': 'bid' if self.side == 1 else 'ask', #origin
             'quantity' : self.quantity,
