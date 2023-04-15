@@ -187,7 +187,7 @@ if __name__ == "__main__":
 
     exchange = BaseExchange()
     exchange.reset()
-    for _ in range(95):
+    for _ in range(2048):
         exchange.step()
     gpuOB=exchange.order_book.get_L2_state()
     print(gpuOB.reshape(100,4))

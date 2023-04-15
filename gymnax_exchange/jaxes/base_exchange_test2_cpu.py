@@ -164,7 +164,7 @@ if __name__ == "__main__":
         for _ in range(2048):
             exchange.step()"""
     exchange.reset()
-    for _ in range(95):
+    for _ in range(2048):
         exchange.step()
     cpuOB=jnp.array(list(zip_longest(*exchange.order_book.get_L2_state(), fillvalue=-1)))
     print(cpuOB)
