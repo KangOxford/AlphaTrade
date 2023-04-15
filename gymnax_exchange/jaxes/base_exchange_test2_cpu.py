@@ -78,7 +78,7 @@ class BaseExchange():
         # if self.index ==125:
         #     print()#$
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
-            print(self.index,index,item)
+            #print(self.index,index,item)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
                 if item.type == 1:
