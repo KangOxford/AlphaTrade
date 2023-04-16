@@ -32,9 +32,18 @@ class Twap():
         new_arr[2::3] += 1
         # baseline }
         '''
-        new_arr = np.full(Config.max_horizon, 5)
+        # new_arr = np.full(Config.max_horizon, 5)
+        # new_arr[1::2] += 1
+        # new_arr[2::3] += 1 # for testing train0.5
+        # baseline {
+        new_arr = np.full(Config.max_horizon, 10)
         new_arr[1::2] += 1
-        new_arr[2::3] += 1
+        # new_arr[2::3] += 1
+        # new_arr[3::4] += 1
+        new_arr[3::6] += 1
+        new_arr[3::41] += 1
+        # new_arr[1000:1100] += 1
+        # baseline }
         self.num_list = new_arr
     # def initialize(self):
     #     step_integer = Config.num2liquidate // Config.max_horizon

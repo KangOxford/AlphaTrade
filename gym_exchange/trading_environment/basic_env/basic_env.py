@@ -118,17 +118,16 @@ if __name__ == "__main__":
     import numpy as np
     arr = np.array([
         [1,1,0],
-        [1,1,0]
     ])
     # arr = np.array([
     #     [0,1,0],
     #     [0,1,0]
     # ])
-    arr = np.repeat(arr, 2000, axis=0)
+    arr = np.repeat(arr, 3000, axis=0)
     env = BasicEnv()
     env.reset();print("="*20+" ENV RESTED "+"="*20)
     sum_reward = 0
-    state, reward, done, info = env.step([0,1,0])# for testing
+    # state, reward, done, info = env.step([0,1,0])# for testing
     # state, reward, done, info = env.step([1,1,0])# for testing
     for i in range(len(arr)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
