@@ -17,7 +17,7 @@ from gym_exchange.trading_environment.basic_env.basic_env import BasicEnv
 
 
 # *************************** 2 *************************** #
-class BasicEnv(BasicEnv):
+class TradeEnv(BasicEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
