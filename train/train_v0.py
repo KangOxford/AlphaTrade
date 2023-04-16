@@ -1,7 +1,8 @@
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from gym_exchange.trading_environment.base_env.base_env import BaseEnv
+from gym_exchange.trading_environment.basic_env.basic_env import BasicEnv
+# from gym_exchange.trading_environment.base_env.base_env import BaseEnv
 
 from train import utils
 
@@ -26,10 +27,11 @@ if __name__ == "__main__":
 
     def make_env():
         # env = gym.make(config["env_name"])
-        env = Monitor(BaseEnv())  # record stats such as returns
+        env = Monitor(BasicEnv())  # record stats such as returns
         return env
 
-    venv = DummyVecEnv([make_env])
+    # venv = DummyVecEnv([make_env ] * 4)
+    venv = DummyVecEnv([make_env ])
 
 
     model = RecurrentPPO(
@@ -43,7 +45,7 @@ if __name__ == "__main__":
         tb_log_name="RNN_PPO_initial",
         total_timesteps = int(1e8),
         # eval_env = venv,
-        # callback=utils.TensorboardCallback()
+        callback=utils.TensorboardCallback()
     )
 
 

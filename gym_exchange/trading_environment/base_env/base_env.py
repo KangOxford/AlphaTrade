@@ -36,6 +36,7 @@ class BaseEnv(InterfaceEnv):
         # observation = self.obs_from_state(self.cur_state)
         state = self.cur_state
         assert self.cur_step == 0
+        print("env reset") #$
         return state
     # ------------------------- 02.01 ------------------------
     def init_components(self):
@@ -64,7 +65,7 @@ class BaseEnv(InterfaceEnv):
     def step(self, action):
         '''input : action
            return: observation, reward, done, info'''
-        # print(action)  #$
+        print(action)  #$
         # ···················· 03.00.03 ····················
         decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
         state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
