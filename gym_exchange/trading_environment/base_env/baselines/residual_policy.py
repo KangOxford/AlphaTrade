@@ -9,17 +9,27 @@ class Twap():
         self.initialize() # return self.num_list
         self.step_index = 0
     def initialize(self):
-        # step_integer = Config.num2liquidate // (Config.max_horizon//3)
-        # arr = np.full(Config.max_horizon//3, step_integer)
-        # selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon//3 * step_integer)
-        # arr[selected_indices] += 1
-        # assert arr.sum() == Config.num2liquidate
-        # new_arr = np.pad(arr, (0, Config.max_horizon - len(arr)), mode='constant')
-        new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
+        '''
+
+        step_integer = Config.num2liquidate // (Config.max_horizon//3)
+        arr = np.full(Config.max_horizon//3, step_integer)
+        selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon//3 * step_integer)
+        arr[selected_indices] += 1
+        assert arr.sum() == Config.num2liquidate
+        new_arr = np.pad(arr, (0, Config.max_horizon - len(arr)), mode='constant')
+        '''
+        # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
+        '''
         assert len(new_arr) == Config.max_horizon
         # for i in range(len(new_arr)):
         #     print(new_arr[i])#$
         assert new_arr.sum() == Config.num2liquidate
+        '''
+        # baseline {
+        new_arr = np.full(Config.max_horizon, 9)
+        new_arr[1::2] += 3
+        new_arr[2::3] += 1
+        # baseline }
         self.num_list = new_arr
     # def initialize(self):
     #     step_integer = Config.num2liquidate // Config.max_horizon

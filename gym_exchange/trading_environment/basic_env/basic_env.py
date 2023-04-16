@@ -44,7 +44,7 @@ class BasicEnv(BaseEnv):
         pass
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     '''
     # --------------------- 05.01 --------------------- 
     # from stable_baselines3.common.env_checker import check_env
@@ -114,6 +114,7 @@ if __name__ == "__main__":
             env.reset()
             break #$
     '''
+if __name__ == "__main__":
     import numpy as np
     arr = np.array([
         [1,1,0],
@@ -127,7 +128,8 @@ if __name__ == "__main__":
     env = BasicEnv()
     env.reset();print("="*20+" ENV RESTED "+"="*20)
     sum_reward = 0
-    state, reward, done, info = env.step([1,3,0])# for testing
+    state, reward, done, info = env.step([0,1,0])# for testing
+    # state, reward, done, info = env.step([1,1,0])# for testing
     for i in range(len(arr)):
         print("-"*20 + f'=> {i} <=' +'-'*20) #$
         encoded_action = arr[i]
@@ -137,7 +139,7 @@ if __name__ == "__main__":
         print(f"reward: {reward}") #$
         print(f"info: {info}") #$
         sum_reward += reward
-        env.render()
+        # env.render()
         if done:
             env.reset()
             break #$
