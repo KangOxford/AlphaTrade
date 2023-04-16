@@ -41,7 +41,7 @@ class BaseEnv(InterfaceEnv):
     # ------------------------- 02.01 ------------------------
     def init_components(self):
         self.vwap_estimator = VwapEstimator()
-        self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
+        self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0],lambda_ = 0.0) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
     def initial_state(self) -> State:
@@ -62,13 +62,13 @@ class BaseEnv(InterfaceEnv):
         return state
 
     # ========================== 03 ==========================
-    def step(self, action):
+    def step(self, machine_code):
         '''input : action
            return: observation, reward, done, info'''
-        print(action)  #$
+        print(machine_code)  #$
         # ···················· 03.00.03 ····················
-        decoded_action = Action.decode(action)  # machine code => [side, quantity_delta, price_delta]
-        state, reward, done, info = self.state(decoded_action), self.reward, self.done, self.info
+        delta_action = Action.decode(machine_code)  # machine code => [side, quantity_delta, price_delta]
+        state, reward, done, info = self.state(delta_action), self.reward, self.done, self.info
         return state, reward, done, info
 
     # --------------------- 03.01 ---------------------
