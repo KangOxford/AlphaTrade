@@ -78,7 +78,7 @@ class BaseExchange():
         # if self.index ==125:
         #     print()#$
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
-            print(self.index,index,item)
+            #print(self.index,index,item)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
                 if item.type == 1:
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         for _ in range(2048):
             exchange.step()"""
     exchange.reset()
-    for _ in range(40):
+    for _ in range(2048):
         exchange.step()
     cpuOB=jnp.array(list(zip_longest(*exchange.order_book.get_L2_state(), fillvalue=-1)))
     print(cpuOB)

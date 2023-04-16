@@ -85,7 +85,7 @@ class BaseExchange():
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
-                print(message)
+                #print(message)
                 if item.type == 1:
                     self.type1_handler(message, index)
                 elif item.type == 2:
@@ -187,7 +187,7 @@ if __name__ == "__main__":
 
     exchange = BaseExchange()
     exchange.reset()
-    for _ in range(38):
+    for _ in range(2048):
         exchange.step()
     gpuOB=exchange.order_book.get_L2_state()
     print(gpuOB.reshape(100,4))
