@@ -1,6 +1,6 @@
 # AlphaTrade
 
-## Research in Limit Order Book
+## Research in Limit Order Book for Optimal Execution
 
 ## jax version codes would be in the jaxen directory
 
