@@ -17,7 +17,8 @@ def plot_render(self):
                 raise NotImplementedError
         return ask_market_step_vwap, bid_market_step_vwap
     # ----------------------- date ---------------------
-    string = "[TASK]optimal acquisition  [AIM]As lowest executed prices(green in the fig) as possible"
+    string = f"[TASK]optimal {side}  [AIM]As lowest executed prices(green in the fig) as possible" # TODO: Implement this
+    # TODO: implement another y asix with num left
     # string = "[ACTION]Action(direction = 'bid', quantity_delta = 0, price_delta = 0), [AIM]As lowest prices as possible"
     # recorder = env.exchange.executed_pairs_recoder
     recorder = self.exchange.executed_pairs_recoder
