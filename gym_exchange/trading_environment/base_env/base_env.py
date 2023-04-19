@@ -1,5 +1,5 @@
-import numpy as np
 import sys; sys.path.append('/Users/kang/AlphaTrade/')
+import numpy as np
 from gym_exchange import Config
 
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
@@ -9,7 +9,7 @@ from gym_exchange.trading_environment.base_env.assets.action import Action
 from gym_exchange.trading_environment.base_env.assets.orderflow import OrderFlowGenerator
 from gym_exchange.trading_environment.base_env.assets.task import NumLeftProcessor
 
-from gym_exchange.trading_environment.base_env.metrics.vwap import VwapEstimator
+from gym_exchange.trading_environment.base_env.assets.vwap_info import VwapEstimator
 
 from gym_exchange.trading_environment.base_env.interface_env import InterfaceEnv
 from gym_exchange.trading_environment.base_env.interface_env import State # types

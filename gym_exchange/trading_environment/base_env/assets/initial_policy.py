@@ -35,7 +35,7 @@ class Twap():
         # new_arr = np.full(Config.max_horizon, 5)
         # new_arr[1::2] += 1
         # new_arr[2::3] += 1 # for testing train0.5
-        # '''
+        '''
         # baseline {
         new_arr = np.full(Config.max_horizon, 10)
         new_arr[1::2] += 1
@@ -45,7 +45,14 @@ class Twap():
         new_arr[3::41] += 1
         # new_arr[1000:1100] += 1
         # baseline }
-        # '''
+        '''
+
+        # baseline {
+        new_arr = np.full(Config.max_horizon, 10)
+        new_arr[1::2] += 1
+        new_arr[3::6] += 1
+        new_arr[1700:Config.max_horizon] -= 6
+        # baseline }
 
         # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
         self.num_list = new_arr
