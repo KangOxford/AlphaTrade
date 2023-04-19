@@ -17,7 +17,7 @@ if platform.system() == 'Darwin':
 elif platform.system() == 'Linux':
     print("Running on Linux")
     import sys
-    path = "/home/kanli/flair/"
+    path = "/home/kanli/AlphaTrade/"
     sys.path.append(path)
     sys.path.append(path + 'gym_exchange')
     sys.path.append(path + 'gymnax_exchange')
@@ -31,8 +31,8 @@ if __name__ == "__main__":
         env = Monitor(TradeEnv())  # record stats such as returns
         return env
 
-    # venv = DummyVecEnv([make_env ] * 4)
-    venv = DummyVecEnv([make_env])
+    venv = DummyVecEnv([make_env ] * 4)
+    # venv = DummyVecEnv([make_env])
 
 
     model = RecurrentPPO(
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         tb_log_name="RNN_PPO",
         total_timesteps = int(1e8),
         # eval_env = venv,
-        callback=utils.TensorboardCallback()
+        # callback=utils.TensorboardCallback()
     )
 
 

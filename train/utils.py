@@ -111,44 +111,12 @@ class TensorboardCallback(BaseCallback):
         # breakpoint()
         item = self.model.env.buf_infos[-1]
 
-        # value = item.get('Step/Current_executed')
-        # self.logger.record('Step/Current_executed', value)
-        #
-        # value = item.get('Step/Current_step')
-        # self.logger.record('Step/Current_step', value)
-        #
-        # value = item.get('Step/Num_left')
-        # self.logger.record('Step/Num_left', value)
-        #
-        # value = item.get('Residual_action/Quantity')
-        # self.logger.record('Residual_action/Quantity', value)
-        #
-        # value = item.get('Actual_action/Price')
-        # self.logger.record('Actual_action/Price', value)
-        #
-        # value = item.get('Actual_action/Quantity')
-        # self.logger.record('Actual_action/Quantity', value)
-        #
-        # value = item.get('Orderbook/Distance')
-        # self.logger.record('Orderbook/Distance', value)
-        #
-        # value = item.get('EpochVwap/MarketVwap')
-        # self.logger.record('EpochVwap/MarketVwap', value)
-        #
-        # value = item.get('EpochVwap/AgentVwap')
-        # self.logger.record('EpochVwap/AgentVwap', value)
-        #
-        # value = item.get('EpochVwap/VwapSlippage')
-        # self.logger.record('EpochVwap/VwapSlippage', value)
-        #
-        # value = item.get('StepVwap/MarketVwap')
-        # self.logger.record('StepVwap/MarketVwap', value)
-        #
-        # value = item.get('StepVwap/AgentVwap')
-        # self.logger.record('StepVwap/AgentVwap', value)
-        #
-        # value = item.get('StepVwap/VwapSlippage')
-        # self.logger.record('StepVwap/VwapSlippage', value)
+
+        value = item.get('Epoch/Num_left')
+        self.logger.record('epoch/num_left', value)
+
+        value = item.get('Epoch/Num_hold')
+        self.logger.record('epoch/num_hold', value)
 
         value = item.get('Step/Current_executed')
         self.logger.record('step/current_executed', value)

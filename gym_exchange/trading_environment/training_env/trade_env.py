@@ -30,16 +30,15 @@ class TradeEnv(BaseEnv):
 if __name__ == "__main__":
     import numpy as np
     arr = np.array([
-        # [1,2,0],
-        [1,1,0],
+        [1,2,0],
+        # [1,1,0],
     ])
     # arr = np.array([
     #     [0,1,0],
     #     [0,1,0]
     # ])
     arr = np.repeat(arr, 2000, axis=0)
-    # env = BaseEnv()
-    env = BasicEnv()
+    env = TradeEnv()
     env.reset();print("="*20+" ENV RESTED "+"="*20)
     sum_reward = 0
     # state, reward, done, info = env.step([0,1,0])# for testing
@@ -53,7 +52,7 @@ if __name__ == "__main__":
         print(f"reward: {reward}") #$
         print(f"info: {info}") #$
         sum_reward += reward
-        env.render()
+        # env.render()
         if done:
             env.reset()
             break #$
