@@ -78,3 +78,10 @@ class OrderFlow():
             'timestamp': self.timestamp
             }
         return message
+
+
+    @property
+    def to_list(self):
+        time=self.timestamp.split('.')
+        l=[self.type,self.side,self.quantity,self.price,self.trade_id,self.order_id,int(time[0]),int(time[1])]
+        return l

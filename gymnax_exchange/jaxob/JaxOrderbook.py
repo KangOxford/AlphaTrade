@@ -309,7 +309,7 @@ def processLOBSTERexecution(order,orderbook,trades):
     return processLMTOrder(order,orderbook,trades)
 
 
-@jax.jit
+
 def processOrder(orderbook,order,tradesLen=5):
     trades=(jnp.ones([tradesLen,7])*-1).astype('int32') #Quant, Price, Standing ID, Agr ID, Trade ID, Time, Time (ns)
     order=order.astype('int32')
@@ -317,3 +317,8 @@ def processOrder(orderbook,order,tradesLen=5):
     return orderbook,trades
 
 
+i32_orderbook = jax.ShapeDtypeStruct((2,100,100,ORDERSIZE), jnp.dtype('int32'))
+i32_order = jax.ShapeDtypeStruct((8,), jnp.dtype('int32'))
+i32_scalar=jax.ShapeDtypeStruct((), jnp.dtype('int32'))
+
+processOrder_compiled=jax.jit(processOrder,static_argnames='tradesLen').lower(i32_orderbook,i32_order ,5).compile()
