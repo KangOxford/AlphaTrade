@@ -3,6 +3,8 @@ import math
 from collections import deque  # a faster insert/pop queue
 from six.moves import cStringIO as StringIO  # pyright: ignore
 from decimal import Decimal
+import jax
+from gymnax_exchange.jaxob.JaxOrderbook import INITID
 
 from .ordertree import OrderTree
 
@@ -19,6 +21,7 @@ class OrderBook(object):
         self.next_order_id = 0
 
     def update_time(self):
+        jax.debug.breakpoint  
         self.time += 1
 
 
@@ -86,7 +89,7 @@ class OrderBook(object):
             trades=[]
             order_in_book=quote
         elif type=='delete':
-            self.cancel_order(quote) #this will work as-is, any issues with messages will be flagged. 
+            self.cancel_order_v2(quote, time=quote['timestamp']) #this will work as-is, any issues with messages will be flagged. 
             trades=[]
             order_in_book=quote
         elif type=='skip':
@@ -247,6 +250,36 @@ class OrderBook(object):
         else:
             raise NotImplementedError  # tbd
             sys.exit('cancel_order() given neither "bid" nor "ask"')
+
+    def cancel_order_v2(self,quote, time=None):
+        if time:
+            self.time = time
+        else:
+            self.update_time()
+        if quote['side'] == 'bid':
+            if self.bids.order_exists(quote['order_id']):
+                self.bids.remove_order_by_id(quote['order_id'])
+            elif self.bids.price_exists(quote['price']):
+                #Try to find price to cancel and check if it contains an initial order.
+                orderlist=self.bids.get_price_list(quote['price'])
+                if orderlist.get_head_order().order_id>=INITID: #assumes INITID is the start of a sequence of integers that grow - better convention might be to use continuous INITID for all. 
+                    self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
+            else:
+                print('Ignoring cancel_order() for ID: ', quote['order_id'], ', Price: ',quote['price']),', and Quantity: ',quote['quantity']
+        elif quote['side'] == 'ask':
+            if self.asks.order_exists(quote['order_id']):
+                self.asks.remove_order_by_id(quote['order_id'])
+            elif self.asks.price_exists(quote['price']):
+                #Try to find price to cancel and check if it contains an initial order. 
+                orderlist=self.asks.get_price_list(quote['price'])
+                if orderlist.get_head_order().order_id>=INITID: #assumes INITID is the start of a sequence of integers that grow - better convention might be to use continuous INITID for all. 
+                    self.asks.remove_order_by_id(orderlist.get_head_order().order_id)
+            else:
+                print('Ignoring cancel_order() for ID: ', quote['order_id'], ', Price: ',quote['price']),', and Quantity: ',quote['quantity']
+        else:
+            raise NotImplementedError  # tbd
+            sys.exit('cancel_order() given neither "bid" nor "ask"')
+
 
     def modify_order(self, order_id, order_update, time=None):
         if time:
