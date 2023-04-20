@@ -2,11 +2,11 @@ import sys; sys.path.append('/Users/kang/AlphaTrade/')
 
 
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
-from gym_exchange.trading_environment.basic_env.assets.renders.plot_render import plot_render
-from gym_exchange.trading_environment.basic_env.assets.measure import OrderbookDistance
-from gym_exchange.trading_environment.basic_env.assets.info import InfoGenerator
+from gym_exchange.environment.basic_env.assets.renders.plot_render import plot_render
+from gym_exchange.environment.basic_env.assets.measure import OrderbookDistance
+from gym_exchange.environment.basic_env.assets.info import InfoGenerator
 
-from gym_exchange.trading_environment.base_env.base_env import BaseEnv
+from gym_exchange.environment.base_env.base_env import BaseEnv
 
 
 # *************************** 2 *************************** #

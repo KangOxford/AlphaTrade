@@ -4,4 +4,4 @@ jaxob => jaxes => jaxen
 
 which means:
 
-order_book => exchaneg => trading_environment
+order_book => exchaneg => environment

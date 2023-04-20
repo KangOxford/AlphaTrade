@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from gym import spaces
 from gym_exchange import Config
-from gym_exchange.trading_environment.env_interface import SpaceParams
+from gym_exchange.environment.env_interface import SpaceParams
 from gym_exchange.more_features.features_env.skip_env import SkipEnv
 
 from typing import TypeVar

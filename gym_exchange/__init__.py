@@ -14,11 +14,14 @@ def get_symbol_date(AlphaTradeRoot):
 
 class Config:
     # --------------- 00 Data ---------------
+    # ············· 00.01 Window ············
+    window_size = 100
     # ············· 00.01 Adapter ············
     raw_price_level = 10
-    raw_horizon = 2048
+    # raw_horizon = 2048
     # raw_horizon = 3700
     # raw_horizon = 4096
+    raw_horizon = 2048 * window_size
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
     # ············· 00.02 Source ············
@@ -99,7 +102,7 @@ register(
     id = "GymExchange-v1",
     # path to the class for creating the env
     # Note: entry_point also accept a class as input (and not only a string)
-    entry_point="gym_exchange.trading_environments.base_env.base_env:BaseEnv",
+    entry_point="gym_exchange.environments.base_env.base_env:BaseEnv",
     # Max number of steps per episode, using a `TimeLimitWrapper`
     max_episode_steps=Config.max_horizon,
     )

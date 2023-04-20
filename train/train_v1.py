@@ -5,8 +5,8 @@ from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from gym_exchange.trading_environment.base_env.base_env import BaseEnv
-from gym_exchange.trading_environment.training_env.train_env import TrainEnv
+from gym_exchange.environment.base_env.base_env import BaseEnv
+from gym_exchange.environment.training_env.train_env import TrainEnv
 from train import utils
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb

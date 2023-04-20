@@ -66,8 +66,6 @@ order_book
 exchange
 ---------
 
-trading_environment
+environment
 ----------
 
-training_environment
-----------

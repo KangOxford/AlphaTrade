@@ -1,15 +1,11 @@
 # ========================= 01 =========================
 # import numpy as np
 # from gym_exchange.exchange import Debugger
-from gym_exchange.more_features.features_exc.timewindow_exchange import TimewindowExchange
-from gym_exchange.exchange.basic_exc.utils import latest_timestamp, timestamp_increase
-from gym_exchange.exchange.basic_exc.assets.auto_cancels import AutoCancels
-from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
-
+from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
 
 # from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
-# from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
+# from gym_exchange.environment.env_interface import State, Observation, Action # types
 
 time_window = 300
 
