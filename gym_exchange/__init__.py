@@ -56,7 +56,8 @@ class Config:
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------
-    timeout = 50
+    timeout = 100
+    # timeout = 50
     # timeout = 10
     # timeout = 2
     # timeout = 1

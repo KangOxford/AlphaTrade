@@ -14,7 +14,8 @@ Action = TypeVar("Action")
 class SpaceParams(object):
     class Action:
         price_delta_size_one_side = 1
-        quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
+        # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
+        quantity_size_one_side = 8
 
         side_size = 2
         quantity_size = 2*quantity_size_one_side + 1
