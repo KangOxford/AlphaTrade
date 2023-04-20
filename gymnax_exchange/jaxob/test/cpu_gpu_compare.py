@@ -59,17 +59,22 @@ ob_jax_2=JaxOb()
 t=time()
 for msg in message_list:
     trades=ob_jax_2.process_order(msg).block_until_ready()
-tdelta3=time()-t 
+tdelta3=time()-t
 
 ob_jax_3=JaxOb()
 t=time()
 for msg in message_list:
     trades=ob_jax_3.process_order_comp(msg).block_until_ready()
 tdelta4=time()-t 
-jax.debug.breakpoint()
 
 t=time()
 for msg in message_list:
     ob_cpu.processOrder(msg,True,False)
 tdelta2=time()-t
-jax.debug.breakpoint()
+
+
+
+print('Time for jax orderbook under lax.scan: ',tdelta)
+print('Time for jax orderbook for loop (funct in loop compiled JIT): ', tdelta3)
+print('Time for jax orderbook for loop (funct in loop compiled AOT): ', tdelta4)
+print('Time for cpu orderbook for loop: ', tdelta2)

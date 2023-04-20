@@ -36,7 +36,7 @@ class OrderBook(object):
             intside=1
                 
         order_array=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
-        self.orderbook_array,trades=job.processOrder(self.orderbook_array,order_array)
+        self.orderbook_array,trades=job.processOrder_jitted(self.orderbook_array,order_array)
         return trades
 
     def process_order_comp(self,quote:Dict,from_data=False,verbose=False):
@@ -63,7 +63,7 @@ class OrderBook(object):
 
     def process_orders_array(self,msgs):
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
-        self.orderbook_array,trades=lax.scan(job.processOrder,self.orderbook_array,msgs)
+        self.orderbook_array,trades=lax.scan(job.processOrder_jitted,self.orderbook_array,msgs)
         return trades
 
 

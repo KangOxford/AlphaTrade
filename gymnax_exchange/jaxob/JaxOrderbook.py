@@ -321,4 +321,5 @@ i32_orderbook = jax.ShapeDtypeStruct((2,100,100,ORDERSIZE), jnp.dtype('int32'))
 i32_order = jax.ShapeDtypeStruct((8,), jnp.dtype('int32'))
 i32_scalar=jax.ShapeDtypeStruct((), jnp.dtype('int32'))
 
-processOrder_compiled=jax.jit(processOrder,static_argnames='tradesLen').lower(i32_orderbook,i32_order ,5).compile()
+processOrder_jitted=jax.jit(processOrder,static_argnames='tradesLen')
+processOrder_compiled=processOrder_jitted.lower(i32_orderbook,i32_order ,5).compile()
