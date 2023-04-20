@@ -6,7 +6,6 @@ from gym_exchange.environment.base_env.interface_env import State  # types
 from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
-from gym_exchange.environment.base_env.base_env import BaseEnv
 
 # *************************** 2 *************************** #
 class TimewindowEnv(locals()[Config.train_env]):
@@ -29,17 +28,24 @@ class TimewindowEnv(locals()[Config.train_env]):
 
 
 if __name__ == "__main__":
+    import numpy as np
+    arr = np.array([
+        [1,1,0],
+    ])
+    arr = np.repeat(arr, 3000, axis=0)
+
     env = TimewindowEnv()
-    env.reset();
+    env.reset()
     print("=" * 20 + " ENV RESTED " + "=" * 20)
+    sum_reward = 0
     for i in range(int(1e6)):
         print("-" * 20 + f'=> {i} <=' + '-' * 20)  # $
-        action = Action(direction='bid', quantity_delta=0, price_delta=1)  # $
-        encoded_action = action.encoded
-        state, reward, done, info = env.step(encoded_action)
+        machine_code = arr[i]
+        state, reward, done, info = env.step(machine_code)
         print(f"info: {info}")  # $
-        env.render()
+        sum_reward += reward
+        # env.render()
         if done:
             env.reset()
             break  # $
-
+    print(sum_reward)
