@@ -3,7 +3,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 # from gym_exchange.trading_environment.basic_env.basic_env import BasicEnv
 # from gym_exchange.trading_environment.base_env.base_env import BaseEnv
-from gym_exchange.trading_environment.training_env.trade_env import TradeEnv
+from gym_exchange.trading_environment.training_env.train_env import TradeEnv
 
 from train import utils
 

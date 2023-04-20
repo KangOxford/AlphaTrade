@@ -3,7 +3,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 # from gym_exchange.trading_environment.basic_env.basic_env import BasicEnv
 # from gym_exchange.trading_environment.base_env.base_env import BaseEnv
-from gym_exchange.trading_environment.training_env.trade_env import TradeEnv
+from gym_exchange.trading_environment.training_env.train_env import TrainEnv
 
 from train import utils
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     def make_env():
         # env = gym.make(config["env_name"])
-        env = Monitor(TradeEnv())  # record stats such as returns
+        env = Monitor(TrainEnv())  # record stats such as returns
         return env
 
     # venv = DummyVecEnv([make_env ] * 4)
@@ -45,8 +45,10 @@ if __name__ == "__main__":
     model.learn(
         tb_log_name="RNN_PPO",
         total_timesteps = int(1e8),
+        callback=utils.TensorboardCallback(),
+        progress_bar = True,
+        log_interval = 1
         # eval_env = venv,
-        callback=utils.TensorboardCallback()
     )
 
 

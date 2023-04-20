@@ -86,6 +86,8 @@ class Config:
 
     # --------------- 09 Random ---------------
     seed = 1234
+    # --------------- 10 TrainEnv ---------------
+    train_env = "BasicEnv"
 
 
 from gym.envs.registration import register
