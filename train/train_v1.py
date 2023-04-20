@@ -39,7 +39,6 @@ if __name__ == "__main__":
 
 
     def make_env():
-        Config.train_env = "TrainEnv"
         env = Monitor(TrainEnv())  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env

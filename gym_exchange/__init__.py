@@ -94,8 +94,8 @@ class Config:
     train_env = "BaseEnv"
     # train_env = "BasicEnv"
     # --------------- 11 FillNa ---------------
-    ask_fillna = 39999999
-    bid_fillna = 30000000
+    ask_fillna = max_price
+    bid_fillna = min_price
 
 
 
