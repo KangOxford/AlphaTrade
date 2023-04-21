@@ -14,6 +14,8 @@ from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 import gymnax_exchange.jaxob.JaxOrderbook as job
 from jax import numpy as jnp
 from gymnax_exchange.jaxob.jorderbook import OrderBook as JaxOb
+from gymnax_exchange.jaxob.jvecorderbook import OrderBook as JaxVecOb
+
 from gym_exchange.orderbook.orderbook import OrderBook as cpuOb
 import jax
 
@@ -39,7 +41,7 @@ single_message=flow_lists[0].get_head_order_flow().to_message
 jax_list=[]
 message_list=[]
 
-for flow_list in flow_lists[0:25600]:
+for flow_list in flow_lists[0:2000]:
     for flow in flow_list:
         jax_list.append(flow.to_list)
         message_list.append(flow.to_message)
@@ -51,9 +53,10 @@ message_array=jnp.array(jax_list)
 print(message_array[-10:])
 print(message_list[-10:])
 
-ob_jax=JaxOb()
-ob_cpu=cpuOb()
 
+
+
+ob_jax=JaxOb()
 t=time()
 trades=ob_jax.process_orders_array(message_array).block_until_ready()
 tdelta=time()-t
@@ -61,16 +64,50 @@ tdelta=time()-t
 ob_jax=JaxOb()
 t=time()
 trades=ob_jax.process_orders_array(message_array).block_until_ready()
-tdelta_test=time()-t
+tdelta_2ndcall=time()-t
 
+ob_cpu=cpuOb()
 t=time()
 for msg in message_list:
-    ob_cpu.processOrder(msg,True,False)
-tdelta2=time()-t
+        ob_cpu.processOrder(msg,True,False)
+tdelta_cpu=time()-t
+
+vec_of_ob_jax=[JaxOb(),JaxOb(),JaxOb(),JaxOb(),JaxOb()]
+t=time()
+for i in [0,1,2,3,4]:
+    trades=vec_of_ob_jax[i].process_orders_array(message_array).block_until_ready()
+tdelta_vec=time()-t
+
+ob_jax_vec=JaxVecOb(5)
+batched_messages=jnp.stack([message_array,message_array,message_array,message_array,message_array])
+t=time()
+ob_jax_vec.process_orders_array(batched_messages)
+tdelta_vmap=time()-t
+
+ob_jax_vec=JaxVecOb(5)
+batched_messages=jnp.stack([message_array,message_array,message_array,message_array,message_array])
+t=time()
+ob_jax_vec.process_orders_array(batched_messages)
+tdelta_vmap_2nd_call=time()-t
+
+
+vec_of_ob_cpu=[cpuOb(),cpuOb(),cpuOb(),cpuOb(),cpuOb()]
+t=time()
+for i in [0,1,2,3,4]:
+    for msg in message_list:
+        vec_of_ob_cpu[i].processOrder(msg,True,False)
+tdelta_5cpu=time()-t
+
+
 
 print('Time for jax orderbook under lax.scan: ',tdelta)
-print('Time for jax orderbook under lax.scan 2nd call: ',tdelta_test)
-print('Time for cpu orderbook for loop: ', tdelta2)
+print('Time for jax orderbook under lax.scan 2nd call: ',tdelta_2ndcall)
+print('Time for jax orderbook under 5 times lax.scan : ',tdelta_vec)
+print('Time for jax orderbook under vmap call: ',tdelta_vmap)
+print('Time for jax orderbook under vmap 2nd call: ',tdelta_vmap_2nd_call)
+print('Time for cpu orderbook for loop : ', tdelta_cpu)
+print('Time for cpu orderbook for loop 5 times: ', tdelta_5cpu)
+
 
 
 #For loops, ignoring for speed.

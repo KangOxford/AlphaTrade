@@ -323,3 +323,8 @@ i32_scalar=jax.ShapeDtypeStruct((), jnp.dtype('int32'))
 
 processOrder_jitted=jax.jit(processOrder,static_argnames='tradesLen')
 processOrder_compiled=processOrder_jitted.lower(i32_orderbook,i32_order ,5).compile()
+
+def scanOrders(orderbook,msgs):
+    orderbook,trades=lax.scan(processOrder_jitted,orderbook,msgs)
+    return orderbook
+scanOrders_batch=jax.vmap(scanOrders)

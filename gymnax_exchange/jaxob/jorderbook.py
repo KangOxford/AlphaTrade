@@ -66,7 +66,6 @@ class OrderBook(object):
         self.orderbook_array,trades=lax.scan(job.processOrder_jitted,self.orderbook_array,msgs)
         return trades
 
-
     def get_volume_at_price(self, side, price):
         bidAsk=int((side+1)/2)#buy is 1, sell is 0 # side: buy is 1, sell is -1
         idx=jnp.where((self.orderbook_array[bidAsk,:,:,1]==price),size=1,fill_value=-1)

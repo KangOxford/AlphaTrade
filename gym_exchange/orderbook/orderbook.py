@@ -265,7 +265,7 @@ class OrderBook(object):
                 if orderlist.get_head_order().order_id>=INITID: #assumes INITID is the start of a sequence of integers that grow - better convention might be to use continuous INITID for all. 
                     self.bids.remove_order_by_id(orderlist.get_head_order().order_id)
             else:
-                print('Ignoring cancel_order() for ID: ', quote['order_id'], ', Price: ',quote['price']),', and Quantity: ',quote['quantity']
+                pass
         elif quote['side'] == 'ask':
             if self.asks.order_exists(quote['order_id']):
                 self.asks.remove_order_by_id(quote['order_id'])
