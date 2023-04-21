@@ -14,6 +14,7 @@ from gym_exchange import Config
 import sys; sys.path.append('/Users/kang/AlphaTrade/')
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
+from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
 
 
 
@@ -22,11 +23,12 @@ from gym_exchange.environment.base_env.base_env import BaseEnv
 # class TrainEnv(Inherit):
 # *************************** 2 *************************** #
 
-class TrainEnv(locals()[Config.train_env]):
+class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
         action[0] = 1 # 1 means sell stocks, 0 means buy stocks
+        action[2] = 0 # passive orders
         state = super().state(action)
         return state
 

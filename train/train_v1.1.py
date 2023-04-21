@@ -27,7 +27,7 @@ else:print("Unknown operating system")
 if __name__ == "__main__":
     config = {
         "policy_type": "MlpLstmPolicy",
-        "total_timesteps": int(1e8),
+        "total_timesteps": int(1e12),
     }
 
     run = wandb.init(

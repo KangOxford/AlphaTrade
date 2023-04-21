@@ -8,7 +8,7 @@ from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
 
 # *************************** 2 *************************** #
-class TimewindowEnv(locals()[Config.train_env]):
+class MemoEnv(TimewindowEnv):
     # ========================== 01 ==========================
     def __init__(self):
         super().__init__()

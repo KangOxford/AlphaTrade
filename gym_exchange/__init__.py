@@ -21,7 +21,7 @@ class Config:
     # raw_horizon = 2048
     # raw_horizon = 3700
     # raw_horizon = 4096
-    raw_horizon = 2048 * window_size
+    raw_horizon = int(2048 * window_size * 1.763) # last position 1.763 used as redundant data
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
     # ············· 00.02 Source ············
@@ -56,7 +56,8 @@ class Config:
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------
-    timeout = 50
+    timeout = 100
+    # timeout = 50
     # timeout = 10
     # timeout = 2
     # timeout = 1
@@ -90,10 +91,11 @@ class Config:
     # --------------- 09 Random ---------------
     seed = 1234
     # --------------- 10 TrainEnv ---------------
-    train_env = "BasicEnv"
+    train_env = "BaseEnv"
+    # train_env = "BasicEnv"
     # --------------- 11 FillNa ---------------
-    ask_fillna = 39999999
-    bid_fillna = 30000000
+    ask_fillna = max_price
+    bid_fillna = min_price
 
 
 
