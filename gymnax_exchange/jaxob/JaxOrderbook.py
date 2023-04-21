@@ -221,7 +221,7 @@ def cancelOrder(order,orderbook,trades):
 
     def newID(order,orderbook,loc):
         #The order you're looking for has the INIT ID
-        locnew=jnp.where((orderbook[:,:,:,3]==INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
+        locnew=jnp.where((orderbook[:,:,:,3]>=INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
         return locnew
     
 
@@ -250,7 +250,7 @@ def delOrder_2arg(order,orderbook,trades):
 
     def newID(order,orderbook,loc,trades):
         #The order you're looking for has the INIT ID
-        locnew=jnp.where((orderbook[:,:,:,3]==INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
+        locnew=jnp.where((orderbook[:,:,:,3]>=INITID)&(orderbook[:,:,:,1]==order[3]),size=1,fill_value=-1)
         orderbook,trades=cancelOrder(order,orderbook,trades)
         return orderbook
     
