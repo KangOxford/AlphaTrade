@@ -8,6 +8,7 @@ from gym_exchange.data_orderbook_adapter import Debugger, Configuration
 from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.orderbook import OrderBook
+from gym_exchange.environment.base_env.assets.orderflow import OrderIdGenerator
 
 
 class RawDecoder():
@@ -21,6 +22,7 @@ class RawDecoder():
         self.column_numbers_bid = [i for i in range(price_level * 4) if i % 4 == 2 or i % 4 == 3]
         self.column_numbers_ask = [i for i in range(price_level * 4) if i % 4 == 0 or i % 4 == 1]
         self.order_book = OrderBook()
+        self.order_id_gen=OrderIdGenerator()
         self.initialize_orderbook()
         self.length = (self.order_book.bids.depth != 0) + (self.order_book.asks.depth != 0)
 
@@ -73,7 +75,7 @@ class RawDecoder():
                 size = message['quantity'],
                 price = message['price'],
                 trade_id = message['order_id'],
-                order_id = message['order_id'],
+                order_id = self.order_id_gen.step(),
                 time = message['timestamp']
             )
         else:
