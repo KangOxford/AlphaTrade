@@ -10,14 +10,15 @@ from train.sb3 import WandbCallback
 
 
 #System and standard inputs
+from pathlib import Path
+home = str(Path.home())
+path = home + "/AlphaTrade/"
 import platform
 if platform.system() == 'Darwin':
     print("Running on MacOS")
-    path = "/Users/kang/AlphaTrade/"
 elif platform.system() == 'Linux':
     print("Running on Linux")
     import sys
-    path = "/home/kanli/AlphaTrade/"
     sys.path.append(path)
     sys.path.append(path + 'gym_exchange')
     sys.path.append(path + 'gymnax_exchange')
