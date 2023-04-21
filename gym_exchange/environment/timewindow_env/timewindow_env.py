@@ -21,7 +21,10 @@ class TimewindowEnv(locals()[Config.train_env]):
         state, reward, done, info = super().step(action)
         step_memo = self.exchange.state_memos
         step_memo_arr = np.array(step_memo)
-        step_memo_arr = step_memo_arr.reshape(-1, 20 , 2).astype(np.float32) # 100, 20, 2
+        best_bids = step_memo_arr[:,1,0,:]
+        best_asks = step_memo_arr[:,0,-1,:]
+        best_prices = np.array([best_asks,best_bids])
+        step_memo_arr = best_prices.astype(np.float32) # 2, 100, 2
         step_memo_arr[:,:,0] = (step_memo_arr[:,:,0]-Config.price_mean)/ Config.price_std
         step_memo_arr[:,:,1] = (step_memo_arr[:,:,1]-Config.qty_mean)/ Config.qty_std
         return step_memo_arr, reward, done, info
