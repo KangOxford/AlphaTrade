@@ -39,7 +39,7 @@ single_message=flow_lists[0].get_head_order_flow().to_message
 jax_list=[]
 message_list=[]
 
-for flow_list in flow_lists[0:672]:
+for flow_list in flow_lists[0:25600]:
     for flow in flow_list:
         jax_list.append(flow.to_list)
         message_list.append(flow.to_message)
@@ -94,7 +94,7 @@ print('Time for jax orderbook for loop (funct in loop compiled AOT): ', tdelta4)
 from itertools import zip_longest
 cpuOB=jnp.array(list(zip_longest(*ob_cpu.get_L2_state(), fillvalue=-1)))
 jaxOB=ob_jax.get_L2_state()
-jaxOB=jaxOB.reshape(150,4)
+jaxOB=jaxOB.reshape(200,4)
 
 print('CPU orderbook final result:\n', cpuOB)
 print('GPU orderbook final result:\n', jaxOB[0:50,:])

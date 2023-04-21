@@ -12,7 +12,7 @@ import jax
 
 
 class OrderBook(object):
-    def __init__(self, price_levels=150,orderQueueLen=150):
+    def __init__(self, price_levels=200,orderQueueLen=200):
         self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1
