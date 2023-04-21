@@ -7,7 +7,7 @@ from gym_exchange.exchange.basic_exc.assets.auto_cancels import AutoCancels
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 # from gym_exchange.data_orderbook_adapter import utils
 # from gym_exchange.orderbook.order import Order
-# from gym_exchange.trading_environment.env_interface import State, Observation, Action # types
+# from gym_exchange.environment.env_interface import State, Observation, Action # types
 
 # ========================= 03 =========================
 class Exchange(BaseExchange):

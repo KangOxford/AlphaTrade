@@ -1,5 +1,5 @@
 from gym_exchange import Config
-from gym_exchange.trading_environment.base_env.interface_env import SpaceParams
+from gym_exchange.environment.base_env.interface_env import SpaceParams
 
 # # ========================== 01 ==========================
 # # ===================== more refined =====================
@@ -30,4 +30,5 @@ class PriceDelta():
         self.side = side
         if price_delta == 0: return self.best_ask_bid_dict[side] # best_bid or best_ask # TODO: test
         elif price_delta == 1: return self.best_ask_bid_dict[{'bid', 'ask'}.difference({side}).pop()] #self.cross_spread()
-        else: raise NotImplementedError
+        else:
+            raise NotImplementedError

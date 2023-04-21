@@ -1,8 +1,8 @@
-from gym_exchange.trading_environment.base_env.assets import Action
+from gym_exchange.environment.base_env.assets import Action
 
-# from gym_exchange.trading_environment.utils.action_wrapper import action_wrapper
-from gym_exchange.trading_environment.base_env.interface_env import State # types
-from gym_exchange.trading_environment.base_env.base_env import BaseEnv
+# from gym_exchange.environment.utils.action_wrapper import action_wrapper
+from gym_exchange.environment.base_env.interface_env import State # types
+from gym_exchange.environment.base_env.base_env import BaseEnv
 
 
 # *************************** 3 *************************** #

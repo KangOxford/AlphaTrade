@@ -1,7 +1,7 @@
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.more_features.features_exc.utils import get_state_memo
+from gym_exchange import Config
 
-time_window = 300
 '''
 function:
 01 only step after a timewindow
@@ -17,7 +17,7 @@ class TimewindowExchange(Exchange):
     def step(self, action=None):  # action : Action(for the definition of type)
         self.state_memos.append([]) # # init update_state_memos
         # ···················· 01.01.01 ····················
-        for i in range(time_window-1):
+        for i in range(Config.window_size-1):
             # print(f"innerloop step {i}") #$
             # if i == 2:
             #     print() #$

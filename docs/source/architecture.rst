@@ -3,7 +3,7 @@ Architecture of the package
 
 
 
-* ``gym_exchange``: the ``CPU`` version of rl_trading_environment
+* ``gym_exchange``: the ``CPU`` version of rl_environment
 
   * ``order_book``: order_book as the container
 
@@ -11,15 +11,15 @@ Architecture of the package
 
   * ``exchange``: simulated stock exchange
 
-  * ``trading_environment``: rl_trading_environment
+  * ``environment``: rl_environment
 
-* ``gymnax_exchange``: the ``GPU`` version of rl_trading_environment
+* ``gymnax_exchange``: the ``GPU`` version of rl_environment
 
   * ``jaxob``: Jax limit order book
 
   * ``jaxes``: Jax exchange
 
-  * ``jaxen``: Jax rl_trading_environment
+  * ``jaxen``: Jax rl_environment
 
 
 

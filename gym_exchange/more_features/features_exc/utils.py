@@ -1,6 +1,6 @@
 import numpy as np
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
-from gym_exchange.trading_environment.base_env.utils import broadcast_lists
+from gym_exchange.environment.base_env.utils import broadcast_lists
 
 
 def get_state_memo(order_book):

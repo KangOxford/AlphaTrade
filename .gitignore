@@ -5,8 +5,8 @@
 .spyproject/**
 **.txt
 .DS_Store
-
-
+**.log
+/train/output/**
 
 gym_exchange/.DS_Store
 gym_exchange/data_orderbook_adapter/.DS_Store
