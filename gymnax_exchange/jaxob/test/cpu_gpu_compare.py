@@ -53,6 +53,10 @@ t=time()
 trades=ob_jax.process_orders_array(message_array).block_until_ready()
 tdelta=time()-t
 
+t=time()
+trades=ob_jax.process_orders_array(message_array).block_until_ready()
+tdelta_test=time()-t
+
 
 
 ob_jax_2=JaxOb()
@@ -75,6 +79,8 @@ tdelta2=time()-t
 
 
 print('Time for jax orderbook under lax.scan: ',tdelta)
+print('Time for jax orderbook under lax.scan 2nd call: ',tdelta_test)
 print('Time for jax orderbook for loop (funct in loop compiled JIT): ', tdelta3)
 print('Time for jax orderbook for loop (funct in loop compiled AOT): ', tdelta4)
 print('Time for cpu orderbook for loop: ', tdelta2)
+
