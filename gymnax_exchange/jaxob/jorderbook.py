@@ -12,7 +12,7 @@ import jax
 
 
 class OrderBook(object):
-    def __init__(self, price_levels=100,orderQueueLen=100):
+    def __init__(self, price_levels=150,orderQueueLen=150):
         self.price_levels=price_levels
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
         self.orderbook_array=jnp.ones(orderbookDimension)*-1
@@ -63,7 +63,7 @@ class OrderBook(object):
 
     def process_orders_array(self,msgs):
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
-        self.orderbook_array,trades=lax.scan(job.processOrder_jitted,self.orderbook_array,msgs)
+        self.orderbook_array,trades=lax.scan(job.processOrder,self.orderbook_array,msgs)
         return trades
 
 

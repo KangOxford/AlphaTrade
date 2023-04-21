@@ -39,12 +39,17 @@ single_message=flow_lists[0].get_head_order_flow().to_message
 jax_list=[]
 message_list=[]
 
-for flow_list in flow_lists[0:2040]:
+for flow_list in flow_lists[0:672]:
     for flow in flow_list:
         jax_list.append(flow.to_list)
         message_list.append(flow.to_message)
 
+
+
 message_array=jnp.array(jax_list)
+
+print(message_array)
+print(message_list)
 
 ob_jax=JaxOb()
 ob_cpu=cpuOb()
@@ -53,12 +58,23 @@ t=time()
 trades=ob_jax.process_orders_array(message_array).block_until_ready()
 tdelta=time()-t
 
+ob_jax=JaxOb()
 t=time()
 trades=ob_jax.process_orders_array(message_array).block_until_ready()
 tdelta_test=time()-t
 
+t=time()
+for msg in message_list:
+    ob_cpu.processOrder(msg,True,False)
+tdelta2=time()-t
+
+print('Time for jax orderbook under lax.scan: ',tdelta)
+print('Time for jax orderbook under lax.scan 2nd call: ',tdelta_test)
+print('Time for cpu orderbook for loop: ', tdelta2)
 
 
+#For loops, ignoring for speed.
+'''
 ob_jax_2=JaxOb()
 t=time()
 for msg in message_list:
@@ -71,16 +87,16 @@ for msg in message_list:
     trades=ob_jax_3.process_order_comp(msg).block_until_ready()
 tdelta4=time()-t 
 
-t=time()
-for msg in message_list:
-    ob_cpu.processOrder(msg,True,False)
-tdelta2=time()-t
-
-
-
-print('Time for jax orderbook under lax.scan: ',tdelta)
-print('Time for jax orderbook under lax.scan 2nd call: ',tdelta_test)
 print('Time for jax orderbook for loop (funct in loop compiled JIT): ', tdelta3)
 print('Time for jax orderbook for loop (funct in loop compiled AOT): ', tdelta4)
-print('Time for cpu orderbook for loop: ', tdelta2)
+'''
 
+from itertools import zip_longest
+cpuOB=jnp.array(list(zip_longest(*ob_cpu.get_L2_state(), fillvalue=-1)))
+jaxOB=ob_jax.get_L2_state()
+jaxOB=jaxOB.reshape(150,4)
+
+print('CPU orderbook final result:\n', cpuOB)
+print('GPU orderbook final result:\n', jaxOB[0:50,:])
+size=cpuOB.shape[0]
+print('Difference in orderbooks for first 50 levels\n', jaxOB[0:size,:]-cpuOB)
