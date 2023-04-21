@@ -48,8 +48,8 @@ for flow_list in flow_lists[0:25600]:
 
 message_array=jnp.array(jax_list)
 
-print(message_array)
-print(message_list)
+print(message_array[-10:])
+print(message_list[-10:])
 
 ob_jax=JaxOb()
 ob_cpu=cpuOb()
