@@ -15,17 +15,17 @@ class TimewindowExchange(Exchange):
 
     # -------------------------- 01.01 ----------------------------
     def step(self, action=None):  # action : Action(for the definition of type)
-        self.state_memos.append([]) # # init update_state_memos
+        self.state_memos= [] # # init update_state_memos
         # ···················· 01.01.01 ····················
         for i in range(Config.window_size-1):
             # print(f"innerloop step {i}") #$
             # if i == 2:
             #     print() #$
             super(TimewindowExchange, self).step()
-            self.state_memos[-1].append(get_state_memo(self.order_book)) # update_state_memos
+            self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos
         super().step(action)
         # ···················· 01.01.02 ····················
-        self.state_memos[-1].append(get_state_memo(self.order_book)) # update_state_memos
+        self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos
         return self.order_book
 
     # -------------------------- 01.02 ----------------------------

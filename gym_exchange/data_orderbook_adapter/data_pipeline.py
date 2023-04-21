@@ -11,7 +11,10 @@ class DataPipeline:
                 Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_orderbook_10.csv", header=None)
             self.data_loader = pd.read_csv(
                 Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_message_10.csv", header=None)
-
+            Config.price_mean = self.historical_data.iloc[:,::2].to_numpy().mean()
+            Config.price_std = self.historical_data.iloc[:,::2].to_numpy().std()
+            Config.qty_mean = self.historical_data.iloc[:,1::2].to_numpy().mean()
+            Config.qty_std = self.historical_data.iloc[:,1::2].to_numpy().std()
         elif Config.raw_price_level == 50:
             self.historical_data = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_orderbook_50.csv", header = None)
             self.data_loader = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_message_50.csv", header=None)

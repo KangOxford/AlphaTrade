@@ -9,26 +9,13 @@ import wandb
 from train.sb3 import WandbCallback
 
 
-#System and standard inputs
-from pathlib import Path
-home = str(Path.home())
-path = home + "/AlphaTrade/"
-import platform
-if platform.system() == 'Darwin':
-    print("Running on MacOS")
-elif platform.system() == 'Linux':
-    print("Running on Linux")
-    import sys
-    sys.path.append(path)
-    sys.path.append(path + 'gym_exchange')
-    sys.path.append(path + 'gymnax_exchange')
-else:print("Unknown operating system")
+path = utils.get_path_by_platform()
 
 
 if __name__ == "__main__":
     config = {
         "policy_type": "MlpLstmPolicy",
-        "total_timesteps": int(1e8),
+        "total_timesteps": int(1e12),
     }
 
     run = wandb.init(

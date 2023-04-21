@@ -6,7 +6,7 @@ from gym_exchange.environment.base_env.interface_env import State  # types
 from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
-
+from copy import deepcopy
 # *************************** 2 *************************** #
 class TimewindowEnv(locals()[Config.train_env]):
     # ========================== 01 ==========================
@@ -19,7 +19,12 @@ class TimewindowEnv(locals()[Config.train_env]):
         '''input : action
            return: observation, reward, done, info'''
         state, reward, done, info = super().step(action)
-        return state, reward, done, info
+        step_memo = self.exchange.state_memos
+        step_memo_arr = np.array(step_memo)
+        step_memo_arr = step_memo_arr.reshape(-1, 20 , 2).astype(np.float32) # 100, 20, 2
+        step_memo_arr[:,:,0] = (step_memo_arr[:,:,0]-Config.price_mean)/ Config.price_std
+        step_memo_arr[:,:,1] = (step_memo_arr[:,:,1]-Config.qty_mean)/ Config.qty_std
+        return step_memo_arr, reward, done, info
     # --------------------- 03.01 ---------------------
     def state(self, action: Action) -> State:
         state = super().state(action)

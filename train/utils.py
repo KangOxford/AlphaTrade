@@ -1,5 +1,22 @@
 from stable_baselines3.common.callbacks import BaseCallback
 
+def get_path_by_platform():
+    # System and standard inputs
+    from pathlib import Path
+    home = str(Path.home())
+    path = home + "/AlphaTrade/"
+    import platform
+    if platform.system() == 'Darwin':
+        print("Running on MacOS")
+    elif platform.system() == 'Linux':
+        print("Running on Linux")
+        import sys
+        sys.path.append(path)
+        sys.path.append(path + 'gym_exchange')
+        sys.path.append(path + 'gymnax_exchange')
+    else:
+        print("Unknown operating system")
+    return path
 
 def timing(f):
     from functools import wraps
