@@ -35,6 +35,8 @@ def to_order_flow_lists(flow_lists):
 
 decoder = RawDecoder(**DataPipeline()())
 encoder = RawEncoder(decoder)
+print(decoder.historical_data.shape)
+print(gym_exchange.Config.raw_horizon)
 flow_lists=encoder()
 flow_lists = to_order_flow_lists(flow_lists)
 single_message=flow_lists[0].get_head_order_flow().to_message

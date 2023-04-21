@@ -21,7 +21,7 @@ class Config:
     # raw_horizon = 2048
     # raw_horizon = 3700
     # raw_horizon = 4096
-    raw_horizon = int(2048 * window_size * 1.763) # last position 1.763 used as redundant data
+    raw_horizon = int(2048 * window_size * 1.01) # last position 1.763 used as redundant data
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
     # ············· 00.02 Source ············
