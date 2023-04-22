@@ -4,6 +4,18 @@ import itertools
 import pandas as pd
 import numpy as np
 from gym_exchange import Config
+def normalization_config(Config,historical_data):
+    Config.price_mean = historical_data.iloc[:, ::2].to_numpy().mean()
+    Config.price_std = historical_data.iloc[:, ::2].to_numpy().std()
+    Config.qty_mean = historical_data.iloc[:, 1::2].to_numpy().mean()
+    Config.qty_std = historical_data.iloc[:, 1::2].to_numpy().std()
+def horizon_config(Config, message_data):
+    time = message_data.iloc[:,0]/3600
+    open_interval = time[time <= 10.0000]
+    horizon_length = open_interval.size//100 + 1
+    Config.max_horizon = horizon_length
+    Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
+
 class DataPipeline:
     def __init__(self):
         if Config.raw_price_level == 10:
@@ -11,10 +23,10 @@ class DataPipeline:
                 Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_orderbook_10.csv", header=None)
             self.data_loader = pd.read_csv(
                 Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_message_10.csv", header=None)
-            Config.price_mean = self.historical_data.iloc[:,::2].to_numpy().mean()
-            Config.price_std = self.historical_data.iloc[:,::2].to_numpy().std()
-            Config.qty_mean = self.historical_data.iloc[:,1::2].to_numpy().mean()
-            Config.qty_std = self.historical_data.iloc[:,1::2].to_numpy().std()
+            normalization_config(Config, self.historical_data)
+            horizon_config(Config, message_data = self.data_loader)
+
+
         elif Config.raw_price_level == 50:
             self.historical_data = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_orderbook_50.csv", header = None)
             self.data_loader = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_message_50.csv", header=None)

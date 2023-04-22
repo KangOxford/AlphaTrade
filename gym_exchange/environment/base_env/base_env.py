@@ -40,6 +40,7 @@ class BaseEnv(InterfaceEnv):
         return state
     # ------------------------- 02.01 ------------------------
     def init_components(self):
+        self.cur_step = 0
         self.vwap_estimator = VwapEstimator()
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0],lambda_ = 0.0) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
@@ -47,7 +48,6 @@ class BaseEnv(InterfaceEnv):
     def initial_state(self) -> State:
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ····················
-        self.cur_step = 0
         order_book = self.exchange.order_book
         asks, bids = brief_order_book(order_book, 'ask'), brief_order_book(order_book, 'bid')
         asks, bids = np.array(asks), np.array(bids)

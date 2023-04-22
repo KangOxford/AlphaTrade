@@ -13,6 +13,18 @@ def get_symbol_date(AlphaTradeRoot):
     return symbol, date
 
 class Config:
+    # --------------- 01 Basic ---------------
+    tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
+    price_level = 10
+    lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
+    # max_horizon = 4096
+    max_horizon = 2048
+    # max_horizon = 1600
+    # max_horizon = 800
+    # max_horizon = 600
+
+
+
     # --------------- 00 Data ---------------
     # ············· 00.01 Window ············
     window_size = 100
@@ -21,7 +33,9 @@ class Config:
     # raw_horizon = 2048
     # raw_horizon = 3700
     # raw_horizon = 4096
-    raw_horizon = int(2048 * window_size * 1.01) # last position 1.763 used as redundant data
+    raw_horizon = int(max_horizon * window_size * 1.01)
+    # NOTE!!! need to be updated together with max_horizon
+    # last position 1.763 used as redundant data
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
     # ············· 00.02 Source ············
@@ -34,16 +48,6 @@ class Config:
     # symbol = "AMZN";date = "2021-04-01"
 
 
-    # --------------- 01 Basic ---------------
-    tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
-    price_level = 10
-    lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
-    # max_horizon = 4096
-    # max_horizon = 2048
-    max_horizon = raw_horizon
-    # max_horizon = 1600
-    # max_horizon = 800
-    # max_horizon = 600
 
 
     # --------------- 02 Reward ---------------
@@ -91,8 +95,8 @@ class Config:
     # --------------- 09 Random ---------------
     seed = 1234
     # --------------- 10 TrainEnv ---------------
-    train_env = "BaseEnv"
-    # train_env = "BasicEnv"
+    # train_env = "BaseEnv"
+    train_env = "BasicEnv"
     # --------------- 11 FillNa ---------------
     ask_fillna = max_price
     bid_fillna = min_price
