@@ -13,14 +13,16 @@ Action = TypeVar("Action")
 
 class SpaceParams(object):
     class Action:
-        price_delta_size_one_side = 1
+        side_size = 2
+
         # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
         # quantity_size_one_side = 8
-        quantity_size_one_side = 3
+        quantity_size_one_side = Config.quantity_size_one_side
+        # quantity_size_one_side = 3
         # quantity_size_one_side = 1
-
-        side_size = 2
         quantity_size = 2*quantity_size_one_side + 1
+
+        price_delta_size_one_side = 1
         price_delta_size = 2 * price_delta_size_one_side
         '''
         for Action(side = 0, price_delta = 0,quantity_delta = 0

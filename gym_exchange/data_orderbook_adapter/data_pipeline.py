@@ -13,8 +13,11 @@ def horizon_config(Config, message_data):
     time = message_data.iloc[:,0]/3600
     open_interval = time[time <= 10.0000]
     horizon_length = open_interval.size//100 + 1
+    # Config.max_horizon = 5 #$ for easy testing
     Config.max_horizon = horizon_length
     Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
+    print(f"*** horizon_length: {Config.max_horizon}")
+    print(f"*** raw_horizon: {Config.raw_horizon}")
 
 class DataPipeline:
     def __init__(self):

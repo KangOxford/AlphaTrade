@@ -4,12 +4,12 @@ from gym_exchange.environment.base_env.assets.action import Action
 from gym_exchange.environment.base_env.interface_env import State  # types
 # from gym_exchange.environment.env_interface import State, Observation # types
 from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
-from gym_exchange.environment.basic_env.basic_env import BasicEnv
-from gym_exchange.environment.base_env.base_env import BaseEnv
-from copy import deepcopy
-import numpy as np
 from gym import spaces
+
 # *************************** 2 *************************** #
+from gym_exchange.environment.base_env.base_env import BaseEnv # DO NOT DELETE
+from gym_exchange.environment.basic_env.basic_env import BasicEnv # DO NOT DELETE
+
 class TimewindowEnv(locals()[Config.train_env]):
     # ========================== 01 ==========================
     def __init__(self):
@@ -48,7 +48,7 @@ class TimewindowEnv(locals()[Config.train_env]):
         return state, reward, done, info
     # --------------------- 03.01 ---------------------
     def state(self, action: Action) -> State:
-        state = super().state(action)
+        _ = super().state(action)
         step_memo = self.exchange.state_memos
         step_memo_arr = np.array(step_memo)
         best_bids = step_memo_arr[:,1,0,:]
@@ -60,12 +60,14 @@ class TimewindowEnv(locals()[Config.train_env]):
         assert step_memo_arr.shape == (100,4)
         return step_memo_arr
 
-
-
 if __name__ == "__main__":
+    # Config.max_horizon = horizon_length
+    # Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
+
     import numpy as np
     arr = np.array([
-        [1,1,0],
+        [1,Config.quantity_size_one_side,0],
+        # [1,1,0],
     ])
     arr = np.repeat(arr, 3000, axis=0)
 
