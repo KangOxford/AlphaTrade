@@ -76,6 +76,26 @@ class ExecutedPairsRecorder():
             "index":self.index,
             "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
             "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
+        # if self.market_agent_executed_pairs_in_last_step['market_pairs'] is not None: #$
+        #     print()#$
+        if index % Config.window_size in [0,1,2,3,99,98,97] and index != 0: # TODO!!!!! not implemented
+            market_pairs_list = []
+            agent_pairs_list = []
+            for i in range(self.index - Config.window_size, self.index):
+                if i in self.market_pairs.keys():
+                    market_pairs_list.append(self.market_pairs[i])
+                if i in self.agent_pairs.keys():
+                    agent_pairs_list.append(self.agent_pairs[i])
+            try:
+                m = np.concatenate(market_pairs_list, axis=1)
+            except: m = None
+            try:
+                a =np.concatenate(agent_pairs_list, axis=1)
+            except: a = None
+            self.market_agent_executed_pairs_in_last_step = {
+                "index": self.index,
+                "market_pairs": m,
+                "agent_pairs": a}
 
     def __str__(self):
         fstring = f'>>> market_pairs: {self.market_pairs}, \n>>> agent_pairs : {self.agent_pairs}'
