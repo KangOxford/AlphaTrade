@@ -14,9 +14,10 @@ from gym_exchange import Config
 class BasicEnv(BaseEnv):
     # ========================== 01 ==========================
     def __init__(self):
+        if 'exchange' not in dir(self):
+            self.exchange = Exchange()
         super().__init__()
         self.observation_space = self.state_space
-        self.exchange = Exchange()
 
     # ========================== 02 ==========================
     # ========================= RESET ========================
