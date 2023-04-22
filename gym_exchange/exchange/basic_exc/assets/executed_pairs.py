@@ -1,4 +1,5 @@
 import numpy as np
+from gym_exchange import Config
 class ExecutedPairsRecorder():
     def __init__(self):
         self.index = 0
@@ -69,6 +70,8 @@ class ExecutedPairsRecorder():
             pairs = self.trades2pairs(trades)
             self.update(pairs)
         # ----------- 02 ------------
+
+        # if index % Config.window_size == 0 and index != 0: # TODO!!!!! not implemented
         self.market_agent_executed_pairs_in_last_step = {
             "index":self.index,
             "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,

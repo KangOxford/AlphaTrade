@@ -25,6 +25,7 @@ def get_state_memo(order_book):
 class TimewindowExchange(Exchange):
     def __init__(self):
         super().__init__()
+        # self.out_executed_pairs_recoder =
 
     # -------------------------- 01.01 ----------------------------
     def step(self, action=None):  # action : Action(for the definition of type)
