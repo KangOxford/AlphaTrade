@@ -7,6 +7,7 @@ from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
 from copy import deepcopy
+import numpy as np
 # *************************** 2 *************************** #
 class TimewindowEnv(locals()[Config.train_env]):
     # ========================== 01 ==========================
