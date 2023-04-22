@@ -7,6 +7,7 @@ from gym_exchange.environment.basic_env.assets.measure import OrderbookDistance
 from gym_exchange.environment.basic_env.assets.info import InfoGenerator
 
 from gym_exchange.environment.base_env.base_env import BaseEnv
+from gym_exchange import Config
 
 
 # *************************** 2 *************************** #
@@ -47,7 +48,7 @@ class BasicEnv(BaseEnv):
 if __name__ == "__main__":
     import numpy as np
     arr = np.array([
-        [1,1,0],
+        [1,Config.quantity_size_one_side,0],
     ])
     # arr = np.array([
     #     [0,1,0],

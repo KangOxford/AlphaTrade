@@ -76,7 +76,8 @@ class InterfaceEnv(gym.Env, abc.ABC, Generic[State, Action]):
         """Reset episode and return initial observation."""
         self.cur_state = self.initial_state()
         assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
-        return self.obs_from_state(self.cur_state)
+        # return self.obs_from_state(self.cur_state)
+        return self.cur_state
     # ------------------------- 02.01 ------------------------
     @abc.abstractmethod
     def initial_state(self) -> State:

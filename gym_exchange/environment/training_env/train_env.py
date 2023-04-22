@@ -15,14 +15,10 @@ import sys; sys.path.append('/Users/kang/AlphaTrade/')
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
 from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
+from stable_baselines3.common.env_checker import check_env
 
 
-
-# # *************************** 2 *************************** #
-# exec("Inherit="+Config.train_env)
-# class TrainEnv(Inherit):
 # *************************** 2 *************************** #
-
 class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
@@ -35,7 +31,7 @@ class TrainEnv(TimewindowEnv):
 if __name__ == "__main__":
     import numpy as np
     arr = np.array([
-        [1,1,0],
+        [1,Config.quantity_size_one_side,0],
     ])
     # arr = np.array([
     #     [1,2,0],
@@ -47,7 +43,10 @@ if __name__ == "__main__":
     # ])
     arr = np.repeat(arr, 2000, axis=0)
     env = TrainEnv()
-    env.reset();print("="*20+" ENV RESTED "+"="*20)
+
+    check_env(env) #$
+
+    init_state = env.reset();print("="*20+" ENV RESTED "+"="*20)
     sum_reward = []
     # state, reward, done, info = env.step([0,1,0])# for testing
     # state, reward, done, info = env.step([1,1,0])# for testing

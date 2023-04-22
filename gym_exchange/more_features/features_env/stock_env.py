@@ -26,11 +26,11 @@ class TradeSpaceParams(SpaceParams):
 class TradeEnv(WindowEnv):
     def __init__(self):
         super(TradeEnv, self).__init__()
-        self.observation_space=spaces.Box(
-            low=TradeSpaceParams.Observation.low,
-            high=TradeSpaceParams.Observation.high,
-            dtype=np.int32,
-        )
+        # self.observation_space=spaces.Box(
+        #     low=TradeSpaceParams.Observation.low,
+        #     high=TradeSpaceParams.Observation.high,
+        #     dtype=np.int32,
+        # )
         
     def observation(self, action): 
         state = self.state(action)

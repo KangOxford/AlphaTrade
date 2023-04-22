@@ -7,6 +7,7 @@ from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
 from gym import spaces
 
 # *************************** 2 *************************** #
+import numpy as np
 from gym_exchange.environment.base_env.base_env import BaseEnv # DO NOT DELETE
 from gym_exchange.environment.basic_env.basic_env import BasicEnv # DO NOT DELETE
 
@@ -21,6 +22,8 @@ class TimewindowEnv(locals()[Config.train_env]):
               shape = (100,4),
               dtype = np.float32,
         )
+        self.observation_space = self.state_space
+
 
     # ========================== 02 ==========================
     # ========================= RESET ========================

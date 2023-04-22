@@ -22,12 +22,12 @@ class WindowEnv(SkipEnv):
     # ========================== 01 ==========================
     def __init__(self):
         super(WindowEnv, self).__init__()
-        self.observation_space=spaces.Box(
-            low   = WindowParams.Observation.low,
-            high  = WindowParams.Observation.high,
-            shape = WindowParams.Observation.shape,
-            dtype = np.int32,
-        )
+        # self.observation_space=spaces.Box(
+        #     low   = WindowParams.Observation.low,
+        #     high  = WindowParams.Observation.high,
+        #     shape = WindowParams.Observation.shape,
+        #     dtype = np.int32,
+        # )
         
     # ========================== 02 ==========================
     # Reset has to be able to make sure window_size step is done before step(from WindowEnv)

@@ -7,12 +7,15 @@ from train import utils
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb
 from train.sb3 import WandbCallback
-
+from stable_baselines3.common.env_checker import check_env
 
 path = utils.get_path_by_platform()
 
 
 if __name__ == "__main__":
+    env = Monitor(TrainEnv())  # record stats such as returns
+    check_env(env)  # $
+
     config = {
         "policy_type": "MlpLstmPolicy",
         "total_timesteps": int(1e12),
@@ -27,7 +30,7 @@ if __name__ == "__main__":
 
 
     def make_env():
-        env = Monitor(TrainEnv())  # record stats such as returns
+        env = TrainEnv()  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
     venv = DummyVecEnv([make_env])
