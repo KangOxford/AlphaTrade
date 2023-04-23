@@ -14,7 +14,7 @@ def get_symbol_date(AlphaTradeRoot):
 
 class Config:
     # --------------- 01 Basic ---------------
-    tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
+    # tick_size = 100 #(s hould be divided by 10000 to be converted to currency)
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     # max_horizon = 4096
@@ -60,7 +60,8 @@ class Config:
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------
-    quantity_size_one_side = 3
+    quantity_size_one_side = 30
+    # quantity_size_one_side = 3
     timeout = 100
     # timeout = 50
     # timeout = 10
@@ -86,7 +87,7 @@ class Config:
     state_dim_2 = price_level # equals 10
 
     # --------------- 07 Observation ---------------
-    lock_back_window = 60 # all the states after 60 actions was conducted
+    # lock_back_window = 60 # all the states after 60 actions was conducted
     # num_ticks =  lock_back_window * skip # 1min, num_ticks
     '''num_ticks = 1200 # 1min, num_ticks'''
 
