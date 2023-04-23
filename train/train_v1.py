@@ -40,7 +40,7 @@ if __name__ == "__main__":
         config["policy_type"],
          venv,
          verbose=1,
-         learning_rate=utils.linear_schedule(1e-3),
+         learning_rate=utils.linear_schedule(1e-1),
          tensorboard_log=f"{path}train/output/runs/{run.id}")
 
     model.learn(
