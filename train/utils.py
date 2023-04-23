@@ -1,5 +1,5 @@
 from stable_baselines3.common.callbacks import BaseCallback
-
+from gym_exchange import Config
 def get_path_by_platform():
     # System and standard inputs
     from pathlib import Path
@@ -10,6 +10,8 @@ def get_path_by_platform():
         print("Running on MacOS")
     elif platform.system() == 'Linux':
         print("Running on Linux")
+        Config.train_env = "BaseEnv"
+        print(f"Config.train_env: {Config.train_env}")
         import sys
         sys.path.append(path)
         sys.path.append(path + 'gym_exchange')
