@@ -101,7 +101,8 @@ def linear_schedule(initial_value):
         :param progress: (float)
         :return: (float)
         """
-        return progress * initial_value
+        import numpy as np
+        return np.pow(progress, 10) * initial_value
 
     return func
 
