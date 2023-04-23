@@ -69,16 +69,19 @@ class ExecutedPairsRecorder():
         else: # len(trades) == 1 or 3
             pairs = self.trades2pairs(trades)
             self.update(pairs)
-        # ----------- 02 ------------
 
+        # ----------- 02 ------------
         # if index % Config.window_size == 0 and index != 0: # TODO!!!!! not implemented
-        self.market_agent_executed_pairs_in_last_step = {
-            "index":self.index,
-            "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
-            "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
+
+        # self.market_agent_executed_pairs_in_last_step = {
+        #     "index":self.index,
+        #     "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
+        #     "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
+
         # if self.market_agent_executed_pairs_in_last_step['market_pairs'] is not None: #$
         #     print()#$
-        if index % Config.window_size in [0,1,2,3,99,98,97] and index != 0: # TODO!!!!! not implemented
+        # if index % Config.window_size in [0,1,2,3,99,98,97] and index != 0: # TODO!!!!! not implemented
+        if index != 0: # TODO!!!!! not implemented
             market_pairs_list = []
             agent_pairs_list = []
             for i in range(self.index - Config.window_size, self.index):
