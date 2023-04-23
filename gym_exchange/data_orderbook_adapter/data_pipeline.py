@@ -5,25 +5,20 @@ import pandas as pd
 import numpy as np
 from gym_exchange import Config
 def normalization_config(Config,historical_data):
-    tobeplotted = historical_data.iloc[:49490, [0, 2]]
-    tobeplotted.columns = ['best_ask', 'best_bid']
-    tobeplotted['mid_price'] = (tobeplotted.best_ask + tobeplotted.best_bid) / 2
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(120, 30))
-    ax.plot(tobeplotted.best_ask,linewidth=0.5)
-    ax.plot(tobeplotted.best_bid,linewidth=0.5)
-    ax.plot(tobeplotted.mid_price,linewidth=0.5)
-    p = ax.twinx()
-    qty = historical_data.iloc[:49490, [1, 3]]
-    tobeplotted['qty'] = qty.iloc[:, 0] + qty.iloc[:, 1]
-    p.bar(tobeplotted.index, tobeplotted.qty)
-    plt.savefig("plot.png")
-    plt.show()
-
-
-
-
-
+    # tobeplotted = historical_data.iloc[:49490, [0, 2]]
+    # tobeplotted.columns = ['best_ask', 'best_bid']
+    # tobeplotted['mid_price'] = (tobeplotted.best_ask + tobeplotted.best_bid) / 2
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots(figsize=(120, 30))
+    # ax.plot(tobeplotted.best_ask,linewidth=0.5)
+    # ax.plot(tobeplotted.best_bid,linewidth=0.5)
+    # ax.plot(tobeplotted.mid_price,linewidth=0.5)
+    # p = ax.twinx()
+    # qty = historical_data.iloc[:49490, [1, 3]]
+    # tobeplotted['qty'] = qty.iloc[:, 0] + qty.iloc[:, 1]
+    # p.bar(tobeplotted.index, tobeplotted.qty)
+    # plt.savefig("plot.png")
+    # plt.show()
     Config.price_mean = historical_data.iloc[:, ::2].to_numpy().mean()
     Config.price_std = historical_data.iloc[:, ::2].to_numpy().std()
     Config.qty_mean = historical_data.iloc[:, 1::2].to_numpy().mean()

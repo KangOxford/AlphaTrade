@@ -6,7 +6,7 @@ pip install sb3-contrib
 pip install tensorboard
 pip install sortedcontainers
 pip install wandb
-wandb login 41f4ee88a220359a48d63a1a4239c83862288bb0
+wandb login $WANDB
 
 cd ~/AlphaTrade/
 mkdir data
