@@ -8,7 +8,8 @@ import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb
 from train.sb3 import WandbCallback
 from stable_baselines3.common.env_checker import check_env
-
+import os
+os.system("export PYTHONPATH=$PYTHONPATH:/home/duser/AlphaTrade")
 path = utils.get_path_by_platform()
 
 
