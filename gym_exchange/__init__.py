@@ -96,11 +96,14 @@ class Config:
     # --------------- 09 Random ---------------
     seed = 1234
     # --------------- 10 TrainEnv ---------------
-    train_env = "BaseEnv"
-    # train_env = "BasicEnv"
+    # train_env = "BaseEnv"
+    train_env = "BasicEnv"
     # --------------- 11 FillNa ---------------
     ask_fillna = max_price
     bid_fillna = min_price
+
+    # --------------- 12 Benchmark ---------------
+    sum_reward = 6257641200 # initial policy
 
 
 

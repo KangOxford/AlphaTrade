@@ -10,7 +10,9 @@ class InfoGenerator():
         """in an liquidation task the market_vwap ought to be
         higher, as they are not eagle to takt the liquidity,
         and can be executed at higher price."""
+        '''
         step_epoch_vwap_info_dict = self.get_returned_vwap_info_dict(Self)
+        '''
         step_num_hold_dict = {"Step/Current_num_hold": self.get_step_num_hold(Self)}
         step_executed_bool_dict = {"Step/Executed_bool": Self.num_left_processor.num_executed_in_last_step}
         step_cur_step_dict = {"Step/Current_step": Self.cur_step}
@@ -26,7 +28,7 @@ class InfoGenerator():
             **actual_action_dict,
             **residual_action_dict,
             **step_num_left_dict, **step_cur_step_dict, **step_executed_bool_dict, **step_num_hold_dict,
-            **step_epoch_vwap_info_dict,
+            # **step_epoch_vwap_info_dict,
             **epoch_task_dict
             }
         return returned_info
