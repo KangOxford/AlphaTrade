@@ -120,7 +120,7 @@ class BaseEnv(InterfaceEnv):
         if self.done:
             penalty = Config.cost_parameter * (self.exchange.mid_prices[-1] / Config.lobster_scaling * self.num_left_processor.num_left) ** 2
             reward -= penalty
-        reward /= 801172.2046304494 #$ for scaling
+        reward /= 837732.857874494 #$ for scaling
         return reward
     # --------------------- 03.03  ---------------------
     @property

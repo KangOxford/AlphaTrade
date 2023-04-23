@@ -26,7 +26,11 @@ class ExecutedPairsRecorder():
     def update(self, pairs): # to be used in step
         # if len(pairs) > 2: #$
         #     breakpoint()
-        for pair in pairs:
+        # print(f"len of pairs {len(pairs)}") #$
+        # print(pairs)
+        zipped_pairs = list(zip(pairs[0::2], pairs[1::2]))
+        for pairs in zipped_pairs:
+            pair = pairs[1] # agent or market
             for key,value in pair.items(): # Pseudo for loop, one pair dict
                 if   key == "market":
                     # self.market_pairs[self.index] = np.append(self.market_pairs.get(self.index, np.array([])), np.array(value))[np.newaxis, :]
@@ -41,19 +45,6 @@ class ExecutedPairsRecorder():
                     except:
                         self.agent_pairs[self.index] = value.reshape(2,1)
                 else: raise NotImplementedError
-        # try:
-        #     if 'market' in [list(pair.keys())[0] for pair in pairs]: self.market_pairs[self.index] = np.array(self.market_pairs[self.index]).T
-        #     else: pass
-        #     if 'agent' in [list(pair.keys())[0] for pair in pairs]: self.agent_pairs[self.index] = np.array(self.agent_pairs[self.index]).T
-        #     else: pass
-        # except:
-        #     raise NotImplementedError
-        # try:
-        #     # print(f"{self.index},{self.agent_pairs[self.index]}") #$
-        #     # print(f"{self.index},{self.market_pairs[self.index]}") #$
-        #     pass#$
-        # except:
-        #     pass #$
     def step(self, trades, index):
         """two function:
         01: record market pairs and agent pairs, e.g.
@@ -71,17 +62,7 @@ class ExecutedPairsRecorder():
             self.update(pairs)
 
         # ----------- 02 ------------
-        # if index % Config.window_size == 0 and index != 0: # TODO!!!!! not implemented
-
-        # self.market_agent_executed_pairs_in_last_step = {
-        #     "index":self.index,
-        #     "market_pairs":self.market_pairs[self.index] if self.index in self.market_pairs.keys() else None,
-        #     "agent_pairs" :self.agent_pairs[self.index] if self.index in self.agent_pairs.keys() else None}
-
-        # if self.market_agent_executed_pairs_in_last_step['market_pairs'] is not None: #$
-        #     print()#$
-        # if index % Config.window_size in [0,1,2,3,99,98,97] and index != 0: # TODO!!!!! not implemented
-        if index != 0: # TODO!!!!! not implemented
+        if index != 0: # TODO might not right
             market_pairs_list = []
             agent_pairs_list = []
             for i in range(self.index - Config.window_size, self.index):

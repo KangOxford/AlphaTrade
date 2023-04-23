@@ -65,7 +65,7 @@ class Twap():
 
         # baseline {
         new_arr = np.full(Config.max_horizon, 1)
-        new_arr[400:465:2] += 1
+        new_arr[370:465:2] += 1
         # baseline }
 
 
