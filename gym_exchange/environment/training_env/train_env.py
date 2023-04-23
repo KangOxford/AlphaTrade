@@ -42,6 +42,8 @@ if __name__ == "__main__":
     #     [0,1,0]
     # ])
     arr = np.repeat(arr, 2000, axis=0)
+    arr[::2,2] = 1
+    arr[1::2,2] = 0
     env = TrainEnv()
 
     # check_env(env) #$
