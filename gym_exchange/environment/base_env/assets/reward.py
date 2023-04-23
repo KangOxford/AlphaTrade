@@ -40,29 +40,17 @@ class RewardGenerator():
         self.lambda_ = lambda_
         
     def update(self, executed_pairs_bigram, mid_price):
-        def get_p_market(executed_pairs_bigram, mid_price):
-            if executed_pairs_bigram['market_pairs'] is None:
-                p_market = 0 # TODO 
-            else:
-                p_market = vwap_price(executed_pairs_bigram['market_pairs'])
-            return p_market
-        if executed_pairs_bigram['market_pairs'] is None and executed_pairs_bigram['agent_pairs'] is None:
-            # no executed pairs in this step
-            # raise NotImplementedError
-            # pass #%
-            self.reward_functional = -1 #%
+        if executed_pairs_bigram['market_pairs'] is not None and executed_pairs_bigram['agent_pairs'] is not None:
+            p_market = vwap_price(executed_pairs_bigram['market_pairs'])
+            signals = {
+                "p_0": self.p_0,
+                "p_market": p_market,
+                "lambda_": self.lambda_,
+                "agent_pairs": executed_pairs_bigram['agent_pairs']
+            }
+            self.reward_functional = RewardFunctional(**signals)
         else:
-            p_market = get_p_market(executed_pairs_bigram, mid_price)
-            if executed_pairs_bigram['agent_pairs'] is not None:
-                signals = {
-                    "p_0" : self.p_0,
-                    "p_market" : p_market,
-                    "lambda_" : self.lambda_,
-                    "agent_pairs":executed_pairs_bigram['agent_pairs']
-                }
-                self.reward_functional = RewardFunctional(**signals)
-            else:
-                self.reward_functional = -1
+            self.reward_functional = -1
             
         
     def step(self):

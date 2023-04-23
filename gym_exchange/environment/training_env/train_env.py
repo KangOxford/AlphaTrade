@@ -44,7 +44,7 @@ if __name__ == "__main__":
     arr = np.repeat(arr, 2000, axis=0)
     env = TrainEnv()
 
-    check_env(env) #$
+    # check_env(env) #$
 
     init_state = env.reset();print("="*20+" ENV RESTED "+"="*20)
     sum_reward = []
