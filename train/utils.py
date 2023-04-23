@@ -102,7 +102,14 @@ def linear_schedule(initial_value):
         :return: (float)
         """
         import numpy as np
-        return np.pow(progress, 10) * initial_value
+        learning_rate = max(
+            max(max(np.power(np.exp((progress - 1)), 100000000) * initial_value,
+               0.1  * np.power(np.exp((progress-1)), 10000000)  * initial_value),
+               0.01 * np.power(np.exp((progress-1)), 1000000)   * initial_value),
+               0.001*np.power(np.exp((progress -1)), 100000)    * initial_value)
+
+        print(f">>> Learning Rate: {learning_rate}")
+        return learning_rate
 
     return func
 

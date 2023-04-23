@@ -33,7 +33,8 @@ if __name__ == "__main__":
         env = TrainEnv()  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
-    venv = DummyVecEnv([make_env] * 4)
+    # venv = DummyVecEnv([make_env] * 4)
+    venv = DummyVecEnv([make_env] )
 
 
     model = RecurrentPPO(
