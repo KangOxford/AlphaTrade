@@ -5,20 +5,6 @@ import pandas as pd
 import numpy as np
 from gym_exchange import Config
 def normalization_config(Config,historical_data):
-    # tobeplotted = historical_data.iloc[:49490, [0, 2]]
-    # tobeplotted.columns = ['best_ask', 'best_bid']
-    # tobeplotted['mid_price'] = (tobeplotted.best_ask + tobeplotted.best_bid) / 2
-    # import matplotlib.pyplot as plt
-    # fig, ax = plt.subplots(figsize=(120, 30))
-    # ax.plot(tobeplotted.best_ask,linewidth=0.5)
-    # ax.plot(tobeplotted.best_bid,linewidth=0.5)
-    # ax.plot(tobeplotted.mid_price,linewidth=0.5)
-    # p = ax.twinx()
-    # qty = historical_data.iloc[:49490, [1, 3]]
-    # tobeplotted['qty'] = qty.iloc[:, 0] + qty.iloc[:, 1]
-    # p.bar(tobeplotted.index, tobeplotted.qty)
-    # plt.savefig("plot.png")
-    # plt.show()
     Config.price_mean = historical_data.iloc[:, ::2].to_numpy().mean()
     Config.price_std = historical_data.iloc[:, ::2].to_numpy().std()
     Config.qty_mean = historical_data.iloc[:, 1::2].to_numpy().mean()
@@ -32,6 +18,74 @@ def horizon_config(Config, message_data):
     Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
     print(f"*** horizon_length: {Config.max_horizon}")
     print(f"*** raw_horizon: {Config.raw_horizon}")
+def plot_summary(historical_data):
+    # length = 49490
+    # length = 500
+    length = 100
+    tobeplotted = historical_data.iloc[:length, [0, 2]]
+    tobeplotted.columns = ['best_ask', 'best_bid']
+    tobeplotted.best_ask/=10000
+    tobeplotted.best_bid/=10000
+    tobeplotted['mid_price'] = (tobeplotted.best_ask + tobeplotted.best_bid) / 2
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(36, 9))
+    # fig, ax = plt.subplots(figsize=(120, 30))
+    width = 1.5 if length //1000 == 0 else 0.5
+    ax.plot(tobeplotted.best_ask,linewidth=width)
+    ax.plot(tobeplotted.best_bid,linewidth=width)
+    ax.plot(tobeplotted.mid_price,linewidth=width)
+    ax_y_range = ax.get_ylim()
+    ax_y = ax_y_range[1] - ax_y_range[0]
+    if  3<= length //100 <= 10:
+        scaling = 1
+        ax.set_ylim([ax_y_range[0], ax_y_range[1] + ax_y * scaling])
+    elif length //100 == 49:
+        scaling = 0
+        ax.set_ylim([ax_y_range[0], ax_y_range[1] + ax_y * scaling])
+    elif 0<= length //100 <3:
+        scaling1 = 1
+        scaling2 = 1
+        ax.set_ylim([ax_y_range[0] - ax_y * scaling1, ax_y_range[1] + ax_y * scaling2])
+        q_ylim = ax.get_ylim()[1] - ax.set_ylim()[0]
+    else: raise NotImplementedError
+
+
+    q = ax.twinx()
+    tobeplotted['spread'] = tobeplotted.best_ask - tobeplotted.best_bid
+    q.bar(tobeplotted.index, tobeplotted.spread, color = "red")
+    # q.spines['right'].set_position(('axes',1.15))
+    # q = plt.gca()
+    if 3<= length //100 <= 10 or length //100 == 49:
+        q.set_ylim([0, ax_y * (1 + scaling)])
+    elif 0 <= length // 100 < 3:
+        # q.set_ylim([0, ax_y * (1 + scaling1 + scaling2)])
+        q.set_ylim([0, q_ylim])
+        print("***")
+    else: raise NotImplementedError
+
+    # q.set_ylim([0, 24])
+    q.invert_yaxis()
+    q.xaxis.tick_top()
+
+    p = ax.twinx()
+    qty = historical_data.iloc[:length, [1, 3]]
+    tobeplotted['qty'] = qty.iloc[:, 0] + qty.iloc[:, 1]
+    p.bar(tobeplotted.index, tobeplotted.qty)
+    try:
+        p.set_ylim([0, p.get_ylim()[1] * (1 + scaling1 + scaling2)])
+    except:
+        pass
+
+    # plt.tight_layout()
+    import time
+    now = time.time()
+    plt.savefig("plot_" + str(now)+".png")
+    plt.show()
+
+    # tobeplotted['spread'] = tobeplotted.best_ask - tobeplotted.best_bid
+    # plt.plot(tobeplotted.spread, color = "red")
+    # plt.show()
+
 
 class DataPipeline:
     def __init__(self):
@@ -42,6 +96,7 @@ class DataPipeline:
                 Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_message_10.csv", header=None)
             normalization_config(Config, self.historical_data)
             horizon_config(Config, message_data = self.data_loader)
+            # plot_summary(self.historical_data)
 
 
         elif Config.raw_price_level == 50:
