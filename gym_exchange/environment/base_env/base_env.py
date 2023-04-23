@@ -122,6 +122,7 @@ class BaseEnv(InterfaceEnv):
             reward -= penalty
         # reward /= 837732.857874494 #$ for scaling
         reward /= 1070108.357874494#$ for scaling
+        reward += 0.002 # for encuouraging exploration
         return reward
     # --------------------- 03.03  ---------------------
     @property
