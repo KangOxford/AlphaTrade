@@ -43,7 +43,7 @@ class BaseEnv(InterfaceEnv):
     def init_components(self):
         self.cur_step = 0
         self.vwap_estimator = VwapEstimator()
-        self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0],lambda_ = 0.0) # Used for Reward
+        self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
     def initial_state(self) -> State:
@@ -120,7 +120,8 @@ class BaseEnv(InterfaceEnv):
         if self.done:
             penalty = Config.cost_parameter * (self.exchange.mid_prices[-1] / Config.lobster_scaling * self.num_left_processor.num_left) ** 2
             reward -= penalty
-        reward /= 837732.857874494 #$ for scaling
+        # reward /= 837732.857874494 #$ for scaling
+        reward /= 1070108.357874494#$ for scaling
         return reward
     # --------------------- 03.03  ---------------------
     @property

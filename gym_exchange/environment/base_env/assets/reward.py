@@ -26,10 +26,13 @@ class RewardFunctional():
     def drift(self):
         sum_ = 0
         for i in range(self.num_own_trades):
-            sum_ += self.q(i) * (self.p_market - self.p_0)
+            # sum_ += self.q(i) * (self.p_market - self.p_0) # Peer
+            sum_ += self.q(i) * (self.p(i) - self.p_0) # Kang
         return sum_
     
     def __call__(self):
+        # self.lambda_ = 0.0 # for testing
+        self.lambda_ = 0.01 # for less trend rewarding
         reward = self.advantage + self.lambda_ * self.drift
         # reward = (self.agent_pairs[0,:] * self.agent_pairs[1,:]).sum()/Config.sum_reward
         return reward
