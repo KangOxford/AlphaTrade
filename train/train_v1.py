@@ -12,8 +12,7 @@ import os
 os.system("export PYTHONPATH=$PYTHONPATH:/home/duser/AlphaTrade")
 path = utils.get_path_by_platform()
 
-
-if __name__ == "__main__":
+def main():
     # env = Monitor(TrainEnv())  # record stats such as returns
     # check_env(env)  # $
 
@@ -59,3 +58,5 @@ if __name__ == "__main__":
 
     run.finish()
 
+if __name__ == "__main__":
+    main()

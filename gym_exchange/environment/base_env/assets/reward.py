@@ -30,8 +30,8 @@ class RewardFunctional():
         return sum_
     
     def __call__(self):
-        # reward = self.advantage + self.lambda_ * self.drift
-        reward = (self.agent_pairs[0,:] * self.agent_pairs[1,:]).sum()/Config.sum_reward
+        reward = self.advantage + self.lambda_ * self.drift
+        # reward = (self.agent_pairs[0,:] * self.agent_pairs[1,:]).sum()/Config.sum_reward
         return reward
 
 
@@ -41,17 +41,18 @@ class RewardGenerator():
         self.lambda_ = lambda_
         
     def update(self, executed_pairs_bigram, mid_price):
-        # if executed_pairs_bigram['market_pairs'] is not None and executed_pairs_bigram['agent_pairs'] is not None:
-        #     p_market = vwap_price(executed_pairs_bigram['market_pairs'])
-        #     signals = {
-        #         "p_0": self.p_0,
-        #         "p_market": p_market,
-        #         "lambda_": self.lambda_,
-        #         "agent_pairs": executed_pairs_bigram['agent_pairs']
-        #     }
-        #     self.reward_functional = RewardFunctional(**signals)
-        # else:
-        #     self.reward_functional = -1
+        if executed_pairs_bigram['market_pairs'] is not None and executed_pairs_bigram['agent_pairs'] is not None:
+            p_market = vwap_price(executed_pairs_bigram['market_pairs'])
+            signals = {
+                "p_0": self.p_0,
+                "p_market": p_market,
+                "lambda_": self.lambda_,
+                "agent_pairs": executed_pairs_bigram['agent_pairs']
+            }
+            self.reward_functional = RewardFunctional(**signals)
+        else:
+            self.reward_functional = -1
+        '''
         if executed_pairs_bigram['agent_pairs'] is not None:
             signals = {
                 "p_0": 0,
@@ -62,8 +63,9 @@ class RewardGenerator():
             self.reward_functional = RewardFunctional(**signals)
         else:
             self.reward_functional = -1
-            
-        
+        '''
+
+
     def step(self):
         if self.reward_functional == -1 : reward = 0 # TODO:check if the executed_pairs is all the pairs recorded or only from one step
         else:   reward = self.reward_functional()

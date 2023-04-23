@@ -60,7 +60,8 @@ class Twap():
         # new_arr[3::6] += 1
         # new_arr[1700:Config.max_horizon] -= 6
         # baseline }
-
+        
+        # new_arr = np.full(Config.max_horizon, 2) #$ for testing
         # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
         self.num_list = new_arr
     # def initialize(self):

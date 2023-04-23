@@ -69,7 +69,8 @@ class BaseEnv(InterfaceEnv):
         # print(f"machine_code: {machine_code}")  #$
         # ···················· 03.00.03 ····················
         delta_action = Action.decode(machine_code)  # machine code => [side, quantity_delta, price_delta]
-        print(f"delta_action: {delta_action}")  #$
+        # print(f"delta_action: {delta_action}")  #$
+        print(f"{delta_action[0]} {delta_action[1]} {delta_action[2]}")  #$ less memory use
         state, reward, done, info = self.state(delta_action), self.reward, self.done, self.info
         return state, reward, done, info
 
@@ -116,6 +117,9 @@ class BaseEnv(InterfaceEnv):
     def reward(self):
         self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
+        if self.done:
+            penalty = Config.cost_parameter * (self.exchange.mid_prices[-1] / Config.lobster_scaling * self.num_left_processor.num_left) ** 2
+            reward -= penalty
         return reward
     # --------------------- 03.03  ---------------------
     @property

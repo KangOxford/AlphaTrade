@@ -52,7 +52,8 @@ class Config:
 
     # --------------- 02 Reward ---------------
     low_dimension_penalty_parameter = 1 # todo not sure
-    cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
+    cost_parameter = 5e-5
+    # cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     phi_prime = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
 
     # --------------- 03 Task ---------------
