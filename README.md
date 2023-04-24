@@ -2,14 +2,15 @@
 
 ## Research in Limit Order Book for Optimal Execution
 
-## jax version codes would be in the jaxen directory
 
 This is a lean version of the `main` branch, primarily intended for the development of simulation environments.
 
 Previous document refers to `main` branch
 
+[RecurrentPPO Training Results](https://wandb.ai/kang-oxford/AlphaTrade?workspace=user-kang-oxford)
 
 ![image](https://user-images.githubusercontent.com/37290277/233871831-cd0f3afd-62c0-4e0f-a16e-71e932784211.png)
+
 
 
 ### Architecture of the package:
