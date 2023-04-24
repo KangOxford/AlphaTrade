@@ -19,7 +19,13 @@ def main():
     config = {
         "policy_type": "MlpLstmPolicy",
         "total_timesteps": int(1e12),
-
+        "ent_coef" : 1,
+        # ent_coef = 0.1,
+        # ent_coef = 0.01,
+        "vf_coef" : 0.5,
+        "gamma" : 0.90,  # Lower this value to make the agent more short-sighted
+        "gae_lambda" : 0.8,  # Lower this value to make the agent more sensitive to immediate rewards
+        "clip_range" : 0.5,  # Increase this value to allow for more significant policy updates
     }
 
     run = wandb.init(
@@ -41,13 +47,12 @@ def main():
     model = RecurrentPPO(
         config["policy_type"],
         venv,
-        ent_coef = 1,
-        # ent_coef = 0.1,
-        # ent_coef = 0.01,
-        vf_coef = 0.5,
-        gamma=0.95,  # Lower this value to make the agent more short-sighted
-        gae_lambda=0.9,  # Lower this value to make the agent more sensitive to immediate rewards
-        clip_range=0.3,  # Increase this value to allow for more significant policy updates
+        ent_coef= config["ent_coef"],
+        vf_coef= config["vf_coef"],
+        gamma= config["gamma"],
+        gae_lambda= config["gae_lambda"],
+        clip_range= config["clip_range"],
+        # env = venv,
         verbose=1,
         learning_rate=utils.linear_schedule(5e-3),
         tensorboard_log=f"{path}train/output/runs/{run.id}")
