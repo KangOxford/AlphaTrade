@@ -55,6 +55,10 @@ class Config:
     cost_parameter = 5e-5
     # cost_parameter = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
     phi_prime = 5e-6 # from paper.p29 : https://epubs.siam.org/doi/epdf/10.1137/20M1382386
+    # mu_regularity = 1
+    # mu_regularity = 0.1
+    # mu_regularity = 0.01
+    mu_regularity = 0 # no peer reward, just revenue
 
     # --------------- 03 Task ---------------
     num2liquidate = 200 # 1 min

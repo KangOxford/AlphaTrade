@@ -2,7 +2,7 @@
 # from typing import List, Any, Type, Optional, Union, Callable, Sequence
 #
 # import gym
-# import numpy as np
+import numpy as np
 # from stable_baselines3.common.vec_env import VecEnv
 # from stable_baselines3.common.vec_env.base_vec_env import VecEnvObs, VecEnvStepReturn, VecEnvIndices
 #
@@ -65,4 +65,5 @@ if __name__ == "__main__":
         if done:
             env.reset()
             break #$
-    print(f"sum_reward:{sum(sum_reward)}")
+    # print(f"sum_reward:{sum(sum_reward)}")
+    print(f"mean_reward:{np.mean(sum_reward)}, std_reward:{np.std(sum_reward)}")
