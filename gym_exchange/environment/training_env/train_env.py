@@ -66,4 +66,4 @@ if __name__ == "__main__":
             env.reset()
             break #$
     # print(f"sum_reward:{sum(sum_reward)}")
-    print(f"mean_reward:{np.mean(sum_reward)}, std_reward:{np.std(sum_reward)}")
+    print(f"sum_reward:{np.sum(sum_reward)}, mean_reward:{np.mean(sum_reward)}, std_reward:{np.std(sum_reward)}")

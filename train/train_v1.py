@@ -19,6 +19,7 @@ def main():
     config = {
         "policy_type": "MlpLstmPolicy",
         "total_timesteps": int(1e12),
+
     }
 
     run = wandb.init(
@@ -39,10 +40,17 @@ def main():
 
     model = RecurrentPPO(
         config["policy_type"],
-         venv,
-         verbose=1,
-         learning_rate=utils.linear_schedule(5e-3),
-         tensorboard_log=f"{path}train/output/runs/{run.id}")
+        venv,
+        ent_coef = 1,
+        # ent_coef = 0.1,
+        # ent_coef = 0.01,
+        vf_coef = 0.5,
+        gamma=0.95,  # Lower this value to make the agent more short-sighted
+        gae_lambda=0.9,  # Lower this value to make the agent more sensitive to immediate rewards
+        clip_range=0.3,  # Increase this value to allow for more significant policy updates
+        verbose=1,
+        learning_rate=utils.linear_schedule(5e-3),
+        tensorboard_log=f"{path}train/output/runs/{run.id}")
 
     model.learn(
        tb_log_name="RNN_PPO_Wandb",

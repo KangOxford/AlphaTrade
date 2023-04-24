@@ -117,9 +117,9 @@ class BaseEnv(InterfaceEnv):
     def reward(self):
         self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
-        if self.done:
-            penalty = Config.cost_parameter * (self.exchange.mid_prices[-1] / Config.lobster_scaling * self.num_left_processor.num_left) ** 2
-            reward -= penalty
+        # if self.done:
+        #     penalty = Config.cost_parameter * (self.exchange.mid_prices[-1] / Config.lobster_scaling * self.num_left_processor.num_left) ** 2
+        #     reward -= penalty
         # reward /= 837732.857874494 #$ for scaling
         # reward /= 1070108.357874494  #$ for scaling
         return reward

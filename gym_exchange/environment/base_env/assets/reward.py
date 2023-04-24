@@ -35,7 +35,7 @@ class RewardFunctional():
     @property
     def peer_reward(self):
         # self.lambda_ = 0.0 # for testing
-        if self.type is "agent_market":
+        if self.type == "agent_market":
             self.lambda_ = 0.01 # for less trend rewarding
             reward = self.advantage + self.lambda_ * self.drift
             # reward = (self.agent_pairs[0,:] * self.agent_pairs[1,:]).sum()/Config.sum_reward
@@ -49,11 +49,12 @@ class RewardFunctional():
         revenue = (self.agent_pairs[0, :] * self.agent_pairs[1, :]).sum()
         regularity = self.peer_reward
         # normed(revenue, regularity) {
-        revenue = (revenue - 12825558.401639344)/18586214.00096323
-        regularity = (regularity-2192.844995644455)/5409.271445768599
+        # revenue = (revenue - 12825558.401639344)/18586214.00096323
+        # regularity = (regularity-2192.844995644455)/5409.271445768599
+        revenue = revenue / 6258872500.0
+        # print(f"{revenue}, {regularity}, {Config.mu_regularity * regularity}")
         # normed(revenue, regularity) }
         reward = revenue + Config.mu_regularity * regularity
-        print(f"{revenue}, {regularity}, {Config.mu_regularity * regularity}")
         return reward
 
 
