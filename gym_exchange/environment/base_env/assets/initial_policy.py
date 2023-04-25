@@ -63,9 +63,26 @@ class Twap():
         # baseline }
         '''
 
+        """
         # baseline {
         new_arr = np.full(Config.max_horizon, 1)
         new_arr[370:465:2] += 1
+        # baseline }
+        """
+
+        '''
+        # baseline {
+        new_arr = np.full(Config.max_horizon, 3)
+        new_arr[390:490:2] += 1
+        # baseline }
+        '''
+
+        # baseline {
+        # new_arr = np.full(Config.max_horizon, 1)
+        # new_arr[390:490:2] += 1
+        new_arr = np.full(Config.max_horizon, 1)
+        new_arr[392:490:2] += 1
+        new_arr
         # baseline }
 
 

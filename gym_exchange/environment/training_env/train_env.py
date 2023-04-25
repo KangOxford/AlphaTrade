@@ -29,7 +29,7 @@ class TrainEnv(TimewindowEnv):
         return state
 
 if __name__ == "__main__":
-    '''
+    # '''
     import numpy as np
     arr = np.array([
         [1,Config.quantity_size_one_side,0],
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     arr = np.repeat(arr, 2000, axis=0)
     arr[::2,2] = 1
     arr[1::2,2] = 0
-    '''
+    # '''
 
     arrs = np.load('/Users/kang/AlphaTrade/gym_exchange/outputs/action_array_25_apr.npy')
     # arr = arrs[0]
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # arr = arrs[1]
     # sum_reward:0.009999948073714555, mean_reward:2.0408057293295012e-05, std_reward:0.0003187840724970272
 
-    arr = arrs[2]
+    # arr = arrs[2]
     # sum_reward: 0.015028457601588784, mean_reward: 3.067032163589548e-05, std_reward: 0.0005051537908412706
     # ------------------- -= > 371 <= --------------------
     # 1 - 16
