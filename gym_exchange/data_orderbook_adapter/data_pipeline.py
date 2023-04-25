@@ -19,10 +19,32 @@ def horizon_config(Config, message_data):
     print(f"*** horizon_length: {Config.max_horizon}")
     print(f"*** raw_horizon: {Config.raw_horizon}")
 def plot_summary(historical_data):
-    # length = 49490
+    length = 49490
     # length = 500
-    length = 100
+    # length = 100
+
     tobeplotted = historical_data.iloc[:length, [0, 2]]
+    qty = historical_data.iloc[:length, [1, 3]]
+    tobeplotted['qty'] = qty.iloc[:, 0] + qty.iloc[:, 1]
+
+
+    # # ============
+    # import random
+    # mu = 0  # mean
+    # sigma = 1  # standard deviation
+    # random_numbers = [random.normalvariate(mu, sigma) for i in range(tobeplotted.shape[0])]
+    # tobeplotted.iloc[:,0] = np.array(random_numbers) * tobeplotted.iloc[:,0].std() + tobeplotted.iloc[:,0]
+    # random_numbers = [random.normalvariate(mu, sigma) for i in range(tobeplotted.shape[0])]
+    # tobeplotted.iloc[:,1] =np.array(random_numbers) * tobeplotted.iloc[:,1].std() + tobeplotted.iloc[:,1]
+    #
+    # random_numbers = [random.normalvariate(mu, sigma) for i in range(qty.shape[0])]
+    # qty.iloc[:,0] = np.array(random_numbers) * 0.01* qty.iloc[:,0].std() + qty.iloc[:,0]
+    # random_numbers = [random.normalvariate(mu, sigma) for i in range(qty.shape[0])]
+    # qty.iloc[:,1] = np.array(random_numbers) * 0.01 *qty.iloc[:,1].std() + qty.iloc[:,1]
+    # qty = qty.astype(np.int64)
+    # # ============
+
+
     tobeplotted.columns = ['best_ask', 'best_bid']
     tobeplotted.best_ask/=10000
     tobeplotted.best_bid/=10000
@@ -68,8 +90,6 @@ def plot_summary(historical_data):
     q.xaxis.tick_top()
 
     p = ax.twinx()
-    qty = historical_data.iloc[:length, [1, 3]]
-    tobeplotted['qty'] = qty.iloc[:, 0] + qty.iloc[:, 1]
     p.bar(tobeplotted.index, tobeplotted.qty)
     try:
         p.set_ylim([0, p.get_ylim()[1] * (1 + scaling1 + scaling2)])
