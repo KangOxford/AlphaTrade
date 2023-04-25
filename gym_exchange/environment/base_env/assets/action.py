@@ -35,7 +35,8 @@ class Action(BaseAction): # more precise class name: DeltaAction
         price_delta = self.price_delta + SpaceParams.Action.price_delta_size_one_side
         side = 1 if self.direction == 'bid' else 0
         # side = 0 if self.side == 'bid' else 1
-        quantity_delta = self.quantity_delta + SpaceParams.Action.quantity_size_one_side
+        # quantity_delta = self.quantity_delta + SpaceParams.Action.quantity_size_one_side
+        quantity_delta = self.quantity_delta + SpaceParams.Action.quantity_size_negative_side
         result = [side, quantity_delta, price_delta]
         wrapped_result = np.array(result)
         return wrapped_result
@@ -44,7 +45,7 @@ class Action(BaseAction): # more precise class name: DeltaAction
     @classmethod
     def decode(cls,action):  # to_human_readable
         direction = -1 if action[0] == 0 else 1
-        quantity_delta = action[1] - SpaceParams.Action.quantity_size_one_side
+        quantity_delta = action[1] - SpaceParams.Action.quantity_size_negative_side
         # price_delta = action[2] - SpaceParams.Action.price_delta_size_one_side
         price_delta = action[2]
         return np.array([direction,quantity_delta,price_delta])

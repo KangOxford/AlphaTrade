@@ -67,7 +67,9 @@ class Config:
     # --------------- 04 Action ---------------
     # quantity_size_one_side = 30
     # quantity_size_one_side = 3
-    quantity_size_one_side = 1
+    # quantity_size_one_side = 1
+    quantity_size_negative_side = 2
+    quantity_size_positive_side = 10
     timeout = 100
     # timeout = 50
     # timeout = 10

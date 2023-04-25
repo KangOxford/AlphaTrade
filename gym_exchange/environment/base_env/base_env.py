@@ -66,10 +66,10 @@ class BaseEnv(InterfaceEnv):
     def step(self, machine_code):
         '''input : action
            return: observation, reward, done, info'''
-        # print(f"machine_code: {machine_code}")  #$
+        print(f"machine_code: {machine_code}")  #$
         # ···················· 03.00.03 ····················
         delta_action = Action.decode(machine_code)  # machine code => [side, quantity_delta, price_delta]
-        # # print(f"delta_action: {delta_action}")  #$
+        print(f"delta_action: {delta_action}")  #$
         # print(f"{delta_action[0]} {delta_action[1]} {delta_action[2]}")  #$ less memory use
         state, reward, done, info = self.state(delta_action), self.reward, self.done, self.info
         return state, reward, done, info

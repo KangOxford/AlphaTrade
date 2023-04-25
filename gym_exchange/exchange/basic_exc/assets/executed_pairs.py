@@ -25,7 +25,7 @@ class ExecutedPairsRecorder():
 
     def update(self, pairs): # to be used in step
         # if len(pairs) > 2: #$
-        #     breakpoint()
+        #     breakpoint() #$
         # print(f"len of pairs {len(pairs)}") #$
         # print(pairs)
         zipped_pairs = list(zip(pairs[0::2], pairs[1::2]))

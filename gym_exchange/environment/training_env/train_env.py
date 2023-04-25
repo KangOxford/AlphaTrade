@@ -25,7 +25,7 @@ class TrainEnv(TimewindowEnv):
     def state(self, action):
         action[0] = 1 # 1 means sell stocks, 0 means buy stocks "Execution-2FreeDegrees"
         # action[2] = 0 # passive orders
-        print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
+        # print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
         state = super().state(action)
         return state
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # '''
     import numpy as np
     arr = np.array([
-        [1,Config.quantity_size_one_side,0],
+        [1,Config.quantity_size_negative_side,0],
     ])
     # arr = np.array([
     #     [1,2,0],
