@@ -23,8 +23,9 @@ class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
-        action[0] = 1 # 1 means sell stocks, 0 means buy stocks
+        action[0] = 1 # 1 means sell stocks, 0 means buy stocks "Execution-2FreeDegrees"
         # action[2] = 0 # passive orders
+        print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
         state = super().state(action)
         return state
 
