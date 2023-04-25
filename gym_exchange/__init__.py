@@ -71,9 +71,8 @@ class Config:
     quantity_size_negative_side = 2
     # quantity_size_positive_side = 200
     # quantity_size_positive_side = 100
-    # quantity_size_positive_side = 40
-    # quantity_size_positive_side = 30
-    quantity_size_positive_side = 20
+    quantity_size_positive_side = 30
+    # quantity_size_positive_side = 20
     # quantity_size_positive_side = 10
     # quantity_size_positive_side = 2
     timeout = 100
