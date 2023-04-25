@@ -20,7 +20,7 @@ class OrderBook(object):
 
     def process_orders_array(self,msgs_batch):
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
-        self.orderbooks_array=job.scanOrders_batch(self.orderbooks_array,msgs_batch)
+        self.orderbooks_array=job.scanOrders_batch_jit(self.orderbooks_array,msgs_batch)
         return 0
     #No longer really applies in the batched version.
     """

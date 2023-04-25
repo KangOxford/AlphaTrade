@@ -49,7 +49,7 @@ def addOrder(order,orderbook):
     orderbook=lax.cond(order[2]==0,lambda order,orderbook,idx,bidAsk: orderbook,nonZeroQuant,*(order,orderbook,idx,bidAsk))
     return orderbook
 
-@jax.jit
+@jax.jit   
 def newPrice(order,orderbook):
     orderlist=jnp.ones_like(orderbook[0,0,:,:])*-1
     orderlist=orderlist.at[0,:].set(order[2:8])
@@ -65,6 +65,8 @@ def add_to_orderlist(order,orderbook,list_index,bidAskidx):
     except:
         #most likely the list is full and nothing can be added. 
         return orderlist
+    
+    #TODO: Replace with a concatenate version. 
     #Insert at location
     orderlist=jnp.insert(orderlist,jnp.array(listLocation),jnp.array(order[2:8]),axis=0)
     #Remove last element
@@ -228,7 +230,7 @@ def cancelOrder(order,orderbook,trades):
     def goodID(order,orderbook,loc):
         orderArr=orderbook[loc][0]
         #TODO: Introduce a check for not finding an orderID. 
-        newquant=orderArr[0]-cancelQuant #TODO implement a check to make sure that new quant>0
+        newquant=orderArr[0]-cancelQuant
         
         def contCancel(order,orderbook,loc):
             orderArr=orderbook[loc][0]
@@ -327,4 +329,6 @@ processOrder_compiled=processOrder_jitted.lower(i32_orderbook,i32_order ,5).comp
 def scanOrders(orderbook,msgs):
     orderbook,trades=lax.scan(processOrder_jitted,orderbook,msgs)
     return orderbook
+
 scanOrders_batch=jax.vmap(scanOrders)
+scanOrders_batch_jit=jax.jit(scanOrders_batch)
