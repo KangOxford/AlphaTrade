@@ -86,11 +86,26 @@ t=time()
 ob_jax_vec.process_orders_array(batched_messages)
 tdelta_vmap=time()-t
 
+
 ob_jax_vec=JaxVecOb(100)
 batched_messages=jnp.stack([message_array for i in range(100)])
 t=time()
 ob_jax_vec.process_orders_array(batched_messages)
 tdelta_vmap_2nd_call=time()-t
+
+
+ob_jax_vec=JaxVecOb(2)
+batched_messages=jnp.stack([message_array for i in range(2)])
+t=time()
+ob_jax_vec.process_orders_array(batched_messages)
+tdelta_vmap_2=time()-t
+
+
+ob_jax_vec=JaxVecOb(2)
+batched_messages=jnp.stack([message_array for i in range(2)])
+t=time()
+ob_jax_vec.process_orders_array(batched_messages)
+tdelta_vmap_2nd_call_2=time()-t
 
 
 vec_of_ob_cpu=[cpuOb() for i in range(100)]
@@ -107,6 +122,8 @@ print('Time for jax orderbook under lax.scan 2nd call: ',tdelta_2ndcall)
 print('Time for jax orderbook under 100 times lax.scan : ',tdelta_vec)
 print('Time for jax orderbook under vmap call: ',tdelta_vmap)
 print('Time for jax orderbook under vmap 2nd call: ',tdelta_vmap_2nd_call)
+print('Time for jax orderbook under 2env vmap call: ',tdelta_vmap_2)
+print('Time for jax orderbook under 2env vmap 2nd call: ',tdelta_vmap_2nd_call_2)
 print('Time for cpu orderbook for loop : ', tdelta_cpu)
 print('Time for cpu orderbook for loop 100 times: ', tdelta_100cpu)
 
@@ -129,6 +146,8 @@ tdelta4=time()-t
 print('Time for jax orderbook for loop (funct in loop compiled JIT): ', tdelta3)
 print('Time for jax orderbook for loop (funct in loop compiled AOT): ', tdelta4)
 '''
+
+print(ob_jax_vec.orderbooks_array)
 
 from itertools import zip_longest
 cpuOB=jnp.array(list(zip_longest(*ob_cpu.get_L2_state(), fillvalue=-1)))
