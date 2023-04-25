@@ -64,19 +64,17 @@ if __name__ == "__main__":
     # info: {}
 
 
-    import numpy as np
-    arr = np.array([
-        [1,185,1],
-    ])
+    # import numpy as np
+    # # arr = np.array([
+    # #     [1,185,1],
+    # # ])
     # arr = np.array([
     #     [1,2,0],
-    #     # [1,1,0],
     # ])
-    # arr = np.array([
-    #     [0,1,0],
-    #     [0,1,0]
-    # ])
-    arr = np.repeat(arr, 2000, axis=0)
+    # # arr = np.array([
+    # #     [0,1,0],
+    # # ])
+    # arr = np.repeat(arr, 2000, axis=0)
 
     env = TrainEnv()
     # check_env(env) #$
