@@ -14,7 +14,7 @@ class InfoGenerator():
         step_epoch_vwap_info_dict = self.get_returned_vwap_info_dict(Self)
         '''
         step_num_hold_dict = {"Step/Current_num_hold": self.get_step_num_hold(Self)}
-        step_executed_bool_dict = {"Step/Executed_bool": Self.num_left_processor.num_executed_in_last_step}
+        step_executed_bool_dict = {"Step/Executed_num": Self.num_left_processor.num_executed_in_last_step}
         step_cur_step_dict = {"Step/Current_step": Self.cur_step}
         step_num_left_dict = {"Step/Num_left": Self.num_left_processor.num_left}
         residual_action_dict ={"Residual_action/Quantity": Self.order_flow_generator.residual_action}
