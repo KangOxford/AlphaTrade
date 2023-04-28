@@ -1,19 +1,18 @@
-from gym_exchange import Config
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_exchange.environment.training_env.train_env import TrainEnv
-from train import utils
+from train.sb3 import utils
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb
-from train.sb3 import WandbCallback
+from train.sb3.sb3 import WandbCallback
 
 
 #System and standard inputs
 import platform
 if platform.system() == 'Darwin':
     print("Running on MacOS")
-    path = "/Users/kang/AlphaTrade/"
+    path = "//"
 elif platform.system() == 'Linux':
     print("Running on Linux")
     import sys

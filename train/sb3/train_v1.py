@@ -1,24 +1,20 @@
-from gym_exchange import Config
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from train import utils
+from train.sb3 import utils
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb
-from train.sb3 import WandbCallback
-from stable_baselines3.common.env_checker import check_env
+from train.sb3.sb3 import WandbCallback
 import os
 os.system("export PYTHONPATH=$PYTHONPATH:/home/duser/AlphaTrade")
 path = utils.get_path_by_platform()
 from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
 
-
-# *************************** 2 *************************** #
 class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
-        # action[0] = 1 # 1 means sell stocks, 0 means buy stocks, masked for "Execution-3FreeDegrees"
+        action[0] = 1 # 1 means sell stocks, 0 means buy stocks "Execution-3FreeDegrees"
         # action[2] = 0 # passive orders
         print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
         state = super().state(action)
@@ -31,6 +27,7 @@ def main():
         "policy_type": "MlpLstmPolicy",
         "total_timesteps": int(1e12),
         # "ent_coef" : 1,
+        # ent_coef = 0.95,
         # ent_coef = 0.1,
         "ent_coef" : 0.01,
         "vf_coef" : 0.5,
@@ -44,7 +41,7 @@ def main():
     }
 
     run = wandb.init(
-        project="Execution-3FreeDegrees",
+        project="Execution-2FreeDegrees",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         save_code=True,  # optional
@@ -69,7 +66,8 @@ def main():
         clip_range= config["clip_range"],
         # env = venv,
         verbose=1,
-        learning_rate=utils.linear_schedule(5e-3),
+        # learning_rate=utils.linear_schedule(5e-3),
+        learning_rate = int(1e-4),
         tensorboard_log=f"{path}train/output/runs/{run.id}")
 
     model.learn(

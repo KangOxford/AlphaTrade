@@ -1,22 +1,22 @@
-from gym_exchange import Config
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
-from train import utils
+from train.sb3 import utils
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb
-from train.sb3 import WandbCallback
-from stable_baselines3.common.env_checker import check_env
+from train.sb3.sb3 import WandbCallback
 import os
 os.system("export PYTHONPATH=$PYTHONPATH:/home/duser/AlphaTrade")
 path = utils.get_path_by_platform()
 from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
 
+
+# *************************** 2 *************************** #
 class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
-        action[0] = 1 # 1 means sell stocks, 0 means buy stocks "Execution-3FreeDegrees"
+        # action[0] = 1 # 1 means sell stocks, 0 means buy stocks, masked for "Execution-3FreeDegrees"
         # action[2] = 0 # passive orders
         print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
         state = super().state(action)
@@ -42,7 +42,7 @@ def main():
     }
 
     run = wandb.init(
-        project="Execution-2FreeDegrees",
+        project="Execution-3FreeDegrees",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         save_code=True,  # optional
