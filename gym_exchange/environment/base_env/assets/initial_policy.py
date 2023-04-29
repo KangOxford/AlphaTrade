@@ -1,4 +1,3 @@
-from fractions import Fraction
 import numpy as np
 from gym_exchange import Config
 import random;random.seed(Config.seed)
@@ -9,95 +8,13 @@ class Twap():
         self.initialize() # return self.num_list
         self.step_index = 0
     def initialize(self):
-        '''
-
-        step_integer = Config.num2liquidate // (Config.max_horizon//3)
-        arr = np.full(Config.max_horizon//3, step_integer)
-        selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon//3 * step_integer)
-        arr[selected_indices] += 1
-        assert arr.sum() == Config.num2liquidate
-        new_arr = np.pad(arr, (0, Config.max_horizon - len(arr)), mode='constant')
-        '''
-
-        '''
-        assert len(new_arr) == Config.max_horizon
-        # for i in range(len(new_arr)):
-        #     print(new_arr[i])#$
-        assert new_arr.sum() == Config.num2liquidate
-        '''
-        '''
         # baseline {
-        new_arr = np.full(Config.max_horizon, 9)
-        new_arr[1::2] += 3
-        new_arr[2::3] += 1
-        # baseline }
-        '''
-        # new_arr = np.full(Config.max_horizon, 5)
-        # new_arr[1::2] += 1
-        # new_arr[2::3] += 1 # for testing train0.5
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 10)
-        new_arr[1::2] += 1
-        # new_arr[2::3] += 1
-        # new_arr[3::4] += 1
-        new_arr[3::6] += 1
-        new_arr[3::41] += 1
-        # new_arr[1000:1100] += 1
-        # baseline }
-        '''
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 10)
-        new_arr[1::2] += 1
-        new_arr[3::6] += 1
-        new_arr[1700:Config.max_horizon] -= 6
-        # baseline }
-        '''
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 3)
-        # new_arr[1::2] += 1
-        # new_arr[3::6] += 1
-        # new_arr[1700:Config.max_horizon] -= 6
-        # baseline }
-        '''
-
-        """
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 1)
-        new_arr[370:465:2] += 1
-        # baseline }
-        """
-
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 3)
-        new_arr[390:490:2] += 1
-        # baseline }
-        '''
-
-        # baseline {
-        # new_arr = np.full(Config.max_horizon, 1)
-        # new_arr[390:490:2] += 1
         new_arr = np.full(Config.max_horizon, 1)
         new_arr[392:490:2] += 1
         new_arr
         # baseline }
-
-
-        # new_arr = np.full(Config.max_horizon, 2) #$ for testing
         # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
         self.num_list = new_arr
-    # def initialize(self):
-    #     step_integer = Config.num2liquidate // Config.max_horizon
-    #     arr = np.full(Config.max_horizon, step_integer)
-    #     selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon * step_integer)
-    #     arr[selected_indices] += 1
-    #     assert arr.sum() == Config.num2liquidate
-    #     # arr = np.full(Config.max_horizon, 0) #$ masked for testing
-    #     self.num_list = arr
-
     @property
     def done(self):
         if self.step_index < Config.max_horizon: return False
