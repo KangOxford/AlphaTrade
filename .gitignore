@@ -7,6 +7,7 @@
 .DS_Store
 **.log
 /train/output/**
+**.pkl
 
 gym_exchange/.DS_Store
 gym_exchange/data_orderbook_adapter/.DS_Store
