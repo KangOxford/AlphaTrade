@@ -1,8 +1,4 @@
 from gym_exchange import Config
-from gym_exchange.environment.base_env.assets.action import Action
-
-from gym_exchange.environment.base_env.interface_env import State  # types
-# from gym_exchange.environment.env_interface import State, Observation # types
 from gym_exchange.exchange.timewindow_exchange import TimewindowExchange
 from gym import spaces
 
@@ -29,7 +25,7 @@ class TimewindowEnv(locals()[Config.train_env]):
     # ========================== 02 ==========================
     # ========================= RESET ========================
     # ------------------------- 02.01 ------------------------
-    def initial_state(self) -> State:
+    def initial_state(self):
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ····················
         # ob = np.array(self.exchange.order_book.get_L2_state()).T.reshape(20,2)
@@ -51,7 +47,7 @@ class TimewindowEnv(locals()[Config.train_env]):
         state, reward, done, info = super().step(action)
         return state, reward, done, info
     # --------------------- 03.01 ---------------------
-    def state(self, action: Action) -> State:
+    def state(self, action):
         _ = super().state(action)
         step_memo = self.exchange.state_memos
         step_memo_arr = np.array(step_memo)

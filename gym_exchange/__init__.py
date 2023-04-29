@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from os import listdir;from os.path import isfile, join
 
 def get_symbol_date(AlphaTradeRoot):
@@ -121,6 +122,40 @@ class Config:
 
     # --------------- 12 Benchmark ---------------
     sum_reward = 6257641200 # initial policy
+
+
+class SpaceParams(object):
+    class Action:
+        side_size = 2
+
+        # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
+        # quantity_size_one_side = 8
+        quantity_size_negative_side = Config.quantity_size_negative_side
+        quantity_size_positive_side = Config.quantity_size_positive_side
+        # quantity_size_one_side = 3
+        # quantity_size_one_side = 1
+        quantity_size = quantity_size_positive_side + quantity_size_negative_side + 1
+
+        price_delta_size_one_side = 1
+        price_delta_size = 2 * price_delta_size_one_side
+        '''
+        for Action(side = 0, price_delta = 0,quantity_delta = 0
+        side = 0 means asks, the order is a selling order.
+        price_delta = 0 means: submit a selling order at the asks side.
+        price_dleta = 1 means: submit a selling order at the bids side. (across the spread)
+        '''
+    class State:
+        low = np.array([Config.min_price] * 10 +\
+                        [Config.min_quantity]*10 +\
+                        [Config.min_price] * 10 +\
+                        [Config.min_quantity]*10
+                        ).reshape((2 * Config.state_dim_1,Config.state_dim_2))
+        high = np.array([Config.max_price] * 10 +\
+                        [Config.max_quantity]*10 +\
+                        [Config.max_price] * 10 +\
+                        [Config.max_quantity]*10
+                        ).reshape((2 * Config.state_dim_1,Config.state_dim_2))
+        shape = (2 * Config.state_dim_1,Config.state_dim_2)
 
 
 

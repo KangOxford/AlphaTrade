@@ -1,7 +1,8 @@
 import sys; sys.path.append('/Users/kang/AlphaTrade/')
 import numpy as np
 from gym_exchange import Config
-
+import gym
+from gym import spaces
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
 from gym_exchange.environment.base_env.assets.reward import RewardGenerator
@@ -10,22 +11,31 @@ from gym_exchange.environment.base_env.assets.orderflow import OrderFlowGenerato
 from gym_exchange.environment.base_env.assets.task import NumLeftProcessor
 
 from gym_exchange.environment.base_env.assets.vwap_info import VwapEstimator
-
-from gym_exchange.environment.base_env.interface_env import InterfaceEnv
-from gym_exchange.environment.base_env.interface_env import State # types
-# from gym_exchange.environment.env_interface import State, Observation # types
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.environment.base_env.utils import broadcast_lists
+from gym_exchange import SpaceParams
 
 
 # *************************** 2 *************************** #
-class BaseEnv(InterfaceEnv):
+class BaseEnv(gym.Env):
     # ========================== 01 ==========================
     def __init__(self):
         if 'exchange' not in dir(self):
             self.exchange = Exchange()
         super().__init__()
+        self.action_space, self.state_space = self.space_definition()
         self.observation_space = self.state_space
+    def space_definition(self):
+        action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size,
+                                             SpaceParams.Action.quantity_size,
+                                             SpaceParams.Action.price_delta_size])
+        state_space = spaces.Box(
+              low   = SpaceParams.State.low,
+              high  = SpaceParams.State.high,
+              shape = SpaceParams.State.shape,
+              dtype = np.int64,
+        )
+        return action_space, state_space
 
     # ========================== 02 ==========================
     def reset(self):
@@ -46,7 +56,7 @@ class BaseEnv(InterfaceEnv):
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
-    def initial_state(self) -> State:
+    def initial_state(self):
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ····················
         order_book = self.exchange.order_book
@@ -76,7 +86,7 @@ class BaseEnv(InterfaceEnv):
 
     # --------------------- 03.01 ---------------------
 
-    def state(self, action: Action) -> State:
+    def state(self, action):
         # if self.cur_step == 3718:
         #     print()#$
         # print(self.cur_step) #$
