@@ -8,7 +8,7 @@ from gym_exchange.data_orderbook_adapter import Debugger, Configuration
 from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.environment.base_env.assets.orderflow import OrderIdGenerator
+from gym_exchange.environment.base_env.assets.action import OrderIdGenerator
 
 
 class RawDecoder():

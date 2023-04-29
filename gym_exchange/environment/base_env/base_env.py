@@ -6,8 +6,8 @@ from gym import spaces
 from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 
 from gym_exchange.environment.base_env.assets.reward import RewardGenerator
-from gym_exchange.environment.base_env.assets.action import Action
-from gym_exchange.environment.base_env.assets.orderflow import OrderFlowGenerator
+# from gym_exchange.environment.base_env.assets.action import Action
+from gym_exchange.environment.base_env.assets.action import OrderFlowGenerator
 from gym_exchange.environment.base_env.assets.task import NumLeftProcessor
 
 from gym_exchange.environment.base_env.assets.vwap_info import VwapEstimator
@@ -26,9 +26,15 @@ class BaseEnv(gym.Env):
         self.action_space, self.state_space = self.space_definition()
         self.observation_space = self.state_space
     def space_definition(self):
-        action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size,
-                                             SpaceParams.Action.quantity_size,
-                                             SpaceParams.Action.price_delta_size])
+        # action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size,
+        #                                      SpaceParams.Action.quantity_size,
+        #                                      SpaceParams.Action.price_delta_size])
+        action_space = spaces.Box(
+              low   = SpaceParams.Action.low,
+              high  = SpaceParams.Action.high,
+              shape = SpaceParams.Action.shape,
+              dtype = np.int32,
+        )
         state_space = spaces.Box(
               low   = SpaceParams.State.low,
               high  = SpaceParams.State.high,
@@ -73,13 +79,15 @@ class BaseEnv(gym.Env):
         return state
 
     # ========================== 03 ==========================
-    def step(self, machine_code):
+    def step(self, delta_action):
         '''input : action
            return: observation, reward, done, info'''
-        print(f"machine_code: {machine_code}")  #$
+        # print(f"machine_code: {machine_code}")  #$
         # ···················· 03.00.03 ····················
-        delta_action = Action.decode(machine_code)  # machine code => [side, quantity_delta, price_delta]
-        print(f"delta_action: {delta_action}")  #$
+        # delta_action = Action.decode(machine_code)  # machine code => [side, quantity_delta, price_delta]
+        # delta_action = Action(machine_code)  # machine code => [side, quantity_delta, price_delta]
+        # delta_action = machine_code
+        # print(f"delta_action: {delta_action}")  #$
         # print(f"{delta_action[0]} {delta_action[1]} {delta_action[2]}")  #$ less memory use
         state, reward, done, info = self.state(delta_action), self.reward, self.done, self.info
         return state, reward, done, info

@@ -1,57 +1,106 @@
+# ========================== 04 ==========================
 import numpy as np
-from gym_exchange import SpaceParams
-# ========================== 01 ==========================
+from gym_exchange import Config
+from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
+from gym_exchange.environment.base_env.assets.price_delta import PriceDelta
+from gym_exchange.environment.base_env.assets.initial_policy import ResidualPolicy_Factory
 
-class BaseAction():
-    def __init__(self,direction,quantity,price_delta):
-        self.direction = direction
-        self.quantity = quantity
-        self.price_delta = price_delta
+
+def singleton(cls):
+    _instance = {}
+    def _singleton(*args, **kwargs):
+        if cls not in _instance:
+            _instance[cls] = cls(*args, **kwargs)
+        return _instance[cls]
+    return _singleton
+
+
+class IdGenerator():
+    '''singleton method
+    There should always be only one id generator object'''
+    def __init__(self, initial_number):
+        self.initial_id = initial_number
+        self.current_id = initial_number
+    def step(self):
+        self.current_id += 1
+        return self.current_id
+    
+@singleton    
+class TradeIdGenerator(IdGenerator):
+    def __init__(self):
+        super().__init__(initial_number = Config.trade_id_generator)
+        '''type(TradeIdGenerator) : function
+        '''    
+        
+@singleton          
+class OrderIdGenerator(IdGenerator):
+    def __init__(self):
+        super().__init__(initial_number = Config.order_id_generator)
+        
+# ========================== 05 ==========================
+
+class OrderFlowGenerator(object):
+    def __init__(self):
+        self.residual_policy = ResidualPolicy_Factory.produce("Twap")
+        self.trade_id_generator = TradeIdGenerator() 
+        self.order_id_generator = OrderIdGenerator()
+    
+        
+    def step(self, action: np.ndarray, best_ask_bid_dict) -> OrderFlow:
+        # shoud the price list be one sided or two sided???? #TODO
+        self.action = action # [side, quantity_delta, price_delta]
+        self.best_ask_bid_dict = best_ask_bid_dict
+        content_dict, revised_content_dict = self.get_content_dicts()
+        # [side, quantity_delta, price_delta] => [side, quantity, price]
+        order_flow = OrderFlow(**content_dict)
+        auto_cancel = OrderFlow(**revised_content_dict) # TODO
+        return order_flow, auto_cancel
+     
+    def get_content_dicts(self):
+        self.residual_action, self.residual_done = self.residual_policy.step()
+        # if self.residual_action !=0:
+        #     print()#$
+        content_dict = {
+            "Type" : 1, # submission of a new limit order
+            # "direction" : self.action[0], # TODO should be right
+            "direction" : self.action[0], # TODO masked for oneside task
+            # "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
+            "size": max(0, self.action[1] + self.residual_action), # original
+            "price": self.price, # call @property: price(self)
+            "trade_id":self.trade_id,
+            "order_id":self.order_id,
+            "time":self.time,
+        }
+        # if content_dict['size'] != 0:
+        #     print()#$
+        '''used for to-be-sumbmitted oreders'''
+        revised_content_dict = {
+            "Type" : 3, # total deletion of a limit order
+            "direction" : content_dict['direction'], # keep the same direction
+            "size"      : content_dict['size'],
+            "price"     : content_dict['price'],
+            "trade_id"  : content_dict['trade_id'],
+            "order_id"  : content_dict['order_id'],
+            "time"      : content_dict['time'],
+        }
+        '''used for generating autocancel oreders'''
+        assert content_dict['size'] >= 0, "The real quote size should be non-negative"
+        return content_dict, revised_content_dict
+    
 
     @property
-    def to_message(self):
-        pass
-
-# ========================== 02 ==========================
-
-# from enum import Enum
-# class Side(Enum):
-#     ask = 0
-#     bid = 1
-            
-class Action(BaseAction): # more precise class name: DeltaAction
-    def __init__(self,direction,quantity_delta,price_delta):
-        self.direction = direction
-        self.quantity_delta = quantity_delta
-        self.price_delta = price_delta
-        # ''''price_delta = -3,-2,-1,0,1,2,3 (0 ~ 7)
-        #     side = 'bid'(0) or 'ask'(1)
-        #     residual_quantity = -num2liquidate ~ num2liquidate (int: 0 ~ 2*num2liquidate+1)'''
-        
-    @property # to_machine_readable
-    def encoded(self) -> np.ndarray:
-        '''wrapped_result: BaseAction'''
-        price_delta = self.price_delta + SpaceParams.Action.price_delta_size_one_side
-        side = 1 if self.direction == 'bid' else 0
-        # side = 0 if self.side == 'bid' else 1
-        # quantity_delta = self.quantity_delta + SpaceParams.Action.quantity_size_one_side
-        quantity_delta = self.quantity_delta + SpaceParams.Action.quantity_size_negative_side
-        result = [side, quantity_delta, price_delta]
-        wrapped_result = np.array(result)
-        return wrapped_result
-        '''[side, quantity_delta, price_delta]'''
-
-    @classmethod
-    def decode(cls,action):  # to_human_readable
-        direction = -1 if action[0] == 0 else 1
-        quantity_delta = action[1] - SpaceParams.Action.quantity_size_negative_side
-        # price_delta = action[2] - SpaceParams.Action.price_delta_size_one_side
-        price_delta = action[2]
-        return np.array([direction,quantity_delta,price_delta])
-
-    def __str__(self):
-        fstring = f'side: {self.direction}, quantity_delta: {self.quantity_delta}, price_delta: {self.price_delta}'
-        return fstring
+    def price(self):
+        return PriceDelta(self.best_ask_bid_dict)(side = 'ask' if self.action[0]==0 else 'bid', price_delta = self.action[2]) # side, price_delta
+    @property
+    def trade_id(self):
+        return self.trade_id_generator.step()
+    @property
+    def order_id(self):
+        return self.order_id_generator.step()
+    @property
+    def time(self):
+        return '30000.000000000' #TODO: implement; partly done
+    '''revise it outside the class, (revised in the class Exchange)'''
     
     
     

@@ -66,6 +66,7 @@ class Config:
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------
+    price_delta_size_one_side = 1
     # quantity_size_one_side = 30
     # quantity_size_one_side = 3
     # quantity_size_one_side = 1
@@ -125,25 +126,34 @@ class Config:
 
 
 class SpaceParams(object):
+    # class Action:
+    #     side_size = 2
+
+    #     # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
+    #     # quantity_size_one_side = 8
+    #     quantity_size_negative_side = Config.quantity_size_negative_side
+    #     quantity_size_positive_side = Config.quantity_size_positive_side
+    #     # quantity_size_one_side = 3
+    #     # quantity_size_one_side = 1
+    #     quantity_size = quantity_size_positive_side + quantity_size_negative_side + 1
+
+    #     price_delta_size_one_side = 1
+    #     price_delta_size = 2 * price_delta_size_one_side
+    #     '''
+    #     for Action(side = 0, price_delta = 0,quantity_delta = 0
+    #     side = 0 means asks, the order is a selling order.
+    #     price_delta = 0 means: submit a selling order at the asks side.
+    #     price_dleta = 1 means: submit a selling order at the bids side. (across the spread)
+    #     '''
     class Action:
-        side_size = 2
-
-        # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
-        # quantity_size_one_side = 8
-        quantity_size_negative_side = Config.quantity_size_negative_side
-        quantity_size_positive_side = Config.quantity_size_positive_side
-        # quantity_size_one_side = 3
-        # quantity_size_one_side = 1
-        quantity_size = quantity_size_positive_side + quantity_size_negative_side + 1
-
-        price_delta_size_one_side = 1
-        price_delta_size = 2 * price_delta_size_one_side
-        '''
-        for Action(side = 0, price_delta = 0,quantity_delta = 0
-        side = 0 means asks, the order is a selling order.
-        price_delta = 0 means: submit a selling order at the asks side.
-        price_dleta = 1 means: submit a selling order at the bids side. (across the spread)
-        '''
+        # side, quantity_delta, price_delta
+        low = np.array([0] +\
+                       [-1 * Config.quantity_size_negative_side] +\
+                       [0])
+        high = np.array([1] +\
+                        [Config.quantity_size_positive_side] +\
+                        [Config.price_delta_size_one_side])
+        shape = (3,)
     class State:
         low = np.array([Config.min_price] * 10 +\
                         [Config.min_quantity]*10 +\
