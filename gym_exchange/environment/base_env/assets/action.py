@@ -56,11 +56,12 @@ class OrderFlowGenerator(object):
         self.order_id_generator = OrderIdGenerator()
     
         
-    def step(self, action: np.ndarray, best_ask_bid_dict, num_hold) -> OrderFlow:
+    def step(self, action: np.ndarray, best_ask_bid_dict, num_hold, kind = 'limit_order') -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
         self.action = action # [side, quantity_delta, price_delta]
         self.best_ask_bid_dict = best_ask_bid_dict
         self.num_hold = num_hold
+        self.kind = kind
         content_dict, revised_content_dict = self.get_content_dicts()
         # [side, quantity_delta, price_delta] => [side, quantity, price]
         order_flow = OrderFlow(**content_dict)
@@ -68,18 +69,30 @@ class OrderFlowGenerator(object):
         return order_flow, auto_cancel
      
     def get_content_dicts(self):
-        self.residual_action, self.residual_done = self.residual_policy.step()
-        content_dict = {
-            "Type" : 1, # submission of a new limit order
-            # "direction" : self.action[0], # TODO should be right
+        if self.kind == "market_order":
+            content_dict = {
+            "Type" : 0, # submission of a new market order
             "direction" : self.action[0], # TODO masked for oneside task
-            "size": min(max(0, self.action[1] + self.residual_action), self.num_hold), # 0<=size<=num_hold
+            "size": min(max(0, self.action[1]), self.num_hold), # 0<=size<=num_hold
             "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,
             "time":self.time,
-        }
-        print(content_dict['order_id'])#$
+            }
+        elif self.kind == 'limit_order':
+            self.residual_action, self.residual_done = self.residual_policy.step()
+            content_dict = {
+                "Type" : 1, # submission of a new limit order
+                # "direction" : self.action[0], # TODO should be right
+                "direction" : self.action[0], # TODO masked for oneside task
+                "size": min(max(0, self.action[1] + self.residual_action), self.num_hold), # 0<=size<=num_hold
+                "price": self.price, # call @property: price(self)
+                "trade_id":self.trade_id,
+                "order_id":self.order_id,
+                "time":self.time,
+            }
+        else: raise NotImplementedError
+        # print(content_dict['order_id'])#$
         '''used for to-be-sumbmitted oreders'''
         revised_content_dict = {
             "Type" : 3, # total deletion of a limit order

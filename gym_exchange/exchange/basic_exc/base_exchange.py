@@ -77,7 +77,7 @@ class BaseExchange():
         for index, item in enumerate(self.task_list):  # advantange for ask limit order (in liquidation problem)
             if not (item is None or item.quantity == 0):
                 message = item.to_message
-                if item.type == 1:
+                if item.type == 1 or item.type == 0:
                     self.type1_handler(message, index)
                     # print(item.type,item.timestamp,self.latest_timestamp) #$
                 elif item.type == 2:

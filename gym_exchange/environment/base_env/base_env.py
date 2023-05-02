@@ -85,13 +85,17 @@ class BaseEnv(gym.Env):
     # --------------------- 03.01 ---------------------
 
     def state(self, action):
-        if self.cur_step == 134:
+        kind = 'limit_order'
+        if self.cur_step == Config.max_horizon-1:
             print()#$
+            num_left = self.num_left_processor.num_left
+            action = [action[0],num_left,1] # aggressive order
+            kind = 'market_order'
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
         # order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
-        order_flows = self.order_flow_generator.step(action, best_ask_bid_dict, self.num_hold_processor.num_hold) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+        order_flows = self.order_flow_generator.step(action, best_ask_bid_dict, self.num_hold_processor.num_hold, kind = kind) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
         # generate_wrapped_order_flow }
         # ···················· 03.01.02 ····················
         self.exchange.step(order_flows)
@@ -110,6 +114,8 @@ class BaseEnv(gym.Env):
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
+        if self.cur_step == Config.max_horizon:
+            print()#$
         self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
         # if self.done:
