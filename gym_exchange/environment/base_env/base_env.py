@@ -105,6 +105,11 @@ class BaseEnv(gym.Env):
         state = np.concatenate([price,quantity],axis = 1)
         state = state.reshape(4, Config.price_level).astype(np.int64)
         # ···················· 03.01.04 ····················
+        # current_step, max_horizon, num_left, num2sell
+        # broadcast from (4, 10) to (4, 11)
+        tobe_appended = np.array([self.cur_step, Config.max_horizon, self.num_left_processor.num_left, Config.num2liquidate]).reshape((4, 1))
+        state = np.hstack((tobe_appended, state))
+        # ···················· 03.01.04 ····················
         # self.accumulator {
         self.num_left_processor.step(self)
         self.num_hold_processor.step(self)
