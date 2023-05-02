@@ -45,7 +45,8 @@ class BaseEnv(gym.Env):
         self.exchange.reset()
         self.init_components()
         self.cur_state = self.initial_state()
-        assert self.cur_state in self.state_space, f"unexpected state {self.cur_state}"
+        assert self.cur_state in self.state_space, \
+            f"unexpected state {self.cur_state}, \nwith shape {self.cur_state.shape}, \nshould be in {self.state_space}"
         state = self.cur_state
         assert self.cur_step == 0
         print("env reset") #$
@@ -53,6 +54,8 @@ class BaseEnv(gym.Env):
     # ------------------------- 02.01 ------------------------
     def init_components(self):
         self.cur_step = 0
+        self.task_info = np.array(
+            [0, Config.max_horizon, Config.num2liquidate, Config.num2liquidate]).reshape((4, 1))
         self.vwap_estimator = VwapEstimator()
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
@@ -107,8 +110,9 @@ class BaseEnv(gym.Env):
         # ···················· 03.01.04 ····················
         # current_step, max_horizon, num_left, num2sell
         # broadcast from (4, 10) to (4, 11)
-        tobe_appended = np.array([self.cur_step, Config.max_horizon, self.num_left_processor.num_left, Config.num2liquidate]).reshape((4, 1))
-        state = np.hstack((tobe_appended, state))
+        self.task_info = np.array([self.cur_step, Config.max_horizon, self.num_left_processor.num_left, Config.num2liquidate]).reshape((4, 1))
+        # tobe_appended = np.array([self.cur_step, Config.max_horizon, self.num_left_processor.num_left, Config.num2liquidate]).reshape((4, 1))
+        # state = np.hstack((tobe_appended, state))
         # ···················· 03.01.04 ····················
         # self.accumulator {
         self.num_left_processor.step(self)
