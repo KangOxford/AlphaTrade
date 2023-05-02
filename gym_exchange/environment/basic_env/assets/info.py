@@ -18,14 +18,14 @@ class InfoGenerator():
         step_cur_step_dict = {"Step/Current_step": Self.cur_step}
         step_num_left_dict = {"Step/Num_left": Self.num_left_processor.num_left}
         residual_action_dict ={"Residual_action/Quantity": Self.order_flow_generator.residual_action}
-        actual_action_dict = {"Actual_action/Price":Self.wrapped_order_flow.price,
-                              "Actual_action/Quantity":Self.wrapped_order_flow.quantity}
+        # actual_action_dict = {"Actual_action/Price":Self.wrapped_order_flow.price,
+        #                       "Actual_action/Quantity":Self.wrapped_order_flow.quantity}
         orderbook_distance_dict = {"Orderbook/Distance": Self.orderbook_distance.get_distance(Self)}
         epoch_task_dict = {"Epoch/Num_hold": step_num_hold_dict["Step/Current_num_hold"] if Self.done else None,
                            "Epoch/Num_left": Self.num_left_processor.num_left  if Self.done else None}
         returned_info = {
             **orderbook_distance_dict,
-            **actual_action_dict,
+            # **actual_action_dict,
             **residual_action_dict,
             **step_num_left_dict, **step_cur_step_dict, **step_executed_bool_dict, **step_num_hold_dict,
             # **step_epoch_vwap_info_dict,

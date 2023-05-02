@@ -18,7 +18,7 @@ class Exchange(BaseExchange):
     def reset(self):
         super().reset()
         # self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2] #$ origin should it be []???? TODO
-        self.auto_cancels = AutoCancels()
+        '''self.auto_cancels = AutoCancels()'''
 
 
     # -------------------------- 03.02 ----------------------------
@@ -30,9 +30,11 @@ class Exchange(BaseExchange):
     # ···················· 03.02.01 ···················· 
     def update_task_list(self, action = None):# action : Action(for the definition of type)
         self.task_list = []
+        '''
         auto_cancels = self.auto_cancels.step()
         auto_cancels = [self.time_wrapper(auto_cancel) for auto_cancel in auto_cancels] # used for auto cancel
         self.task_list += auto_cancels
+        '''
         super().update_task_list(action)
     # ···················· 03.02.02 ····················
     def time_wrapper(self, order_flow: OrderFlow) -> OrderFlow:

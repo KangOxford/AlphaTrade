@@ -6,13 +6,13 @@ from gym_exchange.environment.base_env.assets.price_delta import PriceDelta
 from gym_exchange.environment.base_env.assets.initial_policy import ResidualPolicy_Factory
 
 
-def singleton(cls):
-    _instance = {}
-    def _singleton(*args, **kwargs):
-        if cls not in _instance:
-            _instance[cls] = cls(*args, **kwargs)
-        return _instance[cls]
-    return _singleton
+# def singleton(cls):
+#     _instance = {}
+#     def _singleton(*args, **kwargs):
+#         if cls not in _instance:
+#             _instance[cls] = cls(*args, **kwargs)
+#         return _instance[cls]
+#     return _singleton
 
 
 class IdGenerator():
@@ -22,20 +22,30 @@ class IdGenerator():
         self.initial_id = initial_number
         self.current_id = initial_number
     def step(self):
+        # print("IdGenerator Step") #$
         self.current_id += 1
         return self.current_id
     
-@singleton    
+# @singleton
 class TradeIdGenerator(IdGenerator):
-    def __init__(self):
-        super().__init__(initial_number = Config.trade_id_generator)
+    def __init__(self, initial_number=Config.trade_id_generator):
+        super().__init__(initial_number=initial_number)
         '''type(TradeIdGenerator) : function
-        '''    
+        '''
+    def step(self):
+        super().step()
+        # print(f"TradeIdGenerator Step {self.current_id}") #$
+        return self.current_id
+
         
-@singleton          
+# @singleton
 class OrderIdGenerator(IdGenerator):
-    def __init__(self):
-        super().__init__(initial_number = Config.order_id_generator)
+    def __init__(self, initial_number = Config.order_id_generator):
+        super().__init__(initial_number = initial_number)
+    def step(self):
+        super().step()
+        # print(f"OrderIdGenerator Step {self.current_id}") #$
+        return self.current_id
         
 # ========================== 05 ==========================
 
@@ -46,10 +56,11 @@ class OrderFlowGenerator(object):
         self.order_id_generator = OrderIdGenerator()
     
         
-    def step(self, action: np.ndarray, best_ask_bid_dict) -> OrderFlow:
+    def step(self, action: np.ndarray, best_ask_bid_dict, num_hold) -> OrderFlow:
         # shoud the price list be one sided or two sided???? #TODO
         self.action = action # [side, quantity_delta, price_delta]
         self.best_ask_bid_dict = best_ask_bid_dict
+        self.num_hold = num_hold
         content_dict, revised_content_dict = self.get_content_dicts()
         # [side, quantity_delta, price_delta] => [side, quantity, price]
         order_flow = OrderFlow(**content_dict)
@@ -62,13 +73,13 @@ class OrderFlowGenerator(object):
             "Type" : 1, # submission of a new limit order
             # "direction" : self.action[0], # TODO should be right
             "direction" : self.action[0], # TODO masked for oneside task
-            # "size": max(0, self.action[1] + 5 * self.residual_action), # for testing multiple twap
-            "size": max(0, self.action[1] + self.residual_action), # original
+            "size": min(max(0, self.action[1] + self.residual_action), self.num_hold), # 0<=size<=num_hold
             "price": self.price, # call @property: price(self)
             "trade_id":self.trade_id,
             "order_id":self.order_id,
             "time":self.time,
         }
+        print(content_dict['order_id'])#$
         '''used for to-be-sumbmitted oreders'''
         revised_content_dict = {
             "Type" : 3, # total deletion of a limit order

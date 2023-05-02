@@ -8,6 +8,7 @@ from gym_exchange.data_orderbook_adapter.utils import brief_order_book
 from gym_exchange.environment.base_env.assets.reward import RewardGenerator
 from gym_exchange.environment.base_env.assets.action import OrderFlowGenerator
 from gym_exchange.environment.base_env.assets.task import NumLeftProcessor
+from gym_exchange.environment.base_env.assets.task import NumHoldProcessor
 
 from gym_exchange.environment.base_env.assets.vwap_info import VwapEstimator
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
@@ -56,6 +57,7 @@ class BaseEnv(gym.Env):
         self.reward_generator = RewardGenerator(p_0 = self.exchange.mid_prices[0]) # Used for Reward
         self.order_flow_generator = OrderFlowGenerator() # Used for Order
         self.num_left_processor = NumLeftProcessor()
+        self.num_hold_processor = NumHoldProcessor()
     def initial_state(self):
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ····················
@@ -76,16 +78,23 @@ class BaseEnv(gym.Env):
     def step(self, delta_action):
         '''input : action
            return: observation, reward, done, info'''
+        print(f"delta_action {delta_action}") #$
         state, reward, done, info = self.state(delta_action), self.reward, self.done, self.info
         return state, reward, done, info
 
     # --------------------- 03.01 ---------------------
 
     def state(self, action):
+        if self.cur_step == 134:
+            print()#$
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
-        order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+        # order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+        order_flows = self.order_flow_generator.step(action, best_ask_bid_dict, self.num_hold_processor.num_hold) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
+
+        self.exchange.step(order_flows)
+        '''
         order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
         wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
@@ -94,6 +103,10 @@ class BaseEnv(gym.Env):
         # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         self.exchange.auto_cancels.add(auto_cancel) # The step of auto cancel would be in the exchange(update_task_list)
+        '''
+
+
+
         # ···················· 03.01.03 ····················
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         price, quantity = state[:,::2], state[:,1::2]
@@ -102,6 +115,7 @@ class BaseEnv(gym.Env):
         # ···················· 03.01.04 ····················
         # self.accumulator {
         self.num_left_processor.step(self)
+        self.num_hold_processor.step(self)
         self.cur_step += 1
         # self.accumulator }
         return state
@@ -119,7 +133,7 @@ class BaseEnv(gym.Env):
     # --------------------- 03.03  ---------------------
     @property
     def done(self):
-        if self.num_left_processor.num_left <= 0 or self.cur_step >= Config.max_horizon : return True
+        if self.num_left_processor.num_left == 0 or self.cur_step == Config.max_horizon : return True
         else: return False
 
     # --------------------- 03.04 ---------------------
