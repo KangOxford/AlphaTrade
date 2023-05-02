@@ -92,21 +92,9 @@ class BaseEnv(gym.Env):
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
         # order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
         order_flows = self.order_flow_generator.step(action, best_ask_bid_dict, self.num_hold_processor.num_hold) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
-
-        self.exchange.step(order_flows)
-        '''
-        order_flow  = order_flows[0]  # order_flows consists of order_flow, auto_cancel
-        wrapped_order_flow = self.exchange.time_wrapper(order_flow)
         # generate_wrapped_order_flow }
-        self.wrapped_order_flow = wrapped_order_flow
-        self.exchange.step(wrapped_order_flow)
-        # ···················· 03.01.02.01 ····················
-        auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
-        self.exchange.auto_cancels.add(auto_cancel) # The step of auto cancel would be in the exchange(update_task_list)
-        '''
-
-
-
+        # ···················· 03.01.02 ····················
+        self.exchange.step(order_flows)
         # ···················· 03.01.03 ····················
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         price, quantity = state[:,::2], state[:,1::2]

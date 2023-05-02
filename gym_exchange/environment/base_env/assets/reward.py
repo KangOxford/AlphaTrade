@@ -51,7 +51,8 @@ class RewardFunctional():
         # normed(revenue, regularity) {
         # revenue = (revenue - 12825558.401639344)/18586214.00096323
         # regularity = (regularity-2192.844995644455)/5409.271445768599
-        revenue = revenue / 6258584700.0
+        revenue = revenue / 6257681100.0
+        # revenue = revenue / 6258584700.0
         # revenue = revenue / 6258872500.0
         # revenue = revenue / 2378219800.0
         # print(f"{revenue}, {regularity},` {Config.mu_regularity * regularity}")

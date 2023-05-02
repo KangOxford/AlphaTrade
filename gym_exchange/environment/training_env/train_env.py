@@ -23,7 +23,7 @@ class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
-        action[0] = 1 # 1 means sell stocks, 0 means buy stocks "Execution-2FreeDegrees"
+        action[0] = 1 # 1 means sell stocks, 0 means buy stocks, "Execution-2FreeDegrees"
         # action[2] = 0 # passive orders
         # print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
         state = super().state(action)
@@ -46,7 +46,7 @@ class TrainEnv(TimewindowEnv):
 
 
 if __name__ == "__main__":
-    # '''
+    '''
     import numpy as np
     arr = np.array([
         [1,Config.quantity_size_negative_side,0],
@@ -62,9 +62,9 @@ if __name__ == "__main__":
     arr = np.repeat(arr, 2000, axis=0)
     arr[::2,2] = 1
     arr[1::2,2] = 0
-    # '''
+    '''
 
-    arrs = np.load('/Users/kang/AlphaTrade/gym_exchange/outputs/action_array_25_apr.npy')
+    # arrs = np.load('/Users/kang/AlphaTrade/gym_exchange/outputs/action_array_25_apr.npy')
     # arr = arrs[0]
     # sum_reward:0.009999165185103229, mean_reward:2.0406459561435162e-05, std_reward:0.0003187590918861088
 
@@ -95,11 +95,11 @@ if __name__ == "__main__":
 
     import numpy as np
     arr = np.array([
-        # [1, 2, 0],
-        [1, 2, 1],
+        [1, 0, 0],
+        [1, 0, 1],
 
     ])
-    arr = np.repeat(arr, 2000, axis=0)
+    arr = np.tile(arr, (2000,1))
 
     env = TrainEnv()
     # check_env(env) #$

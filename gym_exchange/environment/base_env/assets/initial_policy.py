@@ -10,7 +10,7 @@ class Twap():
     def initialize(self):
         # baseline {
         new_arr = np.full(Config.max_horizon, 1)
-        new_arr[392:490:2] += 1
+        new_arr[0:490:7] -= 1
         new_arr
         # baseline }
         # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
