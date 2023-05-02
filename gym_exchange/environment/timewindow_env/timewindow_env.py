@@ -16,8 +16,9 @@ class TimewindowEnv(locals()[Config.train_env]):
         self.state_space =  spaces.Box(
               low   = -10,
               high  = 10,
-              shape = (100,4),
-              dtype = np.float32,
+              # shape = (100,4),
+              shape = (101,4),
+              dtype = np.float64,
         )
         self.observation_space = self.state_space
 
@@ -38,7 +39,14 @@ class TimewindowEnv(locals()[Config.train_env]):
         state = np.tile(ob,(100,1)).astype(np.float32)
         state[:, ::2] = (state[:,::2]-Config.price_mean)/ Config.price_std
         state[:, 1::2] = (state[:,1::2]-Config.qty_mean)/ Config.qty_std
-        assert state.shape == (100,4)
+
+        task_info = np.array([0, Config.max_horizon, Config.num2liquidate, Config.num2liquidate])
+        task_info[[0,1]] = task_info[[0,1]]/task_info[1]
+        task_info[[2,3]] = task_info[[2,3]]/task_info[3]
+
+        state = np.vstack((state, task_info))
+
+        assert state.shape == (101,4)
         return state
 
     # ========================== 03 ==========================
@@ -50,7 +58,7 @@ class TimewindowEnv(locals()[Config.train_env]):
     # --------------------- 03.01 ---------------------
     def state(self, action):
         # ---------------- 01 ----------------
-        state = super().state(action)
+        _ = super().state(action)
         # ---------------- 02 ----------------
         step_memo = self.exchange.state_memos
         step_memo_arr = np.array(step_memo)
@@ -62,7 +70,7 @@ class TimewindowEnv(locals()[Config.train_env]):
         step_memo_arr[:,::2] = (step_memo_arr[:,::2]-Config.price_mean)/ Config.price_std
         step_memo_arr[:,1::2] = (step_memo_arr[:,1::2]-Config.qty_mean)/ Config.qty_std
         # ---------------- 04 ----------------
-        task_info = state[:,0]
+        task_info = self.task_info[:,0]
         task_info[[0,1]] = task_info[[0,1]]/task_info[1]
         task_info[[2,3]] = task_info[[2,3]]/task_info[3]
         task_info = task_info.reshape(1, 4)
