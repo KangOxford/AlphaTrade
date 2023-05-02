@@ -24,7 +24,8 @@ class TimewindowEnv(locals()[Config.train_env]):
 
     # ========================== 02 ==========================
     # ========================= RESET ========================
-    # ------------------------- 02.01 ------------------------
+    # def reset(self):
+    #     super().reset()
     def initial_state(self):
         """Samples from the initial state distribution."""
         # ···················· 02.01.01 ····················
@@ -48,17 +49,27 @@ class TimewindowEnv(locals()[Config.train_env]):
         return state, reward, done, info
     # --------------------- 03.01 ---------------------
     def state(self, action):
-        _ = super().state(action)
+        # ---------------- 01 ----------------
+        state = super().state(action)
+        # ---------------- 02 ----------------
         step_memo = self.exchange.state_memos
         step_memo_arr = np.array(step_memo)
         best_bids = step_memo_arr[:,1,0,:]
         best_asks = step_memo_arr[:,0,-1,:]
         best_prices = np.concatenate([best_asks,best_bids],axis=1)
+        # ---------------- 03 ----------------
         step_memo_arr = best_prices.astype(np.float32) # 100, 4
         step_memo_arr[:,::2] = (step_memo_arr[:,::2]-Config.price_mean)/ Config.price_std
         step_memo_arr[:,1::2] = (step_memo_arr[:,1::2]-Config.qty_mean)/ Config.qty_std
-        assert step_memo_arr.shape == (100,4)
-        return step_memo_arr
+        # ---------------- 04 ----------------
+        task_info = state[:,0]
+        task_info[[0,1]] = task_info[[0,1]]/task_info[1]
+        task_info[[2,3]] = task_info[[2,3]]/task_info[3]
+        task_info = task_info.reshape(1, 4)
+        state = np.vstack((step_memo_arr, task_info))
+        # ---------------- 05 ----------------
+        assert state.shape[1] == 4 # (101, 4)
+        return state
 
 if __name__ == "__main__":
     # Config.max_horizon = horizon_length
