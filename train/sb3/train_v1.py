@@ -18,8 +18,8 @@ class TrainEnv(TimewindowEnv):
         # action[2] = 0 # passive orders
         print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
         ''''''
-        action[1] = round(action[1])
-        action[2] = round(action[2])
+        action[1] = int(round(action[1]))
+        action[2] = int(round(action[2]))
         ''''''
         state = super().state(action)
         return state
@@ -32,8 +32,9 @@ def main():
         "total_timesteps": int(1e12),
         # "ent_coef" : 1,
         # ent_coef = 0.95,
-        # ent_coef = 0.1,
-        "ent_coef" : 0.01,
+        "ent_coef" : 0.5,
+        # "ent_coef" : 0.1,
+        # "ent_coef" : 0.01,
         "vf_coef" : 0.5,
         "gamma" : 1,  # Increase this value to make the agent more long-sighted
         # "gamma" : 0.9999999999,  # Increase this value to make the agent more long-sighted

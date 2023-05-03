@@ -85,14 +85,14 @@ class OrderFlowGenerator(object):
                 "Type" : 1, # submission of a new limit order
                 # "direction" : self.action[0], # TODO should be right
                 "direction" : self.action[0], # TODO masked for oneside task
-                "size": min(max(0, self.action[1] + self.residual_action), self.num_hold), # 0<=size<=num_hold
+                "size": min(max(0, self.action[1] + self.residual_action[0]), self.num_hold), # 0<=size<=num_hold
                 "price": self.price, # call @property: price(self)
                 "trade_id":self.trade_id,
                 "order_id":self.order_id,
                 "time":self.time,
             }
         else: raise NotImplementedError
-        # print(content_dict['order_id'])#$
+        print(f"real_action(order_flow):{content_dict}")#$
         '''used for to-be-sumbmitted oreders'''
         revised_content_dict = {
             "Type" : 3, # total deletion of a limit order
@@ -110,7 +110,15 @@ class OrderFlowGenerator(object):
 
     @property
     def price(self):
-        return PriceDelta(self.best_ask_bid_dict)(side = 'ask' if self.action[0]==0 else 'bid', price_delta = self.action[2]) # side, price_delta
+        real_action = self.residual_action[1] ^ int(self.action[2])
+        # real_action = self.residual_action[1]^ (self.action[2])
+        # price_delta initial real_action
+        # 0           0       0
+        # 0           1       1
+        # 1           0       1
+        # 1           1       0
+        # for price_delta, 0 means keep, 1 means change
+        return PriceDelta(self.best_ask_bid_dict)(side = 'ask' if self.action[0]==0 else 'bid', price_delta = real_action) # side, price_delta
     @property
     def trade_id(self):
         return self.trade_id_generator.step()

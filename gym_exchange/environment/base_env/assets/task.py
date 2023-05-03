@@ -79,13 +79,17 @@ class NumHoldProcessor():
                     print(id, side.get_order(id).quantity)#$
                     num_in_book += side.get_order(id).quantity
         self.num_in_book = num_in_book
-        print(f"num_in_book {num_in_book}") #$
-        try:
-            assert num_in_book <= Config.num2liquidate, \
-                f"Error: num_in_book:{num_in_book} > Config.num2liquidate:{Config.num2liquidate}"
-        except:
-            print() #$
+        assert num_in_book <= Config.num2liquidate, \
+            f"Error: num_in_book:{num_in_book} > Config.num2liquidate:{Config.num2liquidate}"
         num_hold = Self.num_left_processor.num_left - num_in_book
-        if num_hold<0:
-            print()#$
+        assert num_hold >= 0
+        # print(f"num_in_book {num_in_book}") #$
+        # try:
+        #     assert num_in_book <= Config.num2liquidate, \
+        #         f"Error: num_in_book:{num_in_book} > Config.num2liquidate:{Config.num2liquidate}"
+        # except:
+        #     print() #$
+        # num_hold = Self.num_left_processor.num_left - num_in_book
+        # if num_hold<0:
+        #     print()#$
         return num_hold

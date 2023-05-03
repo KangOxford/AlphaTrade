@@ -8,12 +8,19 @@ class Twap():
         self.initialize() # return self.num_list
         self.step_index = 0
     def initialize(self):
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 1)
-        new_arr[0:490:7] -= 1
-        new_arr
-        # baseline }
+        # # baseline {
+        # new_arr = np.full(Config.max_horizon, 1)
+        # new_arr[0:490:7] -= 1
+        # new_arr
+        # # baseline }
         # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
+
+        # baseline {
+        # quantity, price
+        new_arr = np.full((Config.max_horizon,2), 1)
+        new_arr[0:490:7,0] -= 1
+        new_arr[::2,1] -= 1
+        # baseline }
         self.num_list = new_arr
     @property
     def done(self):
