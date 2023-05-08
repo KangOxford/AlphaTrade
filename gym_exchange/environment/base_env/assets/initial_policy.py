@@ -24,7 +24,7 @@ class Twap():
 
         # baseline {
         # quantity, price
-        new_arr = np.full((Config.max_horizon,2), (100,1)) # quantity, price
+        new_arr = np.full((Config.max_horizon,2), (30,1)) # quantity, price
         new_arr[::2, 1] -= 1 # price adjustment, passive and aggressive orders one by one
         # baseline }
         self.num_list = new_arr

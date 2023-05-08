@@ -93,6 +93,8 @@ class OrderFlowGenerator(object):
             }
         else: raise NotImplementedError
         print(f"real_action(order_flow):{content_dict}")#$
+        if content_dict['price'] == None:
+            print()
         '''used for to-be-sumbmitted oreders'''
         revised_content_dict = {
             "Type" : 3, # total deletion of a limit order

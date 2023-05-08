@@ -51,7 +51,9 @@ class RewardFunctional():
         # normed(revenue, regularity) {
         # revenue = (revenue - 12825558.401639344)/18586214.00096323
         # regularity = (regularity-2192.844995644455)/5409.271445768599
-        mean_reward= 636246814.7457627; std_reward= 1088429199.9193585
+        # mean_reward= 0; std_reward= 1.0
+        mean_reward=318112370.6779661; std_reward=484791277.90215284
+        # mean_reward= 636246814.7457627; std_reward= 1088429199.9193585
         revenue = (revenue - mean_reward) / std_reward
         # revenue = (revenue - 13428500.214592274) / 15486530.002679234
         # revenue = revenue / 6257681100.0
