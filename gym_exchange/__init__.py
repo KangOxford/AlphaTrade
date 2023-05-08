@@ -63,7 +63,9 @@ class Config:
     mu_regularity = 0 # no peer reward, just revenue
 
     # --------------- 03 Task ---------------
-    num2liquidate = 200 # 1 min
+    num2liquidate = 12000 # 60 min
+    # num2liquidate = 2000 # 10 min
+    # num2liquidate = 200 # 1 min
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------

@@ -11,13 +11,46 @@ def normalization_config(Config,historical_data):
     Config.qty_std = historical_data.iloc[:, 1::2].to_numpy().std()
 def horizon_config(Config, message_data):
     time = message_data.iloc[:,0]/3600
-    open_interval = time[time <= 10.0000]
-    horizon_length = open_interval.size//100 + 5
+    # open_interval = time[time <= 10.0000]
+    # horizon_length = open_interval.size//100 + 5
+    mid_interval = time[(10.0000 <= time) & (time <= 11.0000)]
+    horizon_length = mid_interval.size//100 + 5
     # Config.max_horizon = 5 #$ for easy testing
     Config.max_horizon = horizon_length
     Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
     print(f"*** horizon_length: {Config.max_horizon}")
     print(f"*** raw_horizon: {Config.raw_horizon}")
+
+
+class DataPipeline:
+    def __init__(self):
+        if Config.raw_price_level == 10:
+            self.historical_data = pd.read_csv(
+                Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_orderbook_10.csv", header=None)
+            self.data_loader = pd.read_csv(
+                Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_message_10.csv", header=None)
+            normalization_config(Config, self.historical_data)
+            horizon_config(Config, message_data = self.data_loader)
+            # plot_summary(self.historical_data)
+
+
+        elif Config.raw_price_level == 50:
+            self.historical_data = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_orderbook_50.csv", header = None)
+            self.data_loader = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_message_50.csv", header=None)
+        else: raise NotImplementedError    
+
+        self.data_loader.dropna(axis = 1,inplace=True);assert len(self.data_loader.columns) == len(["timestamp",'type','order_id','quantity','price','side'])
+        self.data_loader.columns = ["timestamp",'type','order_id','quantity','price','side']
+        self.data_loader["timestamp"] = self.data_loader["timestamp"].astype(str)
+        
+    def __call__(self):
+        # return self.historical_data, self.data_loader
+        return {'price_level':Config.raw_price_level, 
+                'horizon':Config.raw_horizon, 
+                'historical_data':self.historical_data, 
+                'data_loader':self.data_loader}
+
+
 def plot_summary(historical_data):
     length = 49490
     # length = 500
@@ -106,34 +139,6 @@ def plot_summary(historical_data):
     # plt.plot(tobeplotted.spread, color = "red")
     # plt.show()
 
-
-class DataPipeline:
-    def __init__(self):
-        if Config.raw_price_level == 10:
-            self.historical_data = pd.read_csv(
-                Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_orderbook_10.csv", header=None)
-            self.data_loader = pd.read_csv(
-                Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_message_10.csv", header=None)
-            normalization_config(Config, self.historical_data)
-            horizon_config(Config, message_data = self.data_loader)
-            # plot_summary(self.historical_data)
-
-
-        elif Config.raw_price_level == 50:
-            self.historical_data = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_orderbook_50.csv", header = None)
-            self.data_loader = pd.read_csv("/Users/sasrey/AlphaTrade/data/TSLA_2015-01-02_34200000_57600000_message_50.csv", header=None)
-        else: raise NotImplementedError    
-
-        self.data_loader.dropna(axis = 1,inplace=True);assert len(self.data_loader.columns) == len(["timestamp",'type','order_id','quantity','price','side'])
-        self.data_loader.columns = ["timestamp",'type','order_id','quantity','price','side']
-        self.data_loader["timestamp"] = self.data_loader["timestamp"].astype(str)
-        
-    def __call__(self):
-        # return self.historical_data, self.data_loader
-        return {'price_level':Config.raw_price_level, 
-                'horizon':Config.raw_horizon, 
-                'historical_data':self.historical_data, 
-                'data_loader':self.data_loader}
     
 if __name__ == "__main__":
     ob = pd.read_csv("/Users/kang/Data/AMZN_2021-04-01_34200000_57600000_orderbook_10.csv", header = None)
@@ -193,7 +198,7 @@ Columns:
 """
     
     
-    
+
     
     
     
