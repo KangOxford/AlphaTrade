@@ -74,13 +74,14 @@ class Config:
     # quantity_size_one_side = 30
     # quantity_size_one_side = 3
     # quantity_size_one_side = 1
+    quantity_size_negative_side = 30
     # quantity_size_negative_side = 2
-    quantity_size_negative_side = 1
+    # quantity_size_negative_side = 1
     # quantity_size_positive_side = 200
     # quantity_size_positive_side = 100
-    # quantity_size_positive_side = 30
+    quantity_size_positive_side = 30
     # quantity_size_positive_side = 20
-    quantity_size_positive_side = 10
+    # quantity_size_positive_side = 10
     # quantity_size_positive_side = 2
     # quantity_size_positive_side = 1
     # quantity_size_positive_side = 2
