@@ -28,6 +28,7 @@ class Config:
 
     # --------------- 00 Data ---------------
     # ············· 00.01 Window ············
+    # window_size = 200
     window_size = 100
     # ············· 00.01 Adapter ············
     raw_price_level = 10
@@ -85,7 +86,9 @@ class Config:
     # quantity_size_positive_side = 2
     # quantity_size_positive_side = 1
     # quantity_size_positive_side = 2
-    timeout = 100
+    timeout = window_size
+    # timeout = 200
+    # timeout = 100
     # timeout = 50
     # timeout = 10
     # timeout = 2

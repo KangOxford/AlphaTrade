@@ -13,8 +13,9 @@ def horizon_config(Config, message_data):
     time = message_data.iloc[:,0]/3600
     # open_interval = time[time <= 10.0000]
     # horizon_length = open_interval.size//100 + 5
-    mid_interval = time[(10.0000 <= time) & (time <= 11.0000)]
-    horizon_length = mid_interval.size//100 + 5
+    # mid_interval = time[(10.0000 <= time) & (time <= 11.0000)]
+    mid_interval = time[(10.0000 <= time) & (time <= 12.0000)]
+    horizon_length = mid_interval.size//Config.timeout + 5
     # Config.max_horizon = 5 #$ for easy testing
     Config.max_horizon = horizon_length
     Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
