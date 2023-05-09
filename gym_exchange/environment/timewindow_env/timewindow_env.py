@@ -65,6 +65,14 @@ class TimewindowEnv(locals()[Config.train_env]):
         best_bids = step_memo_arr[:,1,0,:]
         best_asks = step_memo_arr[:,0,-1,:]
         best_prices = np.concatenate([best_asks,best_bids],axis=1)
+
+        # ---------------- 03 ----------------
+        # # a = step_memo_arr.reshape(100,10,4)
+        # arr = []
+        # for i in range(step_memo_arr.shape[0]):
+        #     result = np.concatenate((step_memo_arr[i,0], step_memo_arr[i,1]), axis=1)
+        #     arr.append(result)
+        # arrr = np.concatenate(arr)
         # ---------------- 03 ----------------
         step_memo_arr = best_prices.astype(np.float32) # 100, 4
         step_memo_arr[:,::2] = (step_memo_arr[:,::2]-Config.price_mean)/ Config.price_std
