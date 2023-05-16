@@ -85,7 +85,7 @@ if __name__ == "__main__":
         # [1, 0, 1],
 
     ])
-    arr = np.tile(arr, (2000,1))
+    arr = np.tile(arr, (20000,1))
 
     env = TrainEnv()
     # check_env(env) #$

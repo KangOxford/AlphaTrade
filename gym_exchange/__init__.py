@@ -19,6 +19,7 @@ class Config:
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     # max_horizon = 4096
+    # max_horizon = 2624
     max_horizon = 2048
     # max_horizon = 1600
     # max_horizon = 800
@@ -28,8 +29,8 @@ class Config:
 
     # --------------- 00 Data ---------------
     # ············· 00.01 Window ············
-    # window_size = 200
-    window_size = 100
+    window_size = 200
+    # window_size = 100
     # ············· 00.01 Adapter ············
     raw_price_level = 10
     # raw_horizon = 2048
@@ -64,7 +65,7 @@ class Config:
     mu_regularity = 0 # no peer reward, just revenue
 
     # --------------- 03 Task ---------------
-    # num2liquidate = 12000 # 60 min
+    # num2liquidate = 30000 # mid interval
     num2liquidate = 6000 # 60 min
     # num2liquidate = 2000 # 10 min
     # num2liquidate = 200 # 1 min
@@ -75,13 +76,15 @@ class Config:
     # quantity_size_one_side = 30
     # quantity_size_one_side = 3
     # quantity_size_one_side = 1
-    quantity_size_negative_side = 30
+    # quantity_size_negative_side = 30
+    quantity_size_negative_side = 15
     # quantity_size_negative_side = 2
     # quantity_size_negative_side = 1
     # quantity_size_positive_side = 200
     # quantity_size_positive_side = 100
-    quantity_size_positive_side = 30
+    # quantity_size_positive_side = 30
     # quantity_size_positive_side = 20
+    quantity_size_positive_side = 15
     # quantity_size_positive_side = 10
     # quantity_size_positive_side = 2
     # quantity_size_positive_side = 1

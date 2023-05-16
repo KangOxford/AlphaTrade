@@ -56,7 +56,10 @@ class RawDecoder():
 
     # -------------------------- 02 ----------------------------
     def step(self):
-        message = next(self.data_loader_iterrows)[1]
+        try:
+            message = next(self.data_loader_iterrows)[1]
+        except:
+            print()#$
         if message['type'] in (1,2,3):
             order_flow = OrderFlow(
                 Type = message['type'],
@@ -82,6 +85,7 @@ class RawDecoder():
         else:
             order_flow = None # Not sure !TODO
         # assert message['type'] in (1,2,3), "the exchange can only handle this three situations"
+        self.index += 1
         return order_flow
 
 
