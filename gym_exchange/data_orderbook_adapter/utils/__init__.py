@@ -76,15 +76,15 @@ def brief_order_book(order_book, side):
     return my_list
 
 def update_id(message):
-    if message['side'] == 'bid': Configuration.Adapter.type5_id_bid += 1; order_id = Configuration.Adapter.type5_id_bid
-    else: Configuration.Adapter.type5_id_ask += 1; order_id = Configuration.Adapter.type5_id_ask
+    if message['side'] == 'bid': Config.type5_id_bid += 1; order_id = Config.type5_id_bid
+    else: Config.type5_id_ask += 1; order_id = Config.type5_id_ask
     message['order_id'] = order_id
     message['trade_id'] = order_id
     return message
 
 def type5_update_id(previous_message, message):
-    if message['side'] == 'bid': Configuration.Adapter.type5_id_bid += 1; order_id = Configuration.Adapter.type5_id_bid
-    else: Configuration.Adapter.type5_id_ask += 1; order_id = Configuration.Adapter.type5_id_ask
+    if message['side'] == 'bid': Config.type5_id_bid += 1; order_id = Config.type5_id_bid
+    else: Config.type5_id_ask += 1; order_id = Config.type5_id_ask
     message['order_id'] = order_id
     message['trade_id'] = order_id
     previous_message['order_id'] = order_id
