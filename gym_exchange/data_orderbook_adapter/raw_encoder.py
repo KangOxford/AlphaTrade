@@ -1,11 +1,11 @@
-import pandas as pd
-from gym_exchange.data_orderbook_adapter import Configuration, Debugger
-from gym_exchange.data_orderbook_adapter.decoder import Decoder
-from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
+# import pandas as pd
+# from gym_exchange.data_orderbook_adapter import Configuration, Debugger
+# from gym_exchange.data_orderbook_adapter.decoder import Decoder
+# from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 from gym_exchange.exchange.basic_exc.assets.order_flow_list import FlowList
-from gym_exchange.data_orderbook_adapter import Debugger, Configuration
-from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
+# from gym_exchange.data_orderbook_adapter import Debugger, Configuration
+# from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.orderbook import OrderBook
 from gym_exchange.environment.base_env.assets.action import OrderIdGenerator
@@ -114,7 +114,7 @@ class RawEncoder():
         return self.flow_lists
 
     def get_all_running_order_flows(self):
-        [self.step() for _ in range(Configuration.horizon)]
+        [self.step() for _ in range(Config.raw_horizon)]
         return self.flow_lists
 
     def step(self):  # get_single_running_order_flows

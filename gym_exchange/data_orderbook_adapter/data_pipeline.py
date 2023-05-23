@@ -14,11 +14,16 @@ def horizon_config(Config, message_data):
     # open_interval = time[time <= 10.0000]
     # horizon_length = open_interval.size//100 + 5
     mid_interval = time[(10.0000 <= time) & (time <= 11.0000)]
+    slice_start_index = mid_interval.index[0]
     # mid_interval = time[(10.0000 <= time) & (time <= 12.0000)]
     horizon_length = mid_interval.size//Config.timeout + 5
     # Config.max_horizon = 5 #$ for easy testing
     Config.max_horizon = horizon_length
     Config.raw_horizon = int(Config.max_horizon * Config.window_size * 1.01)
+    slice_end_index = slice_start_index + Config.raw_horizon
+    assert slice_end_index <= message_data.shape[0]
+    slice_index = np.arange(slice_start_index,slice_end_index+1)
+    return slice_index
     print(f"*** horizon_length: {Config.max_horizon}")
     print(f"*** raw_horizon: {Config.raw_horizon}")
 
@@ -31,7 +36,11 @@ class DataPipeline:
             self.data_loader = pd.read_csv(
                 Config.AlphaTradeRoot+"data/" + Config.symbol + "_" + Config.date + "_34200000_57600000_message_10.csv", header=None)
             normalization_config(Config, self.historical_data)
-            horizon_config(Config, message_data = self.data_loader)
+            slice_index = horizon_config(Config, message_data = self.data_loader)
+            def adjust_data_by_horizon():
+                self.historical_data = self.historical_data.iloc[slice_index,:].reset_index(drop=True)
+                self.data_loader = self.data_loader.iloc[slice_index,:].reset_index(drop=True)
+            adjust_data_by_horizon()
             # plot_summary(self.historical_data)
 
 

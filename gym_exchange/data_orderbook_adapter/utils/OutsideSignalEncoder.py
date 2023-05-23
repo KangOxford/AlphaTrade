@@ -18,7 +18,8 @@
 #......................................................................................
 
 import numpy as np
-from gym_exchange.data_orderbook_adapter import Debugger, Configuration 
+from gym_exchange.data_orderbook_adapter import Debugger
+# from gym_exchange.data_orderbook_adapter import Debugger, Configuration
 from gym_exchange.data_orderbook_adapter.utils import get_two_list4compare
 
 class OutsideSignalEncoder:
