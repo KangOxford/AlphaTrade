@@ -14,9 +14,9 @@ class ExecutedPairsRecorder():
             # value = np.array([trade['price'], trade['quantity']]).T
             parties = [trade['party1'], trade['party2']]
             for party in parties:
-                """ trade_id_generator = 80000000
-                    order_id_generator = 88000000 """
-                if len(str(party[0])) == 8 and str(party[0])[:2] in ("80","88"): # party[0] is trade id ,Not sure, perhpas order id
+                """ trade_id_generator = 800000000
+                    order_id_generator = 880000000 """
+                if len(str(party[0])) == 9 and str(party[0])[:2] in ("80","88"): # party[0] is trade id ,Not sure, perhpas order id
                     kind = 'agent'
                 else: kind = 'market'
                 pair = {kind:value}
@@ -65,7 +65,10 @@ class ExecutedPairsRecorder():
         if index != 0: # TODO might not right
             market_pairs_list = []
             agent_pairs_list = []
-            for i in range(self.index - Config.window_size, self.index):
+            num_step = (Config.window_size + 1)  # number_of_exchange_step_contained_in_each_agent_step
+            # for i in range(self.index//num_step * num_step, self.index):
+            for i in range(self.index//num_step * num_step, self.index + 1):
+                # truncated here
                 if i in self.market_pairs.keys():
                     market_pairs_list.append(self.market_pairs[i])
                 if i in self.agent_pairs.keys():

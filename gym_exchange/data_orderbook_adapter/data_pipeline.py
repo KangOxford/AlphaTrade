@@ -23,9 +23,9 @@ def horizon_config(Config, message_data):
     slice_end_index = slice_start_index + Config.raw_horizon
     assert slice_end_index <= message_data.shape[0]
     slice_index = np.arange(slice_start_index,slice_end_index+1)
-    return slice_index
     print(f"*** horizon_length: {Config.max_horizon}")
     print(f"*** raw_horizon: {Config.raw_horizon}")
+    return slice_index
 
 
 class DataPipeline:
@@ -41,6 +41,7 @@ class DataPipeline:
                 self.historical_data = self.historical_data.iloc[slice_index,:].reset_index(drop=True)
                 self.data_loader = self.data_loader.iloc[slice_index,:].reset_index(drop=True)
             adjust_data_by_horizon()
+            Config.init_latest_timestamp = str(self.data_loader.iloc[0,0])
             # plot_summary(self.historical_data)
 
 
