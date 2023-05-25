@@ -16,8 +16,7 @@ class TimewindowEnv(locals()[Config.train_env]):
         self.state_space =  spaces.Box(
               low   = -10,
               high  = 10,
-              # shape = (100,4),
-              shape = (101,4),
+              shape = (Config.window_size+1, 4),
               dtype = np.float64,
         )
         self.observation_space = self.state_space
@@ -36,7 +35,7 @@ class TimewindowEnv(locals()[Config.train_env]):
         bid_price = self.exchange.order_book.get_best_bid()
         bid_qty = self.exchange.order_book.bids.get_price_list(bid_price).volume
         ob = np.array([[ask_price,ask_qty],[bid_price,bid_qty]]).flatten()
-        state = np.tile(ob,(100,1)).astype(np.float32)
+        state = np.tile(ob,(Config.window_size,1)).astype(np.float32)
         state[:, ::2] = (state[:,::2]-Config.price_mean)/ Config.price_std
         state[:, 1::2] = (state[:,1::2]-Config.qty_mean)/ Config.qty_std
 
@@ -46,7 +45,7 @@ class TimewindowEnv(locals()[Config.train_env]):
 
         state = np.vstack((state, task_info))
 
-        assert state.shape == (101,4)
+        assert state.shape == (Config.window_size+1,4)
         return state
 
     # ========================== 03 ==========================

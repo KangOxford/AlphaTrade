@@ -61,7 +61,8 @@ class RewardFunctional():
         sum_reward = 187811543900.0
         # sum_reward = 939273430800.0
         # sum_reward = 187686298700.0
-        revenue = revenue / sum_reward
+        # revenue = revenue / sum_reward
+        revenue = revenue / sum_reward * 10000
         # print(f"{revenue}, {regularity},` {Config.mu_regularity * regularity}")
         # normed(revenue, regularity) }
         reward = revenue + Config.mu_regularity * regularity
