@@ -45,7 +45,8 @@ class BaseExchange():
         self.mid_prices = [(self.order_book.get_best_ask() + self.order_book.get_best_bid())/2]
         self.best_bids = [self.order_book.get_best_bid()]
         self.best_asks = [self.order_book.get_best_ask()]
-        self.latest_timestamp = "34200.000000002" # TODO
+        self.latest_timestamp = Config.init_latest_timestamp
+        # self.latest_timestamp = "34200.000000002" # TODO
 
     def initialize_orderbook(self):
         '''only take the index0, the first one to init the lob'''

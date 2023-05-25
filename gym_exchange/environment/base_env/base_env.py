@@ -88,9 +88,11 @@ class BaseEnv(gym.Env):
     # --------------------- 03.01 ---------------------
 
     def state(self, action):
+        if self.cur_step == 87:
+            print()
         kind = 'limit_order'
         if self.cur_step == Config.max_horizon-1:
-            print()#$
+            print(f"self.cur_step,{self.cur_step} == Config.max_horizon-1,{Config.max_horizon-1}")#$
             num_left = self.num_left_processor.num_left
             action = [action[0],num_left,1] # aggressive order
             kind = 'market_order'

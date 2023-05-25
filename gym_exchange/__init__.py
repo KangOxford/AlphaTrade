@@ -41,6 +41,7 @@ class Config:
     # last position 1.763 used as redundant data
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
+    init_latest_timestamp = "34200.000000002" # TODO
     # ············· 00.02 Source ············
     exchange_data_source = "raw_encoder"
     # exchange_data_source = "encoder"
@@ -98,8 +99,8 @@ class Config:
     # timeout = 1
 
     # --------------- 05 ActionWrapper --------
-    trade_id_generator = 80000000
-    order_id_generator = 88000000
+    trade_id_generator = 800000000
+    order_id_generator = 880000000
 
     # --------------- 06 Space ---------------
     max_action = 300
