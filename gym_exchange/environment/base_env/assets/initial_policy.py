@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+
 from gym_exchange import Config
 import random;random.seed(Config.seed)
 
@@ -21,13 +23,39 @@ class Twap():
         # new_arr[0:490:7,0] -= 1
         # new_arr[::2,1] -= 1
         # # baseline }
+        def baseline():
+            # baseline {
+            # quantity, price
+            quantity = round(Config.num2liquidate//Config.max_horizon * 5.75)
+            new_arr = np.full((Config.max_horizon,2), (quantity,1)) # quantity, price
+            new_arr[::2, 1] -= 1 # price adjustment, passive and aggressive orders one by one
+            # baseline }
+            return new_arr
 
-        # baseline {
-        # quantity, price
-        quantity = round(Config.num2liquidate//Config.max_horizon * 5.75)
-        new_arr = np.full((Config.max_horizon,2), (quantity,1)) # quantity, price
-        new_arr[::2, 1] -= 1 # price adjustment, passive and aggressive orders one by one
-        # baseline }
+        def vwap():
+            # vwap {
+            # quantity, price
+            qty = pd.read_csv("~/vwap_qty.csv").iloc[:,-1][:Config.max_horizon]
+            qty = qty/qty.sum()
+            # quantity = (round(qty * Config.num2liquidate * 1.70)).astype(np.int64) # aggressive
+            quantity = (round(qty * Config.num2liquidate * 100)).astype(np.int64) # passive
+            quantity.iloc[-1] = quantity.iloc[-1] + (Config.num2liquidate - quantity.sum())
+            assert quantity.sum() == Config.num2liquidate
+            aggressive = np.full(Config.max_horizon,1) # quantity, price, 1 means aggressive
+            passive = np.full(Config.max_horizon,0) # quantity, price, 0 means passive
+            # new_arr = np.vstack([quantity,aggressive]).T
+            new_arr = np.vstack([quantity,passive]).T
+            '''eg.
+           [3, 1],
+           [3, 1],
+           [3, 1],
+           [3, 1],
+           [3, 1]])
+            '''
+            # vwap }
+            return new_arr
+        # new_arr = baseline()
+        new_arr = vwap()
         self.num_list = new_arr
     @property
     def done(self):

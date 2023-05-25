@@ -45,14 +45,16 @@ class DataPipeline:
 
             # vwap
             def vwap_qty():
-                m = self.data_loader
+                m = self.data_loader.copy()
                 m['index'] = m.index // 200
                 g = m.groupby('index')
                 l = []
                 for index, item in g:
                     l.append([index,item[item.iloc[:,1] == 1].iloc[:,3].sum()])
                 df = pd.DataFrame(l)
+                df.to_csv("~/vwap_qty.csv")
                 return df
+            vwap_qty()
             # vwap
 
 
