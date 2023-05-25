@@ -41,6 +41,21 @@ class DataPipeline:
                 self.historical_data = self.historical_data.iloc[slice_index,:].reset_index(drop=True)
                 self.data_loader = self.data_loader.iloc[slice_index,:].reset_index(drop=True)
             adjust_data_by_horizon()
+
+
+            # vwap
+            def vwap_qty():
+                m = self.data_loader
+                m['index'] = m.index // 200
+                g = m.groupby('index')
+                l = []
+                for index, item in g:
+                    l.append([index,item[item.iloc[:,1] == 1].iloc[:,3].sum()])
+                df = pd.DataFrame(l)
+                return df
+            # vwap
+
+
             Config.init_latest_timestamp = str(self.data_loader.iloc[0,0])
             # plot_summary(self.historical_data)
 
