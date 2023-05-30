@@ -135,7 +135,7 @@ def branch_type_side(data,type,side,askside,bidside):
             #^(orderside,qtm,price,trade)
             return askside,matchtuple[0],matchtuple[3]
 
-vfunc=jax.vmap(branch_type_side,())
+vfunc=jax.vmap(branch_type_side,(0,None,None,0,0),0)
 
 
 

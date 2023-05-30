@@ -134,10 +134,19 @@ class OrderBook():
         bidside=self.bids
         askside=self.asks
         for msg in order_array:
-            askside,bidside,trades=self.branch_type_side(msg[2:],int(msg[0]),int(msg[1]),askside.astype("int32"),bidside.astype("int32"))
+            askside,bidside,trades=job.branch_type_side(msg[2:],int(msg[0]),int(msg[1]),askside.astype("int32"),bidside.astype("int32"))
         self.asks=askside
         self.bids=bidside
 
+    def process_mult_order_arrays(self,single_array):
+        bidsides=jnp.stack((self.bids,self.bids))
+        asksides=jnp.stack((self.asks,self.asks))
+        message_arrays=jnp.stack((single_array,single_array),axis=1)
+        for msg in message_arrays:
+            asksides,bidsides,trades=job.vfunc(msg[2:],int(msg[0]),int(msg[1]),asksides.astype("int32"),bidsides.astype("int32"))
+        return asksides,bidsides
+
+    
     def get_L2_state(self,N):
         bid_prices=jnp.sort(self.bids[:,0])
         ask_prices=jnp.sort(self.asks[:,0])
@@ -198,14 +207,17 @@ if __name__ == "__main__":
     message_array=jnp.array(jax_list)
     #print("Messages processed: \n",message_array)
     #print("1st message: " ,message_array[0])
-    #start=timeit.timeit()
+    start=timeit.timeit()
     ob.process_order_array(message_array)
-    #print("Asks: \n",ob.asks.dtype)
-    #print("Bids: \n",ob.bids.dtype)
-    #print(timeit.timeit()-start)
+    print("Asks: \n",ob.asks.dtype)
+    print("Bids: \n",ob.bids.dtype)
+    print(timeit.timeit()-start)
 
 
-    bids,asks=ob.get_L2_state(5)
-    print("Bids: \n",bids)
-    print("Asks: \n",asks)
+    #bids,asks=ob.get_L2_state(5)
+    #print("Bids: \n",bids)
+    #print("Asks: \n",asks)
     #print(ob.get_totquant_at_price(ob.asks,8600.))
+
+
+    #print(ob.process_mult_order_arrays(message_array))
