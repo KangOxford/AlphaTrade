@@ -207,6 +207,7 @@ if __name__ == "__main__":
     message_array=jnp.array(jax_list)
     #print("Messages processed: \n",message_array)
     #print("1st message: " ,message_array[0])
+    print("Processing...")
     start=timeit.timeit()
     ob.process_order_array(message_array)
     print("Asks: \n",ob.asks)
