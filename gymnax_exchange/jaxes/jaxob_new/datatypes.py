@@ -209,8 +209,8 @@ if __name__ == "__main__":
     #print("1st message: " ,message_array[0])
     start=timeit.timeit()
     ob.process_order_array(message_array)
-    print("Asks: \n",ob.asks.dtype)
-    print("Bids: \n",ob.bids.dtype)
+    print("Asks: \n",ob.asks)
+    print("Bids: \n",ob.bids)
     print(timeit.timeit()-start)
 
 
