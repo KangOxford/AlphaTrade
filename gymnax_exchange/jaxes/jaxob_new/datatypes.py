@@ -4,7 +4,7 @@ from jax import numpy as jnp
 import jax
 import JaxOrderBookArrays as job
 
-import timeit
+import time
 
 
 import sys
@@ -212,16 +212,20 @@ if __name__ == "__main__":
     #print("Messages processed: \n",message_array)
     #print("1st message: " ,message_array[0])
     print("Processing...")
-    start=timeit.timeit()
+    ob.process_order_array(message_array)
+    ob2=OrderBook(nOrders=100)
+    
+    start=time.time()
+    #ob2.process_order_array(message_array)   
+    
+    #print("Asks: \n",ob2.asks)
+    #print("Bids: \n",ob2.bids)
 
-    #ob.process_order_array(message_array).
-    #print("Asks: \n",ob.asks)
-    #print("Bids: \n",ob.bids)
-
-    rettuple=ob.process_mult_order_arrays(message_array)
+    rettuple=ob2.process_mult_order_arrays(message_array)
     print(rettuple)
-    print(rettuple(0).shape)
-    print(timeit.timeit()-start)
+    print(rettuple[0].shape)
+    end=time.time()-start
+    print(end)
 
     #bids,asks=ob.get_L2_state(5)
     #print("Bids: \n",bids)
