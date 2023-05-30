@@ -134,7 +134,7 @@ class OrderBook():
         bidside=self.bids
         askside=self.asks
         for msg in order_array:
-            askside,bidside,trades=job.branch_type_side(msg[2:],int(msg[0]),int(msg[1]),askside.astype("int32"),bidside.astype("int32"))
+            askside,bidside,trades=job.cond_type_side(msg,askside.astype("int32"),bidside.astype("int32"))
         self.asks=askside
         self.bids=bidside
 
@@ -150,7 +150,19 @@ class OrderBook():
             bidsides=jnp.concatenate((bidsides,bidside),axis=1)
         return (asksides,bidsides)
 
-    
+
+    def vprocess_mult_order_arrays(self,single_array):
+        msg_arrays=jnp.stack([single_array]*1000,axis=2)
+        bidsides=jnp.stack([self.bids]*1000,axis=0).astype("int32")
+        asksides=jnp.stack([self.asks]*1000,axis=0).astype("int32")
+        print("Msg Batch Shape:",msg_arrays.shape)
+        print("Bidside Batch Shape:",bidsides.shape)
+        print("Askside Batch Shape:",asksides.shape)
+        for msg in msg_arrays:
+            asksides,bidsides,trades=job.vcond_type_side(msg,asksides,bidsides)
+        return (asksides,bidsides)
+
+
     def get_L2_state(self,N):
         bid_prices=jnp.sort(self.bids[:,0])
         ask_prices=jnp.sort(self.asks[:,0])
@@ -212,21 +224,29 @@ if __name__ == "__main__":
     #print("Messages processed: \n",message_array)
     #print("1st message: " ,message_array[0])
     print("Processing...")
-    ob.process_order_array(message_array)
-    ob2=OrderBook(nOrders=100)
+    #ob.process_order_array(message_array)
+    #ob2=OrderBook(nOrders=100)
     
-    start=time.time()
+    #start=time.time()
     #ob2.process_order_array(message_array)   
     
     #print("Asks: \n",ob2.asks)
     #print("Bids: \n",ob2.bids)
 
+    """
     rettuple=ob2.process_mult_order_arrays(message_array)
     print(rettuple)
     print(rettuple[0].shape)
+    """ 
+    #end=time.time()-start
+    #print(end)
+    ob3=OrderBook(nOrders=100)
+    start=time.time()
+    val=ob3.vprocess_mult_order_arrays(message_array)
+    print(val)
     end=time.time()-start
     print(end)
-
+    
     #bids,asks=ob.get_L2_state(5)
     #print("Bids: \n",bids)
     #print("Asks: \n",asks)
