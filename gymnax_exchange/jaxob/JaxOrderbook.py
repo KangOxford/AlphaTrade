@@ -96,9 +96,12 @@ def delOrder_3arg(order,orderbook,idx):
 def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     #Retrieve appropriate orderside
     orderside=orderbook[bidAskidx[0],:,:,:]
+    orderside_2=jnp.concatenate([jnp.roll(jnp.roll(orderside,-list_idx,axis=0)[1:,:,:],list_idx,axis=0),jnp.ones((1,100,6))*-1]).astype('int32')
     
+    """
     factor=lax.cond(bidAskidx[0]==0,lambda x: 1,lambda x: -1,bidAskidx[0]) #defines order to sort
     
+
     #Remove order by replacing with -1 fillers
     orderside=orderside.at[list_idx,:,:].set(-1)
     #Extract prices - which will be used to sort
@@ -108,8 +111,10 @@ def delPrice(orderbook,bidAskidx,list_idx,list_loc=0):
     #Get sorted indeces and use to sort orderlist.
     out=jnp.argsort(prices,axis=0)
     orderside=orderside[out,:,:]
-    
-    return orderside
+    """
+    return orderside_2
+
+
 
 @jax.jit
 def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
@@ -119,18 +124,10 @@ def del_from_orderlist(orderID,orderbook,bidAskidx,list_index,listLocation):
     #Retrieve the appropriate list (Correct side / price)
     orderlist=orderbook[bidAskidx,list_index,:,:]
     #Remove order by replacing with -1 fillers
-    orderlist=orderlist.at[listLocation,:].set(-1)
-    #Extract times - which will be used to sort
-    times=orderlist[:,4]
-    times_ns=orderlist[:,5]
-    #Replace -1 entries with inf time (move to end)
-    times=jnp.where(times==-1,jnp.iinfo('int32').max,times)
-    times_ns=jnp.where(times_ns==-1,jnp.iinfo('int32').max,times_ns)
-    #Get sorted indeces and use to sort orderlist.
-    out=jnp.lexsort((times_ns,times),axis=0)
-    #out=jnp.argsort(times,axis=0)
-    orderlist=orderlist[out,:]
-    return orderlist
+    #orderlist=orderlist.at[listLocation,:].set(-1)
+    orderlist_2=jnp.concatenate([jnp.roll(jnp.roll(orderlist,-listLocation,axis=0)[1:,:],listLocation,axis=0),jnp.ones((1,6))*-1]).astype('int32')
+    #orderlist_2=jnp.concatenate([orderlist[0:listLocation],orderlist[listLocation+1:],jnp.ones((1,ORDERSIZE))*-1])
+    return orderlist_2
 
 
 
@@ -248,7 +245,7 @@ def cancelOrder(order,orderbook,trades):
 
 #DELETE ORDER - LOBSTER ID = 3
 @jax.jit
-def delOrder_2arg(order,orderbook,trades):
+def delOrder_2arg_old(order,orderbook,trades):
 
     def newID(order,orderbook,loc,trades):
         #The order you're looking for has the INIT ID
@@ -263,6 +260,13 @@ def delOrder_2arg(order,orderbook,trades):
     orderID=order[5]
     idx=jnp.where(orderbook[:,:,:,3]==orderID,size=1,fill_value=-1)
     orderbook=lax.cond(idx[0][0]==-1,newID,goodID,order,orderbook,idx,trades)
+    return orderbook,trades
+
+@jax.jit
+def delOrder_2arg(order,orderbook,trades):    
+    orderID=order[5]
+    idx=jnp.where(orderbook[:,:,:,3]==orderID,size=1,fill_value=-1)
+    orderbook=delOrder_3arg(order,orderbook,idx)
     return orderbook,trades
 
 #MARKET ORDER - LOBSTER ID = 4
