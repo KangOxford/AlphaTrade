@@ -152,9 +152,9 @@ class OrderBook():
 
 
     def vprocess_mult_order_arrays(self,single_array):
-        msg_arrays=jnp.stack([single_array]*1000,axis=2)
-        bidsides=jnp.stack([self.bids]*1000,axis=0).astype("int32")
-        asksides=jnp.stack([self.asks]*1000,axis=0).astype("int32")
+        msg_arrays=jnp.stack([single_array]*10000,axis=2)
+        bidsides=jnp.stack([self.bids]*10000,axis=0).astype("int32")
+        asksides=jnp.stack([self.asks]*10000,axis=0).astype("int32")
         print("Msg Batch Shape:",msg_arrays.shape)
         print("Bidside Batch Shape:",bidsides.shape)
         print("Askside Batch Shape:",asksides.shape)
