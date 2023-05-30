@@ -189,7 +189,7 @@ def to_order_flow_lists(flow_lists):
 
 
 if __name__ == "__main__":
-    ob=OrderBook(nOrders=10)
+    ob=OrderBook(nOrders=100)
     decoder = RawDecoder(**DataPipeline()())
     encoder = RawEncoder(decoder)
     print(decoder.historical_data.shape)
