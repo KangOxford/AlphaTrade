@@ -134,9 +134,15 @@ class OrderBook():
         bidside=self.bids
         askside=self.asks
         for msg in order_array:
-            askside,bidside,trades=job.cond_type_side(msg,askside.astype("int32"),bidside.astype("int32"))
-        self.asks=askside
-        self.bids=bidside
+            ordersides,trades=job.cond_type_side((askside.astype("int32"),bidside.astype("int32")),msg)
+        self.asks=ordersides[0]
+        self.bids=ordersides[1]
+
+    def process_order_array_scan(self,order_array):
+        bidside=self.bids
+        askside=self.asks
+        ordersides,trades=job.scan_through_entire_array(order_array,(askside,bidside))
+        return ordersides[0],ordersides[1],trades
 
     def process_mult_order_arrays(self,single_array):
         bidsides=self.bids
@@ -151,16 +157,28 @@ class OrderBook():
         return (asksides,bidsides)
 
 
-    def vprocess_mult_order_arrays(self,single_array):
-        msg_arrays=jnp.stack([single_array]*20000,axis=2)
-        bidsides=jnp.stack([self.bids]*20000,axis=0).astype("int32")
-        asksides=jnp.stack([self.asks]*20000,axis=0).astype("int32")
+    def vprocess_mult_order_arrays(self,single_array,Nparallel):
+        msg_arrays=jnp.stack([single_array]*Nparallel,axis=2)
+        bidsides=jnp.stack([self.bids]*Nparallel,axis=0).astype("int32")
+        asksides=jnp.stack([self.asks]*Nparallel,axis=0).astype("int32")
+        ordersides=(asksides,bidsides)
         print("Msg Batch Shape:",msg_arrays.shape)
         print("Bidside Batch Shape:",bidsides.shape)
         print("Askside Batch Shape:",asksides.shape)
         for msg in msg_arrays:
-            asksides,bidsides,trades=job.vcond_type_side(msg,asksides,bidsides)
-        return (asksides,bidsides)
+            ordersides,trades=job.vcond_type_side(ordersides,msg)
+        return ordersides,trades
+
+    def vprocess_mult_order_arrays_scan(self,single_array,Nparallel):
+        msg_arrays=jnp.stack([single_array]*Nparallel,axis=2)
+        bidsides=jnp.stack([self.bids]*Nparallel,axis=0).astype("int32")
+        asksides=jnp.stack([self.asks]*Nparallel,axis=0).astype("int32")
+        ordersides=(asksides,bidsides)
+        print("Msg Batch Shape:",msg_arrays.shape)
+        print("Bidside Batch Shape:",bidsides.shape)
+        print("Askside Batch Shape:",asksides.shape)
+        ordersides,trades=job.vscan_through_entire_array(msg_arrays,ordersides)
+        return ordersides,trades
 
 
     def get_L2_state(self,N):
@@ -240,13 +258,34 @@ if __name__ == "__main__":
     """ 
     #end=time.time()-start
     #print(end)
-    ob3=OrderBook(nOrders=100)
+    """
     start=time.time()
-    val=ob3.vprocess_mult_order_arrays(message_array)
-    print(val)
+    retval=ob.process_order_array(message_array)
+    print(retval)
     end=time.time()-start
     print(end)
-    
+    """
+
+
+
+    ob4=OrderBook(nOrders=100)
+    start=time.time()
+    val=ob4.vprocess_mult_order_arrays(message_array,10)
+    print(jax.tree_util.tree_structure(val))
+    end_for=time.time()-start
+
+
+
+    ob3=OrderBook(nOrders=100)
+    start=time.time()
+    val=ob3.vprocess_mult_order_arrays_scan(message_array,10)
+    print(val)
+    print(jax.tree_util.tree_structure(val))
+    end_scan=time.time()-start
+    print("Time for for loop with N=10 in llel:", end_for)
+    print("Time for scan with N=10 in llel:", end_scan)
+
+
     #bids,asks=ob.get_L2_state(5)
     #print("Bids: \n",bids)
     #print("Asks: \n",asks)

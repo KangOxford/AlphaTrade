@@ -80,7 +80,8 @@ def get_top_ask_order_idx(orderside):
     return jnp.where(times_ns==minTime_ns,size=1,fill_value=-1)[0]
 
 @jax.jit
-def cond_type_side(data,askside,bidside):
+def cond_type_side(ordersides,data):
+    askside,bidside=ordersides
     msg={
     'side':data[1],
     'type':data[0],
@@ -92,9 +93,16 @@ def cond_type_side(data,askside,bidside):
     'time_ns':data[7]}
     index=((msg["side"]+1)*2+msg["type"]).astype("int32")
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside)
-    return ask,bid,trade
-    
-vcond_type_side=jax.vmap(cond_type_side,(1,0,0),0)
+    return (ask,bid),trade
+
+vcond_type_side=jax.vmap(cond_type_side,((0,0),1),0)
+
+
+def scan_through_entire_array(msg_array,ordersides):
+    ordersides,trades=jax.lax.scan(cond_type_side,ordersides,msg_array)
+    return ordersides,trades
+
+vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0)),0)
 
 
 @partial(jax.jit,static_argnums=(1,2))
