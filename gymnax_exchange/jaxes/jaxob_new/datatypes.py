@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
     ob4=OrderBook(nOrders=100)
     start=time.time()
-    val=ob4.vprocess_mult_order_arrays(message_array,10)
+    val=ob4.vprocess_mult_order_arrays(message_array,10000)
     print(jax.tree_util.tree_structure(val))
     end_for=time.time()-start
 
@@ -278,7 +278,7 @@ if __name__ == "__main__":
 
     ob3=OrderBook(nOrders=100)
     start=time.time()
-    val=ob3.vprocess_mult_order_arrays_scan(message_array,10)
+    val=ob3.vprocess_mult_order_arrays_scan(message_array,10000)
     print(val)
     print(jax.tree_util.tree_structure(val))
     end_scan=time.time()-start
