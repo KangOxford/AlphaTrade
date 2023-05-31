@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     ##Configuration variables:
     ordersPerSide=100
-    instancesInParallel=10
+    instancesInParallel=10000
 
 
     print("Processing...")
