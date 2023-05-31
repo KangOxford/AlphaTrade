@@ -18,52 +18,7 @@ from gym_exchange.data_orderbook_adapter.encoder import Encoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 
 
-class OrderInBook():
-    def __init__(self,price : jnp.DeviceArray, quantity :jnp.DeviceArray, orderid : jnp.DeviceArray, traderid: jnp.DeviceArray,time:jnp.DeviceArray,auxdata) -> None:
-        self.price=price
-        self.quantity=quantity
-        self.orderid=orderid
-        self.traderid=traderid
-        self.time=time        
 
-    def __str__(self):
-        return "p=% s, q=% s, oid=% s,tid= % s,t=% s" % (self.price, self.quantity,self.orderid,self.traderid,self.time) 
-'''
-def flatten_orderinbook(tree : OrderInBook):
-    """Specifies how to flatten a OrderInBook class object.
-    
-    Args:
-        tree: OrderInBook class object represented as Pytree node
-    Returns:
-        A pair of an iterable with the children to be flattened recursively,
-        and some opaque auxiliary data to pass back to the unflattening recipe.
-        The auxiliary data is stored in the treedef for use during unflattening.
-        The auxiliary data could be used, e.g., for dictionary keys.
-    """
-    
-    children = (tree.price,tree.quantity,tree.orderid,tree.traderid,tree.time)
-    aux_data = None # We don't want to treat the name as a child - so far there are no aux data I want to consider.
-    return (children, aux_data)
-
-
-def unflatten_orderinbook(aux_data, children):
-    """Specifies how to unflattening a Counter class object.
-
-    Args:
-        aux_data: the opaque data that was specified during flattening of the
-            current treedef.
-        children: the unflattened children
-    Returns:
-        A re-constructed object of the registered type, using the specified
-        children and auxiliary data.
-    """
-    return OrderInBook(*children, aux_data)
-
-jax.tree_util.register_pytree_node(
-    OrderInBook,
-    flatten_orderinbook,    # tell JAX what are the children nodes
-    unflatten_orderinbook   # tell JAX how to pack back into a `OrderInBook`
-)'''
 
 class OrderBook():
     def __init__(self,nOrders=10) -> None:
@@ -138,16 +93,24 @@ class OrderBook():
         self.asks=ordersides[0]
         self.bids=ordersides[1]
 
+    def process_order_array_branch(self,order_array):
+        bidside=self.bids
+        askside=self.asks
+        for msg in order_array:
+            ordersides,trades=job.branch_type_side(msg[2:],int(msg[0]),int(msg[1]),askside.astype("int32"),bidside.astype("int32"))
+        self.asks=ordersides[0]
+        self.bids=ordersides[1]
+
     def process_order_array_scan(self,order_array):
         bidside=self.bids
         askside=self.asks
         ordersides,trades=job.scan_through_entire_array(order_array,(askside,bidside))
         return ordersides[0],ordersides[1],trades
 
-    def process_mult_order_arrays(self,single_array):
+    def process_mult_order_arrays(self,single_array,Nparallel):
         bidsides=self.bids
         asksides=self.asks
-        for i in jnp.arange(100):
+        for i in jnp.arange(Nparallel):
             bidside=self.bids
             askside=self.asks
             for msg in single_array:
@@ -223,16 +186,19 @@ def to_order_flow_lists(flow_lists):
 
 
 if __name__ == "__main__":
-    ob=OrderBook(nOrders=100)
+    #Loading data from the LOBSTER dataset using Kang's data encoder - where all the pre-processing is done. 
     decoder = RawDecoder(**DataPipeline()())
     encoder = RawEncoder(decoder)
-    print(decoder.historical_data.shape)
     flow_lists=encoder()
+    #Function by me to change the format of the flow lists slightly.
     flow_lists = to_order_flow_lists(flow_lists)
+    #Single message for debugging purposes. 
     single_message=flow_lists[0].get_head_order_flow().to_message
     jax_list=[]
     message_list=[]
 
+    #Creating two types of lists of messages to give to the orderbook:
+    # A) jax_list is a list with messages ready for the jax OB (i.e. numerical)
     for flow_list in flow_lists[0:2000]:
         for flow in flow_list:
             jax_list.append(flow.to_list)
@@ -241,50 +207,74 @@ if __name__ == "__main__":
     message_array=jnp.array(jax_list)
     #print("Messages processed: \n",message_array)
     #print("1st message: " ,message_array[0])
+
+
+    ##Configuration variables:
+    ordersPerSide=100
+    instancesInParallel=10
+
+
     print("Processing...")
-    #ob.process_order_array(message_array)
-    #ob2=OrderBook(nOrders=100)
     
-    #start=time.time()
-    #ob2.process_order_array(message_array)   
+    #Process a single set of messages (message_array) through the orderbook. This is largely to make sure everything is jitted and d
+    ob=OrderBook(nOrders=ordersPerSide)
+    ob.process_order_array(message_array)
+    ob_branch=OrderBook(nOrders=ordersPerSide)
+    ob_branch.process_order_array_branch(message_array)
     
-    #print("Asks: \n",ob2.asks)
-    #print("Bids: \n",ob2.bids)
+    #Process a second set of messages in a seperate orderbook object. 
+    ob2=OrderBook(nOrders=ordersPerSide)
+    #Include timing
+    start=time.time()
+    ob2.process_order_array(message_array)   
+    #Print the output state of both sides of the orderbook.
+    print("Asks: \n",ob2.asks)
+    print("Bids: \n",ob2.bids)
+    end_single=time.time()-start
 
-    """
-    rettuple=ob2.process_mult_order_arrays(message_array)
-    print(rettuple)
+    #Process a second set of messages in a seperate orderbook object under branch
+    ob2_branch=OrderBook(nOrders=ordersPerSide)
+    #Include timing
+    start=time.time()
+    ob2_branch.process_order_array_branch(message_array)   
+    #Print the output state of both sides of the orderbook.
+    print("Asks: \n",ob2.asks)
+    print("Bids: \n",ob2.bids)
+    end_single_branch=time.time()-start
+
+
+    #Process a set of messages N times in "parallel" (really in this case it is serial) through the use of two for loops 
+    #This uses the branch function (using if-else statements to distinguish message types/side)
+    """ob2=OrderBook(nOrders=ordersPerSide)
+    start=time.time()
+    rettuple=ob2.process_mult_order_arrays(message_array,instancesInParallel)
+    print("Output from all orderbooks:",rettuple)
     print(rettuple[0].shape)
-    """ 
-    #end=time.time()-start
-    #print(end)
+    end_for_for=time.time()-start
     """
+    
+
+    #Process a set of messages N times in parallel, with a for loop going through messages sequentially but processing all N orderbooks in parallel.
+    ob4=OrderBook(nOrders=ordersPerSide)
     start=time.time()
-    retval=ob.process_order_array(message_array)
-    print(retval)
-    end=time.time()-start
-    print(end)
-    """
-
-
-
-    ob4=OrderBook(nOrders=100)
-    start=time.time()
-    val=ob4.vprocess_mult_order_arrays(message_array,10000)
+    val=ob4.vprocess_mult_order_arrays(message_array,instancesInParallel)
     print(jax.tree_util.tree_structure(val))
     end_for=time.time()-start
 
 
 
-    ob3=OrderBook(nOrders=100)
+    ob3=OrderBook(nOrders=ordersPerSide)
     start=time.time()
-    val=ob3.vprocess_mult_order_arrays_scan(message_array,10000)
+    val=ob3.vprocess_mult_order_arrays_scan(message_array,instancesInParallel)
     print(val)
     print(jax.tree_util.tree_structure(val))
     end_scan=time.time()-start
-    print("Time for for loop with N=10 in llel:", end_for)
-    print("Time for scan with N=10 in llel:", end_scan)
-
+    
+    print("Time required for N=:",1," single instance with cond", end_single)
+    print("Time required for N=:",1," single instance with branch", end_single_branch)
+    print("Time for for loop with N=",instancesInParallel," instances with cond in a for loop (vmap inside)", end_for)
+    print("Time for scan with N=",instancesInParallel," instances with cond in a scan (vmap outside)", end_scan)
+    """print("Time required for N=",instancesInParallel," instances with for loops and branch: ",end_for_for)"""
 
     #bids,asks=ob.get_L2_state(5)
     #print("Bids: \n",bids)
