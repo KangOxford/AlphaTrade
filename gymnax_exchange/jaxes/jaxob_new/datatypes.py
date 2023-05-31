@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     ##Configuration variables:
     ordersPerSide=100
-    instancesInParallel=10000
+    instancesInParallel=1000
 
 
     print("Processing...")
@@ -270,8 +270,8 @@ if __name__ == "__main__":
     print(jax.tree_util.tree_structure(val))
     end_scan=time.time()-start
     
-    print("Time required for N=:",1," single instance with cond", end_single)
-    print("Time required for N=:",1," single instance with branch", end_single_branch)
+    print("Time required for N=",1," single instance with cond:", end_single)
+    print("Time required for N=",1," single instance with branch:", end_single_branch)
     print("Time for for loop with N=",instancesInParallel," instances with cond in a for loop (vmap inside)", end_for)
     print("Time for scan with N=",instancesInParallel," instances with cond in a scan (vmap outside)", end_scan)
     """print("Time required for N=",instancesInParallel," instances with for loops and branch: ",end_for_for)"""
