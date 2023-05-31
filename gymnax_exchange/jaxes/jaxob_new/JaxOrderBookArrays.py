@@ -11,8 +11,8 @@ def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
     return orderside.at[emptyidx,:].set(jnp.array([msg['price'],msg['quantity'],msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype("int32")
 
+@jax.jit
 def removeZeroQuant(orderside):
-    
     return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype("int32"),y=orderside)
 
 
@@ -50,7 +50,7 @@ def check_before_matching_bid(data_tuple):
     returnarray=(orderside[top_order_idx,0]>=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
 
-
+@jax.jit
 def match_against_bid_orders(orderside,qtm,price,trade):
     top_order_idx=get_top_bid_order_idx(orderside)
     orderside,qtm,price,top_order_idx,trade=jax.lax.while_loop(check_before_matching_bid,match_order,(orderside,qtm,price,top_order_idx,trade))
@@ -62,7 +62,7 @@ def check_before_matching_ask(data_tuple):
     returnarray=(orderside[top_order_idx,0]<=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
 
-
+@jax.jit
 def match_against_ask_orders(orderside,qtm,price,trade):
     top_order_idx=get_top_ask_order_idx(orderside)
     orderside,qtm,price,top_order_idx,trade=jax.lax.while_loop(check_before_matching_ask,match_order,(orderside,qtm,price,top_order_idx,trade))
