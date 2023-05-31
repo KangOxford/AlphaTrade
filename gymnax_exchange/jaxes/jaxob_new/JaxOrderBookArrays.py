@@ -125,18 +125,18 @@ def branch_type_side(data,type,side,askside,bidside):
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             bids=add_order(bidside,msg)
-            return matchtuple[0],bids,matchtuple[3]
+            return (matchtuple[0],bids),matchtuple[3]
         elif type==2:
             #cancel order on bids side
-            return askside,cancel_order(bidside,msg),jnp.ones((5,5))*-1
+            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5))*-1
         elif type==3:
             #cancel order on bids side
-            return askside,cancel_order(bidside,msg),jnp.ones((5,5))*-1
+            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5))*-1
         elif type==4:
             msg["price"]=99999999
             matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
             #^(orderside,qtm,price,trade)
-            return matchtuple[0],bidside,matchtuple[3]
+            return (matchtuple[0],bidside),matchtuple[3]
     else:
         if type==1:
             #match with bids side
@@ -145,13 +145,13 @@ def branch_type_side(data,type,side,askside,bidside):
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             asks=add_order(askside,msg)
-            return asks,matchtuple[0],matchtuple[3]
+            return (asks,matchtuple[0]),matchtuple[3]
         elif type==2:
             #cancel order on asks side
-            return cancel_order(askside,msg),bidside,jnp.ones((5,5))*-1
+            return (cancel_order(askside,msg),bidside),jnp.ones((5,5))*-1
         elif type==3:
             #cancel order on asks side
-            return cancel_order(askside,msg),bidside,jnp.ones((5,5))*-1
+            return (cancel_order(askside,msg),bidside),jnp.ones((5,5))*-1
         elif type==4:
             #set price to 0
             #match with bids side 
@@ -159,9 +159,8 @@ def branch_type_side(data,type,side,askside,bidside):
             msg["price"]=0
             matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
             #^(orderside,qtm,price,trade)
-            return askside,matchtuple[0],matchtuple[3]
+            return (askside,matchtuple[0]),matchtuple[3]
 
-vfunc=jax.vmap(branch_type_side,(0,None,None,0,0),0)
 
 
 
