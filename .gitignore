@@ -8,6 +8,9 @@
 **.log
 /train/output/**
 **.pkl
+/train/wandb/**
+**/wandb/**
+/gym_exchange/outputs/**
 
 gym_exchange/.DS_Store
 gym_exchange/data_orderbook_adapter/.DS_Store
