@@ -5,6 +5,7 @@ import jax
 from functools import partial, partialmethod
 
 INITID=-9000
+MAXPRICE=999999999
 
 @jax.jit
 def add_order(orderside,msg):
@@ -38,9 +39,9 @@ def match_order(data_tuple):
 @jax.jit
 def get_top_bid_order_idx(orderside):
     maxPrice=jnp.max(orderside[:,0],axis=0)
-    times=jnp.where(orderside[:,0]==maxPrice,orderside[:,4],999999999)
+    times=jnp.where(orderside[:,0]==maxPrice,orderside[:,4],MAXPRICE)
     minTime_s=jnp.min(times,axis=0)
-    times_ns=jnp.where(times==minTime_s,orderside[:,5],999999999)
+    times_ns=jnp.where(times==minTime_s,orderside[:,5],MAXPRICE)
     minTime_ns=jnp.min(times_ns,axis=0)
     return jnp.where(times_ns==minTime_ns,size=1,fill_value=-1)[0]
 
@@ -71,11 +72,11 @@ def match_against_ask_orders(orderside,qtm,price,trade):
 @jax.jit
 def get_top_ask_order_idx(orderside):
     prices=orderside[:,0]
-    prices=jnp.where(prices==-1,999999999,prices)
+    prices=jnp.where(prices==-1,MAXPRICE,prices)
     minPrice=jnp.min(prices)
-    times=jnp.where(orderside[:,0]==minPrice,orderside[:,4],999999999)
+    times=jnp.where(orderside[:,0]==minPrice,orderside[:,4],MAXPRICE)
     minTime_s=jnp.min(times,axis=0)
-    times_ns=jnp.where(times==minTime_s,orderside[:,5],999999999)
+    times_ns=jnp.where(times==minTime_s,orderside[:,5],MAXPRICE)
     minTime_ns=jnp.min(times_ns,axis=0)
     return jnp.where(times_ns==minTime_ns,size=1,fill_value=-1)[0]
 
@@ -133,7 +134,7 @@ def branch_type_side(data,type,side,askside,bidside):
             #cancel order on bids side
             return (askside,cancel_order(bidside,msg)),jnp.ones((5,5))*-1
         elif type==4:
-            msg["price"]=99999999
+            msg["price"]=MAXPRICE
             matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
             #^(orderside,qtm,price,trade)
             return (matchtuple[0],bidside),matchtuple[3]
@@ -180,7 +181,7 @@ def bid_cancel(msg,askside,bidside):
     return askside,cancel_order(bidside,msg),jnp.ones((5,5))*-1
 
 def bid_mkt(msg,askside,bidside):
-    msg["price"]=99999999
+    msg["price"]=MAXPRICE
     matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
     #^(orderside,qtm,price,trade)
     return matchtuple[0],bidside,matchtuple[3]
@@ -216,3 +217,26 @@ def get_totquant_at_price(orderside,price):
         return jnp.sum(jnp.where(orderside[:,0]==price,orderside[:,1],0))
 
 get_totquant_at_prices=jax.vmap(get_totquant_at_price,(None,0),0)
+
+@partial(jax.jit,static_argnums=0)
+def get_L2_state(N,asks,bids):
+    bid_prices=-jnp.unique(-bids[:,0],size=N,fill_value=1)
+    ask_prices=jnp.unique(jnp.where(asks[:,0]==-1,MAXPRICE,asks[:,0]),size=N,fill_value=MAXPRICE)
+    ask_prices=jnp.where(ask_prices==MAXPRICE,-1,ask_prices)
+
+    bid_quants=get_totquant_at_prices(bids,bid_prices)
+    ask_quants=get_totquant_at_prices(asks,ask_prices)
+    bid_quants=jnp.where(bid_quants<0,0,bid_quants)
+    ask_quants=jnp.where(ask_quants<0,0,ask_quants)
+    return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
+
+@partial(jax.jit,static_argnums=0)
+def init_orderside(nOrders=100):
+    return (jnp.ones((nOrders,6))*-1).astype("int32")
+
+
+#TODO: Actually complete this function to not only return dummy vars
+def get_initial_orders(bookData,idx_day,idx_entry):
+    return jnp.array([[1,-1,200,200000,900000,900001,3400,1],
+                        [1,-1,201,200001,900000,900002,3400,1],
+                        [1,1,301,190000,990000,990000,3400,2]])
