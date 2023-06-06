@@ -67,7 +67,8 @@ class Config:
 
     # --------------- 03 Task ---------------
     # num2liquidate = 30000 # mid interval
-    num2liquidate = 6000 # 60 min
+    # num2liquidate = 6000 # 60 min
+    num2liquidate = 3000 # 60 min for testing
     # num2liquidate = 2000 # 10 min
     # num2liquidate = 200 # 1 min
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''

@@ -46,7 +46,7 @@ class DataPipeline:
             # vwap
             def vwap_qty():
                 m = self.data_loader.copy()
-                m['index'] = m.index // 200
+                m['index'] = m.index // Config.window_size
                 g = m.groupby('index')
                 l = []
                 for index, item in g:
