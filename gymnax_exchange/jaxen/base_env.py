@@ -40,33 +40,16 @@ class BaseLOBEnv(environment.Environment):
         #TODO:Define Load function based on Kangs work (though it seems that takes quite a while)
         """(book_data, message_data), _ = load_LOBSTER()"""
         def load_LOBSTER():
-            def csv2pickle():
-                # would be removed in the official release
+            def load_files():
                 messagePath = "/Users/kang/Data/Whole_Flow/"
                 orderbookPath = "/Users/kang/Data/Whole_Book/"
-                messagePath1 = "/Users/kang/Data/Message_Pickles/"
-                orderbookPath1 = "/Users/kang/Data/OrderBook_Pickles/"
-                def make_dir(out_path):
-                    try: from os import listdir; listdir(out_path)
-                    except: import os;os.mkdir(out_path)
-                make_dir(messagePath1);make_dir(orderbookPath1)
                 from os import listdir; from os.path import isfile, join
                 readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
                 messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
-                messageCsvs = [pd.read_csv(messagePath + file) for file in messageFiles]
-                orderbookCsvs = [pd.read_csv(orderbookPath + file) for file in orderbookFiles]
-                [file.to_pickle()]
-
-            def load_files():
-                messagePath = "/Users/kang/Data/Message_Pickles/"
-                orderbookPath = "/Users/kang/Data/OrderBook_Pickles/"
-                from os import listdir; from os.path import isfile, join
-                readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-                messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
-                messagePkls = [pd.read_pickle(messagePath + file) for file in messageFiles]
-                orderbookPkls = [pd.read_pickle(orderbookPath + file) for file in orderbookFiles]
-                return messagePkls, orderbookPkls
-            messageFiles, orderbookFiles = load_files()
+                messageCSVs = [pd.read_csv(messagePath + file) for file in messageFiles]
+                orderbookCSVs = [pd.read_csv(orderbookPath + file) for file in orderbookFiles]
+                return messageCSVs, orderbookCSVs
+            messageCSVs, orderbookCSVs = load_files()
             return
         load_LOBSTER()
         #numpy load with the memmap
