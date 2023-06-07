@@ -105,6 +105,8 @@ class OrderBook():
         bidside=self.bids
         askside=self.asks
         ordersides,trades=job.scan_through_entire_array(order_array,(askside,bidside))
+        self.asks=ordersides[0]
+        self.bids=ordersides[1]
         return ordersides[0],ordersides[1],trades
 
     def process_mult_order_arrays(self,single_array,Nparallel):
@@ -143,6 +145,9 @@ class OrderBook():
         ordersides,trades=job.vscan_through_entire_array(msg_arrays,ordersides)
         return ordersides,trades
 
+
+    def get_L2_state_experimental(self,N):
+        return job.get_L2_state(N,self.asks,self.bids)
 
     def get_L2_state(self,N):
         bid_prices=jnp.sort(self.bids[:,0])
@@ -211,36 +216,37 @@ if __name__ == "__main__":
 
     ##Configuration variables:
     ordersPerSide=100
-    instancesInParallel=1000
+    instancesInParallel=10
 
 
     print("Processing...")
     
     #Process a single set of messages (message_array) through the orderbook. This is largely to make sure everything is jitted and d
     ob=OrderBook(nOrders=ordersPerSide)
-    ob.process_order_array(message_array)
-    ob_branch=OrderBook(nOrders=ordersPerSide)
-    ob_branch.process_order_array_branch(message_array)
-    
+    ob.process_order_array_scan(message_array)
+    #ob_branch=OrderBook(nOrders=ordersPerSide)
+    #ob_branch.process_order_array_branch(message_array)
+
+
     #Process a second set of messages in a seperate orderbook object. 
-    ob2=OrderBook(nOrders=ordersPerSide)
+    """ob2=OrderBook(nOrders=ordersPerSide)
     #Include timing
     start=time.time()
     ob2.process_order_array(message_array)   
     #Print the output state of both sides of the orderbook.
     print("Asks: \n",ob2.asks)
     print("Bids: \n",ob2.bids)
-    end_single=time.time()-start
+    end_single=time.time()-start"""
 
     #Process a second set of messages in a seperate orderbook object under branch
-    ob2_branch=OrderBook(nOrders=ordersPerSide)
+    """ob2_branch=OrderBook(nOrders=ordersPerSide)
     #Include timing
     start=time.time()
     ob2_branch.process_order_array_branch(message_array)   
     #Print the output state of both sides of the orderbook.
     print("Asks: \n",ob2.asks)
     print("Bids: \n",ob2.bids)
-    end_single_branch=time.time()-start
+    end_single_branch=time.time()-start"""
 
 
     #Process a set of messages N times in "parallel" (really in this case it is serial) through the use of two for loops 
@@ -255,31 +261,38 @@ if __name__ == "__main__":
     
 
     #Process a set of messages N times in parallel, with a for loop going through messages sequentially but processing all N orderbooks in parallel.
-    ob4=OrderBook(nOrders=ordersPerSide)
+    """ob4=OrderBook(nOrders=ordersPerSide)
     start=time.time()
     val=ob4.vprocess_mult_order_arrays(message_array,instancesInParallel)
     print(jax.tree_util.tree_structure(val))
-    end_for=time.time()-start
+    end_for=time.time()-start"""
 
 
 
-    ob3=OrderBook(nOrders=ordersPerSide)
+    """ob3=OrderBook(nOrders=ordersPerSide)
     start=time.time()
     val=ob3.vprocess_mult_order_arrays_scan(message_array,instancesInParallel)
     print(val)
     print(jax.tree_util.tree_structure(val))
-    end_scan=time.time()-start
+    end_scan=time.time()-start"""
     
-    print("Time required for N=",1," single instance with cond:", end_single)
-    print("Time required for N=",1," single instance with branch:", end_single_branch)
-    print("Time for for loop with N=",instancesInParallel," instances with cond in a for loop (vmap inside)", end_for)
-    print("Time for scan with N=",instancesInParallel," instances with cond in a scan (vmap outside)", end_scan)
+    #print("Time required for N=",1," single instance with cond:", end_single)
+    #print("Time required for N=",1," single instance with branch:", end_single_branch)
+    #print("Time for for loop with N=",instancesInParallel," instances with cond in a for loop (vmap inside)", end_for)
+    #print("Time for scan with N=",instancesInParallel," instances with cond in a scan (vmap outside)", end_scan)
     """print("Time required for N=",instancesInParallel," instances with for loops and branch: ",end_for_for)"""
 
-    #bids,asks=ob.get_L2_state(5)
-    #print("Bids: \n",bids)
-    #print("Asks: \n",asks)
+    #print(ob.get_L2_state_experimental(10))
+    
+    """print("Bids: \n",bids)
+    print("Asks: \n",asks)
+
+    print("Bid Quants: \n", bidQ)
+    print("Ask Quants: \n", askQ)"""
+    
     #print(ob.get_totquant_at_price(ob.asks,8600.))
 
 
     #print(ob.process_mult_order_arrays(message_array))
+
+    #print(job.get_initial_orders(0,0,0))
