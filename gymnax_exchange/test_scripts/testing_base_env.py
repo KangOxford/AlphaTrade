@@ -18,3 +18,7 @@ env_params=env.default_params
 print(env_params)
 
 obs,state=env.reset(key_reset,env_params)
+
+print(env.action_space().sample(key_policy))
+
+print(env.state_space(env_params).sample(key_policy))

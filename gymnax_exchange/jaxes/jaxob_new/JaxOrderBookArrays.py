@@ -236,7 +236,7 @@ def init_orderside(nOrders=100):
 
 
 #TODO: Actually complete this function to not only return dummy vars
-def get_initial_orders(bookData,idx_day,idx_entry):
+def get_initial_orders(bookData,idx_window):
     return jnp.array([[1,-1,200,200000,900000,900001,3400,1],
                         [1,-1,201,200001,900000,900002,3400,1],
                         [1,1,301,190000,990000,990000,3400,2]])
