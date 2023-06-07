@@ -37,6 +37,8 @@ class BaseLOBEnv(environment.Environment):
         # Load the image MNIST data at environment init
         #TODO:Define Load function based on Kangs work (though it seems that takes quite a while)
         """(book_data, message_data), _ = load_LOBSTER()"""
+
+        #numpy load with the memmap
         book_data=0
         message_data=0
         self.book_data=book_data
@@ -112,11 +114,6 @@ class BaseLOBEnv(environment.Environment):
         """Environment name."""
         return "alphatradeBase-v0"
 
-    #TODO: far more than 10
-    @property
-    def num_actions(self) -> int:
-        """Number of actions possible in environment."""
-        return 10
 
     #TODO: Figure out how to deal with the fact that cancel orders must actually relate to a given order (just sampling randomly won't work)
     def action_space(
