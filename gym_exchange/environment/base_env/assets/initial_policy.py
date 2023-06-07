@@ -37,9 +37,12 @@ class Twap():
             # quantity, price
             qty = pd.read_csv("~/vwap_qty.csv").iloc[:,-1][:Config.max_horizon]
             qty = qty/qty.sum()
+            factor = 1
+            # factor = 100
             # quantity = (round(qty * Config.num2liquidate * 1.70)).astype(np.int64) # aggressive
-            quantity = (round(qty * Config.num2liquidate * 100)).astype(np.int64) # passive
+            quantity = (round(qty * Config.num2liquidate * factor)).astype(np.int64) # passive
             quantity.iloc[-1] = quantity.iloc[-1] + (Config.num2liquidate - quantity.sum())
+            assert all(quantity >= 0)
             assert quantity.sum() == Config.num2liquidate
             aggressive = np.full(Config.max_horizon,1) # quantity, price, 1 means aggressive
             passive = np.full(Config.max_horizon,0) # quantity, price, 0 means passive
