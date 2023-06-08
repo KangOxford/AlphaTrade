@@ -43,6 +43,90 @@ class BaseLOBEnv(environment.Environment):
         #TODO:Define Load function based on Kangs work (though it seems that takes quite a while)
         """(book_data, message_data), _ = load_LOBSTER()"""
 
+        def load_LOBSTER():
+            def config():
+                sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
+                stepLines = 100
+                messagePath = "/Users/kang/Data/Whole_Flow/"
+                orderbookPath = "/Users/kang/Data/Whole_Book/"
+                start_time = 34200  # 09:30
+                end_time = 57600  # 16:00
+                return sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time
+            sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time = config()
+            def preProcessingData_csv2pkl():
+                return 0
+            def load_files():
+                from os import listdir; from os.path import isfile, join; import pandas as pd
+                readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
+                messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
+                dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
+                messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
+                orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
+                return messageCSVs, orderbookCSVs
+            messages, orderbooks = load_files()
+            def preProcessingMassege(message):
+                def splitTimeStamp(m):
+                    m[6] = m[0].apply(lambda x: int(x))
+                    m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
+                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
+                    return m
+                message = splitTimeStamp(message)
+                def filterValid(message):
+                    message = message[message.type.isin([1,2,3,4])]
+                    valid_index = message.index.to_numpy()
+                    message.reset_index(inplace=True,drop=True)
+                    return message, valid_index
+                message, valid_index = filterValid(message)
+                def tuneDirection(message):
+                    import numpy as np
+                    message['direction'] = np.where(message['type'] == 4, message['direction'] * -1,
+                                                    message['direction'])
+                    return message
+                message = tuneDirection(message)
+                def addTraderId(message):
+                    message['trader_id'] = message['order_id']
+                    return message
+
+                message = addTraderId(message)
+                return message
+            messages = [preProcessingMassege(message) for message in messages]
+            def index_of_sliceWithoutOverlap(start_time, end_time, interval):
+                indices = list(range(start_time, end_time, interval))
+                return indices
+
+            indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
+            def sliceWithoutOverlap(message):
+                def splitMessage(message):
+                    sliced_parts = []
+                    for i in range(len(indices) - 1):
+                        start_index = indices[i]
+                        end_index = indices[i + 1]
+                        sliced_part = message.loc[(message['time'] >= start_index) & (message['time'] < end_index)]
+                        num_rows = len(sliced_part)
+                        num_rows -= num_rows % stepLines
+                        sliced_part = sliced_part[:num_rows]
+                        sliced_parts.append(sliced_part)
+
+                    # Last sliced part from last index to end_time
+                    last_sliced_part = message.loc[message['time'] >= indices[-1]]
+                    num_rows = len(sliced_part)
+                    num_rows -= num_rows % stepLines
+                    last_sliced_part = last_sliced_part[:num_rows]
+                    sliced_parts.append(last_sliced_part)
+                    return sliced_parts
+                sliced_parts = splitMessage(message)
+                def sliced2cude(sliced):
+                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
+                    cube = sliced[columns].to_numpy()
+                    return cube
+                slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
+                # slicedCube: dynamic_horizon * stepLines * 8
+                return slicedCubes
+            slicedCubes_list = [sliceWithoutOverlap(message) for message in messages]
+            # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
+            return slicedCubes_list
+        load_LOBSTER()
+
         #numpy load with the memmap
         book_data=0
         message_data=0
