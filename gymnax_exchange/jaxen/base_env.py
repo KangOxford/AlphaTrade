@@ -89,23 +89,25 @@ class BaseLOBEnv(environment.Environment):
                     return message
 
                 message = addTraderId(message)
-                OB = orderbook.iloc[valid_index,:]
-                return message,OB
+                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+                return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
-            def index_of_sliceWithoutOverlap(start_time, end_time, interval):
-                indices = list(range(start_time, end_time, interval))
-                return indices
-            indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
+
             # def slice_initialOB(orderbook):
-            #     orderbook
+            #     orderbook[indices,:]
             #
             # orderbook = orderbooks[0]
 
 
-            def sliceWithoutOverlap(message):
-                def splitMessage(message):
+            def index_of_sliceWithoutOverlap(start_time, end_time, interval):
+                indices = list(range(start_time, end_time, interval))
+                return indices
+            indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
+            def sliceWithoutOverlap(message, orderbook):
+                def splitMessage(message, orderbook):
                     sliced_parts = []
+                    init_OBs = []
                     for i in range(len(indices) - 1):
                         start_index = indices[i]
                         end_index = indices[i + 1]
@@ -114,6 +116,7 @@ class BaseLOBEnv(environment.Environment):
                         assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
                         sliced_part = message.loc[np.arange(index_s, index_e)]
                         sliced_parts.append(sliced_part)
+                        init_OBs.append(orderbook.iloc[index_s,:])
 
                     # Last sliced part from last index to end_time
                     start_index = indices[i]
@@ -123,11 +126,12 @@ class BaseLOBEnv(environment.Environment):
                     assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
                     last_sliced_part = message.loc[np.arange(index_s, index_e)]
                     sliced_parts.append(last_sliced_part)
+                    init_OBs.append(orderbook.iloc[index_s, :])
                     for part in sliced_parts:
                         assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, 'wrong code 33'
                         assert part.shape[0] % stepLines == 0, 'wrong code 34'
-                    return sliced_parts
-                sliced_parts = splitMessage(message)
+                    return sliced_parts, init_OBs
+                sliced_parts, init_OBs = splitMessage(message, orderbook)
                 def sliced2cude(sliced):
                     columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
                     cube = sliced[columns].to_numpy()
@@ -136,16 +140,17 @@ class BaseLOBEnv(environment.Environment):
                 # def initialOrderbook():
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
                 # slicedCube: dynamic_horizon * stepLines * 8
-                return slicedCubes
-            slicedCubes_list = [sliceWithoutOverlap(message) for message in messages]
+                slicedCubes_withOB = zip(slicedCubes, init_OBs)
+                return slicedCubes_withOB
+            slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
 
 
-            def nestlist2flattenlis(nested_list):
+            def nestlist2flattenlist(nested_list):
                 import itertools
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
-            Cubes = nestlist2flattenlis(slicedCubes_list)
+            Cubes = nestlist2flattenlist(slicedCubes_list)
 
             cube = Cubes[0]
             # remove TODO nested list
