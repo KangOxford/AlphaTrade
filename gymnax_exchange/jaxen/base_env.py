@@ -139,7 +139,7 @@ class BaseLOBEnv(environment.Environment):
                     return cube
                 # def initialOrderbook():
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
-                # slicedCube: dynamic_horizon * stepLines * 8
+                # Cube: dynamic_horizon * stepLines * 8
                 slicedCubes_withOB = zip(slicedCubes, init_OBs)
                 return slicedCubes_withOB
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
