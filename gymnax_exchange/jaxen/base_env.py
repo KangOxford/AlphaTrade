@@ -150,13 +150,11 @@ class BaseLOBEnv(environment.Environment):
                 import itertools
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
-            Cubes = nestlist2flattenlist(slicedCubes_list)
-
-            cube = Cubes[0]
-            # remove TODO nested list
-            # [[][][]] merge into one
-            return slicedCubes_list
-        cubes_inNestedList = load_LOBSTER()
+            Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+            return Cubes_withOB
+        Cubes_withOB = load_LOBSTER()
+        sample_cube = Cubes_withOB[0][0]  # for Sascha
+        sample_OB   = Cubes_withOB[0][1]  # for Sascha
 
         #numpy load with the memmap
         book_data=0
