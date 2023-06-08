@@ -7,6 +7,7 @@ from functools import partial, partialmethod
 INITID=-9000
 MAXPRICE=999999999
 
+
 @jax.jit
 def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
@@ -237,6 +238,11 @@ def init_orderside(nOrders=100):
 
 #TODO: Actually complete this function to not only return dummy vars
 def get_initial_orders(bookData,idx_window):
-    return jnp.array([[1,-1,200,200000,900000,900001,3400,1],
-                        [1,-1,201,200001,900000,900002,3400,1],
-                        [1,1,301,190000,990000,990000,3400,2]])
+    return jnp.array([[1,-1,200,200000,INITID,INITID-1,3400,1],
+                        [1,-1,201,200001,INITID,INITID-2,3400,1],
+                        [1,1,301,190000,INITID,INITID-3,3400,2]])
+
+
+def get_data_messages():
+    return jnp.array([[1,-1,200,210000,8888888,8888889,3567,455768],
+                        [1,-1,100,210009,8888888,8888890,3577,4567]])
