@@ -51,8 +51,19 @@ class RewardFunctional():
         # normed(revenue, regularity) {
         # revenue = (revenue - 12825558.401639344)/18586214.00096323
         # regularity = (regularity-2192.844995644455)/5409.271445768599
-        revenue = revenue / 6258872500.0
-        # print(f"{revenue}, {regularity}, {Config.mu_regularity * regularity}")
+        # ---------------------------------
+        # mean_reward= 0; std_reward= 1.0
+        # # mean_reward=318112370.6779661; std_reward=484791277.90215284
+        # revenue = (revenue - mean_reward) / std_reward
+        # # revenue = (revenue - 13428500.214592274) / 15486530.002679234
+        # ---------------------------------
+        # sum_reward = 1.0
+        sum_reward = 187811543900.0
+        # sum_reward = 939273430800.0
+        # sum_reward = 187686298700.0
+        # revenue = revenue / sum_reward
+        revenue = revenue / sum_reward * 10000
+        # print(f"{revenue}, {regularity},` {Config.mu_regularity * regularity}")
         # normed(revenue, regularity) }
         reward = revenue + Config.mu_regularity * regularity
         return reward

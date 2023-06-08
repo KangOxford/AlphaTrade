@@ -5,7 +5,8 @@
 #     def 
 
 # @Order_Flow_Interface.register
-from gym_exchange.data_orderbook_adapter import Configuration, Debugger
+from gym_exchange.data_orderbook_adapter import Debugger
+# from gym_exchange.data_orderbook_adapter import Configuration, Debugger
 from gym_exchange.data_orderbook_adapter.decoder import Decoder
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow

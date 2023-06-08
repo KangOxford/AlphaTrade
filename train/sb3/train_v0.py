@@ -5,7 +5,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 # from gym_exchange.environment.base_env.base_env import BaseEnv
 from gym_exchange.environment.training_env.train_env import TrainEnv
 
-from train import utils
+from train.sb3 import utils
 
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 
@@ -13,7 +13,7 @@ import warnings; warnings.filterwarnings("ignore") # clear warnings
 import platform
 if platform.system() == 'Darwin':
     print("Running on MacOS")
-    path = "/Users/kang/AlphaTrade/"
+    path = "//"
 elif platform.system() == 'Linux':
     print("Running on Linux")
     import sys

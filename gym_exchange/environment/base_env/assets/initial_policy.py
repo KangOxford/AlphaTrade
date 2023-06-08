@@ -1,5 +1,6 @@
-from fractions import Fraction
 import numpy as np
+import pandas as pd
+
 from gym_exchange import Config
 import random;random.seed(Config.seed)
 
@@ -9,78 +10,53 @@ class Twap():
         self.initialize() # return self.num_list
         self.step_index = 0
     def initialize(self):
-        '''
-
-        step_integer = Config.num2liquidate // (Config.max_horizon//3)
-        arr = np.full(Config.max_horizon//3, step_integer)
-        selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon//3 * step_integer)
-        arr[selected_indices] += 1
-        assert arr.sum() == Config.num2liquidate
-        new_arr = np.pad(arr, (0, Config.max_horizon - len(arr)), mode='constant')
-        '''
-
-        '''
-        assert len(new_arr) == Config.max_horizon
-        # for i in range(len(new_arr)):
-        #     print(new_arr[i])#$
-        assert new_arr.sum() == Config.num2liquidate
-        '''
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 9)
-        new_arr[1::2] += 3
-        new_arr[2::3] += 1
-        # baseline }
-        '''
-        # new_arr = np.full(Config.max_horizon, 5)
-        # new_arr[1::2] += 1
-        # new_arr[2::3] += 1 # for testing train0.5
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 10)
-        new_arr[1::2] += 1
-        # new_arr[2::3] += 1
-        # new_arr[3::4] += 1
-        new_arr[3::6] += 1
-        new_arr[3::41] += 1
-        # new_arr[1000:1100] += 1
-        # baseline }
-        '''
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 10)
-        new_arr[1::2] += 1
-        new_arr[3::6] += 1
-        new_arr[1700:Config.max_horizon] -= 6
-        # baseline }
-        '''
-        '''
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 3)
-        # new_arr[1::2] += 1
-        # new_arr[3::6] += 1
-        # new_arr[1700:Config.max_horizon] -= 6
-        # baseline }
-        '''
-
-        # baseline {
-        new_arr = np.full(Config.max_horizon, 1)
-        new_arr[370:465:2] += 1
-        # baseline }
-
-
-        # new_arr = np.full(Config.max_horizon, 2) #$ for testing
+        # # baseline {
+        # new_arr = np.full(Config.max_horizon, 1)
+        # new_arr[0:490:7] -= 1
+        # new_arr
+        # # baseline }
         # new_arr = np.full(Config.max_horizon, 0) #$ masked for testing
-        self.num_list = new_arr
-    # def initialize(self):
-    #     step_integer = Config.num2liquidate // Config.max_horizon
-    #     arr = np.full(Config.max_horizon, step_integer)
-    #     selected_indices = random.sample(range(len(arr)), Config.num2liquidate - Config.max_horizon * step_integer)
-    #     arr[selected_indices] += 1
-    #     assert arr.sum() == Config.num2liquidate
-    #     # arr = np.full(Config.max_horizon, 0) #$ masked for testing
-    #     self.num_list = arr
 
+        # # baseline {
+        # # quantity, price
+        # new_arr = np.full((Config.max_horizon,2), 1)
+        # new_arr[0:490:7,0] -= 1
+        # new_arr[::2,1] -= 1
+        # # baseline }
+        def baseline():
+            # baseline {
+            # quantity, price
+            quantity = round(Config.num2liquidate//Config.max_horizon * 5.75)
+            new_arr = np.full((Config.max_horizon,2), (quantity,1)) # quantity, price
+            new_arr[::2, 1] -= 1 # price adjustment, passive and aggressive orders one by one
+            # baseline }
+            return new_arr
+
+        def vwap():
+            # vwap {
+            # quantity, price
+            qty = pd.read_csv("~/vwap_qty.csv").iloc[:,-1][:Config.max_horizon]
+            qty = qty/qty.sum()
+            # quantity = (round(qty * Config.num2liquidate * 1.70)).astype(np.int64) # aggressive
+            quantity = (round(qty * Config.num2liquidate * 100)).astype(np.int64) # passive
+            quantity.iloc[-1] = quantity.iloc[-1] + (Config.num2liquidate - quantity.sum())
+            assert quantity.sum() == Config.num2liquidate
+            aggressive = np.full(Config.max_horizon,1) # quantity, price, 1 means aggressive
+            passive = np.full(Config.max_horizon,0) # quantity, price, 0 means passive
+            # new_arr = np.vstack([quantity,aggressive]).T
+            new_arr = np.vstack([quantity,passive]).T
+            '''eg.
+           [3, 1],
+           [3, 1],
+           [3, 1],
+           [3, 1],
+           [3, 1]])
+            '''
+            # vwap }
+            return new_arr
+        # new_arr = baseline()
+        new_arr = vwap()
+        self.num_list = new_arr
     @property
     def done(self):
         if self.step_index < Config.max_horizon: return False

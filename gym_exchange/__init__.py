@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from os import listdir;from os.path import isfile, join
 
 def get_symbol_date(AlphaTradeRoot):
@@ -18,6 +19,7 @@ class Config:
     price_level = 10
     lobster_scaling = 10000 # Dollar price times 10000 (i.e., A stock price of $91.14 is given by 911400)
     # max_horizon = 4096
+    # max_horizon = 2624
     max_horizon = 2048
     # max_horizon = 1600
     # max_horizon = 800
@@ -27,7 +29,8 @@ class Config:
 
     # --------------- 00 Data ---------------
     # ············· 00.01 Window ············
-    window_size = 100
+    window_size = 200
+    # window_size = 100
     # ············· 00.01 Adapter ············
     raw_price_level = 10
     # raw_horizon = 2048
@@ -38,9 +41,11 @@ class Config:
     # last position 1.763 used as redundant data
     type5_id_bid = 30000000  # caution about the volumn for valid numbers
     type5_id_ask = 40000000  # caution about the volumn for valid numbers
+    init_latest_timestamp = "34200.000000002" # TODO
     # ············· 00.02 Source ············
     exchange_data_source = "raw_encoder"
     # exchange_data_source = "encoder"
+    type4_order_id_generator = 70000000
 
     AlphaTradeRoot=os.path.join(os.path.dirname(__file__),'../')
     symbol, date = get_symbol_date(AlphaTradeRoot)
@@ -61,21 +66,42 @@ class Config:
     mu_regularity = 0 # no peer reward, just revenue
 
     # --------------- 03 Task ---------------
-    num2liquidate = 200 # 1 min
+    # num2liquidate = 30000 # mid interval
+    # num2liquidate = 6000 # 60 min
+    num2liquidate = 3000 # 60 min for testing
+    # num2liquidate = 2000 # 10 min
+    # num2liquidate = 200 # 1 min
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------
-    quantity_size_one_side = 30
+    price_delta_size_one_side = 1
+    # quantity_size_one_side = 30
     # quantity_size_one_side = 3
-    timeout = 100
+    # quantity_size_one_side = 1
+    # quantity_size_negative_side = 30
+    quantity_size_negative_side = 15
+    # quantity_size_negative_side = 2
+    # quantity_size_negative_side = 1
+    # quantity_size_positive_side = 200
+    # quantity_size_positive_side = 100
+    # quantity_size_positive_side = 30
+    # quantity_size_positive_side = 20
+    quantity_size_positive_side = 15
+    # quantity_size_positive_side = 10
+    # quantity_size_positive_side = 2
+    # quantity_size_positive_side = 1
+    # quantity_size_positive_side = 2
+    timeout = window_size
+    # timeout = 200
+    # timeout = 100
     # timeout = 50
     # timeout = 10
     # timeout = 2
     # timeout = 1
 
     # --------------- 05 ActionWrapper --------
-    trade_id_generator = 80000000
-    order_id_generator = 88000000
+    trade_id_generator = 800000000
+    order_id_generator = 880000000
 
     # --------------- 06 Space ---------------
     max_action = 300
@@ -102,8 +128,8 @@ class Config:
     # --------------- 09 Random ---------------
     seed = 1234
     # --------------- 10 TrainEnv ---------------
-    train_env = "BaseEnv"
-    # train_env = "BasicEnv"
+    # train_env = "BaseEnv"
+    train_env = "BasicEnv"
     # --------------- 11 FillNa ---------------
     ask_fillna = max_price
     bid_fillna = min_price
@@ -112,13 +138,58 @@ class Config:
     sum_reward = 6257641200 # initial policy
 
 
+class SpaceParams(object):
+    # class Action:
+    #     side_size = 2
+
+    #     # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
+    #     # quantity_size_one_side = 8
+    #     quantity_size_negative_side = Config.quantity_size_negative_side
+    #     quantity_size_positive_side = Config.quantity_size_positive_side
+    #     # quantity_size_one_side = 3
+    #     # quantity_size_one_side = 1
+    #     quantity_size = quantity_size_positive_side + quantity_size_negative_side + 1
+
+    #     price_delta_size_one_side = 1
+    #     price_delta_size = 2 * price_delta_size_one_side
+    #     '''
+    #     for Action(side = 0, price_delta = 0,quantity_delta = 0
+    #     side = 0 means asks, the order is a selling order.
+    #     price_delta = 0 means: submit a selling order at the asks side.
+    #     price_dleta = 1 means: submit a selling order at the bids side. (across the spread)
+    #     '''
+    class Action:
+        # side, quantity_delta, price_delta
+        low = np.array([0] +\
+                       [-1 * Config.quantity_size_negative_side] +\
+                       [0])
+        high = np.array([1] +\
+                        [Config.quantity_size_positive_side] +\
+                        [Config.price_delta_size_one_side])
+        shape = (3,)
+    class State:
+        low = np.array([Config.min_price] * 10 +\
+                        [Config.min_quantity]*10 +\
+                        [Config.min_price] * 10 +\
+                        [Config.min_quantity]*10
+                        ).reshape((2 * Config.state_dim_1,Config.state_dim_2))
+        high = np.array([Config.max_price] * 10 +\
+                        [Config.max_quantity]*10 +\
+                        [Config.max_price] * 10 +\
+                        [Config.max_quantity]*10
+                        ).reshape((2 * Config.state_dim_1,Config.state_dim_2))
+        shape = (2 * Config.state_dim_1,Config.state_dim_2)
+
+
 
 from gym.envs.registration import register
 register(
-    id = "GymExchange-v1",
+    id = "OptimalLiquidation-v1",
+    # id = "GymExchange-v1",
     # path to the class for creating the env
     # Note: entry_point also accept a class as input (and not only a string)
-    entry_point="gym_exchange.environments.base_env.base_env:BaseEnv",
+    # entry_point="gym_exchange.environment.base_env.base_env:BaseEnv",
+    entry_point="gym_exchange.environment.training_env.train_env:TrainEnv",
     # Max number of steps per episode, using a `TimeLimitWrapper`
     max_episode_steps=Config.max_horizon,
     )

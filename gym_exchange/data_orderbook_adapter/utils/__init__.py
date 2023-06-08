@@ -16,7 +16,8 @@
 #.................UUUUU.....................CCCCC........................OOOOOO..................
 #................................................................................................
 from copy import deepcopy
-from gym_exchange.data_orderbook_adapter import Configuration 
+from gym_exchange import Config
+# from gym_exchange.data_orderbook_adapter import Configuration
 
 def cancel_by_price(order_book, Price):
     side = 'bid'
@@ -46,7 +47,7 @@ def get_right_answer(index, d2):
     return d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list()
 
 def get_two_list4compare(order_book, index, d2, side):
-    my_list =brief_order_book(order_book, side)[0:2*Configuration.price_level]
+    my_list =brief_order_book(order_book, side)[0:2*Config.price_level]
     # my_list = my_list[::-1] if side == 'ask' else my_list # if ask, reverse the price order
     # right_list = d2.iloc[index,:].reset_index().drop(['index'],axis= 1).iloc[:,0].to_list() # slower
     right_list = list(d2.iloc[index,:]) # faster
@@ -70,23 +71,22 @@ def brief_order_book(order_book, side):
         price = value.head_order.price
         my_list.append(price)
         my_list.append(quantity)
-        if count == Configuration.price_level:
+        if count == Config.price_level:
             break
     return my_list
 
 def update_id(message):
-    if message['side'] == 'bid': Configuration.Adapter.type5_id_bid += 1; order_id = Configuration.Adapter.type5_id_bid
-    else: Configuration.Adapter.type5_id_ask += 1; order_id = Configuration.Adapter.type5_id_ask
+    if message['side'] == 'bid': Config.type5_id_bid += 1; order_id = Config.type5_id_bid
+    else: Config.type5_id_ask += 1; order_id = Config.type5_id_ask
     message['order_id'] = order_id
     message['trade_id'] = order_id
     return message
 
 def type5_update_id(previous_message, message):
-    if message['side'] == 'bid': Configuration.Adapter.type5_id_bid += 1; order_id = Configuration.Adapter.type5_id_bid
-    else: Configuration.Adapter.type5_id_ask += 1; order_id = Configuration.Adapter.type5_id_ask
+    if message['side'] == 'bid': Config.type5_id_bid += 1; order_id = Config.type5_id_bid
+    else: Config.type5_id_ask += 1; order_id = Config.type5_id_ask
     message['order_id'] = order_id
     message['trade_id'] = order_id
     previous_message['order_id'] = order_id
     previous_message['trade_id'] = order_id
     return previous_message, message
-     

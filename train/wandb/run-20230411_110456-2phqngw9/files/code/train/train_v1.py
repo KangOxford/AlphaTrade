@@ -1,18 +1,15 @@
-import time
-import gym
 from sb3_contrib import RecurrentPPO
-from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
 
-from train import utils
+from train.sb3 import utils
 
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 
 import wandb
 # from wandb.integration.sb3 import WandbCallback
-from train.sb3 import WandbCallback
+from train.sb3.sb3 import WandbCallback
 
 
 if __name__ == "__main__":

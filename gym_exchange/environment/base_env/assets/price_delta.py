@@ -1,6 +1,3 @@
-from gym_exchange import Config
-from gym_exchange.environment.base_env.interface_env import SpaceParams
-
 # # ========================== 01 ==========================
 # # ===================== more refined =====================
 # class PriceDelta():

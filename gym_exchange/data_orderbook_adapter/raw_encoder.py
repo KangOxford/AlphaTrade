@@ -1,14 +1,15 @@
-import pandas as pd
-from gym_exchange.data_orderbook_adapter import Configuration, Debugger
-from gym_exchange.data_orderbook_adapter.decoder import Decoder
-from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
+# import pandas as pd
+# from gym_exchange.data_orderbook_adapter import Configuration, Debugger
+# from gym_exchange.data_orderbook_adapter.decoder import Decoder
+# from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 from gym_exchange.exchange.basic_exc.assets.order_flow_list import FlowList
-from gym_exchange.data_orderbook_adapter import Debugger, Configuration
-from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
+# from gym_exchange.data_orderbook_adapter import Debugger, Configuration
+# from gym_exchange.data_orderbook_adapter.data_adjuster import DataAdjuster
 from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.environment.base_env.assets.orderflow import OrderIdGenerator
+from gym_exchange.environment.base_env.assets.action import OrderIdGenerator
+from gym_exchange import Config
 
 
 class RawDecoder():
@@ -22,7 +23,7 @@ class RawDecoder():
         self.column_numbers_bid = [i for i in range(price_level * 4) if i % 4 == 2 or i % 4 == 3]
         self.column_numbers_ask = [i for i in range(price_level * 4) if i % 4 == 0 or i % 4 == 1]
         self.order_book = OrderBook()
-        self.order_id_gen=OrderIdGenerator()
+        self.order_id_gen=OrderIdGenerator(Config.type4_order_id_generator)
         self.initialize_orderbook()
         self.length = (self.order_book.bids.depth != 0) + (self.order_book.asks.depth != 0)
 
@@ -55,7 +56,10 @@ class RawDecoder():
 
     # -------------------------- 02 ----------------------------
     def step(self):
-        message = next(self.data_loader_iterrows)[1]
+        try:
+            message = next(self.data_loader_iterrows)[1]
+        except:
+            print()#$
         if message['type'] in (1,2,3):
             order_flow = OrderFlow(
                 Type = message['type'],
@@ -81,6 +85,7 @@ class RawDecoder():
         else:
             order_flow = None # Not sure !TODO
         # assert message['type'] in (1,2,3), "the exchange can only handle this three situations"
+        self.index += 1
         return order_flow
 
 
@@ -109,7 +114,7 @@ class RawEncoder():
         return self.flow_lists
 
     def get_all_running_order_flows(self):
-        [self.step() for _ in range(Configuration.horizon)]
+        [self.step() for _ in range(Config.raw_horizon)]
         return self.flow_lists
 
     def step(self):  # get_single_running_order_flows

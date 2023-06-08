@@ -29,17 +29,26 @@ class TimewindowExchange(Exchange):
 
     # -------------------------- 01.01 ----------------------------
     def step(self, action=None):  # action : Action(for the definition of type)
-        self.state_memos = [] # # init update_state_memos
         # ···················· 01.01.01 ····················
-        for i in range(Config.window_size-1):
-            # print(f"innerloop step {i}") #$
-            # if i == 2:
-            #     print() #$
-            super(TimewindowExchange, self).step()
-            self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos
+        action_orderflow, auto_cancel_orderflow = action[0], action[1] # TODO debug checkpoint here
+        action = self.time_wrapper(action_orderflow)
+        self.state_memos = [] # # init update_state_memos
         # ···················· 01.01.02 ····················
-        super().step(action)
+        # First, submit the agent's order, and then submit the orders of other traders within the next step.
+        # Each step contains Config.window messages.
+        super().step(action) # no. 1 这一步包含了两个行为
+        # ···················· 01.01.03 ····················
+        for i in range(Config.window_size -1): # no. Config.window_size -1
+            # print(f"innerloop step {i}") #$
+            if i == Config.window_size -2:
+                print() #$
+            super().step()
+            self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos
         self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos
+        # ···················· 01.01.04 ····················
+        auto_cancel = auto_cancel_orderflow
+        super().step(auto_cancel) #no.1
+        # total no. 1 + Config.window_size
         return self.order_book
 
     # -------------------------- 01.02 ----------------------------
