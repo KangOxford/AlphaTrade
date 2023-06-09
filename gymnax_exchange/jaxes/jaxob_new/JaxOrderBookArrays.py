@@ -280,4 +280,21 @@ def get_data_messages(messageData,idx_window,step_counter):
         .at[:,5].set(job.INITID) \
         .at[:,6].set(34200) \
         .at[:,7].set(0).astype('int32')
-    return initOB"""                        
+    return initOB"""
+
+
+# ===================================== #
+# ******* Config your own func ******** #
+# ===================================== #
+@partial(jax.jit)
+def get_best_bid(asks, bids):
+    L2_state = get_L2_state(1, asks, bids)
+    return L2_state[0]
+
+@partial(jax.jit)
+def get_best_bid(asks, bids):
+    L2_state = get_L2_state(1, asks, bids)
+    return L2_state[1]
+
+
+
