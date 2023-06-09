@@ -238,11 +238,43 @@ def init_orderside(nOrders=100):
 
 #TODO: Actually complete this function to not only return dummy vars
 def get_initial_orders(bookData,idx_window):
-    return jnp.array([[1,-1,200,200000,INITID,INITID-1,3400,1],
-                        [1,-1,201,200001,INITID,INITID-2,3400,1],
-                        [1,1,301,190000,INITID,INITID-3,3400,2]])
+    orderbookLevels=10
+    #jax.debug.print("Book Data: \n {}",bookData[idx_window])
+    #TODO selecting correct slice based on idx_window
+    data=jnp.array(bookData[0]).reshape(int(10*2),2)
+    newarr = jnp.zeros((int(orderbookLevels*2),8))
+    initOB = newarr \
+        .at[:,3].set(data[:,0]) \
+        .at[:,2].set(data[:,1]) \
+        .at[:,0].set(1) \
+        .at[0:orderbookLevels*4:2,1].set(-1) \
+        .at[1:orderbookLevels*4:2,1].set(1) \
+        .at[:,4].set(INITID) \
+        .at[:,5].set(INITID-jnp.arange(0,orderbookLevels*2)) \
+        .at[:,6].set(34200) \
+        .at[:,7].set(0).astype('int32')
+    return initOB
 
 
 def get_data_messages():
     return jnp.array([[1,-1,200,210000,8888888,8888889,3567,455768],
                         [1,-1,100,210009,8888888,8888890,3577,4567]])
+
+
+
+"""def init_msgs_from_l2(book: Union[pd.Series, onp.ndarray]) -> jnp.ndarray:
+    """"""
+    orderbookLevels = len(book) // 4  # price/quantity for bid/ask
+    data = jnp.array(book).reshape(int(orderbookLevels*2),2)
+    newarr = jnp.zeros((int(orderbookLevels*2),8))
+    initOB = newarr \
+        .at[:,3].set(data[:,0]) \
+        .at[:,2].set(data[:,1]) \
+        .at[:,0].set(1) \
+        .at[0:orderbookLevels*4:2,1].set(-1) \
+        .at[1:orderbookLevels*4:2,1].set(1) \
+        .at[:,4].set(0) \
+        .at[:,5].set(job.INITID) \
+        .at[:,6].set(34200) \
+        .at[:,7].set(0).astype('int32')
+    return initOB"""                        
