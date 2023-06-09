@@ -1,6 +1,8 @@
 from ast import Dict
 from contextlib import nullcontext
 from email import message
+from random import sample
+from re import L
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -14,12 +16,14 @@ from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 
 @struct.dataclass
 class EnvState:
-    bid_raw_orders: chex.Array
     ask_raw_orders: chex.Array
+    bid_raw_orders: chex.Array
     trades: chex.Array
     init_time: chex.Array
     time: chex.Array
     customIDcounter: int
+    window_index:int
+    step_counter: int
 
 
 @struct.dataclass
@@ -41,15 +45,12 @@ class BaseLOBEnv(environment.Environment):
     def __init__(self):
         super().__init__()
         # Load the image MNIST data at environment init
-        #TODO:Define Load function based on Kangs work (though it seems that takes quite a while)
-        """(book_data, message_data), _ = load_LOBSTER()"""
         def load_LOBSTER():
-            
             def config():
                 sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
                 stepLines = 100
-                messagePath = "/Users/kang/Data/Whole_Flow/"
-                orderbookPath = "/Users/kang/Data/Whole_Book/"
+                messagePath = "/Users/sasrey/AlphaTrade/data/Flow_10/"
+                orderbookPath = "/Users/sasrey/AlphaTrade/data/Book_10/"
                 start_time = 34200  # 09:30
                 end_time = 57600  # 16:00
                 return sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time
@@ -65,6 +66,7 @@ class BaseLOBEnv(environment.Environment):
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
                 return messageCSVs, orderbookCSVs
             messages, orderbooks = load_files()
+
             def preProcessingMassegeOB(message, orderbook):
                 def splitTimeStamp(m):
                     m[6] = m[0].apply(lambda x: int(x))
@@ -153,16 +155,22 @@ class BaseLOBEnv(environment.Environment):
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
             return Cubes_withOB
         Cubes_withOB = load_LOBSTER()
-        sample_cube = Cubes_withOB[0][0]  # for Sascha
-        sample_OB   = Cubes_withOB[0][1]  # for Sascha
-
+        #np.array(Cubes_withOB)
+        #Cubes_withOB_jax=jnp.array(Cubes_withOB)
+        #print(Cubes_withOB_jax.shape)
+        self.messages=[jnp.array(cube[0]) for cube in Cubes_withOB]
+        self.books=[jnp.array(book[1]) for book in Cubes_withOB]
+        
+        #lengths=[len(cube[0]) for cube in Cubes_withOB]
+        #sample_cube = Cubes_withOB[0][0]  # for Sascha
+        #sample_OB   = Cubes_withOB[0][1]  # for Sascha
+        #print("books: \n",self.books)
+        #print("cubes: \n",self.messages)
         #numpy load with the memmap
-        book_data=0
-        message_data=0
-        self.book_data=book_data
-        self.message_data=message_data
         #TODO:Any cleanup required...
-        self.n_windows=100
+        self.n_windows=len(self.books)
+        self.n_steps=100 #"""From above - find a way to access the config function"""
+        self.episode_time_length=1800 #"""From above - find a way to access the config function"""
         self.nOrdersPerSide=100
         self.nTradesLogged=5
         self.book_depth=10
@@ -201,7 +209,7 @@ class BaseLOBEnv(environment.Environment):
         #jax.debug.print("Step messages to process are: \n {}", total_messages)
         time=total_messages[-1:][0][-2:]
         ordersides,trades=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders))
-        state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions)
+        state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         #reward = lax.select(correct, 1.0, -1.0)
         # Check game condition & no. steps for termination condition
         """done = self.is_terminal(state, params)"""
@@ -220,15 +228,15 @@ class BaseLOBEnv(environment.Environment):
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-        #TODO:create a function that selects the correct ob from the hist data and turns it into a set of init messages
         #These messages need to be ready to process by the scan function, so 6x(Ndepth*2) array and the times must be chosen correctly.
-        init_orders=job.get_initial_orders(self.book_data,idx_data_window)
+        init_orders=job.get_initial_orders(self.books,idx_data_window)
         time=init_orders[-1:][0][-2:]
         #jax.debug.print("Reset messages to process are: \n {}", init_orders)
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
+        jax.debug.print("Messages: \n {}",init_orders)
         ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
-        state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0)
+        state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
