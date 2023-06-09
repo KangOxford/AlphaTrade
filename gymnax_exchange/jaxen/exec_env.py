@@ -10,7 +10,7 @@ from gymnax.environments import environment, spaces
 from typing import Tuple, Optional
 import chex
 from flax import struct
-from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
+from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookWrapper as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
 
@@ -151,9 +151,12 @@ class ExecutionEnv(BaseLOBEnv):
             {
                 "sides": spaces.Box(0, 2, (self.n_actions,), dtype=jnp.int32),
                 "quantities": spaces.Box(0, 10000, (self.n_actions,), dtype=jnp.int32),
-                "prices": spaces.Box(0, job.MAXPRICE, (self.n_actions,), dtype=jnp.int32)
+                "prices": spaces.Box(0, 1, (self.n_actions,), dtype=jnp.int32) # (0, passive order) (1, aggressive order)
             }
         )
+
+    def get_price(self):
+        return self.get_obs().e
 
     # TODO: define obs space (4xnDepth) array of quants&prices. Not that important right now.
     def observation_space(self, params: EnvParams):
