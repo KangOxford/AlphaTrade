@@ -28,6 +28,8 @@ class EnvState:
 
 @struct.dataclass
 class EnvParams:
+    message_data: chex.Array
+    book_data: chex.Array
     #Note: book depth and nOrdersperside must be given at init as they define shapes of jax arrays,
     #       only the self args are static, the param args are not static and so must be traceable.
     #book_depth: int = 10
@@ -37,6 +39,7 @@ class EnvParams:
     messages_per_step: int=1
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
+    
 
 
 
@@ -48,7 +51,7 @@ class BaseLOBEnv(environment.Environment):
         def load_LOBSTER():
             def config():
                 sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
-                stepLines = 100
+                stepLines = 10
                 messagePath = "/Users/sasrey/AlphaTrade/data/Flow_10/"
                 orderbookPath = "/Users/sasrey/AlphaTrade/data/Book_10/"
                 start_time = 34200  # 09:30
@@ -222,14 +225,162 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams()
+        def load_LOBSTER():
+            def config():
+                sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
+                stepLines = 10
+                messagePath = "/Users/sasrey/AlphaTrade/data/Flow_10/"
+                orderbookPath = "/Users/sasrey/AlphaTrade/data/Book_10/"
+                start_time = 34200  # 09:30
+                end_time = 57600  # 16:00
+                return sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time
+            sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time = config()
+            def preProcessingData_csv2pkl():
+                return 0
+            def load_files():
+                from os import listdir; from os.path import isfile, join; import pandas as pd
+                readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
+                messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
+                dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
+                messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
+                orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
+                return messageCSVs, orderbookCSVs
+            messages, orderbooks = load_files()
+
+            def preProcessingMassegeOB(message, orderbook):
+                def splitTimeStamp(m):
+                    m[6] = m[0].apply(lambda x: int(x))
+                    m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
+                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
+                    return m
+                message = splitTimeStamp(message)
+                def filterValid(message):
+                    message = message[message.type.isin([1,2,3,4])]
+                    valid_index = message.index.to_numpy()
+                    message.reset_index(inplace=True,drop=True)
+                    return message, valid_index
+                message, valid_index = filterValid(message)
+                def tuneDirection(message):
+                    import numpy as np
+                    message['direction'] = np.where(message['type'] == 4, message['direction'] * -1,
+                                                    message['direction'])
+                    return message
+                message = tuneDirection(message)
+                def addTraderId(message):
+                    message['trader_id'] = message['order_id']
+                    return message
+
+                message = addTraderId(message)
+                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+                return message,orderbook
+            pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+            messages, orderbooks = zip(*pairs)
+
+            # def slice_initialOB(orderbook):
+            #     orderbook[indices,:]
+            #
+            # orderbook = orderbooks[0]
+
+
+            def index_of_sliceWithoutOverlap(start_time, end_time, interval):
+                indices = list(range(start_time, end_time, interval))
+                return indices
+            indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
+            def sliceWithoutOverlap(message, orderbook):
+                def splitMessage(message, orderbook):
+                    import numpy as np
+                    sliced_parts = []
+                    init_OBs = []
+                    for i in range(len(indices) - 1):
+                        start_index = indices[i]
+                        end_index = indices[i + 1]
+                        index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                        index_e = (index_e // stepLines + 3) * stepLines + index_s % stepLines
+                        assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
+                        sliced_part = message.loc[np.arange(index_s, index_e)]
+                        sliced_parts.append(sliced_part)
+                        init_OBs.append(orderbook.iloc[index_s,:])
+
+                    # Last sliced part from last index to end_time
+                    start_index = indices[i]
+                    end_index = indices[i + 1]
+                    index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                    index_s = (index_s // stepLines - 3) * stepLines + index_e % stepLines
+                    assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
+                    last_sliced_part = message.loc[np.arange(index_s, index_e)]
+                    sliced_parts.append(last_sliced_part)
+                    init_OBs.append(orderbook.iloc[index_s, :])
+                    for part in sliced_parts:
+                        assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, 'wrong code 33'
+                        assert part.shape[0] % stepLines == 0, 'wrong code 34'
+                    return sliced_parts, init_OBs
+                sliced_parts, init_OBs = splitMessage(message, orderbook)
+                def sliced2cude(sliced):
+                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
+                    cube = sliced[columns].to_numpy()
+                    cube = cube.reshape((-1, stepLines, 8))
+                    return cube
+                # def initialOrderbook():
+                slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
+                # Cube: dynamic_horizon * stepLines * 8
+                slicedCubes_withOB = zip(slicedCubes, init_OBs)
+                return slicedCubes_withOB
+            slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+            # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
+
+
+            def nestlist2flattenlist(nested_list):
+                import itertools
+                flattened_list = list(itertools.chain.from_iterable(nested_list))
+                return flattened_list
+            Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+            def Cubes_withOB_padding(Cubes_withOB):
+                def quantile(Cubes_withOB):
+                    length = [len(cube) for cube, ob in Cubes_withOB]
+                    quantile_95 = int(np.quantile(length, 0.9428))
+                    return quantile_95
+
+                quantile_95 = quantile(Cubes_withOB)
+                new_Cubes_withOB = []
+                for cube, OB in Cubes_withOB:
+                    if cube.shape[0] <= quantile_95:
+                        def padding(cube, target_shape):
+                            pad_width = np.zeros((100, 8))
+                            # Calculate the amount of padding required
+                            padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+                            padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+                            return padded_cube
+
+                        cube = padding(cube, quantile_95)
+                        new_Cubes_withOB.append((cube, OB))
+                return new_Cubes_withOB
+            Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
+            return Cubes_withOB
+        Cubes_withOB = load_LOBSTER()
+        msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
+        bks=[jnp.array(book) for cube, book in Cubes_withOB]
+        messages=jnp.array(msgs)
+        books=jnp.array(bks)
+
+        #lengths=[len(cube[0]) for cube in Cubes_withOB]
+        #sample_cube = Cubes_withOB[0][0]  # for Sascha
+        #sample_OB   = Cubes_withOB[0][1]  # for Sascha
+        #print("books: \n",self.books)
+        #print("cubes: \n",self.messages)
+
+
+        sample_cube = Cubes_withOB[0][0]  # for Testing
+        sample_OB = Cubes_withOB[0][1]    # for Testing
+        lengths = [len(cube) for cube, ob in Cubes_withOB]  # for Testing
+        length_of_list = len(Cubes_withOB)                  # for Testing
+        return EnvParams(messages,books)
 
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         """Perform single timestep state transition."""
-        data_messages=job.get_data_messages(self.messages,state.window_index,step_counter=state.step_counter)
+        data_messages=job.get_data_messages(params.message_data,state.window_index,step_counter=state.step_counter)
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=action["sides"]
         prices=action["prices"]
@@ -243,15 +394,13 @@ class BaseLOBEnv(environment.Environment):
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         #jax.debug.print("Step messages to process are: \n {}", total_messages)
         time=total_messages[-1:][0][-2:]
-        jax.debug.breakpoint()
         ordersides,trades=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders))
-        jax.debug.breakpoint()
         state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         #reward = lax.select(correct, 1.0, -1.0)
         # Check game condition & no. steps for termination condition
         """done = self.is_terminal(state, params)"""
         """info = {"discount": self.discount(state, params)}"""
-        jax.debug.print("Final state after step: \n {}", state)
+        #jax.debug.print("Final state after step: \n {}", state)
 
         return self.get_obs(state,params),state,0,self.is_terminal(state,params),{"discount":0}
         """lax.stop_gradient(observation),
@@ -269,7 +418,7 @@ class BaseLOBEnv(environment.Environment):
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
         #jax.debug.print("{}",idx_data_window)
         #These messages need to be ready to process by the scan function, so 6x(Ndepth*2) array and the times must be chosen correctly.
-        init_orders=job.get_initial_orders(self.books,idx_data_window)
+        init_orders=job.get_initial_orders(params.book_data,idx_data_window)
         time=init_orders[-1:][0][-2:]
         #jax.debug.print("Reset messages to process are: \n {}", init_orders)
         asks_raw=job.init_orderside(self.nOrdersPerSide)
@@ -277,7 +426,7 @@ class BaseLOBEnv(environment.Environment):
         #jax.debug.print("Messages: \n {}",init_orders)
         ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
         state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
-        jax.debug.print("State after reset: {}",state)
+        #jax.debug.print("State after reset: {}",state)
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
