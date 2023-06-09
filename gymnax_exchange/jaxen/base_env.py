@@ -3,6 +3,7 @@ from contextlib import nullcontext
 from email import message
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax import lax
 from gymnax.environments import environment, spaces
 from typing import Tuple, Optional
@@ -42,8 +43,8 @@ class BaseLOBEnv(environment.Environment):
         # Load the image MNIST data at environment init
         #TODO:Define Load function based on Kangs work (though it seems that takes quite a while)
         """(book_data, message_data), _ = load_LOBSTER()"""
-
         def load_LOBSTER():
+            
             def config():
                 sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
                 stepLines = 100
@@ -64,7 +65,7 @@ class BaseLOBEnv(environment.Environment):
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
                 return messageCSVs, orderbookCSVs
             messages, orderbooks = load_files()
-            def preProcessingMassege(message):
+            def preProcessingMassegeOB(message, orderbook):
                 def splitTimeStamp(m):
                     m[6] = m[0].apply(lambda x: int(x))
                     m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
@@ -88,44 +89,72 @@ class BaseLOBEnv(environment.Environment):
                     return message
 
                 message = addTraderId(message)
-                return message
-            messages = [preProcessingMassege(message) for message in messages]
+                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+                return message,orderbook
+            pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+            messages, orderbooks = zip(*pairs)
+
+            # def slice_initialOB(orderbook):
+            #     orderbook[indices,:]
+            #
+            # orderbook = orderbooks[0]
+
+
             def index_of_sliceWithoutOverlap(start_time, end_time, interval):
                 indices = list(range(start_time, end_time, interval))
                 return indices
-
             indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
-            def sliceWithoutOverlap(message):
-                def splitMessage(message):
+            def sliceWithoutOverlap(message, orderbook):
+                def splitMessage(message, orderbook):
                     sliced_parts = []
+                    init_OBs = []
                     for i in range(len(indices) - 1):
                         start_index = indices[i]
                         end_index = indices[i + 1]
-                        sliced_part = message.loc[(message['time'] >= start_index) & (message['time'] < end_index)]
-                        num_rows = len(sliced_part)
-                        num_rows -= num_rows % stepLines
-                        sliced_part = sliced_part[:num_rows]
+                        index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                        index_e = (index_e // stepLines + 3) * stepLines + index_s % stepLines
+                        assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
+                        sliced_part = message.loc[np.arange(index_s, index_e)]
                         sliced_parts.append(sliced_part)
+                        init_OBs.append(orderbook.iloc[index_s,:])
 
                     # Last sliced part from last index to end_time
-                    last_sliced_part = message.loc[message['time'] >= indices[-1]]
-                    num_rows = len(sliced_part)
-                    num_rows -= num_rows % stepLines
-                    last_sliced_part = last_sliced_part[:num_rows]
+                    start_index = indices[i]
+                    end_index = indices[i + 1]
+                    index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                    index_s = (index_s // stepLines - 3) * stepLines + index_e % stepLines
+                    assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
+                    last_sliced_part = message.loc[np.arange(index_s, index_e)]
                     sliced_parts.append(last_sliced_part)
-                    return sliced_parts
-                sliced_parts = splitMessage(message)
+                    init_OBs.append(orderbook.iloc[index_s, :])
+                    for part in sliced_parts:
+                        assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, 'wrong code 33'
+                        assert part.shape[0] % stepLines == 0, 'wrong code 34'
+                    return sliced_parts, init_OBs
+                sliced_parts, init_OBs = splitMessage(message, orderbook)
                 def sliced2cude(sliced):
                     columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
                     cube = sliced[columns].to_numpy()
+                    cube = cube.reshape((-1, stepLines, 8))
                     return cube
+                # def initialOrderbook():
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
-                # slicedCube: dynamic_horizon * stepLines * 8
-                return slicedCubes
-            slicedCubes_list = [sliceWithoutOverlap(message) for message in messages]
+                # Cube: dynamic_horizon * stepLines * 8
+                slicedCubes_withOB = zip(slicedCubes, init_OBs)
+                return slicedCubes_withOB
+            slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
-            return slicedCubes_list
-        load_LOBSTER()
+
+
+            def nestlist2flattenlist(nested_list):
+                import itertools
+                flattened_list = list(itertools.chain.from_iterable(nested_list))
+                return flattened_list
+            Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+            return Cubes_withOB
+        Cubes_withOB = load_LOBSTER()
+        sample_cube = Cubes_withOB[0][0]  # for Sascha
+        sample_OB   = Cubes_withOB[0][1]  # for Sascha
 
         #numpy load with the memmap
         book_data=0
@@ -183,7 +212,8 @@ class BaseLOBEnv(environment.Environment):
         reward,
         done,
         info,"""
-        
+
+
 
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
