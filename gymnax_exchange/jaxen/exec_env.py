@@ -10,7 +10,7 @@ from gymnax.environments import environment, spaces
 from typing import Tuple, Optional
 import chex
 from flax import struct
-from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
+from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookWrapper as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
 
