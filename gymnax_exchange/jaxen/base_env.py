@@ -32,7 +32,7 @@ class EnvParams:
     #       only the self args are static, the param args are not static and so must be traceable.
     #book_depth: int = 10
     #nOrdersPerSide: int = 100
-    episode_time: int =  60*10 #60seconds times 10 minutes = 600seconds
+    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     max_steps_in_episode: int = 100
     messages_per_step: int=1
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
@@ -180,9 +180,15 @@ class BaseLOBEnv(environment.Environment):
         #np.array(Cubes_withOB)
         #Cubes_withOB_jax=jnp.array(Cubes_withOB)
         #print(Cubes_withOB_jax.shape)
-        self.messages=[jnp.array(cube[0]) for cube in Cubes_withOB]
-        self.books=[jnp.array(book[1]) for book in Cubes_withOB]
-        
+        msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
+        bks=[jnp.array(book) for cube, book in Cubes_withOB]
+
+        self.messages=jnp.array(msgs)
+        self.books=jnp.array(bks)
+
+        print(self.messages.shape)
+        print(self.books.shape)
+
         #lengths=[len(cube[0]) for cube in Cubes_withOB]
         #sample_cube = Cubes_withOB[0][0]  # for Sascha
         #sample_OB   = Cubes_withOB[0][1]  # for Sascha
@@ -194,7 +200,6 @@ class BaseLOBEnv(environment.Environment):
         sample_OB = Cubes_withOB[0][1]    # for Testing
         lengths = [len(cube) for cube, ob in Cubes_withOB]  # for Testing
         length_of_list = len(Cubes_withOB)                  # for Testing
-
 
         #numpy load with the memmap
         #TODO:Any cleanup required...
@@ -224,7 +229,7 @@ class BaseLOBEnv(environment.Environment):
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         """Perform single timestep state transition."""
-        data_messages=job.get_data_messages()
+        data_messages=job.get_data_messages(self.messages,state.window_index,step_counter=state.step_counter)
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=action["sides"]
         prices=action["prices"]
@@ -233,17 +238,21 @@ class BaseLOBEnv(environment.Environment):
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions)
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2))
-        action_msgs=jnp.stack([types,sides,prices,quants,trader_ids,order_ids],axis=1)
+        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         #jax.debug.print("Step messages to process are: \n {}", total_messages)
         time=total_messages[-1:][0][-2:]
+        jax.debug.breakpoint()
         ordersides,trades=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders))
+        jax.debug.breakpoint()
         state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         #reward = lax.select(correct, 1.0, -1.0)
         # Check game condition & no. steps for termination condition
         """done = self.is_terminal(state, params)"""
         """info = {"discount": self.discount(state, params)}"""
+        jax.debug.print("Final state after step: \n {}", state)
+
         return self.get_obs(state,params),state,0,self.is_terminal(state,params),{"discount":0}
         """lax.stop_gradient(observation),
         lax.stop_gradient(state),
@@ -258,15 +267,17 @@ class BaseLOBEnv(environment.Environment):
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        #jax.debug.print("{}",idx_data_window)
         #These messages need to be ready to process by the scan function, so 6x(Ndepth*2) array and the times must be chosen correctly.
         init_orders=job.get_initial_orders(self.books,idx_data_window)
         time=init_orders[-1:][0][-2:]
         #jax.debug.print("Reset messages to process are: \n {}", init_orders)
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
-        jax.debug.print("Messages: \n {}",init_orders)
+        #jax.debug.print("Messages: \n {}",init_orders)
         ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
         state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
+        jax.debug.print("State after reset: {}",state)
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:

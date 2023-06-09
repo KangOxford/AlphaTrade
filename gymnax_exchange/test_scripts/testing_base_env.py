@@ -18,11 +18,13 @@ env_params=env.default_params
 print(env_params)
 
 obs,state=env.reset(key_reset,env_params)
-print(obs)
+
+
 #print(env.action_space().sample(key_policy))
 #print(env.state_space(env_params).sample(key_policy))
 
-"""obs,state,reward,done,info=env.step(key_step, state,env.action_space().sample(key_policy), env_params)
-print(obs)
 obs,state,reward,done,info=env.step(key_step, state,env.action_space().sample(key_policy), env_params)
+print(obs)
+
+"""obs,state,reward,done,info=env.step(key_step, state,env.action_space().sample(key_policy), env_params)
 print(done)"""

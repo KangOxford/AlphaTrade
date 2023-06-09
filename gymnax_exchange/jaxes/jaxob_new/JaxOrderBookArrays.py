@@ -241,7 +241,7 @@ def get_initial_orders(bookData,idx_window):
     orderbookLevels=10
     #jax.debug.print("Book Data: \n {}",bookData[idx_window])
     #TODO selecting correct slice based on idx_window
-    data=jnp.array(bookData[0]).reshape(int(10*2),2)
+    data=jnp.array(bookData[idx_window]).reshape(int(10*2),2)
     newarr = jnp.zeros((int(orderbookLevels*2),8))
     initOB = newarr \
         .at[:,3].set(data[:,0]) \
@@ -256,9 +256,12 @@ def get_initial_orders(bookData,idx_window):
     return initOB
 
 
-def get_data_messages():
-    return jnp.array([[1,-1,200,210000,8888888,8888889,3567,455768],
-                        [1,-1,100,210009,8888888,8888890,3577,4567]])
+def get_data_messages(messageData,idx_window,step_counter):
+    return messageData[idx_window,step_counter,:,:]
+    
+    
+    """return jnp.array([[1,-1,200,210000,8888888,8888889,3567,455768],
+                        [1,-1,100,210009,8888888,8888890,3577,4567]])"""
 
 
 
