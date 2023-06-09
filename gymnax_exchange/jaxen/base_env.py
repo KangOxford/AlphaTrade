@@ -32,7 +32,7 @@ class EnvParams:
     max_steps_in_episode: int = 100
     messages_per_step: int=1
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
-    time_delay_obs_act: chex.Array = jnp.array([0, 10000000]) #10ms time delay. 
+    time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
 
 
 
@@ -222,7 +222,6 @@ class BaseLOBEnv(environment.Environment):
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions)
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2))
-        
         action_msgs=jnp.stack([types,sides,prices,quants,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
