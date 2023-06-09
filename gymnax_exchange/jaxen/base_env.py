@@ -49,8 +49,8 @@ class BaseLOBEnv(environment.Environment):
             def config():
                 sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
                 stepLines = 100
-                messagePath = "/Users/sasrey/AlphaTrade/data/Flow_10/"
-                orderbookPath = "/Users/sasrey/AlphaTrade/data/Book_10/"
+                messagePath = "~/AlphaTrade/data/Flow_10/"
+                orderbookPath = "~/AlphaTrade/data/Book_10/"
                 start_time = 34200  # 09:30
                 end_time = 57600  # 16:00
                 return sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time
