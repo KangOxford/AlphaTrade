@@ -5,7 +5,9 @@ import sys
 sys.path.append('~/AlphaTrade')
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
+import faulthandler
 
+faulthandler.enable()
 
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
