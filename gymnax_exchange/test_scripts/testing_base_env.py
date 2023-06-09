@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import gymnax
 import sys
-sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('~/AlphaTrade')
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
 
