@@ -4,8 +4,6 @@ import numpy as np
 from os import listdir;from os.path import isfile, join
 
 def get_symbol_date(AlphaTradeRoot):
-    symbol=None
-    date=None
     data_path = AlphaTradeRoot+"data"
     onlyfiles = sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
     for filename in onlyfiles:
