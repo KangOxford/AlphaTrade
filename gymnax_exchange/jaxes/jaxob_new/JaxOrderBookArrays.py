@@ -245,7 +245,7 @@ def get_initial_orders(bookData,idx_window,time):
     orderbookLevels=10
     initid=-9000
     data=jnp.array(bookData[idx_window]).reshape(int(10*2),2)
-    newarr = jnp.zeros((int(orderbookLevels*2),8))
+    newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
     initOB = newarr \
         .at[:,3].set(data[:,0]) \
         .at[:,2].set(data[:,1]) \
@@ -255,7 +255,7 @@ def get_initial_orders(bookData,idx_window,time):
         .at[:,4].set(initid) \
         .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
         .at[:,6].set(time[0]) \
-        .at[:,7].set(time[1]).astype(jnp.int32)
+        .at[:,7].set(time[1])
     return initOB
 
 def get_initial_time(messageData,idx_window):

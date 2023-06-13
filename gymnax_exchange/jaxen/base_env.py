@@ -266,11 +266,14 @@ class BaseLOBEnv(environment.Environment):
 
         #These messages need to be ready to process by the scan function, so 6x(Ndepth*2) array and the times must be chosen correctly.
         time=job.get_initial_time(params.message_data,idx_data_window) #time obtained from first message in respective window.
+        jax.debug.print("time: \n {}",time)
         init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
+        jax.debug.print("time in order: \n {}",init_orders[0][-2:])
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
         #Process the initial messages through the orderbook
         ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
+        jax.debug.print("time: \n {}",time)
         state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
 
         return self.get_obs(state,params),state
