@@ -52,8 +52,12 @@ class BaseLOBEnv(environment.Environment):
             def config():
                 sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
                 stepLines = 10
-                messagePath = "~/AlphaTrade/data/Flow_10/"
-                orderbookPath = "~/AlphaTrade/data/Book_10/"
+                def config_path():
+                    from pathlib import Path; home_path = str(Path.home())
+                    messagePath = home_path + "/AlphaTrade/data/Flow_10/"
+                    orderbookPath = home_path + "/AlphaTrade/data/Book_10/"
+                    return messagePath,orderbookPath
+                messagePath, orderbookPath = config_path()
                 start_time = 34200  # 09:30
                 end_time = 57600  # 16:00
                 return sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time
@@ -63,7 +67,7 @@ class BaseLOBEnv(environment.Environment):
             def load_files():
                 from os import listdir; from os.path import isfile, join; import pandas as pd
                 readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-                messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
+                messageFiles, orderbookFiles = map(readFromPath,[messagePath, orderbookPath])
                 dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
                 messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
