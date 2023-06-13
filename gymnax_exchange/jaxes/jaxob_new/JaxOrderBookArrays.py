@@ -257,7 +257,8 @@ def get_initial_orders(bookData,idx_window):
 
 
 def get_data_messages(messageData,idx_window,step_counter):
-    return messageData[idx_window,step_counter,:,:]
+    messages=messageData[idx_window,step_counter,:,:]
+    return messages
     
     
     """return jnp.array([[1,-1,200,210000,8888888,8888889,3567,455768],
