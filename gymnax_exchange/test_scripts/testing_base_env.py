@@ -43,4 +43,4 @@ if __name__ == "__main__":
     print(obs)
 
     obs,state,reward,done,info=env.step(key_step, state,env.action_space().sample(key_policy), env_params)
-    print(done)
+    print(state,done)
