@@ -84,6 +84,8 @@ def get_top_ask_order_idx(orderside):
 @jax.jit
 def cond_type_side(ordersides,data):
     askside,bidside=ordersides
+    #jax.debug.breakpoint()
+    jax.debug.print("Askside before is \n {}",askside)
     msg={
     'side':data[1],
     'type':data[0],
@@ -93,8 +95,10 @@ def cond_type_side(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype("int32")
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
+    #TODO chex assert
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside)
+    jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid),trade
 
 vcond_type_side=jax.vmap(cond_type_side,((0,0),1),0)
@@ -237,10 +241,9 @@ def init_orderside(nOrders=100):
 
 
 #TODO: Actually complete this function to not only return dummy vars
-def get_initial_orders(bookData,idx_window):
+def get_initial_orders(bookData,idx_window,time):
     orderbookLevels=10
-    #jax.debug.print("Book Data: \n {}",bookData[idx_window])
-    #TODO selecting correct slice based on idx_window
+    initid=-9000
     data=jnp.array(bookData[idx_window]).reshape(int(10*2),2)
     newarr = jnp.zeros((int(orderbookLevels*2),8))
     initOB = newarr \
@@ -249,11 +252,14 @@ def get_initial_orders(bookData,idx_window):
         .at[:,0].set(1) \
         .at[0:orderbookLevels*4:2,1].set(-1) \
         .at[1:orderbookLevels*4:2,1].set(1) \
-        .at[:,4].set(INITID) \
-        .at[:,5].set(INITID-jnp.arange(0,orderbookLevels*2)) \
-        .at[:,6].set(34200) \
-        .at[:,7].set(0).astype('int32')
+        .at[:,4].set(initid) \
+        .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
+        .at[:,6].set(time[0]) \
+        .at[:,7].set(time[1]).astype(jnp.int32)
     return initOB
+
+def get_initial_time(messageData,idx_window):
+    return messageData[idx_window,0,0,-2:]
 
 
 def get_data_messages(messageData,idx_window,step_counter):

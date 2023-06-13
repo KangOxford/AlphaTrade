@@ -225,19 +225,19 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        self.messages
         return EnvParams(self.messages,self.books)
 
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
-        """Perform single timestep state transition."""
+        jax.debug.breakpoint()
         data_messages=job.get_data_messages(params.message_data,state.window_index,step_counter=state.step_counter)
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=action["sides"]
         prices=action["prices"]
         quants=action["quantities"]
+        jax.debug.print("Data Messages to process \n: {}",data_messages)
         
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions)
@@ -247,39 +247,32 @@ class BaseLOBEnv(environment.Environment):
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         #jax.debug.print("Step messages to process are: \n {}", total_messages)
         time=total_messages[-1:][0][-2:]
+        jax.debug.breakpoint()
         ordersides,trades=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders))
         state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
-        #reward = lax.select(correct, 1.0, -1.0)
-        # Check game condition & no. steps for termination condition
-        """done = self.is_terminal(state, params)"""
-        """info = {"discount": self.discount(state, params)}"""
+        done = self.is_terminal(state,params)
+        reward=0
         #jax.debug.print("Final state after step: \n {}", state)
 
-        return self.get_obs(state,params),state,0,self.is_terminal(state,params),{"discount":0}
-        """lax.stop_gradient(observation),
-        lax.stop_gradient(state),
-        reward,
-        done,
-        info,"""
+        return self.get_obs(state,params),state,reward,done,{"discount":0}
 
 
 
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
-        """Reset environment state by sampling initial position."""
+        """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-        #jax.debug.print("{}",idx_data_window)
+
         #These messages need to be ready to process by the scan function, so 6x(Ndepth*2) array and the times must be chosen correctly.
-        init_orders=job.get_initial_orders(params.book_data,idx_data_window)
-        time=init_orders[-1:][0][-2:]
-        #jax.debug.print("Reset messages to process are: \n {}", init_orders)
+        time=job.get_initial_time(params.message_data,idx_data_window) #time obtained from first message in respective window.
+        init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
-        #jax.debug.print("Messages: \n {}",init_orders)
+        #Process the initial messages through the orderbook
         ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
         state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
-        #jax.debug.print("State after reset: {}",state)
+
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
