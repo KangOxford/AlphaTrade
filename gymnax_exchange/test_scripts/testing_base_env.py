@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('/homes/80/kang/trade')
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
@@ -19,8 +20,12 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 
 if __name__ == "__main__":
-    ATFolder = sys.argv[1]
-    print("AlphaTrade folder:",ATFolder)
+    try:
+        ATFolder = sys.argv[1]
+        print("AlphaTrade folder:",ATFolder)
+    except:
+        ATFolder = '/homes/80/kang/trade'
+
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
