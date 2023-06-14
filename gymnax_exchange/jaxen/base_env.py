@@ -70,7 +70,7 @@ class BaseLOBEnv(environment.Environment):
 
         # Load the image MNIST data at environment init
         def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
-            print("======  start initializing  ======")
+            print("======  start initializing ======")
             def preProcessingData_csv2pkl():
                 return 0
             def load_files():
