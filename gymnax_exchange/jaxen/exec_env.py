@@ -38,38 +38,8 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self):
-        super().__init__()
-        # Load the image MNIST data at environment init
-        # TODO:Define Load function based on Kangs work (though it seems that takes quite a while)
-        """(book_data, message_data), _ = load_LOBSTER()"""
-
-        # Cubes_withOB = super().load_LOBSTER()
-
-        # sample_cube = Cubes_withOB[0][0]  # for Testing
-        # sample_OB = Cubes_withOB[0][1]    # for Testing
-        # lengths = [len(cube) for cube, ob in Cubes_withOB]  # for Testing
-        # length_of_list = len(Cubes_withOB)                  # for Testing
-
-        # numpy load with the memmap
-        book_data = 0
-        message_data = 0
-        self.book_data = book_data
-        self.message_data = message_data
-        # TODO:Any cleanup required...
-        self.n_windows = 100
-        self.nOrdersPerSide = 100
-        self.nTradesLogged = 5
-        self.book_depth = 10
-        self.n_actions = 3
-        self.customIDCounter = 0
-        self.trader_unique_id = job.INITID + 1
-        """
-        self.num_data = int(fraction * len(labels))
-        self.image_shape = images.shape[1:]
-        self.images = jnp.array(images[: self.num_data])
-        self.labels = jnp.array(labels[: self.num_data])
-        """
+    def __init__(self, path):
+        super().__init__(path)
 
     @property
     def default_params(self) -> EnvParams:
@@ -175,3 +145,7 @@ class ExecutionEnv(BaseLOBEnv):
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )
+
+
+
+

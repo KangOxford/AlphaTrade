@@ -70,6 +70,7 @@ class BaseLOBEnv(environment.Environment):
 
         # Load the image MNIST data at environment init
         def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
+            print("======  start initializing  ======")
             def preProcessingData_csv2pkl():
                 return 0
             def load_files():
@@ -96,12 +97,13 @@ class BaseLOBEnv(environment.Environment):
                     return message, valid_index
                 message, valid_index = filterValid(message)
                 def tuneDirection(message):
-                    import numpy as np
-                    message['direction'] = np.where(message['type'] == 4, message['direction'] * -1,
-                                                    message['direction'])
+                    message.loc[message['type'] == 4, 'direction'] *= -1
                     return message
                 message = tuneDirection(message)
                 def addTraderId(message):
+                    import warnings
+                    from pandas.errors import SettingWithCopyWarning
+                    warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
                     message['trader_id'] = message['order_id']
                     return message
 
@@ -110,12 +112,6 @@ class BaseLOBEnv(environment.Environment):
                 return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
-
-            # def slice_initialOB(orderbook):
-            #     orderbook[indices,:]
-            #
-            # orderbook = orderbooks[0]
-
 
             def index_of_sliceWithoutOverlap(start_time, end_time, interval):
                 indices = list(range(start_time, end_time, interval))
@@ -193,6 +189,7 @@ class BaseLOBEnv(environment.Environment):
                         new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
+            print("====== finish initializing ======")
             return Cubes_withOB
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
