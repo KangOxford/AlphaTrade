@@ -85,7 +85,7 @@ def get_top_ask_order_idx(orderside):
 def cond_type_side(ordersides,data):
     askside,bidside=ordersides
     #jax.debug.breakpoint()
-    jax.debug.print("Askside before is \n {}",askside)
+    #jax.debug.print("Askside before is \n {}",askside)
     msg={
     'side':data[1],
     'type':data[0],
@@ -96,9 +96,9 @@ def cond_type_side(ordersides,data):
     'time':data[6],
     'time_ns':data[7]}
     index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
-    #TODO chex assert
+    #TODO chex assert to make sure the expected index is within the correct bounds. (Add more of these everywhere)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside)
-    jax.debug.print("Askside after is \n {}",ask)
+    #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid),trade
 
 vcond_type_side=jax.vmap(cond_type_side,((0,0),1),0)

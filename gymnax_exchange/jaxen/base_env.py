@@ -47,17 +47,29 @@ class EnvParams:
 class BaseLOBEnv(environment.Environment):
     def __init__(self,alphatradePath):
         super().__init__()
+
+       
+       
+       
+        self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
+        self.stepLines = 100
+        self.messagePath = alphatradePath+"/data/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data/Book_10/"
+        self.start_time = 34200  # 09:30
+        self.end_time = 57600  # 16:00
+
+
+        self.nOrdersPerSide=100
+        self.nTradesLogged=5
+        self.book_depth=10
+        self.n_actions=3
+        self.customIDCounter=0
+        self.trader_unique_id=-9000+1
+
+
+
         # Load the image MNIST data at environment init
-        def load_LOBSTER():
-            def config():
-                sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
-                stepLines = 10
-                messagePath = alphatradePath+"/data/Flow_10/"
-                orderbookPath = alphatradePath+"/data/Book_10/"
-                start_time = 34200  # 09:30
-                end_time = 57600  # 16:00
-                return sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time
-            sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time = config()
+        def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
             def preProcessingData_csv2pkl():
                 return 0
             def load_files():
@@ -179,42 +191,19 @@ class BaseLOBEnv(environment.Environment):
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB
-        Cubes_withOB = load_LOBSTER()
-        #np.array(Cubes_withOB)
-        #Cubes_withOB_jax=jnp.array(Cubes_withOB)
-        #print(Cubes_withOB_jax.shape)
+        Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        
+        #List of message cubes 
         msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         bks=[jnp.array(book) for cube, book in Cubes_withOB]
 
-        self.messages=jnp.array(msgs)
-        self.books=jnp.array(bks)
+        self.messages=jnp.array(msgs)   #4D Array: (n_windows x n_steps (max) x n_messages x n_features)
+        self.books=jnp.array(bks)       #2D Array: (n_windows x [4*n_depth])
 
-        print(self.messages.shape)
-        print(self.books.shape)
-
-        #lengths=[len(cube[0]) for cube in Cubes_withOB]
-        #sample_cube = Cubes_withOB[0][0]  # for Sascha
-        #sample_OB   = Cubes_withOB[0][1]  # for Sascha
-        #print("books: \n",self.books)
-        #print("cubes: \n",self.messages)
-
-
-        sample_cube = Cubes_withOB[0][0]  # for Testing
-        sample_OB = Cubes_withOB[0][1]    # for Testing
-        lengths = [len(cube) for cube, ob in Cubes_withOB]  # for Testing
-        length_of_list = len(Cubes_withOB)                  # for Testing
-
-        #numpy load with the memmap
-        #TODO:Any cleanup required...
         self.n_windows=len(self.books)
-        self.n_steps=100 #"""From above - find a way to access the config function"""
-        self.episode_time_length=1800 #"""From above - find a way to access the config function"""
-        self.nOrdersPerSide=100
-        self.nTradesLogged=5
-        self.book_depth=10
-        self.n_actions=3
-        self.customIDCounter=0
-        self.trader_unique_id=job.INITID+1
+
+
+
         """
         self.num_data = int(fraction * len(labels))
         self.image_shape = images.shape[1:]
@@ -231,30 +220,38 @@ class BaseLOBEnv(environment.Environment):
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
-        jax.debug.breakpoint()
-        data_messages=job.get_data_messages(params.message_data,state.window_index,step_counter=state.step_counter)
+        #Obtain the messages for the step from the message data
+        data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        #jax.debug.print("Data Messages to process \n: {}",data_messages)
+
+        #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=action["sides"]
-        prices=action["prices"]
-        quants=action["quantities"]
-        jax.debug.print("Data Messages to process \n: {}",data_messages)
-        
-        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id
-        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions)
-        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2))
+        sides=action["sides"]       #from action space
+        prices=action["prices"]     #from action space
+        quants=action["quantities"] #from action space
+        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
+        #Stack (Concatenate) the info into an array 
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+
+        #Add to the top of the data messages 
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         #jax.debug.print("Step messages to process are: \n {}", total_messages)
+
+        #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
-        jax.debug.breakpoint()
+
+        #Process messages of step (action+data) through the orderbook
         ordersides,trades=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders))
+
+        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
         state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)
-
-        return self.get_obs(state,params),state,reward,done,{"discount":0}
+        return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
 
@@ -264,16 +261,17 @@ class BaseLOBEnv(environment.Environment):
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
-        #These messages need to be ready to process by the scan function, so 6x(Ndepth*2) array and the times must be chosen correctly.
-        time=job.get_initial_time(params.message_data,idx_data_window) #time obtained from first message in respective window.
-        jax.debug.print("time: \n {}",time)
+        #Get the init time based on the first message to be processed in the first step. 
+        time=job.get_initial_time(params.message_data,idx_data_window) 
+        #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
-        jax.debug.print("time in order: \n {}",init_orders[0][-2:])
+        #Initialise both sides of the book as being empty
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
         #Process the initial messages through the orderbook
         ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
-        jax.debug.print("time: \n {}",time)
+
+        #Craft the first state
         state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
 
         return self.get_obs(state,params),state
@@ -304,8 +302,8 @@ class BaseLOBEnv(environment.Environment):
         return spaces.Dict(
             {
                 "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32),
-                "quantities":spaces.Box(0,10000,(self.n_actions,),dtype=jnp.int32),
-                "prices":spaces.Box(0,job.MAXPRICE,(self.n_actions,),dtype=jnp.int32)
+                "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32),
+                "prices":spaces.Box(0,99999999,(self.n_actions,),dtype=jnp.int32)
             }
         )
 
