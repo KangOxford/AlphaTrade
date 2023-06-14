@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('/homes/80/kang/trade')
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
@@ -18,8 +19,11 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 
 if __name__ == "__main__":
-    ATFolder = sys.argv[1]
-    print("AlphaTrade folder:",ATFolder)
+    try:
+        ATFolder = sys.argv[1]
+        print("AlphaTrade folder:",ATFolder)
+    except:
+        ATFolder = '/homes/80/kang/trade'
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -28,8 +32,8 @@ if __name__ == "__main__":
     env_params=env.default_params
 
     obs,state=env.reset(key_reset,env_params)
-    print(obs)
-    print(state)
+    print(f"===== OBS =====\n{obs}")
+    print(f"=====STATE=====\n{state}")
 
     print(env_params.message_data.shape, env_params.book_data.shape)
 
@@ -38,7 +42,7 @@ if __name__ == "__main__":
     #print(env.action_space().sample(key_policy))
     #print(env.state_space(env_params).sample(key_policy))
 
-    print(job.get_data_messages(env_params.message_data,state.window_index,state.step_counter))
+    print("=====get_data_messages=====\n",job.get_data_messages(env_params.message_data,state.window_index,state.step_counter))
 
     test_action={"sides":jnp.array([1,1,1]),
                  "quantities":jnp.array([10,10,10]),
@@ -47,7 +51,7 @@ if __name__ == "__main__":
 
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
     #env.action_space().sample(key_policy)
-    print("State after step: \n",state)
+    print("=====State after step: =====\n",state)
 
     #obs,state,reward,done,info=env.step(key_step, state,env.action_space().sample(key_policy), env_params)
     #print(state,done)

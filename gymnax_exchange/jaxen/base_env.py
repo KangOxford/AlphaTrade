@@ -110,6 +110,7 @@ class BaseLOBEnv(environment.Environment):
                 return indices
             indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
             def sliceWithoutOverlap(message, orderbook):
+                # print("start")
                 def splitMessage(message, orderbook):
                     import numpy as np
                     sliced_parts = []
@@ -118,7 +119,7 @@ class BaseLOBEnv(environment.Environment):
                         start_index = indices[i]
                         end_index = indices[i + 1]
                         index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                        index_e = (index_e // stepLines + 3) * stepLines + index_s % stepLines
+                        index_e = (index_e // stepLines + 10) * stepLines + index_s % stepLines
                         assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
                         sliced_part = message.loc[np.arange(index_s, index_e)]
                         sliced_parts.append(sliced_part)
@@ -128,13 +129,14 @@ class BaseLOBEnv(environment.Environment):
                     start_index = indices[i]
                     end_index = indices[i + 1]
                     index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                    index_s = (index_s // stepLines - 3) * stepLines + index_e % stepLines
+                    index_s = (index_s // stepLines - 10) * stepLines + index_e % stepLines
                     assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
                     last_sliced_part = message.loc[np.arange(index_s, index_e)]
                     sliced_parts.append(last_sliced_part)
                     init_OBs.append(orderbook.iloc[index_s, :])
                     for part in sliced_parts:
-                        assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, 'wrong code 33'
+                        # print("start")
+                        assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
                         assert part.shape[0] % stepLines == 0, 'wrong code 34'
                     return sliced_parts, init_OBs
                 sliced_parts, init_OBs = splitMessage(message, orderbook)
@@ -149,6 +151,7 @@ class BaseLOBEnv(environment.Environment):
                 slicedCubes_withOB = zip(slicedCubes, init_OBs)
                 return slicedCubes_withOB
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+            # i = 6 ; message,orderbook = messages[i],orderbooks[i]
             # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
 
 
