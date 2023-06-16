@@ -1,17 +1,19 @@
 from ast import Dict
 from contextlib import nullcontext
 from email import message
+from random import sample
+from re import L
 import jax
 import jax.numpy as jnp
 import numpy as np
-from gymnax.environments.spaces import Dict
-from jax import lax, Array
+from jax import lax
 from gymnax.environments import environment, spaces
 from typing import Tuple, Optional
 import chex
 from flax import struct
-from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookWrapper as job
+from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+
 
 @struct.dataclass
 class EnvState:
@@ -40,9 +42,12 @@ class EnvParams:
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
 
+
+
+
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self, path):
-        super().__init__(path)
+    def __init__(self,alphatradePath):
+        super().__init__(alphatradePath)
 
     @property
     def default_params(self) -> EnvParams:
@@ -55,13 +60,12 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
-        jax.debug.breakpoint()
-        jax.debug.print("Data Messages to process \n: {}",data_messages)
+        #jax.debug.print("Data Messages to process \n: {}",data_messages)
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=action["sides"]       #from action space
-        prices=job.get_best_ask() if action["prices"] == 0 else job.get_best_ask()    #from action space
+        prices=action["prices"]     #from action space
         quants=action["quantities"] #from action space
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
@@ -78,10 +82,10 @@ class ExecutionEnv(BaseLOBEnv):
         time=total_messages[-1:][0][-2:]
 
         #Process messages of step (action+data) through the orderbook
-        ordersides,trades=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders))
+        ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],trades[0],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)
@@ -102,11 +106,12 @@ class ExecutionEnv(BaseLOBEnv):
         #Initialise both sides of the book as being empty
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
+        trades_init=(jnp.ones((self.nTradesLogged,5))*-1).astype(jnp.int32)
         #Process the initial messages through the orderbook
-        ordersides,trades=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw))
+        ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         #Craft the first state
-        state = EnvState(ordersides[0],ordersides[1],trades[0],time,time,0,idx_data_window,0)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],time,time,0,idx_data_window,0)
 
         return self.get_obs(state,params),state
 
@@ -121,7 +126,7 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def name(self) -> str:
         """Environment name."""
-        return "alphatradeExec-v0"
+        return "alphatradeBase-v0"
 
     @property
     def num_actions(self) -> int:
@@ -137,7 +142,7 @@ class ExecutionEnv(BaseLOBEnv):
             {
                 "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32),
                 "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32),
-                "prices":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32)
+                "prices":spaces.Box(0,99999999,(self.n_actions,),dtype=jnp.int32)
             }
         )
 
@@ -152,9 +157,9 @@ class ExecutionEnv(BaseLOBEnv):
         """State space of the environment."""
         return spaces.Dict(
             {
-                "bids": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
-                "asks": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
-                "trades": spaces.Box(-1,job.MAXPRICE,shape=(5,self.nTradesLogged),dtype=jnp.int32),
+                "bids": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+                "asks": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+                "trades": spaces.Box(-1,999999999,shape=(5,self.nTradesLogged),dtype=jnp.int32),
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )

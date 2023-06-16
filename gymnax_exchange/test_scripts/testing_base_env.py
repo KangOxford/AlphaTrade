@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
-sys.path.append('/homes/80/kang/trade')
+sys.path.append('/homes/80/kang/AlphaTrade')
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        ATFolder = '/homes/80/kang/trade'
+        ATFolder = '/homes/80/kang/AlphaTrade'
 
 
     rng = jax.random.PRNGKey(0)
