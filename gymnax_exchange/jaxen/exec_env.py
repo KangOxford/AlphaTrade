@@ -94,7 +94,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         quants=action #from action space
         def get_prices(state,task):
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env=ExecutionEnv(ATFolder)
+    env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
 
