@@ -60,7 +60,7 @@ class BaseLOBEnv(environment.Environment):
 
 
         self.nOrdersPerSide=100
-        self.nTradesLogged=1000
+        self.nTradesLogged=50
         self.book_depth=10
         self.n_actions=3
         self.customIDCounter=0
@@ -226,7 +226,7 @@ class BaseLOBEnv(environment.Environment):
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=action["sides"]       #from action space
+        sides=((action["sides"]+1)/2).astype(jnp.int32)      #from action space
         prices=action["prices"]     #from action space
         quants=action["quantities"] #from action space
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
@@ -268,7 +268,7 @@ class BaseLOBEnv(environment.Environment):
         #Initialise both sides of the book as being empty
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
-        trades_init=(jnp.ones((self.nTradesLogged,5))*-1).astype(jnp.int32)
+        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process the initial messages through the orderbook
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
@@ -321,7 +321,7 @@ class BaseLOBEnv(environment.Environment):
             {
                 "bids": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
                 "asks": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
-                "trades": spaces.Box(-1,999999999,shape=(5,self.nTradesLogged),dtype=jnp.int32),
+                "trades": spaces.Box(-1,999999999,shape=(6,self.nTradesLogged),dtype=jnp.int32),
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )

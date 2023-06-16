@@ -28,31 +28,33 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
 
+    enable_vmap=True 
+    enable_2nd_singles=True
 
-    rng = jax.random.PRNGKey(0)
+    rng = jax.random.PRNGKey(234)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     env=BaseLOBEnv(ATFolder) 
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
 
+    
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
     print("State after reset: \n",state)
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
+    if enable_2nd_singles:
+        #jax.profiler.start_trace("/tmp/tensorboard")
+        start=time.time()
+        obs,state=env.reset(key_reset,env_params)
+        obs.block_until_ready()
+        #jax.profiler.stop_trace()
+        print("State after reset: \n",state)
+        print("Time for 2nd reset: \n",time.time()-start)
+        print(env_params.message_data.shape, env_params.book_data.shape)
 
-    start=time.time()
-    obs,state=env.reset(key_reset,env_params)
-    print("State after reset: \n",state)
-    print("Time for 2nd reset: \n",time.time()-start)
-    print(env_params.message_data.shape, env_params.book_data.shape)
-
-    #print(job.get_data_messages(env_params.message_data,state.window_index,state.step_counter+1))
-
-    #print(env.action_space().sample(key_policy))
-    #print(env.state_space(env_params).sample(key_policy))
 
 
     """test_action={"sides":jnp.array([1,1,1]),
@@ -68,25 +70,26 @@ if __name__ == "__main__":
     print("State after one step: \n",state,done)
     print("Time for one step: \n",time.time()-start)
 
-    test_action=env.action_space().sample(key_policy)
-    print("Sampled actions are: \n",test_action)
-    
-    start=time.time()
-    obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    print("State after 2 steps: \n",state,done)
-    print("Time for 2nd step: \n",time.time()-start)
-    #comment
+    if enable_2nd_singles:
+        test_action=env.action_space().sample(key_policy)
+        print("Sampled actions are: \n",test_action)
+        
+        start=time.time()
+        obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        print("State after 2 steps: \n",state,done)
+        print("Time for 2nd step: \n",time.time()-start)
+        #comment
 
 
     ####### Testing the vmap abilities ########
     
-    enable_vmap=True 
+    
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
         vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 1000
+        num_envs = 200000
         vmap_keys = jax.random.split(rng, num_envs)
 
         test_actions=vmap_act_sample(vmap_keys)
