@@ -1,3 +1,29 @@
+# ============== testing scripts ===============
+import jax
+import jax.numpy as jnp
+import gymnax
+import sys
+sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('/homes/80/kang/AlphaTrade')
+# from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
+import chex
+import time
+
+import faulthandler
+
+faulthandler.enable()
+print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+
+chex.assert_gpu_available(backend=None)
+
+#Code snippet to disable all jitting.
+#from jax import config
+#config.update("jax_disable_jit", True)
+# ============== testing scripts ===============
+
+
+
 from ast import Dict
 from contextlib import nullcontext
 from email import message
@@ -65,7 +91,8 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=action["sides"]       #from action space
-        prices=action["prices"]     #from action space
+        jax.debug.breakpoint()
+        prices=action["prices"]      #from action space
         quants=action["quantities"] #from action space
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
@@ -96,6 +123,7 @@ class ExecutionEnv(BaseLOBEnv):
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
+        
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
@@ -106,7 +134,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Initialise both sides of the book as being empty
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
-        trades_init=(jnp.ones((self.nTradesLogged,5))*-1).astype(jnp.int32)
+        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process the initial messages through the orderbook
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
@@ -142,7 +170,7 @@ class ExecutionEnv(BaseLOBEnv):
             {
                 "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32),
                 "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32),
-                "prices":spaces.Box(0,99999999,(self.n_actions,),dtype=jnp.int32)
+                "prices":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32)
             }
         )
 
@@ -159,7 +187,88 @@ class ExecutionEnv(BaseLOBEnv):
             {
                 "bids": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
                 "asks": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+                # "trades": spaces.Box(-1,job.MAXPRICE,shape=(5,self.nTradesLogged),dtype=jnp.int32),
                 "trades": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nTradesLogged),dtype=jnp.int32),
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )
+
+
+if __name__ == "__main__":
+    try:
+        ATFolder = sys.argv[1]
+        print("AlphaTrade folder:",ATFolder)
+    except:
+        ATFolder = '/homes/80/kang/AlphaTrade'
+
+
+    rng = jax.random.PRNGKey(0)
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+
+    env=ExecutionEnv(ATFolder)
+    env_params=env.default_params
+    print(env_params.message_data.shape, env_params.book_data.shape)
+
+    start=time.time()
+    obs,state=env.reset(key_reset,env_params)
+    print("State after reset: \n",state)
+    print("Time for reset: \n",time.time()-start)
+    print(env_params.message_data.shape, env_params.book_data.shape)
+
+
+    start=time.time()
+    obs,state=env.reset(key_reset,env_params)
+    print("State after reset: \n",state)
+    print("Time for 2nd reset: \n",time.time()-start)
+    print(env_params.message_data.shape, env_params.book_data.shape)
+
+    #print(job.get_data_messages(env_params.message_data,state.window_index,state.step_counter+1))
+
+    #print(env.action_space().sample(key_policy))
+    #print(env.state_space(env_params).sample(key_policy))
+
+
+    """test_action={"sides":jnp.array([1,1,1]),
+                 "quantities":jnp.array([10,10,10]),
+                 "prices":jnp.array([2154900,2154000,2153900]),
+                 }"""
+    
+    test_action=env.action_space().sample(key_policy)
+    print("Sampled actions are: ",test_action)
+
+    start=time.time()
+    obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    print("State after one step: \n",state,done)
+    print("Time for one step: \n",time.time()-start)
+
+    test_action=env.action_space().sample(key_policy)
+    print("Sampled actions are: \n",test_action)
+    
+    start=time.time()
+    obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    print("State after 2 steps: \n",state,done)
+    print("Time for 2nd step: \n",time.time()-start)
+    #comment
+
+
+    ####### Testing the vmap abilities ########
+    
+    enable_vmap=False
+    if enable_vmap:
+        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+
+        num_envs = 10
+        vmap_keys = jax.random.split(rng, num_envs)
+
+        test_actions=vmap_act_sample(vmap_keys)
+        print(test_actions)
+
+        start=time.time()
+        obs, state = vmap_reset(vmap_keys, env_params)
+        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+
+        start=time.time()
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
