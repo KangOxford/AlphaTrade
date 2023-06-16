@@ -55,12 +55,13 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
-        #jax.debug.print("Data Messages to process \n: {}",data_messages)
+        jax.debug.breakpoint()
+        jax.debug.print("Data Messages to process \n: {}",data_messages)
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=action["sides"]       #from action space
-        prices=action["prices"]     #from action space
+        prices=job.get_best_ask() if action["prices"] == 0 else job.get_best_ask()    #from action space
         quants=action["quantities"] #from action space
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
@@ -120,7 +121,7 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def name(self) -> str:
         """Environment name."""
-        return "alphatradeBase-v0"
+        return "alphatradeExec-v0"
 
     @property
     def num_actions(self) -> int:
@@ -136,7 +137,7 @@ class ExecutionEnv(BaseLOBEnv):
             {
                 "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32),
                 "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32),
-                "prices":spaces.Box(0,99999999,(self.n_actions,),dtype=jnp.int32)
+                "prices":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32)
             }
         )
 
