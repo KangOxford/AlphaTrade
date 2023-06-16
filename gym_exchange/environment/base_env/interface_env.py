@@ -56,7 +56,7 @@ class InterfaceEnv(gym.Env, abc.ABC, Generic[State, Action]):
         # print()#$
     # --------------------- 01.02 ---------------------
         self.cur_state: Optional[State] = None  
-        self.seed()
+        # self.seed()
     # --------------------- 01.03 ---------------------
     def space_definition(self):
         action_space = spaces.MultiDiscrete([SpaceParams.Action.side_size,

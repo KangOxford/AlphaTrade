@@ -91,7 +91,10 @@ class BaseEnv(InterfaceEnv):
         # if self.cur_step == 156:
         #     print()#$
         # print("wrapped_order_flow:",wrapped_order_flow) #$
+        start = time.time()
         self.exchange.step(wrapped_order_flow)
+        end = time.time()
+        print(f"======> delta {end-start}")
         # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         # print(auto_cancel) #$
@@ -111,17 +114,19 @@ class BaseEnv(InterfaceEnv):
         self.num_left_processor.step(self)
         self.cur_step += 1
         # self.accumulator }
+        print(f"state:{state}")
         return state
     # --------------------- 03.02 ---------------------
     @property
     def reward(self):
-        self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
-        reward = self.reward_generator.step()
+        # self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
+        # reward = self.reward_generator.step()
         # if self.done:
         #     penalty = Config.cost_parameter * (self.exchange.mid_prices[-1] / Config.lobster_scaling * self.num_left_processor.num_left) ** 2
         #     reward -= penalty
         # reward /= 837732.857874494 #$ for scaling
         # reward /= 1070108.357874494  #$ for scaling
+        reward = 1
         return reward
     # --------------------- 03.03  ---------------------
     @property
@@ -216,6 +221,7 @@ class BaseEnv(InterfaceEnv):
             break #$
     '''
 if __name__ == "__main__":
+    import time
     import numpy as np
     arr = np.array([
         [1,1,0],
@@ -234,7 +240,11 @@ if __name__ == "__main__":
         encoded_action = arr[i]
         # if i == 320:
         #     breakpoint()
+
+        # start = time.time()
         state, reward, done, info = env.step(encoded_action)
+        # end = time.time()
+        # print(f"======> delta {end-start}")
         # print(f"reward: {reward}") #$
         # print(f"info: {info}") #$
         sum_reward += reward

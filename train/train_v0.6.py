@@ -32,8 +32,8 @@ if __name__ == "__main__":
         env = Monitor(TradeEnv())  # record stats such as returns
         return env
 
-    # venv = DummyVecEnv([make_env ] * 4)
-    venv = DummyVecEnv([make_env])
+    venv = DummyVecEnv([make_env ] * 100000)
+    # venv = DummyVecEnv([make_env])
 
 
     model = RecurrentPPO(
