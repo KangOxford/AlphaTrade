@@ -28,8 +28,10 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
 
-    enable_vmap=True 
-    enable_2nd_singles=True
+    # enable_vmap=True 
+    # enable_2nd_singles=True
+    enable_vmap=False 
+    enable_2nd_singles=False
 
     rng = jax.random.PRNGKey(234)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -82,7 +84,6 @@ if __name__ == "__main__":
 
 
     ####### Testing the vmap abilities ########
-    
     
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))

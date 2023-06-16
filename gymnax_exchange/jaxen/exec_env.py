@@ -18,8 +18,9 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
-#from jax import config
-#config.update("jax_disable_jit", True)
+from jax import config
+config.update("jax_disable_jit", False)
+# config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -72,8 +73,11 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath):
+    def __init__(self,alphatradePath,task):
         super().__init__(alphatradePath)
+        self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
+        self.task = task
+        assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
     def default_params(self) -> EnvParams:
@@ -90,10 +94,17 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=action["sides"]       #from action space
         jax.debug.breakpoint()
-        prices=action["prices"]      #from action space
-        quants=action["quantities"] #from action space
+        sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        quants=action #from action space
+        def get_prices(state,task):
+            asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
+            A = bids[0,0] if task=='sell' else asks[0,0] # aggressive would be at bids
+            M = (bids[0,0] + asks[0,0])//2 
+            P = asks[0,0] if task=='sell' else bids[0,0] 
+            PP= asks[1,0] if task=='sell' else bids[1,0] 
+            return (A,M,P,PP)
+        prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
@@ -164,15 +175,9 @@ class ExecutionEnv(BaseLOBEnv):
 
     def action_space(
         self, params: Optional[EnvParams] = None
-    ) -> spaces.Discrete:
+    ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Dict(
-            {
-                "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32),
-                "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32),
-                "prices":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32)
-            }
-        )
+        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
 
     #TODO: define obs space (4xnDepth) array of quants&prices. Not that important right now. 
     def observation_space(self, params: EnvParams):
@@ -187,7 +192,6 @@ class ExecutionEnv(BaseLOBEnv):
             {
                 "bids": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
                 "asks": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
-                # "trades": spaces.Box(-1,job.MAXPRICE,shape=(5,self.nTradesLogged),dtype=jnp.int32),
                 "trades": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nTradesLogged),dtype=jnp.int32),
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
