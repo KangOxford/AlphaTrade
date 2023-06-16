@@ -227,26 +227,6 @@ class BaseLOBEnv(environment.Environment):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=((action["sides"]+1)/2).astype(jnp.int32)      #from action space
-        # job ==============
-        # best_ask, best_bid = jnp.split(job.get_L2_state(1,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
-        # best = job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders)
-        # asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
-        # task = 'sell'
-        # asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
-        # A = bids[0,0] if task=='sell' else asks[0,0] # aggressive would be at bids
-        # M = (bids[0,0] + asks[0,0])//2 
-        # P = asks[0,0] if task=='sell' else bids[0,0] 
-        # PP= asks[1,0] if task=='sell' else bids[1,0] 
-        # def get_prices(state,task):
-        #     asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
-        #     A = bids[0,0] if task=='sell' else asks[0,0] # aggressive would be at bids
-        #     M = (bids[0,0] + asks[0,0])//2 
-        #     P = asks[0,0] if task=='sell' else bids[0,0] 
-        #     PP= asks[1,0] if task=='sell' else bids[1,0] 
-        #     return (A,M,P,PP)
-        # ps=jnp.asarray(get_prices(state,"sell"),jnp.int32)
-        # jax.debug.breakpoint()
-        # job ==============
         prices=action["prices"]     #from action space
         quants=action["quantities"] #from action space
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
