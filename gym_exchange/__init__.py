@@ -48,7 +48,7 @@ class Config:
     # exchange_data_source = "encoder"
     type4_order_id_generator = 70000000
 
-    AlphaTradeRoot=os.path.join(os.path.dirname(__file__),'../')
+    # AlphaTradeRoot=os.path.join(os.path.dirname(__file__),'../')
     symbol, date = get_symbol_date(AlphaTradeRoot)
     # symbol = "TSLA";date = "2015-01-02"
     # symbol = "AMZN";date = "2021-04-01"
