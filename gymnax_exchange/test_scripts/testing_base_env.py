@@ -13,6 +13,8 @@ import faulthandler
 faulthandler.enable()
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
+chex.assert_gpu_available(backend=None)
+
 #Code snippet to disable all jitting.
 #from jax import config
 #config.update("jax_disable_jit", True)
@@ -69,3 +71,26 @@ if __name__ == "__main__":
     print("State after 2 steps: \n",state,done)
     print("Time for 2nd step: \n",time.time()-start)
     #comment
+
+
+    ####### Testing the vmap abilities ########
+    
+    enable_vmap=True 
+    if enable_vmap:
+        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+
+        num_envs = 1000
+        vmap_keys = jax.random.split(rng, num_envs)
+
+        test_actions=vmap_act_sample(vmap_keys)
+        print(test_actions)
+
+        start=time.time()
+        obs, state = vmap_reset(vmap_keys, env_params)
+        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+
+        start=time.time()
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)

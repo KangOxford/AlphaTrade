@@ -27,15 +27,15 @@ def cancel_order(orderside,msg):
 
 @jax.jit
 def match_order(data_tuple):
-    orderside,qtm,price,top_order_idx,trade,time,time_ns=data_tuple
+    orderside,qtm,price,top_order_idx,trade=data_tuple
     newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm)
     qtm=qtm-orderside[top_order_idx,1]
-    qtm=qtm.astype(jnp.int32)
+    qtm=qtm.astype("int32")
     emptyidx=jnp.where(trade==-1,size=1,fill_value=-1)[0]
-    trade=trade.at[emptyidx,:].set(jnp.array([orderside[top_order_idx,0],orderside[top_order_idx,1]-newquant,orderside[top_order_idx,2],[time],[time_ns]]).transpose())
+    trade=trade.at[emptyidx,:].set(jnp.array([orderside[top_order_idx,0],orderside[top_order_idx,1]-newquant,orderside[top_order_idx,2],orderside[top_order_idx,4],orderside[top_order_idx,5]]).transpose())
     orderside=removeZeroQuant(orderside.at[top_order_idx,1].set(newquant))
     top_order_idx=get_top_bid_order_idx(orderside)
-    return (orderside.astype(jnp.int32),jnp.squeeze(qtm),price,top_order_idx,trade,time,time_ns)
+    return (orderside.astype("int32"),jnp.squeeze(qtm),price,top_order_idx,trade)
 
 @jax.jit
 def get_top_bid_order_idx(orderside):
@@ -48,26 +48,26 @@ def get_top_bid_order_idx(orderside):
 
 @jax.jit
 def check_before_matching_bid(data_tuple):
-    orderside,qtm,price,top_order_idx,trade,_,_=data_tuple
+    orderside,qtm,price,top_order_idx,trade=data_tuple
     returnarray=(orderside[top_order_idx,0]>=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
 
 @jax.jit
-def match_against_bid_orders(orderside,qtm,price,trade,time,time_ns):
+def match_against_bid_orders(orderside,qtm,price,trade):
     top_order_idx=get_top_bid_order_idx(orderside)
-    orderside,qtm,price,top_order_idx,trade,_,_=jax.lax.while_loop(check_before_matching_bid,match_order,(orderside,qtm,price,top_order_idx,trade,time,time_ns))
+    orderside,qtm,price,top_order_idx,trade=jax.lax.while_loop(check_before_matching_bid,match_order,(orderside,qtm,price,top_order_idx,trade))
     return (orderside,qtm,price,trade)
 
 @jax.jit
 def check_before_matching_ask(data_tuple):
-    orderside,qtm,price,top_order_idx,trade,_,_=data_tuple
+    orderside,qtm,price,top_order_idx,trade=data_tuple
     returnarray=(orderside[top_order_idx,0]<=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
 
 @jax.jit
-def match_against_ask_orders(orderside,qtm,price,trade,time,time_ns):
+def match_against_ask_orders(orderside,qtm,price,trade):
     top_order_idx=get_top_ask_order_idx(orderside)
-    orderside,qtm,price,top_order_idx,trade,_,_=jax.lax.while_loop(check_before_matching_ask,match_order,(orderside,qtm,price,top_order_idx,trade,time,time_ns))
+    orderside,qtm,price,top_order_idx,trade=jax.lax.while_loop(check_before_matching_ask,match_order,(orderside,qtm,price,top_order_idx,trade))
     return (orderside,qtm,price,trade)
 
 @jax.jit
@@ -83,7 +83,7 @@ def get_top_ask_order_idx(orderside):
 
 @jax.jit
 def cond_type_side(ordersides,data):
-    askside,bidside,trades=ordersides
+    askside,bidside=ordersides
     #jax.debug.breakpoint()
     #jax.debug.print("Askside before is \n {}",askside)
     msg={
@@ -96,18 +96,18 @@ def cond_type_side(ordersides,data):
     'time':data[6],
     'time_ns':data[7]}
     index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside)
     #jax.debug.print("Askside after is \n {}",ask)
-    return (ask,bid,trade),0
+    return (ask,bid),trade
 
-vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
+vcond_type_side=jax.vmap(cond_type_side,((0,0),1),0)
 
 
 def scan_through_entire_array(msg_array,ordersides):
-    ordersides,_=jax.lax.scan(cond_type_side,ordersides,msg_array)
-    return ordersides
+    ordersides,trades=jax.lax.scan(cond_type_side,ordersides,msg_array)
+    return ordersides,trades
 
-vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
+vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0)),0)
 
 
 @partial(jax.jit,static_argnums=(1,2))
@@ -172,43 +172,43 @@ def branch_type_side(data,type,side,askside,bidside):
 
 ########Type Functions#############
 
-def bid_lim(msg,askside,bidside,trades):
+def bid_lim(msg,askside,bidside):
     #match with asks side
     #add remainder to bids side
-    matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],trades,msg["time"],msg["time_ns"])
+    matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
     #^(orderside,qtm,price,trade)
     msg["quantity"]=matchtuple[1]
     bids=add_order(bidside,msg)
     return matchtuple[0],bids,matchtuple[3]
 
-def bid_cancel(msg,askside,bidside,trades):
-    return askside,cancel_order(bidside,msg),trades
+def bid_cancel(msg,askside,bidside):
+    return askside,cancel_order(bidside,msg),jnp.ones((5,5))*-1
 
-def bid_mkt(msg,askside,bidside,trades):
+def bid_mkt(msg,askside,bidside):
     msg["price"]=999999999
-    matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],trades,msg["time"],msg["time_ns"])
+    matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
     #^(orderside,qtm,price,trade)
     return matchtuple[0],bidside,matchtuple[3]
 
 
-def ask_lim(msg,askside,bidside,trades):
+def ask_lim(msg,askside,bidside):
     #match with bids side
     #add remainder to asks side
-    matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],trades,msg["time"],msg["time_ns"])
+    matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
     #^(orderside,qtm,price,trade)
     msg["quantity"]=matchtuple[1]
     asks=add_order(askside,msg)
     return asks,matchtuple[0],matchtuple[3]
 
-def ask_cancel(msg,askside,bidside,trades):
-    return cancel_order(askside,msg),bidside,trades
+def ask_cancel(msg,askside,bidside):
+    return cancel_order(askside,msg),bidside,jnp.ones((5,5))*-1
 
-def ask_mkt(msg,askside,bidside,trades):
+def ask_mkt(msg,askside,bidside):
     #set price to 0
     #match with bids side 
     #no need to add remainder
     msg["price"]=0
-    matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],trades,msg["time"],msg["time_ns"])
+    matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
     #^(orderside,qtm,price,trade)
     return askside,matchtuple[0],matchtuple[3]
 
