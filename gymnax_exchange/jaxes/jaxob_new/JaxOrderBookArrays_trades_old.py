@@ -11,7 +11,8 @@ from functools import partial, partialmethod
 @jax.jit
 def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
-    return orderside.at[emptyidx,:].set(jnp.array([msg['price'],msg['quantity'],msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype("int32")
+    orderside=orderside.at[emptyidx,:].set(jnp.array([msg['price'],jnp.maximum(0,msg['quantity']),msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype(jnp.int32)
+    return removeZeroQuant(orderside)
 
 @jax.jit
 def removeZeroQuant(orderside):
