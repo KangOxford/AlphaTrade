@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
-sys.path.append('/homes/80/kang/trade')
+sys.path.append('/homes/80/kang/AlphaTrade')
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
@@ -26,10 +26,12 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        ATFolder = '/homes/80/kang/trade'
+        ATFolder = '/homes/80/kang/AlphaTrade'
 
-    enable_vmap=True 
-    enable_2nd_singles=True
+    # enable_vmap=True 
+    # enable_2nd_singles=True
+    enable_vmap=False 
+    enable_2nd_singles=False
 
     rng = jax.random.PRNGKey(234)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -82,7 +84,6 @@ if __name__ == "__main__":
 
 
     ####### Testing the vmap abilities ########
-    
     
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
