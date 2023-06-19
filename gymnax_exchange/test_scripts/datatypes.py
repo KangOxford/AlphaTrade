@@ -27,7 +27,7 @@ class OrderBook():
         self.nTrades=nTrades
         self.bids=(jnp.ones((nOrders,6))*-1).astype("int32")
         self.asks=(jnp.ones((nOrders,6))*-1).astype("int32")
-        self.trades=(jnp.ones((nTrades,5))*-1).astype("int32")
+        self.trades=(jnp.ones((nTrades,6))*-1).astype("int32")
         
 
     
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     runmult_scan=False
     printTimes=False
     printResults=False
-    time_individual_msgs=False
+    time_individual_msgs=True
     develop=True
     load_data=False
     if load_data:
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     if time_individual_msgs:
         #test_msg=jnp.array([1,1,10,10,0,0,5,5])
         lim_msg={
-        'side':1,
+        'side':-1,
         'type':1,
         'price':10000,
         'quantity':10,
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 
 
         match_msg={
-        'side':-1,
+        'side':1,
         'type':1,
         'price':11000,
         'quantity':100,
@@ -327,7 +327,7 @@ if __name__ == "__main__":
 
         b=(jnp.ones((100,6))*-1).astype(jnp.int32)
         a=(jnp.ones((100,6))*-1).astype(jnp.int32)
-        t=(jnp.ones((1000,5))*-1).astype(jnp.int32)
+        t=(jnp.ones((1000,6))*-1).astype(jnp.int32)
 
         returnval=job.ask_lim(lim_msg,a,b,t)
 
