@@ -73,6 +73,7 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
+        self.n_fragment_max=2
         assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
@@ -94,9 +95,10 @@ class ExecutionEnv(BaseLOBEnv):
         sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         quants=action #from action space
         
-        #Can only use these if statements because self is a static arg. 
+        #Can only use these if statements because self is a static arg.
+        # TODO: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         def get_prices(state,task):
-            asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
+            asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders[-1],state.bid_raw_orders[-1]),[2],axis=1)
             A = bids[0,0] if task=='sell' else asks[0,0] # aggressive would be at bids
             M = (bids[0,0] + asks[0,0])//2 
             P = asks[0,0] if task=='sell' else bids[0,0] 
@@ -111,16 +113,23 @@ class ExecutionEnv(BaseLOBEnv):
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
 
+        #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
+        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
+        #jax.debug.print("Output from cancel function: {}",cnl_msgs)
+
         #Add to the top of the data messages 
-        total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
+        total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
+        jax.debug.print("Total messages: \n {}",total_messages)
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
 
+
         #Process messages of step (action+data) through the orderbook
-        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],state.trades))
+        #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
+        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],state.trades),self.stepLines)
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(jnp.squeeze(ordersides[0]),jnp.squeeze(ordersides[1]),ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)
@@ -250,6 +259,9 @@ if __name__ == "__main__":
     print("State after 2 steps: \n",state,done)
     print("Time for 2nd step: \n",time.time()-start)
     #comment
+
+
+    
 
 
     ####### Testing the vmap abilities ########

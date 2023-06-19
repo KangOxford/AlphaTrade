@@ -20,6 +20,7 @@ chex.assert_gpu_available(backend=None)
 #from jax import config
 #config.update("jax_disable_jit", True)
 
+print("#"*20+"Output Log File"+"#"*20,file=open('output.txt','w'))
 
 if __name__ == "__main__":
     try:
@@ -28,6 +29,9 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
+
+    enable_vmap=False 
+
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -38,15 +42,14 @@ if __name__ == "__main__":
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print(state)
-    print("State after reset: \n",state)
+    print("State after reset: \n",state,file=open('output.txt','a'))
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print("State after reset: \n",state)
+    print("State after 2nd reset: \n",state,file=open('output.txt','a'))
     print("Time for 2nd reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
@@ -66,7 +69,7 @@ if __name__ == "__main__":
 
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    print("State after one step: \n",state,done)
+    print("State after one step: \n",state,done,file=open('output.txt','a'))
     print("Time for one step: \n",time.time()-start)
 
     test_action=env.action_space().sample(key_policy)
@@ -74,14 +77,16 @@ if __name__ == "__main__":
     
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    print("State after 2 steps: \n",state,done)
+    with jnp.printoptions(threshold=jnp.inf):
+        print("State after 2 steps: \n",state,done,file=open('output.txt','a'))
     print("Time for 2nd step: \n",time.time()-start)
     #comment
 
 
+
     ####### Testing the vmap abilities ########
     
-    enable_vmap=False 
+
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))

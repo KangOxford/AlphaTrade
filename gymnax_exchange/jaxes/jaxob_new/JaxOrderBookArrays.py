@@ -127,9 +127,10 @@ def scan_through_entire_array(msg_array,ordersides):
     ordersides,_=jax.lax.scan(cond_type_side,ordersides,msg_array)
     return ordersides
 
-def scan_through_entire_array_save_states(msg_array,ordersides):
+def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
+    #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
     last,all=jax.lax.scan(cond_type_side_save_states,ordersides,msg_array)
-    return (all[0][-100:],all[1][-100:],last[2])
+    return (all[0][-steplines:],all[1][-steplines:],last[2])
 
 vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
 
@@ -193,8 +194,52 @@ def branch_type_side(data,type,side,askside,bidside):
 
 
 
+def get_size(bookside,agentID):
+    return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int32)
+
+def getCancelMsgs(bookside,agentID,size,side):
+    #jax.debug.print("Agent ID: {}",agentID)
+    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
+    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
+    #jax.debug.print("Indeces: {}",indeces_to_cancel)
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*side, \
+                                jnp.ones((1,size),dtype=jnp.int32)*2, \
+                                bookside[indeces_to_cancel,1], \
+                                bookside[indeces_to_cancel,0], \
+                                bookside[indeces_to_cancel,3], \
+                                bookside[indeces_to_cancel,2], \
+                                bookside[indeces_to_cancel,4], \
+                                bookside[indeces_to_cancel,5]],axis=0).transpose()
+    return cancel_msgs
+
+def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
+    cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
+    #truearray=
+    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*side, \
+                                jnp.ones((1,size),dtype=jnp.int32)*2, \
+                                bookside[indeces_to_cancel,1], \
+                                bookside[indeces_to_cancel,0], \
+                                bookside[indeces_to_cancel,3], \
+                                bookside[indeces_to_cancel,2], \
+                                bookside[indeces_to_cancel,4], \
+                                bookside[indeces_to_cancel,5]],axis=0).transpose()
+    cancel_msgs=jnp.where(cancel_msgs==-1,0,cancel_msgs)
+    jax.lax.scan(remove_cnl_if_renewed,cancel_msgs,action_msgs)
+    return cancel_msgs
+
+
+def remove_cnl_if_renewed(cancel_msgs,action_msg):
+    jnp.where(cancel_msgs[:,3]==action_msg[3],)
+
+    return cancel_msgs
+
+   
 
 ########Type Functions#############
+
+def doNothing(msg,askside,bidside,trades):
+    return askside,bidside,trades
 
 def bid_lim(msg,askside,bidside,trades):
     #match with asks side
