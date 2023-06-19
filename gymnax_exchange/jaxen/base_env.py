@@ -273,7 +273,7 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         #Craft the first state
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],time,time,0,idx_data_window,0)
+        state = EnvState(*ordersides,time,time,0,idx_data_window,0)
 
         return self.get_obs(state,params),state
 
