@@ -19,8 +19,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -99,11 +99,12 @@ class ExecutionEnv(BaseLOBEnv):
         #Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         def get_prices(state,task):
-            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1])
+            # best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
+            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders,state.bid_raw_orders)
             A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            M = (best_bid + best_ask)//2//100*100 
+            M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
             P = best_ask if task=='sell' else best_bid
-            PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size
+            PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
             return (A,M,P,PP)
 
         prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
@@ -116,25 +117,42 @@ class ExecutionEnv(BaseLOBEnv):
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
 
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
+        # cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
         #Add to the top of the data messages 
-        total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
+        total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
+        # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
         jax.debug.print("Total messages: \n {}",total_messages)
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
 
-
         #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
-        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],state.trades),self.stepLines)
+        # ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],state.trades),self.stepLines) # doesnt work: reset state and step state doesnt match
+        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades),self.stepLines)
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        
+        # ========= self.get_obs(state,params) =============
+        # get_best_bids = lambda x: x[np.argmax(np.max(x, axis=0), axis=0), 0]
+        get_best_bids = lambda x: jnp.max(x[:, :, 0], axis=1)
+        best_bids = get_best_bids(state.bid_raw_orders)
+        get_best_asks = lambda x: jnp.min(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1).astype(jnp.int32)
+        best_asks = get_best_asks(state.ask_raw_orders)
+        # --------------------------------------------------
+        mid_prices = (best_asks + best_bids)//2//self.tick_size*self.tick_size 
+        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        # --------------------------------------------------
+        
+        # ========= self.get_obs(state,params) =============
+        jax.debug.breakpoint()
+        
         done = self.is_terminal(state,params)
-        reward=0
+        reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
+        jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
@@ -160,13 +178,19 @@ class ExecutionEnv(BaseLOBEnv):
         #Craft the first state
         state = EnvState(jnp.resize(ordersides[0],(self.stepLines,self.nOrdersPerSide,6)),jnp.resize(ordersides[1],(self.stepLines,self.nOrdersPerSide,6)),ordersides[2],time,time,0,idx_data_window,0)
         state = EnvState(*ordersides,time,time,0,idx_data_window,0)
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
+        
+        # self.p_0
+        self.p_0 = 10000000
 
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (state.time-state.init_time)[0]>params.episode_time
+    
+    def get_reward(self, state: EnvState, params: EnvParams) -> float:
+        return 0.0
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
@@ -175,7 +199,7 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def name(self) -> str:
         """Environment name."""
-        return "alphatradeBase-v0"
+        return "alphatradeExec-v0"
 
     @property
     def num_actions(self) -> int:
@@ -230,11 +254,11 @@ if __name__ == "__main__":
     print(env_params.message_data.shape, env_params.book_data.shape)
 
 
-    start=time.time()
-    obs,state=env.reset(key_reset,env_params)
-    print("State after reset: \n",state)
-    print("Time for 2nd reset: \n",time.time()-start)
-    print(env_params.message_data.shape, env_params.book_data.shape)
+    # start=time.time()
+    # obs,state=env.reset(key_reset,env_params)
+    # print("State after reset: \n",state)
+    # print("Time for 2nd reset: \n",time.time()-start)
+    # print(env_params.message_data.shape, env_params.book_data.shape)
 
     #print(job.get_data_messages(env_params.message_data,state.window_index,state.step_counter+1))
 
@@ -255,13 +279,13 @@ if __name__ == "__main__":
     print("State after one step: \n",state,done)
     print("Time for one step: \n",time.time()-start)
 
-    test_action=env.action_space().sample(key_policy)
-    print("Sampled actions are: \n",test_action)
+    # test_action=env.action_space().sample(key_policy)
+    # print("Sampled actions are: \n",test_action)
     
-    start=time.time()
-    obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    print("State after 2 steps: \n",state,done)
-    print("Time for 2nd step: \n",time.time()-start)
+    # start=time.time()
+    # obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    # print("State after 2 steps: \n",state,done)
+    # print("Time for 2nd step: \n",time.time()-start)
     #comment
 
 

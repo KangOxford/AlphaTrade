@@ -304,6 +304,7 @@ def get_L2_state(N,asks,bids):
     return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
 
 def get_best_bid_and_ask(asks,bids):
+    # jax.debug.breakpoint()
     best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
     best_bid=jnp.max(bids[:,0])
     return best_ask,best_bid
