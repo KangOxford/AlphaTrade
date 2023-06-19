@@ -30,13 +30,8 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    #Note: book depth and nOrdersperside must be given at init as they define shapes of jax arrays,
-    #       only the self args are static, the param args are not static and so must be traceable.
-    #book_depth: int = 10
-    #nOrdersPerSide: int = 100
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     max_steps_in_episode: int = 100
-    messages_per_step: int=1
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
@@ -60,11 +55,12 @@ class BaseLOBEnv(environment.Environment):
 
 
         self.nOrdersPerSide=100
-        self.nTradesLogged=50
+        self.nTradesLogged=100
         self.book_depth=10
         self.n_actions=3
         self.customIDCounter=0
         self.trader_unique_id=-9000+1
+        self.tick_size=100
 
 
 

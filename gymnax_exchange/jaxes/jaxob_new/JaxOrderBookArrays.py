@@ -101,12 +101,36 @@ def cond_type_side(ordersides,data):
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),0
 
+@jax.jit
+def cond_type_side_save_states(ordersides,data):
+    askside,bidside,trades=ordersides
+    #jax.debug.breakpoint()
+    #jax.debug.print("Askside before is \n {}",askside)
+    msg={
+    'side':data[1],
+    'type':data[0],
+    'price':data[3],
+    'quantity':data[2],
+    'orderid':data[5],
+    'traderid':data[4],
+    'time':data[6],
+    'time_ns':data[7]}
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
+    #jax.debug.print("Askside after is \n {}",ask)
+    return (ask,bid,trade),(ask,bid,trade)
+
 vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
 
 
 def scan_through_entire_array(msg_array,ordersides):
     ordersides,_=jax.lax.scan(cond_type_side,ordersides,msg_array)
     return ordersides
+
+def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
+    #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
+    last,all=jax.lax.scan(cond_type_side_save_states,ordersides,msg_array)
+    return (all[0][-steplines:],all[1][-steplines:],last[2])
 
 vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
 
@@ -170,8 +194,52 @@ def branch_type_side(data,type,side,askside,bidside):
 
 
 
+def get_size(bookside,agentID):
+    return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int32)
+
+def getCancelMsgs(bookside,agentID,size,side):
+    #jax.debug.print("Agent ID: {}",agentID)
+    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
+    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
+    #jax.debug.print("Indeces: {}",indeces_to_cancel)
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*side, \
+                                jnp.ones((1,size),dtype=jnp.int32)*2, \
+                                bookside[indeces_to_cancel,1], \
+                                bookside[indeces_to_cancel,0], \
+                                bookside[indeces_to_cancel,3], \
+                                bookside[indeces_to_cancel,2], \
+                                bookside[indeces_to_cancel,4], \
+                                bookside[indeces_to_cancel,5]],axis=0).transpose()
+    return cancel_msgs
+
+def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
+    cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
+    #truearray=
+    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*side, \
+                                jnp.ones((1,size),dtype=jnp.int32)*2, \
+                                bookside[indeces_to_cancel,1], \
+                                bookside[indeces_to_cancel,0], \
+                                bookside[indeces_to_cancel,3], \
+                                bookside[indeces_to_cancel,2], \
+                                bookside[indeces_to_cancel,4], \
+                                bookside[indeces_to_cancel,5]],axis=0).transpose()
+    cancel_msgs=jnp.where(cancel_msgs==-1,0,cancel_msgs)
+    jax.lax.scan(remove_cnl_if_renewed,cancel_msgs,action_msgs)
+    return cancel_msgs
+
+
+def remove_cnl_if_renewed(cancel_msgs,action_msg):
+    jnp.where(cancel_msgs[:,3]==action_msg[3],)
+
+    return cancel_msgs
+
+   
 
 ########Type Functions#############
+
+def doNothing(msg,askside,bidside,trades):
+    return askside,bidside,trades
 
 def bid_lim(msg,askside,bidside,trades):
     #match with asks side
@@ -234,6 +302,12 @@ def get_L2_state(N,asks,bids):
     bid_quants=jnp.where(bid_quants<0,0,bid_quants)
     ask_quants=jnp.where(ask_quants<0,0,ask_quants)
     return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
+
+def get_best_bid_and_ask(asks,bids):
+    best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
+    best_bid=jnp.max(bids[:,0])
+    return best_ask,best_bid
+
 
 @partial(jax.jit,static_argnums=0)
 def init_orderside(nOrders=100):
