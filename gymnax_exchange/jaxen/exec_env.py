@@ -101,7 +101,6 @@ class ExecutionEnv(BaseLOBEnv):
         def get_prices(state,task):
             best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1])
             A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            #TODO ensure that tick size is respected 
             M = (best_bid + best_ask)//2//100*100 
             P = best_ask if task=='sell' else best_bid
             PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size
