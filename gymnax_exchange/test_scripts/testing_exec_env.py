@@ -24,20 +24,21 @@ chex.assert_gpu_available(backend=None)
 if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1]
-        print("AlphaTrade folder:",ATFolder)
+        
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
-
+    print("AlphaTrade folder:",ATFolder)
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env=ExecutionEnv(ATFolder)
+    env=ExecutionEnv(ATFolder,'buy')
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
+    print(state)
     print("State after reset: \n",state)
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
@@ -80,7 +81,7 @@ if __name__ == "__main__":
 
     ####### Testing the vmap abilities ########
     
-    enable_vmap=True 
+    enable_vmap=False 
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))

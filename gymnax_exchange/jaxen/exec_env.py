@@ -58,10 +58,6 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    #Note: book depth and nOrdersperside must be given at init as they define shapes of jax arrays,
-    #       only the self args are static, the param args are not static and so must be traceable.
-    #book_depth: int = 10
-    #nOrdersPerSide: int = 100
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     max_steps_in_episode: int = 100
     messages_per_step: int=1
@@ -97,6 +93,8 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
         sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         quants=action #from action space
+        
+        #Can only use these if statements because self is a static arg. 
         def get_prices(state,task):
             asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders,state.bid_raw_orders),[2],axis=1)
             A = bids[0,0] if task=='sell' else asks[0,0] # aggressive would be at bids
@@ -104,6 +102,7 @@ class ExecutionEnv(BaseLOBEnv):
             P = asks[0,0] if task=='sell' else bids[0,0] 
             PP= asks[1,0] if task=='sell' else bids[1,0] 
             return (A,M,P,PP)
+
         prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
@@ -114,16 +113,14 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Add to the top of the data messages 
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
-        #jax.debug.print("Step messages to process are: \n {}", total_messages)
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
 
         #Process messages of step (action+data) through the orderbook
-        ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
-
+        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],state.trades))
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        state = EnvState(jnp.squeeze(ordersides[0]),jnp.squeeze(ordersides[1]),ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)
@@ -150,7 +147,7 @@ class ExecutionEnv(BaseLOBEnv):
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         #Craft the first state
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],time,time,0,idx_data_window,0)
+        state = EnvState(jnp.resize(ordersides[0],(self.stepLines,self.nOrdersPerSide,6)),jnp.resize(ordersides[1],(self.stepLines,self.nOrdersPerSide,6)),ordersides[2],time,time,0,idx_data_window,0)
 
         return self.get_obs(state,params),state
 

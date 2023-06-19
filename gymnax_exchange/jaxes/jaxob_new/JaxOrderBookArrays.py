@@ -101,12 +101,35 @@ def cond_type_side(ordersides,data):
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),0
 
+@jax.jit
+def cond_type_side_save_states(ordersides,data):
+    askside,bidside,trades=ordersides
+    #jax.debug.breakpoint()
+    #jax.debug.print("Askside before is \n {}",askside)
+    msg={
+    'side':data[1],
+    'type':data[0],
+    'price':data[3],
+    'quantity':data[2],
+    'orderid':data[5],
+    'traderid':data[4],
+    'time':data[6],
+    'time_ns':data[7]}
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
+    #jax.debug.print("Askside after is \n {}",ask)
+    return (ask,bid,trade),(ask,bid,trade)
+
 vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
 
 
 def scan_through_entire_array(msg_array,ordersides):
     ordersides,_=jax.lax.scan(cond_type_side,ordersides,msg_array)
     return ordersides
+
+def scan_through_entire_array_save_states(msg_array,ordersides):
+    last,all=jax.lax.scan(cond_type_side_save_states,ordersides,msg_array)
+    return (all[0][-100:],all[1][-100:],last[2])
 
 vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
 
