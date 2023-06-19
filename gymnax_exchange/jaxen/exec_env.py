@@ -74,6 +74,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.n_fragment_max=2
+        self.n_ticks_in_book=20
         assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
@@ -96,16 +97,18 @@ class ExecutionEnv(BaseLOBEnv):
         quants=action #from action space
         
         #Can only use these if statements because self is a static arg.
-        # TODO: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
+        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         def get_prices(state,task):
-            asks, bids = jnp.split(job.get_L2_state(2,state.ask_raw_orders[-1],state.bid_raw_orders[-1]),[2],axis=1)
-            A = bids[0,0] if task=='sell' else asks[0,0] # aggressive would be at bids
-            M = (bids[0,0] + asks[0,0])//2 
-            P = asks[0,0] if task=='sell' else bids[0,0] 
-            PP= asks[1,0] if task=='sell' else bids[1,0] 
+            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1])
+            A = best_bid if task=='sell' else best_ask # aggressive would be at bids
+            #TODO ensure that tick size is respected 
+            M = (best_bid + best_ask)//2//100*100 
+            P = best_ask if task=='sell' else best_bid
+            PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size
             return (A,M,P,PP)
 
         prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
+        jax.debug.print("Prices: {}",prices)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay

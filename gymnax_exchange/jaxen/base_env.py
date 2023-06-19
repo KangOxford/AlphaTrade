@@ -60,6 +60,7 @@ class BaseLOBEnv(environment.Environment):
         self.n_actions=3
         self.customIDCounter=0
         self.trader_unique_id=-9000+1
+        self.tick_size=100
 
 
 

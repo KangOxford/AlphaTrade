@@ -303,6 +303,12 @@ def get_L2_state(N,asks,bids):
     ask_quants=jnp.where(ask_quants<0,0,ask_quants)
     return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
 
+def get_best_bid_and_ask(asks,bids):
+    best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
+    best_bid=jnp.max(bids[:,0])
+    return best_ask,best_bid
+
+
 @partial(jax.jit,static_argnums=0)
 def init_orderside(nOrders=100):
     return (jnp.ones((nOrders,6))*-1).astype("int32")
