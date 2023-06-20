@@ -73,6 +73,7 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
+        self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20
         assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
@@ -170,8 +171,10 @@ class ExecutionEnv(BaseLOBEnv):
         best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders,state.bid_raw_orders)
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         self.p_0 = M # initial price p_0 as a mid_price
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         # ========= used for self.get_obs(state,params) =============
+        
+        # FIXME State is different for reset(100,6) and step(100,100,6)!!!
     
         return self.get_obs(state,params),state
 
@@ -185,7 +188,10 @@ class ExecutionEnv(BaseLOBEnv):
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
-        # get_best_bids = lambda x: x[np.argmax(np.max(x, axis=0), axis=0), 0]
+        # b = np.max(state.bid_raw_orders[:, :, 0], axis=1)
+        # jax.debug.breakpoint()
+        # state.bid_raw_orders[:,:,0]
+        # -----------------------1--------------------------
         get_best_bids = lambda x: jnp.max(x[:, :, 0], axis=1)
         best_bids = get_best_bids(state.bid_raw_orders)
         get_best_asks = lambda x: jnp.min(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1).astype(jnp.int32)
@@ -199,8 +205,23 @@ class ExecutionEnv(BaseLOBEnv):
         # -----------------------4--------------------------
         initPirce = self.p_0
         priceDrift = mid_prices[-1] - self.p_0
-        # ========= self.get_obs(state,params) =============
+        # -----------------------5--------------------------
+        spread = best_asks -best_bids
+        # -----------------------6--------------------------
+        taskSize = self.task_size
+        # -----------------------7--------------------------
+        def getShallowImbalance(state):
+            getBestAsksQtys = lambda x: np.unique(x[:, np.argmin(np.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1), 1])
+            getBestBidsQtys = lambda x: np.unique(x[:, np.argmax(x[:, :, 0], axis=1), 1])
+            bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
+            imb = bestAsksQtys - bestBidsQtys
+            return imb
+        imbalance = getShallowImbalance(state)
+        # def getDeepImbalance(level):
+        #     getBidsSortedQty = lambda x: 
+        #     getAsksSortedQty = lambda x:
         jax.debug.breakpoint()
+        # ========= self.get_obs(state,params) =============
         return job.get_L2_state(self.book_depth,state.ask_raw_orders,state.bid_raw_orders)
 
     @property
