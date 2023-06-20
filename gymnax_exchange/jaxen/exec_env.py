@@ -151,7 +151,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ------ choice2 ----------
         new_execution=10
         # =========================
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         
         state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         jax.debug.print("Trades: \n {}",state.trades)
@@ -207,7 +207,7 @@ class ExecutionEnv(BaseLOBEnv):
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get_executed_piars for rewards ==========
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         return reward
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
