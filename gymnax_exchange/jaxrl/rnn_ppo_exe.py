@@ -18,6 +18,12 @@ from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction,
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
+#Code snippet to disable all jitting.
+from jax import config
+# config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", True)
+
+
 class ScannedRNN(nn.Module):
     @functools.partial(
         nn.scan,
@@ -396,5 +402,6 @@ if __name__ == "__main__":
     }
 
     rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(config))
-    out = train_jit(rng)
+    # train_jit = jax.jit(make_train(config))
+    train = make_train(config)
+    out = train(rng)

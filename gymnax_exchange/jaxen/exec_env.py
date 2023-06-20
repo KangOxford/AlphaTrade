@@ -19,8 +19,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+config.update("jax_disable_jit", False)
+# config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -97,8 +97,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
-        # jax.debug.breakpoint()
-        sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         quants=action #from action space
         
         # Can only use these if statements because self is a static arg.
@@ -106,21 +105,20 @@ class ExecutionEnv(BaseLOBEnv):
         def get_prices(state,task):
             best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
             A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            jax.debug.breakpoint()
             M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
             P = best_ask if task=='sell' else best_bid
             PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
             return (A,M,P,PP)
 
         prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
-        jax.debug.print("Prices: \n {}",prices)
+        # jax.debug.print("Prices: \n {}",prices)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
-
+        jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         # cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
@@ -128,7 +126,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Add to the top of the data messages 
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
-        jax.debug.print("Total messages: \n {}",total_messages)
+        # jax.debug.print("Total messages: \n {}",total_messages)
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
@@ -141,45 +139,25 @@ class ExecutionEnv(BaseLOBEnv):
         #ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades),self.stepLines)
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         #new_execution=get_exec_quant(ordersides[2],)
-        new_execution=10
+        
+        # =========ECEC QTY========
+        # ------ choice1 ----------
+        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+        sumExecutedQty = executed[:,1].sum()
+        new_execution = sumExecutedQty
+        # CAUTION not same executed with the one in the reward
+        # CAUTION the array executed here is calculated from the last state
+        # CAUTION while the array executedin reward is calc from the update state in this step
+        # ------ choice2 ----------
+        # new_execution=10
+        # =========================
+        # jax.debug.breakpoint()
+        
         state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-        jax.debug.print("Trades: \n {}",state.trades)
+        # jax.debug.print("Trades: \n {}",state.trades)
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
-        
-
-        """
-        # ========== get_executed_piars for rewards ==========
-        trades = state.trades
-        # jax.debug.breakpoint()
-        
-        
-        
-        executed = trades[trades[:,3]>0]
-        if len(executed) == 0: # all -1, no trades
-            vwap = 0.0
-        else: 
-            prices = executed[:,0]
-            qtys = executed[:,1]
-            vwap = (prices * qtys).sum()/ qtys.sum()
-            agent = executed[(-9000 <= executed[:,2]) & (executed[:,2] <=0)]
-        # ----------------------------------------------------
-        if vwap == 0.0 or len(agent) == 0:
-            reward = 0.0
-        else:
-            reward_lambda = 0.5
-            def getAdvantage():
-                qtys -= vwap
-                return 0.0
-            def getDrift():
-                
-                return 0.0
-            advantage, drift = getAdvantage(), getDrift()
-            reward = advantage + reward_lambda * drift
-        jax.debug.breakpoint()
-        # ========== get_executed_piars for rewards ==========
-        """
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
@@ -217,14 +195,20 @@ class ExecutionEnv(BaseLOBEnv):
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
-        reward_lambda = 0.5
-        def getAdvantage():
-            return 0.0
-        def getDrift():
-            return 0.0
-        advantage, drift = getAdvantage(), getDrift()
-        reward = advantage + reward_lambda * drift
-        return 0.0
+        # ========== get_executed_piars for rewards ==========
+        # TODO  no valid trades(all -1) case (might) hasn't be handled.
+        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
+        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        drift = agentTrades[:,1].sum() * (vwap - state.init_price)
+        rewardValue = advantage + Lambda * drift
+        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        # ========== get_executed_piars for rewards ==========
+        # jax.debug.breakpoint()
+        return reward
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
@@ -268,7 +252,9 @@ class ExecutionEnv(BaseLOBEnv):
         deepImbalance=askQuant-bidQuant
 
         # ========= self.get_obs(state,params) =============
-        return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
+        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
+        # jax.debug.breakpoint()
+        return obs
 
     @property
     def name(self) -> str:
@@ -290,7 +276,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        return spaces.Box(0,999999999,(608,),dtype=jnp.int32)
+        space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32)
+        return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
     #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
