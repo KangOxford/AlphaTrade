@@ -140,6 +140,9 @@ class ExecutionEnv(BaseLOBEnv):
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
         jax.debug.breakpoint()
+        
+        # FIXME State is different for reset(100,6) and step(100,100,6)!!!
+        
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
@@ -175,8 +178,11 @@ class ExecutionEnv(BaseLOBEnv):
         # ========= used for self.get_obs(state,params) =============
         
         # FIXME State is different for reset(100,6) and step(100,100,6)!!!
-    
-        return self.get_obs(state,params),state
+
+        # NOTE The line below is to make the program runnable, can be deleted.
+        return job.get_L2_state(self.book_depth,state.ask_raw_orders,state.bid_raw_orders),state
+        # return self.get_obs(state,params),state
+        # NOTE The line above is the original codes.
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
