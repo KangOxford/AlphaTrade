@@ -135,20 +135,6 @@ class ExecutionEnv(BaseLOBEnv):
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
         state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
         
-        # ========= self.get_obs(state,params) =============
-        # get_best_bids = lambda x: x[np.argmax(np.max(x, axis=0), axis=0), 0]
-        get_best_bids = lambda x: jnp.max(x[:, :, 0], axis=1)
-        best_bids = get_best_bids(state.bid_raw_orders)
-        get_best_asks = lambda x: jnp.min(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1).astype(jnp.int32)
-        best_asks = get_best_asks(state.ask_raw_orders)
-        # --------------------------------------------------
-        mid_prices = (best_asks + best_bids)//2//self.tick_size*self.tick_size 
-        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
-        # --------------------------------------------------
-        
-        # ========= self.get_obs(state,params) =============
-        jax.debug.breakpoint()
-        
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
@@ -180,9 +166,13 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(*ordersides,time,time,0,idx_data_window,0)
         # jax.debug.breakpoint()
         
-        # self.p_0
-        self.p_0 = 10000000
-
+        # ========= used for self.get_obs(state,params) =============
+        best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders,state.bid_raw_orders)
+        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        self.p_0 = M # initial price p_0 as a mid_price
+        jax.debug.breakpoint()
+        # ========= used for self.get_obs(state,params) =============
+    
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -194,6 +184,23 @@ class ExecutionEnv(BaseLOBEnv):
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
+        # ========= self.get_obs(state,params) =============
+        # get_best_bids = lambda x: x[np.argmax(np.max(x, axis=0), axis=0), 0]
+        get_best_bids = lambda x: jnp.max(x[:, :, 0], axis=1)
+        best_bids = get_best_bids(state.bid_raw_orders)
+        get_best_asks = lambda x: jnp.min(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1).astype(jnp.int32)
+        best_asks = get_best_asks(state.ask_raw_orders)
+        # -----------------------2--------------------------
+        mid_prices = (best_asks + best_bids)//2//self.tick_size*self.tick_size 
+        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        # -----------------------3--------------------------
+        timeOfDay = state.time
+        delataT = state.time - state.init_time
+        # -----------------------4--------------------------
+        initPirce = self.p_0
+        priceDrift = mid_prices[-1] - self.p_0
+        # ========= self.get_obs(state,params) =============
+        jax.debug.breakpoint()
         return job.get_L2_state(self.book_depth,state.ask_raw_orders,state.bid_raw_orders)
 
     @property
@@ -231,6 +238,11 @@ class ExecutionEnv(BaseLOBEnv):
             }
         )
 
+# ============================================================================= #
+# ============================================================================= #
+# =================================== MAIN ==================================== #
+# ============================================================================= #
+# ============================================================================= #
 
 if __name__ == "__main__":
     try:
