@@ -122,7 +122,8 @@ def make_train(config):
     def train(rng):
         # INIT NETWORK
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
-        print(env.action_space(env_params).shape[0])
+        print("env.action_space(env_params).shape[0]: {env.action_space(env_params).shape[0]}")
+        # jax.debug.breakpoint()
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -147,13 +148,15 @@ def make_train(config):
             params=network_params,
             tx=tx,
         )
-
+        
+        # jax.debug.breakpoint()
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
 
+        # jax.debug.breakpoint()
         # TRAIN LOOP
         def _update_step(runner_state, unused):
             # COLLECT TRAJECTORIES
@@ -163,8 +166,11 @@ def make_train(config):
 
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+                jax.debug.breakpoint()
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                action = pi.sample(seed=_rng)
+                action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
+                # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
+                jax.debug.breakpoint()
                 log_prob = pi.log_prob(action)
                 value, action, log_prob = (
                     value.squeeze(0),
@@ -396,6 +402,8 @@ if __name__ == "__main__":
     }
 
     rng = jax.random.PRNGKey(30)
+    # jax.debug.breakpoint()
     # train_jit = jax.jit(make_train(config))
     train = make_train(config)
+    # jax.debug.breakpoint()
     out = train(rng)
