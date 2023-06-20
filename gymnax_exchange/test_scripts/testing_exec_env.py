@@ -24,8 +24,7 @@ print("#"*20+"Output Log File"+"#"*20,file=open('output.txt','w'))
 
 if __name__ == "__main__":
     try:
-        ATFolder = sys.argv[1]
-        
+        ATFolder = sys.argv[1] 
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
