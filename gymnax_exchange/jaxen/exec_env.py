@@ -97,8 +97,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
-        # jax.debug.breakpoint()
-        sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         quants=action #from action space
         
         # Can only use these if statements because self is a static arg.
@@ -106,7 +105,6 @@ class ExecutionEnv(BaseLOBEnv):
         def get_prices(state,task):
             best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
             A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            jax.debug.breakpoint()
             M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
             P = best_ask if task=='sell' else best_bid
             PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
