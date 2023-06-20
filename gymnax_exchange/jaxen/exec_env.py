@@ -146,7 +146,7 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
