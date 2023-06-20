@@ -103,8 +103,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         def get_prices(state,task):
-            # best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
-            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders,state.bid_raw_orders)
+            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
             A = best_bid if task=='sell' else best_ask # aggressive would be at bids
             M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
             P = best_ask if task=='sell' else best_bid
@@ -182,7 +181,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return ((state.time-state.init_time)[0]>params.episode_time) | (state.quant_executed-state.task_to_execute<0)
+        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         reward_lambda = 0.5
