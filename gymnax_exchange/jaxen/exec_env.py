@@ -185,6 +185,13 @@ class ExecutionEnv(BaseLOBEnv):
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.quant_executed-state.task_to_execute<0)
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
+        reward_lambda = 0.5
+        def getAdvantage():
+            return 0.0
+        def getDrift():
+            return 0.0
+        advantage, drift = getAdvantage(), getDrift()
+        reward = advantage + reward_lambda * drift
         return 0.0
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
@@ -227,11 +234,8 @@ class ExecutionEnv(BaseLOBEnv):
         bidQuant=jax.lax.map(getQuants,state.bid_raw_orders[:,:,1])
         deepImbalance=askQuant-bidQuant
         shallowImbalance = getShallowImbalance(state)
+        # -----------------------8--------------------------
 
-
-        # def getDeepImbalance(level):
-        #     getBidsSortedQty = lambda x: 
-        #     getAsksSortedQty = lambda x:
         # ========= self.get_obs(state,params) =============
         return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
 
