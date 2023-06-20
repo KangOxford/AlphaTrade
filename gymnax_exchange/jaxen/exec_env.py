@@ -111,14 +111,14 @@ class ExecutionEnv(BaseLOBEnv):
             return (A,M,P,PP)
 
         prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
-        jax.debug.print("Prices: \n {}",prices)
+        # jax.debug.print("Prices: \n {}",prices)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
-
+        jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         # cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
@@ -126,7 +126,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Add to the top of the data messages 
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
-        jax.debug.print("Total messages: \n {}",total_messages)
+        # jax.debug.print("Total messages: \n {}",total_messages)
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
@@ -149,12 +149,12 @@ class ExecutionEnv(BaseLOBEnv):
         # CAUTION the array executed here is calculated from the last state
         # CAUTION while the array executedin reward is calc from the update state in this step
         # ------ choice2 ----------
-        new_execution=10
+        # new_execution=10
         # =========================
         # jax.debug.breakpoint()
         
         state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-        jax.debug.print("Trades: \n {}",state.trades)
+        # jax.debug.print("Trades: \n {}",state.trades)
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
@@ -252,7 +252,9 @@ class ExecutionEnv(BaseLOBEnv):
         deepImbalance=askQuant-bidQuant
 
         # ========= self.get_obs(state,params) =============
-        return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
+        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
+        # jax.debug.breakpoint()
+        return obs
 
     @property
     def name(self) -> str:
@@ -274,7 +276,8 @@ class ExecutionEnv(BaseLOBEnv):
     #TODO: define obs space (4xnDepth) array of quants&prices. Not that important right now. 
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        return NotImplementedError
+        space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32)
+        return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
     #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
