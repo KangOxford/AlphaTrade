@@ -272,8 +272,20 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> spaces.Box:
         """Action space of the environment."""
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+    
 
-    #TODO: define obs space (4xnDepth) array of quants&prices. Not that important right now. 
+    def action_space_disc(
+        self, params: Optional[EnvParams] = None
+    ) -> spaces.Dict:
+        """Action space of the environment."""
+        return {
+                "aggressive": spaces.Discrete(100),
+                "mid": spaces.Discrete(100),
+                "passive": spaces.Discrete(100),
+                "ppassive": spaces.Discrete(100),
+            }
+
+    #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32)

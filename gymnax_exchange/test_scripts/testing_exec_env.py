@@ -42,13 +42,13 @@ if __name__ == "__main__":
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
     print("State after reset: \n",state,file=open('output.txt','a'))
+    print("Observation after reset: \n",obs,file=open('output.txt','a'))
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print("State after 2nd reset: \n",state,file=open('output.txt','a'))
     print("Time for 2nd reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
@@ -69,6 +69,8 @@ if __name__ == "__main__":
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
     print("State after one step: \n",state,done,file=open('output.txt','a'))
+    print("Done after one step: ",done,file=open('output.txt','a'))
+    print("Observation after one step: \n",obs,file=open('output.txt','a'))
     print("Time for one step: \n",time.time()-start)
 
     test_action=env.action_space().sample(key_policy)
@@ -76,15 +78,21 @@ if __name__ == "__main__":
     
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    print("Time for 2nd step: \n",time.time()-start)
     with jnp.printoptions(threshold=jnp.inf):
         print("State after 2 steps: \n",state,done,file=open('output.txt','a'))
-    print("Time for 2nd step: \n",time.time()-start)
+        print("Done after 2 steps: ",done,file=open('output.txt','a'))
+        print("Observation after 2 steps: \n",obs,file=open('output.txt','a'))
+    
     
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    print("Time for 3rd step: \n",time.time()-start)
     with jnp.printoptions(threshold=jnp.inf):
         print("State after 3 steps: \n",state,done,file=open('output.txt','a'))
-    print("Time for 3rd step: \n",time.time()-start)
+        print("Done after 3 steps: ",done,file=open('output.txt','a'))
+        print("Observation after 3 steps: \n",obs,file=open('output.txt','a'))
+    
     #comment
 
 
