@@ -142,7 +142,7 @@ class ExecutionEnv(BaseLOBEnv):
         #new_execution=get_exec_quant(ordersides[2],)
         new_execution=10
         state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-        
+        jax.debug.print("Trades: {}",state.trades)
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
