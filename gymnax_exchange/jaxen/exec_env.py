@@ -144,6 +144,10 @@ class ExecutionEnv(BaseLOBEnv):
         # ------ choice1 ----------
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
         sumExecutedQty = executed[:,1].sum()
+        new_execution = sumExecutedQty
+        # CAUTION not same executed with the one in the reward
+        # CAUTION the array executed here is calculated from the last state
+        # CAUTION while the array executedin reward is calc from the update state in this step
         # ------ choice2 ----------
         new_execution=10
         # =========================
@@ -192,13 +196,11 @@ class ExecutionEnv(BaseLOBEnv):
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         # ========== get_executed_piars for rewards ==========
-        trades = state.trades # TODO no valid trades(all -1) case hasn't be handled.
-        mask1 = trades[:, 0] > 0
-        trades = jnp.where(mask1[:, jnp.newaxis], trades, 0)
-        sumExecutedQty = trades[:,1].sum()
-        vwap = (trades[:,0] * trades[:,1]).sum()/ trades[:1].sum()
-        mask2 = ((-9000 < trades[:, 2]) & (trades[:, 2] < 0)) | ((-9000 < trades[:, 3]) & (trades[:, 3] < 0))
-        agentTrades = jnp.where(mask2[:, jnp.newaxis], trades, 0)
+        # TODO  no valid trades(all -1) case (might) hasn't be handled.
+        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
+        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
         Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentTrades[:,1].sum() * (vwap - state.init_price)
