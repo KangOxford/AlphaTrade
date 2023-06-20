@@ -115,7 +115,8 @@ def make_train(config):
 
     def train(rng):
         # INIT NETWORK
-        network = ActorCriticRNN(env.action_space(env_params).n, config=config)
+        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
+        print(env.action_space(env_params).shape[0])
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
