@@ -231,14 +231,16 @@ class ExecutionEnv(BaseLOBEnv):
             jax.debug.breakpoint()
             imb = bestAsksQtys - bestBidsQtys
             return imb
+        getQuants=lambda x: jnp.sum(jnp.where(x==-1,0,x))
+
+        askQuant=jax.lax.map(getQuants,state.ask_raw_orders[:,:,1])
+        bidQuant=jax.lax.map(getQuants,state.bid_raw_orders[:,:,1])
+        deepImbalance=askQuant-bidQuant
         shallowImbalance = getShallowImbalance(state)
         # -----------------------8--------------------------
-        askQuant=jnp.sum(jnp.where(state.ask_raw_orders[-1][:,1]==-1,0,state.ask_raw_orders[-1][:,1]))
-        bidQuant=jnp.sum(jnp.where(state.bid_raw_orders[-1][:,1]==-1,0,state.bid_raw_orders[-1][:,1]))
-        deepImbalance=askQuant-bidQuant
-        jax.debug.breakpoint()
+
         # ========= self.get_obs(state,params) =============
-        return jax.tree_util.tree_flatten((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,initPrice,priceDrift,jnp.array(taskSize),jnp.array(executed_quant),imbalance))
+        return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
 
     @property
     def name(self) -> str:
