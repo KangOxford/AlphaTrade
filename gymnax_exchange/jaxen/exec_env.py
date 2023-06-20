@@ -235,7 +235,6 @@ class ExecutionEnv(BaseLOBEnv):
         # def getDeepImbalance(level):
         #     getBidsSortedQty = lambda x: 
         #     getAsksSortedQty = lambda x:
-        jax.debug.breakpoint()
         # ========= self.get_obs(state,params) =============
         return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
 
