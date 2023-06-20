@@ -220,14 +220,14 @@ class ExecutionEnv(BaseLOBEnv):
             getBestAsksQtys = lambda x: x[:, jnp.argmin(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], jnp.inf), axis=1), 1][:,0]
             getBestBidsQtys = lambda x: x[:, jnp.argmax(x[:, :, 0], axis=1), 1][:,0]
             # bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
-            # imb = bestAsksQtys - bestBidsQtys
             bestAsksQtys = getBestAsksQtys(state.ask_raw_orders)
             bestBidsQtys = getBestBidsQtys(state.bid_raw_orders)
+            jnp.save("/homes/80/kang/AlphaTrade/ask.npy",state.ask_raw_orders)
+            jnp.save("/homes/80/kang/AlphaTrade/bid.npy",state.bid_raw_orders)
             jax.debug.breakpoint()
             imb = bestAsksQtys - bestBidsQtys
             return imb
         imbalance = getShallowImbalance(state)
-        
         # def getDeepImbalance(level):
         #     getBidsSortedQty = lambda x: 
         #     getAsksSortedQty = lambda x:
