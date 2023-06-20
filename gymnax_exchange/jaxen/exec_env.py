@@ -79,6 +79,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20
+        # self.vwap = 0.0 # vwap at current step
         assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
@@ -146,7 +147,36 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
+        
+        # ========== get_executed_piars for rewards ==========
+        trades = state.trades
         # jax.debug.breakpoint()
+        
+        
+        
+        executed = trades[trades[:,3]>0]
+        if len(executed) == 0: # all -1, no trades
+            vwap = 0.0
+        else: 
+            prices = executed[:,0]
+            qtys = executed[:,1]
+            vwap = (prices * qtys).sum()/ qtys.sum()
+            agent = executed[(-9000 <= executed[:,2]) & (executed[:,2] <=0)]
+        # ----------------------------------------------------
+        if vwap == 0.0 or len(agent) == 0:
+            reward = 0.0
+        else:
+            reward_lambda = 0.5
+            def getAdvantage():
+                
+                return 0.0
+            def getDrift():
+                
+                return 0.0
+            advantage, drift = getAdvantage(), getDrift()
+            reward = advantage + reward_lambda * drift
+        jax.debug.breakpoint()
+        # ========== get_executed_piars for rewards ==========
         
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
@@ -228,13 +258,12 @@ class ExecutionEnv(BaseLOBEnv):
             bestBidsQtys = getBestBidsQtys(state.bid_raw_orders)
             imb = bestAsksQtys - bestBidsQtys
             return imb
+        shallowImbalance = getShallowImbalance(state)
+        # -----------------------8--------------------------
         getQuants=lambda x: jnp.sum(jnp.where(x==-1,0,x))
-
         askQuant=jax.lax.map(getQuants,state.ask_raw_orders[:,:,1])
         bidQuant=jax.lax.map(getQuants,state.bid_raw_orders[:,:,1])
         deepImbalance=askQuant-bidQuant
-        shallowImbalance = getShallowImbalance(state)
-        # -----------------------8--------------------------
 
         # ========= self.get_obs(state,params) =============
         return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
@@ -318,27 +347,13 @@ if __name__ == "__main__":
                  "quantities":jnp.array([10,10,10]),
                  "prices":jnp.array([2154900,2154000,2153900]),
                  }"""
-    
-    test_action=env.action_space().sample(key_policy)
-    print("Sampled actions are: ",test_action)
-
-    start=time.time()
-    obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    print("State after one step: \n",state,done)
-    print("Time for one step: \n",time.time()-start)
-
-    # test_action=env.action_space().sample(key_policy)
-    # print("Sampled actions are: \n",test_action)
-    
-    # start=time.time()
-    # obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    # print("State after 2 steps: \n",state,done)
-    # print("Time for 2nd step: \n",time.time()-start)
-    #comment
-
-
-    
-
+    for i in range(1,100):
+        test_action=env.action_space().sample(key_policy)
+        print("Sampled actions are: ",test_action)
+        start=time.time()
+        obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        print(f"State after {i} step: \n",state,done)
+        print(f"Time for {i} step: \n",time.time()-start)
 
     ####### Testing the vmap abilities ########
     
