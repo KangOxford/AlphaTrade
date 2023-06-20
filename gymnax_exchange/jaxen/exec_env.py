@@ -152,27 +152,27 @@ class ExecutionEnv(BaseLOBEnv):
         
         
         
-        executed = trades[trades[:,3]>0]
+        executed = trades[trades[:,0]>0]
         if len(executed) == 0: # all -1, no trades
             vwap = 0.0
         else: 
             prices = executed[:,0]
             qtys = executed[:,1]
             vwap = (prices * qtys).sum()/ qtys.sum()
-            agent = executed[(-9000 <= executed[:,2]) & (executed[:,2] <=0)]
+            agent = executed[((-9000 < executed[:,2]) & (executed[:,2] <0)) | ((-9000 < executed[:,3]) & (executed[:,3] <0))]
         # ----------------------------------------------------
-        if vwap == 0.0 or len(agent) == 0:
-            reward = 0.0
-        else:
-            reward_lambda = 0.5
-            def getAdvantage():
-                qtys -= vwap
-                return 0.0
-            def getDrift():
+        # if vwap == 0.0 or len(agent) == 0:
+        #     reward = 0.0
+        # else:
+        #     reward_lambda = 0.5
+        #     def getAdvantage():
+        #         qtys -= vwap
+        #         return 0.0
+        #     def getDrift():
                 
-                return 0.0
-            advantage, drift = getAdvantage(), getDrift()
-            reward = advantage + reward_lambda * drift
+        #         return 0.0
+        #     advantage, drift = getAdvantage(), getDrift()
+        #     reward = advantage + reward_lambda * drift
         jax.debug.breakpoint()
         # ========== get_executed_piars for rewards ==========
         
