@@ -19,8 +19,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+config.update("jax_disable_jit", False)
+# config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -147,34 +147,19 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Final state after step: \n {}", state)
         
         # ========== get_executed_piars for rewards ==========
-        trades = state.trades
-        # jax.debug.breakpoint()
-        
-        
-        
-        executed = trades[trades[:,0]>0]
-        if len(executed) == 0: # all -1, no trades
-            vwap = 0.0
-        else: 
-            prices = executed[:,0]
-            qtys = executed[:,1]
-            vwap = (prices * qtys).sum()/ qtys.sum()
-            agent = executed[((-9000 < executed[:,2]) & (executed[:,2] <0)) | ((-9000 < executed[:,3]) & (executed[:,3] <0))]
-        # ----------------------------------------------------
-        # if vwap == 0.0 or len(agent) == 0:
-        #     reward = 0.0
-        # else:
-        #     reward_lambda = 0.5
-        #     def getAdvantage():
-        #         qtys -= vwap
-        #         return 0.0
-        #     def getDrift():
-                
-        #         return 0.0
-        #     advantage, drift = getAdvantage(), getDrift()
-        #     reward = advantage + reward_lambda * drift
-        jax.debug.breakpoint()
+        trades = state.trades # TODO no valid trades(all -1) case hasn't be handled.
+        mask1 = trades[:, 0] > 0
+        trades = jnp.where(mask1[:, jnp.newaxis], trades, 0)
+        vwap = (trades[:,0] * trades[:,1]).sum()/ trades[:1].sum()
+        mask2 = ((-9000 < trades[:, 2]) & (trades[:, 2] < 0)) | ((-9000 < trades[:, 3]) & (trades[:, 3] < 0))
+        agentTrades = jnp.where(mask2[:, jnp.newaxis], trades, 0)
+        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        drift = agentTrades[:,1].sum() * (vwap - state.init_price)
+        rewardValue = advantage + Lambda * drift
+        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get_executed_piars for rewards ==========
+        jax.debug.breakpoint()
         
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
