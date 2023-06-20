@@ -52,6 +52,9 @@ class EnvState:
     customIDcounter: int
     window_index:int
     step_counter: int
+    init_price:int
+    task_to_execute:int
+    quant_executed:int
 
 
 @struct.dataclass
@@ -131,17 +134,20 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
-        # ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],state.trades),self.stepLines) # doesnt work: reset state and step state doesnt match
-        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades),self.stepLines)
-        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+
+        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
+        #ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades),self.stepLines)
+        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
+        #new_execution=get_exec_quant(ordersides[2],)
+        new_execution=10
+        state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
         # jax.debug.breakpoint()
         
-        # FIXME State is different for reset(100,6) and step(100,100,6)!!!
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
@@ -165,28 +171,18 @@ class ExecutionEnv(BaseLOBEnv):
         #Process the initial messages through the orderbook
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
-        #Craft the first state
-        state = EnvState(jnp.resize(ordersides[0],(self.stepLines,self.nOrdersPerSide,6)),jnp.resize(ordersides[1],(self.stepLines,self.nOrdersPerSide,6)),ordersides[2],time,time,0,idx_data_window,0)
-        state = EnvState(*ordersides,time,time,0,idx_data_window,0)
-        # jax.debug.breakpoint()
-        
-        # ========= used for self.get_obs(state,params) =============
-        best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders,state.bid_raw_orders)
+        # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+        best_ask, best_bid = job.get_best_bid_and_ask(ordersides[0],ordersides[1])
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
-        self.p_0 = M # initial price p_0 as a mid_price
-        # jax.debug.breakpoint()
-        # ========= used for self.get_obs(state,params) =============
-        
-        # FIXME State is different for reset(100,6) and step(100,100,6)!!!
 
-        # NOTE The line below is to make the program runnable, can be deleted.
-        return job.get_L2_state(self.book_depth,state.ask_raw_orders,state.bid_raw_orders),state
-        # return self.get_obs(state,params),state
-        # NOTE The line above is the original codes.
+        #Craft the first state
+        state = EnvState(jnp.resize(ordersides[0],(self.stepLines,self.nOrdersPerSide,6)),jnp.resize(ordersides[1],(self.stepLines,self.nOrdersPerSide,6)),ordersides[2],time,time,0,idx_data_window,0,M,self.task_size,0)
+        
+        return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return (state.time-state.init_time)[0]>params.episode_time
+        return ((state.time-state.init_time)[0]>params.episode_time) | (state.quant_executed-state.task_to_execute<0)
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         return 0.0
@@ -207,14 +203,15 @@ class ExecutionEnv(BaseLOBEnv):
         second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
         # -----------------------3--------------------------
         timeOfDay = state.time
-        delataT = state.time - state.init_time
+        deltaT = state.time - state.init_time
         # -----------------------4--------------------------
-        initPirce = self.p_0
-        priceDrift = mid_prices[-1] - self.p_0
+        initPrice = state.init_price
+        priceDrift = mid_prices[-1] - state.init_price
         # -----------------------5--------------------------
         spread = best_asks -best_bids
         # -----------------------6--------------------------
-        taskSize = self.task_size
+        taskSize = state.task_to_execute
+        executed_quant=state.quant_executed
         # -----------------------7--------------------------
         def getShallowImbalance(state):
             getBestAsksQtys = lambda x: x[:, jnp.argmin(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], jnp.inf), axis=1), 1][:,0]
@@ -227,13 +224,17 @@ class ExecutionEnv(BaseLOBEnv):
             jax.debug.breakpoint()
             imb = bestAsksQtys - bestBidsQtys
             return imb
-        imbalance = getShallowImbalance(state)
+        shallowImbalance = getShallowImbalance(state)
+
+        askQuant=jnp.sum(jnp.where(state.ask_raw_orders[-1][:,1]==-1,0,state.ask_raw_orders[-1][:,1]))
+        bidQuant=jnp.sum(jnp.where(state.bid_raw_orders[-1][:,1]==-1,0,state.bid_raw_orders[-1][:,1]))
+        deepImbalance=askQuant-bidQuant
         # def getDeepImbalance(level):
         #     getBidsSortedQty = lambda x: 
         #     getAsksSortedQty = lambda x:
         jax.debug.breakpoint()
         # ========= self.get_obs(state,params) =============
-        return job.get_L2_state(self.book_depth,state.ask_raw_orders,state.bid_raw_orders)
+        return jax.tree_util.tree_flatten((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,initPrice,priceDrift,jnp.array(taskSize),jnp.array(executed_quant),imbalance))
 
     @property
     def name(self) -> str:
