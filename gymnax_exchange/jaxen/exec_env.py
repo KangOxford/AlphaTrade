@@ -213,25 +213,31 @@ class ExecutionEnv(BaseLOBEnv):
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
         # -----------------------7--------------------------
-        """def getShallowImbalance(state):
-            getBestAsksQtys = lambda x: np.unique(x[:, np.argmin(np.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1), 1])
-            getBestBidsQtys = lambda x: np.unique(x[:, np.argmax(x[:, :, 0], axis=1), 1])
-            bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
+        def getShallowImbalance(state):
+            getBestAsksQtys = lambda x: x[:, jnp.argmin(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], jnp.inf), axis=1), 1][:,0]
+            getBestBidsQtys = lambda x: x[:, jnp.argmax(x[:, :, 0], axis=1), 1][:,0]
+            # bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
+            bestAsksQtys = getBestAsksQtys(state.ask_raw_orders)
+            bestBidsQtys = getBestBidsQtys(state.bid_raw_orders)
+            jnp.save("/homes/80/kang/AlphaTrade/ask.npy",state.ask_raw_orders)
+            jnp.save("/homes/80/kang/AlphaTrade/bid.npy",state.bid_raw_orders)
+            jax.debug.breakpoint()
             imb = bestAsksQtys - bestBidsQtys
             return imb
-        imbalance = getShallowImbalance(state)"""
         getQuants=lambda x: jnp.sum(jnp.where(x==-1,0,x))
-
 
         askQuant=jax.lax.map(getQuants,state.ask_raw_orders[:,:,1])
         bidQuant=jax.lax.map(getQuants,state.bid_raw_orders[:,:,1])
-        imbalance=askQuant-bidQuant
+        deepImbalance=askQuant-bidQuant
+        shallowImbalance = getShallowImbalance(state)
+
+
         # def getDeepImbalance(level):
         #     getBidsSortedQty = lambda x: 
         #     getAsksSortedQty = lambda x:
         jax.debug.breakpoint()
         # ========= self.get_obs(state,params) =============
-        return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),imbalance))
+        return jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
 
     @property
     def name(self) -> str:
