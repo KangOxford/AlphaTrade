@@ -216,13 +216,14 @@ class ExecutionEnv(BaseLOBEnv):
         # -----------------------6--------------------------
         taskSize = self.task_size
         # -----------------------7--------------------------
-        def getShallowImbalance(state):
-            getBestAsksQtys = lambda x: np.unique(x[:, np.argmin(np.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1), 1])
-            getBestBidsQtys = lambda x: np.unique(x[:, np.argmax(x[:, :, 0], axis=1), 1])
-            bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
-            imb = bestAsksQtys - bestBidsQtys
-            return imb
-        imbalance = getShallowImbalance(state)
+        # def getShallowImbalance(state):
+        #     getBestAsksQtys = lambda x: np.unique(x[:, np.argmin(np.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1), 1])
+        #     getBestBidsQtys = lambda x: np.unique(x[:, np.argmax(x[:, :, 0], axis=1), 1])
+        #     bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
+        #     imb = bestAsksQtys - bestBidsQtys
+        #     return imb
+        # imbalance = getShallowImbalance(state)
+        
         # def getDeepImbalance(level):
         #     getBidsSortedQty = lambda x: 
         #     getAsksSortedQty = lambda x:
