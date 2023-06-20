@@ -219,9 +219,6 @@ class ExecutionEnv(BaseLOBEnv):
             # bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
             bestAsksQtys = getBestAsksQtys(state.ask_raw_orders)
             bestBidsQtys = getBestBidsQtys(state.bid_raw_orders)
-            jnp.save("/homes/80/kang/AlphaTrade/ask.npy",state.ask_raw_orders)
-            jnp.save("/homes/80/kang/AlphaTrade/bid.npy",state.bid_raw_orders)
-            jax.debug.breakpoint()
             imb = bestAsksQtys - bestBidsQtys
             return imb
         getQuants=lambda x: jnp.sum(jnp.where(x==-1,0,x))
