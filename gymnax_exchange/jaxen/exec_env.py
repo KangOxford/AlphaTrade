@@ -148,6 +148,8 @@ class ExecutionEnv(BaseLOBEnv):
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
         
+
+        """
         # ========== get_executed_piars for rewards ==========
         trades = state.trades
         # jax.debug.breakpoint()
@@ -177,7 +179,7 @@ class ExecutionEnv(BaseLOBEnv):
             reward = advantage + reward_lambda * drift
         jax.debug.breakpoint()
         # ========== get_executed_piars for rewards ==========
-        
+        """
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
@@ -285,10 +287,10 @@ class ExecutionEnv(BaseLOBEnv):
         """Action space of the environment."""
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
 
-    #TODO: define obs space (4xnDepth) array of quants&prices. Not that important right now. 
+    #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        return NotImplementedError
+        return spaces.Box(0,999999999,(608,),dtype=jnp.int32)
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
     #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
