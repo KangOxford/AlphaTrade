@@ -11,17 +11,7 @@ import distrax
 import gymnax
 import functools
 from gymnax.environments import spaces
-import sys
-sys.path.append('../purejaxrl')
-sys.path.append('../AlphaTrade')
-from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-
-
-#Code snippet to disable all jitting.
-from jax import config
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+from wrappers import FlattenObservationWrapper, LogWrapper
 
 
 class ScannedRNN(nn.Module):
@@ -76,10 +66,10 @@ class ActorCriticRNN(nn.Module):
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
         )(actor_mean)
 
-        pi = distrax.Categorical(logits=actor_mean)
-        pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
-
         jax.debug.breakpoint()
+
+        pi = distrax.Categorical(logits=actor_mean)
+
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
@@ -108,15 +98,9 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"])
-    env_params = env.default_params
+    env, env_params = gymnax.make(config["ENV_NAME"])
+    env = FlattenObservationWrapper(env)
     env = LogWrapper(env)
-    env = ClipAction(env)
-    env = VecEnv(env)
-    if config["NORMALIZE_ENV"]:
-        env = NormalizeVecObservation(env)
-        env = NormalizeVecReward(env, config["GAMMA"])
-    jax.debug.breakpoint()
 
     def linear_schedule(count):
         frac = (
@@ -128,7 +112,7 @@ def make_train(config):
 
     def train(rng):
         # INIT NETWORK
-        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
+        network = ActorCriticRNN(env.action_space(env_params).n, config=config)
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -181,7 +165,6 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                jax.debug.breakpoint()
                 obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
@@ -376,16 +359,10 @@ def make_train(config):
 
 
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1] 
-    except:
-        ATFolder = '/homes/80/kang/AlphaTrade'
-    print("AlphaTrade folder:",ATFolder)
-
     config = {
         "LR": 2.5e-4,
         "NUM_ENVS": 4,
-        "NUM_STEPS": 2,
+        "NUM_STEPS": 128,
         "TOTAL_TIMESTEPS": 5e5,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
@@ -398,12 +375,8 @@ if __name__ == "__main__":
         "ENV_NAME": "CartPole-v1",
         "ANNEAL_LR": True,
         "DEBUG": True,
-        "NORMALIZE_ENV": True,
-        "ATFOLDER": ATFolder,
-        "TASKSIDE":'buy'
     }
 
     rng = jax.random.PRNGKey(30)
-    # train_jit = jax.jit(make_train(config))
-    train = make_train(config)
-    out = train(rng)
+    train_jit = jax.jit(make_train(config))
+    out = train_jit(rng)
