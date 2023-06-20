@@ -101,19 +101,20 @@ class ExecutionEnv(BaseLOBEnv):
         sides=jnp.zeros((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         quants=action #from action space
         
-        #Can only use these if statements because self is a static arg.
+        # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         def get_prices(state,task):
             # best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
             best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders,state.bid_raw_orders)
             A = best_bid if task=='sell' else best_ask # aggressive would be at bids
+            jax.debug.breakpoint()
             M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
             P = best_ask if task=='sell' else best_bid
             PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
             return (A,M,P,PP)
 
         prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
-        jax.debug.print("Prices: {}",prices)
+        jax.debug.print("Prices: \n {}",prices)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
@@ -143,7 +144,7 @@ class ExecutionEnv(BaseLOBEnv):
         #new_execution=get_exec_quant(ordersides[2],)
         new_execution=10
         state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-        jax.debug.print("Trades: {}",state.trades)
+        jax.debug.print("Trades: \n {}",state.trades)
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
@@ -168,7 +169,7 @@ class ExecutionEnv(BaseLOBEnv):
         else:
             reward_lambda = 0.5
             def getAdvantage():
-                
+                qtys -= vwap
                 return 0.0
             def getDrift():
                 
@@ -305,7 +306,7 @@ class ExecutionEnv(BaseLOBEnv):
 
 # ============================================================================= #
 # ============================================================================= #
-# =================================== MAIN ==================================== #
+# ================================== MAIN ===================================== #
 # ============================================================================= #
 # ============================================================================= #
 
@@ -315,8 +316,7 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
-
-
+        
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
@@ -330,49 +330,32 @@ if __name__ == "__main__":
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
-
-    # start=time.time()
-    # obs,state=env.reset(key_reset,env_params)
-    # print("State after reset: \n",state)
-    # print("Time for 2nd reset: \n",time.time()-start)
-    # print(env_params.message_data.shape, env_params.book_data.shape)
-
-    #print(job.get_data_messages(env_params.message_data,state.window_index,state.step_counter+1))
-
-    #print(env.action_space().sample(key_policy))
-    #print(env.state_space(env_params).sample(key_policy))
-
-
-    """test_action={"sides":jnp.array([1,1,1]),
-                 "quantities":jnp.array([10,10,10]),
-                 "prices":jnp.array([2154900,2154000,2153900]),
-                 }"""
     for i in range(1,100):
         test_action=env.action_space().sample(key_policy)
-        print("Sampled actions are: ",test_action)
+        print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-        print(f"State after {i} step: \n",state,done)
+        print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
 
-    ####### Testing the vmap abilities ########
+    # ####### Testing the vmap abilities ########
     
-    enable_vmap=False
-    if enable_vmap:
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+    # enable_vmap=False
+    # if enable_vmap:
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 10
-        vmap_keys = jax.random.split(rng, num_envs)
+    #     num_envs = 10
+    #     vmap_keys = jax.random.split(rng, num_envs)
 
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
+    #     test_actions=vmap_act_sample(vmap_keys)
+    #     print(test_actions)
 
-        start=time.time()
-        obs, state = vmap_reset(vmap_keys, env_params)
-        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     obs, state = vmap_reset(vmap_keys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
 
-        start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)

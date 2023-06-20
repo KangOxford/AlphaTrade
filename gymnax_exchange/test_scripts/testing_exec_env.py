@@ -79,6 +79,12 @@ if __name__ == "__main__":
     with jnp.printoptions(threshold=jnp.inf):
         print("State after 2 steps: \n",state,done,file=open('output.txt','a'))
     print("Time for 2nd step: \n",time.time()-start)
+    
+    start=time.time()
+    obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    with jnp.printoptions(threshold=jnp.inf):
+        print("State after 3 steps: \n",state,done,file=open('output.txt','a'))
+    print("Time for 3rd step: \n",time.time()-start)
     #comment
 
 
