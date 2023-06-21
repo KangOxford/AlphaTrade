@@ -206,6 +206,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ========== get_executed_piars for rewards ==========
         # TODO  no valid trades(all -1) case (might) hasn't be handled.
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+        assert  executed[:1].sum() > 0
         vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
