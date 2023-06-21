@@ -87,7 +87,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Default environment parameters
         return EnvParams(self.messages,self.books)
 
-
+    @chex.assert_max_traces(n=1)
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
@@ -123,7 +123,7 @@ class ExecutionEnv(BaseLOBEnv):
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
-        #Add to the top of the data messages 
+        #Add to the top of the data messages
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
         # jax.debug.print("Total messages: \n {}",total_messages)
