@@ -98,7 +98,13 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        quants=action #from action space
+        
+        
+        
+        quants=action.astype(jnp.int32) #from action space
+        # quants=action #from action space
+        # jax.debug.breakpoint()
+        
         
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
@@ -169,6 +175,7 @@ class ExecutionEnv(BaseLOBEnv):
         
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+
 
         #Get the init time based on the first message to be processed in the first step. 
         time=job.get_initial_time(params.message_data,idx_data_window) 
@@ -278,12 +285,12 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Dict:
         """Action space of the environment."""
-        return {
+        return spaces.Dict({
                 "aggressive": spaces.Discrete(100),
                 "mid": spaces.Discrete(100),
                 "passive": spaces.Discrete(100),
                 "ppassive": spaces.Discrete(100),
-            }
+            })
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
@@ -331,7 +338,16 @@ if __name__ == "__main__":
     print(env_params.message_data.shape, env_params.book_data.shape)
 
     for i in range(1,100):
+        #
         test_action=env.action_space().sample(key_policy)
+        # #
+        # ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
+        # import ** network
+        # hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+        # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
+        # #
+        
+        
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
@@ -340,22 +356,22 @@ if __name__ == "__main__":
 
     # ####### Testing the vmap abilities ########
     
-    # enable_vmap=False
-    # if enable_vmap:
-    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
-    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+    enable_vmap=True
+    if enable_vmap:
+        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-    #     num_envs = 10
-    #     vmap_keys = jax.random.split(rng, num_envs)
+        num_envs = 10
+        vmap_keys = jax.random.split(rng, num_envs)
 
-    #     test_actions=vmap_act_sample(vmap_keys)
-    #     print(test_actions)
+        test_actions=vmap_act_sample(vmap_keys)
+        print(test_actions)
 
-    #     start=time.time()
-    #     obs, state = vmap_reset(vmap_keys, env_params)
-    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+        start=time.time()
+        obs, state = vmap_reset(vmap_keys, env_params)
+        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
 
-    #     start=time.time()
-    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+        start=time.time()
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)

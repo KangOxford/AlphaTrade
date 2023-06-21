@@ -83,7 +83,7 @@ class ActorCriticRNN(nn.Module):
         pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         #New version ^^
 
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
@@ -115,11 +115,11 @@ def make_train(config):
     env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"])
     env_params = env.default_params
     env = LogWrapper(env)
-    env = ClipAction(env)
-    env = VecEnv(env)
-    if config["NORMALIZE_ENV"]:
-        env = NormalizeVecObservation(env)
-        env = NormalizeVecReward(env, config["GAMMA"])
+    # env = ClipAction(env)
+    # env = VecEnv(env)
+    # if config["NORMALIZE_ENV"]:
+    #     env = NormalizeVecObservation(env)
+    #     env = NormalizeVecReward(env, config["GAMMA"])
     
 
     def linear_schedule(count):
@@ -164,7 +164,7 @@ def make_train(config):
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
 
@@ -178,11 +178,11 @@ def make_train(config):
 
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
-                jax.debug.breakpoint()
+                # jax.debug.breakpoint()
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
                 # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
-                jax.debug.breakpoint()
+                # jax.debug.breakpoint()
                 log_prob = pi.log_prob(action)
                 value, action, log_prob = (
                     value.squeeze(0),
@@ -193,7 +193,7 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                jax.debug.breakpoint()
+                # jax.debug.breakpoint()
                 obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
@@ -417,7 +417,7 @@ if __name__ == "__main__":
 
     rng = jax.random.PRNGKey(30)
     # jax.debug.breakpoint()
-    # train_jit = jax.jit(make_train(config))
-    train = make_train(config)
+    train_jit = jax.jit(make_train(config))
+    # train = make_train(config)
     # jax.debug.breakpoint()
-    out = train(rng)
+    out = train_jit(rng)
