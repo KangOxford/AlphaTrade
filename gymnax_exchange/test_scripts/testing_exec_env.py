@@ -38,6 +38,9 @@ if __name__ == "__main__":
     env=ExecutionEnv(ATFolder,'buy')
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
+    
+    
+
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
@@ -46,7 +49,7 @@ if __name__ == "__main__":
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
-
+    
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
     print("Time for 2nd reset: \n",time.time()-start)

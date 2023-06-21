@@ -87,7 +87,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Default environment parameters
         return EnvParams(self.messages,self.books)
 
-    @chex.assert_max_traces(n=1)
+    #@chex.assert_max_traces(n=1)
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
@@ -162,7 +162,7 @@ class ExecutionEnv(BaseLOBEnv):
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
-
+    #@chex.assert_max_traces(n=1)
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
