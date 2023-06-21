@@ -76,8 +76,12 @@ class ActorCriticRNN(nn.Module):
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
         )(actor_mean)
 
-        pi = distrax.Categorical(logits=actor_mean)
+        #pi = distrax.Categorical(logits=actor_mean)
+        #Old version^^
+
+        actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
         pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
+        #New version ^^
 
         jax.debug.breakpoint()
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -116,7 +120,7 @@ def make_train(config):
     if config["NORMALIZE_ENV"]:
         env = NormalizeVecObservation(env)
         env = NormalizeVecReward(env, config["GAMMA"])
-    jax.debug.breakpoint()
+    
 
     def linear_schedule(count):
         frac = (
@@ -157,6 +161,7 @@ def make_train(config):
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
+        jax.debug.breakpoint()
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
 
@@ -398,7 +403,7 @@ if __name__ == "__main__":
         "ENV_NAME": "CartPole-v1",
         "ANNEAL_LR": True,
         "DEBUG": True,
-        "NORMALIZE_ENV": True,
+        "NORMALIZE_ENV": False,
         "ATFOLDER": ATFolder,
         "TASKSIDE":'buy'
     }
