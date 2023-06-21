@@ -117,7 +117,6 @@ def make_train(config):
     env_params = env.default_params
     env = LogWrapper(env)
     env = ClipAction(env)
-    env = VecEnv(env)
     if config["NORMALIZE_ENV"]:
         env = NormalizeVecObservation(env)
         env = NormalizeVecReward(env, config["GAMMA"])
