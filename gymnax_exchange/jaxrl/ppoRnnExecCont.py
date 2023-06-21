@@ -12,6 +12,7 @@ import gymnax
 import functools
 from gymnax.environments import spaces
 import sys
+import chex
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
