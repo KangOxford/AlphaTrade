@@ -124,7 +124,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Stack (Concatenate) the info into an array 
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
-        jax.debug.print(f"action shape: {action_msgs.shape}")
+        #jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
@@ -168,13 +168,13 @@ class ExecutionEnv(BaseLOBEnv):
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
-    #@chex.assert_max_traces(n=1)
+    #@chex.assert_max_traces(n=2)
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         
         """Reset environment state by sampling initial position in OB."""
-        jax.debug.breakpoint()
+        #jax.debug.breakpoint()
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
 

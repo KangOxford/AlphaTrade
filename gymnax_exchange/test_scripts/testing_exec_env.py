@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     env=ExecutionEnv(ATFolder,'buy')
     env_params=env.default_params
-    print(env_params.message_data.shape, env_params.book_data.shape)
+    print('Shape of message data and book data',env_params.message_data.shape, env_params.book_data.shape)
     
     
 
@@ -71,10 +71,11 @@ if __name__ == "__main__":
 
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    print("Time for one step: \n",time.time()-start)
     print("State after one step: \n",state,done,file=open('output.txt','a'))
     print("Done after one step: ",done,file=open('output.txt','a'))
     print("Observation after one step: \n",obs,file=open('output.txt','a'))
-    print("Time for one step: \n",time.time()-start)
+    
 
     test_action=env.action_space().sample(key_policy)
     print("Sampled actions are: \n",test_action)

@@ -116,8 +116,8 @@ def make_train(config):
     env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"])
     env_params = env.default_params
     env = LogWrapper(env)
-    # env = ClipAction(env)
-    # env = VecEnv(env)
+    
+    #FIXME : Uncomment normalisation.
     # if config["NORMALIZE_ENV"]:
     #     env = NormalizeVecObservation(env)
     #     env = NormalizeVecReward(env, config["GAMMA"])

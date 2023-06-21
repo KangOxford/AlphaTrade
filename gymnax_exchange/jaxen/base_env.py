@@ -66,7 +66,6 @@ class BaseLOBEnv(environment.Environment):
 
         # Load the image MNIST data at environment init
         def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
-            print("======  start initializing ======")
             def preProcessingData_csv2pkl():
                 return 0
             def load_files():
@@ -185,7 +184,6 @@ class BaseLOBEnv(environment.Environment):
                         new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            print("====== finish initializing ======")
             return Cubes_withOB
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
