@@ -120,7 +120,7 @@ class ExecutionEnv(BaseLOBEnv):
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
-        # cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
+        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
         #Add to the top of the data messages 
