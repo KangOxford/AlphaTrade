@@ -174,6 +174,7 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState]:
         
         """Reset environment state by sampling initial position in OB."""
+        jax.debug.breakpoint()
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
 
