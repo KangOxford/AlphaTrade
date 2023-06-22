@@ -190,7 +190,7 @@ def make_train(config):
 
                 if config.get("DEBUG"):
                     jax.debug.print("About to take step")
-                    jax.debug.breakpoint()
+                    #jax.debug.breakpoint()
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
@@ -202,7 +202,8 @@ def make_train(config):
                 )
                 runner_state = (train_state, env_state, obsv, done, hstate, rng)
                 if config.get("DEBUG"):
-                    jax.debug.breakpoint()
+                    pass
+                    #jax.debug.breakpoint()
 
                 return runner_state, transition
 
@@ -401,11 +402,11 @@ if __name__ == "__main__":
 
     config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 10,
-        "NUM_STEPS": 5,
-        "TOTAL_TIMESTEPS": 5e4,
+        "NUM_ENVS": 2,
+        "NUM_STEPS": 2,
+        "TOTAL_TIMESTEPS": 32,
         "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 4,
+        "NUM_MINIBATCHES": 1,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
@@ -423,6 +424,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(30)
     # jax.debug.breakpoint()
     train_jit = jax.jit(make_train(config))
-    # train = make_train(config)
+    train = make_train(config)
     # jax.debug.breakpoint()
     out = train_jit(rng)
+    #out = train(rng)

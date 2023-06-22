@@ -100,7 +100,6 @@ if __name__ == "__main__":
         print("Observation after 3 steps: \n",obs,file=open('output.txt','a'))
     
 
-    jax.profiler.start_trace("../tensorboard/")
     start_loop=time.time()
     for i in range(10):
         start=time.time()
@@ -111,7 +110,6 @@ if __name__ == "__main__":
         print("Time for step {} in loop is : {}",i,time.time()-start)
         obs.block_until_ready()
     print("Time for whole loop: {}", time.time()-start_loop)
-    jax.profiler.stop_trace()
 
 
     #comment
@@ -146,6 +144,7 @@ if __name__ == "__main__":
             vmap_keys = jax.random.split(vmap_keys[0], num_envs)
             print(vmap_keys[0])
             test_actions=vmap_act_sample(vmap_keys)
+            print(test_actions[0])
             n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
             print("Time for step {} in loop is : {}",i,time.time()-start)
         print("Time for whole loop: {}", time.time()-start_loop)

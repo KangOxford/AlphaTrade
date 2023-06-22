@@ -91,6 +91,7 @@ class ExecutionEnv(BaseLOBEnv):
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        print("Step being compiled")
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
@@ -172,7 +173,7 @@ class ExecutionEnv(BaseLOBEnv):
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
-        
+        print("Reset being compiled")
         """Reset environment state by sampling initial position in OB."""
         #jax.debug.breakpoint()
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
@@ -200,9 +201,11 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
+        print("Terminal being compiled")
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
+        print("Reward being compiled")
         # ========== get_executed_piars for rewards ==========
         # TODO  no valid trades(all -1) case (might) hasn't be handled.
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
@@ -219,6 +222,7 @@ class ExecutionEnv(BaseLOBEnv):
         return reward
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+        print("Obs being compiled")
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
         # b = np.max(state.bid_raw_orders[:, :, 0], axis=1)

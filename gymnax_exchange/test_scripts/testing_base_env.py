@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # enable_vmap=True 
     # enable_2nd_singles=True
-    enable_vmap=False 
+    enable_vmap=True 
     enable_2nd_singles=False
 
     rng = jax.random.PRNGKey(234)
