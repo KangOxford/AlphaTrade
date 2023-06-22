@@ -29,7 +29,7 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
-    enable_vmap=False 
+    enable_vmap=True 
 
 
     rng = jax.random.PRNGKey(0)
@@ -88,6 +88,8 @@ if __name__ == "__main__":
         print("Done after 2 steps: ",done,file=open('output.txt','a'))
         print("Observation after 2 steps: \n",obs,file=open('output.txt','a'))
     
+    test_action=env.action_space().sample(key_policy)
+    print("Sampled actions are: \n",test_action)
     
     start=time.time()
     obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
@@ -97,6 +99,21 @@ if __name__ == "__main__":
         print("Done after 3 steps: ",done,file=open('output.txt','a'))
         print("Observation after 3 steps: \n",obs,file=open('output.txt','a'))
     
+
+    jax.profiler.start_trace("../tensorboard/")
+    start_loop=time.time()
+    for i in range(10):
+        start=time.time()
+        rng,_rng=jax.random.split(rng)
+        print(_rng)
+        test_action=env.action_space().sample(_rng)
+        obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        print("Time for step {} in loop is : {}",i,time.time()-start)
+        obs.block_until_ready()
+    print("Time for whole loop: {}", time.time()-start_loop)
+    jax.profiler.stop_trace()
+
+
     #comment
 
 
@@ -105,11 +122,11 @@ if __name__ == "__main__":
     
 
     if enable_vmap:
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+        vmap_reset = jax.jit(jax.vmap(env.reset, in_axes=(0, None)))
+        vmap_step = jax.jit(jax.vmap(env.step, in_axes=(0, 0, 0, None)))
+        vmap_act_sample=jax.jit(jax.vmap(env.action_space().sample, in_axes=(0)))
 
-        num_envs = 1000
+        num_envs = 2000
         vmap_keys = jax.random.split(rng, num_envs)
 
         test_actions=vmap_act_sample(vmap_keys)
@@ -122,3 +139,13 @@ if __name__ == "__main__":
         start=time.time()
         n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+
+        start_loop=time.time()
+        for i in range(10):
+            start=time.time()
+            vmap_keys = jax.random.split(vmap_keys[0], num_envs)
+            print(vmap_keys[0])
+            test_actions=vmap_act_sample(vmap_keys)
+            n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+            print("Time for step {} in loop is : {}",i,time.time()-start)
+        print("Time for whole loop: {}", time.time()-start_loop)

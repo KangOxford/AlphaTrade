@@ -116,11 +116,12 @@ def make_train(config):
     env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"])
     env_params = env.default_params
     env = LogWrapper(env)
+    env=ClipAction(env,low=0, high=100)
     
     #FIXME : Uncomment normalisation.
-    # if config["NORMALIZE_ENV"]:
-    #     env = NormalizeVecObservation(env)
-    #     env = NormalizeVecReward(env, config["GAMMA"])
+    if config["NORMALIZE_ENV"]:
+         env = NormalizeVecObservation(env)
+         env = NormalizeVecReward(env, config["GAMMA"])
     
 
     def linear_schedule(count):
@@ -134,8 +135,6 @@ def make_train(config):
     def train(rng):
         # INIT NETWORK
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
-        print("env.action_space(env_params).shape[0]: {env.action_space(env_params).shape[0]}")
-        # jax.debug.breakpoint()
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -165,11 +164,9 @@ def make_train(config):
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-        # jax.debug.breakpoint()
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
 
-        # jax.debug.breakpoint()
         # TRAIN LOOP
         def _update_step(runner_state, unused):
             # COLLECT TRAJECTORIES
@@ -191,10 +188,12 @@ def make_train(config):
                     log_prob.squeeze(0),
                 )
 
+                if config.get("DEBUG"):
+                    jax.debug.print("About to take step")
+                    jax.debug.breakpoint()
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                # jax.debug.breakpoint()
                 obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
@@ -202,12 +201,17 @@ def make_train(config):
                     done, action, value, reward, log_prob, last_obs, info
                 )
                 runner_state = (train_state, env_state, obsv, done, hstate, rng)
+                if config.get("DEBUG"):
+                    jax.debug.breakpoint()
+
                 return runner_state, transition
 
             initial_hstate = runner_state[-2]
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state, None, config["NUM_STEPS"]
             )
+
+            jax.debug.print("Ran {} steps",config["NUM_STEPS"])
 
             # CALCULATE ADVANTAGE
             train_state, env_state, last_obs, last_done, hstate, rng = runner_state
@@ -397,9 +401,9 @@ if __name__ == "__main__":
 
     config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 4,
-        "NUM_STEPS": 2,
-        "TOTAL_TIMESTEPS": 5e5,
+        "NUM_ENVS": 10,
+        "NUM_STEPS": 5,
+        "TOTAL_TIMESTEPS": 5e4,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
