@@ -113,7 +113,7 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["DEBUG"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -419,6 +419,11 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(30)
     # jax.debug.breakpoint()
     train_jit = jax.jit(make_train(config))
+
+    if config["DEBUG"]:
+        #chexify the function
+        #NOTE: use chex.asserts inside the code, under a if DEBUG. 
+
     # train = make_train(config)
     # jax.debug.breakpoint()
     out = train_jit(rng)
