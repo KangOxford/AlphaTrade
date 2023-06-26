@@ -22,7 +22,7 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 #Code snippet to disable all jitting.
 from jax import config
 # config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+#config.update("jax_disable_jit", True)
 
 
 class ScannedRNN(nn.Module):
