@@ -4,6 +4,8 @@ import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
 sys.path.append('/homes/80/kang/AlphaTrade')
+sys.path.append('../purejaxrl')
+
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
@@ -39,8 +41,11 @@ if __name__ == "__main__":
     env_params=env.default_params
     print('Shape of message data and book data',env_params.message_data.shape, env_params.book_data.shape)
     
-    
+    from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 
+    env = LogWrapper(env)
+    env = NormalizeVecObservation(env)
+    env = NormalizeVecReward(env, 0.99)
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
@@ -105,7 +110,7 @@ if __name__ == "__main__":
         start=time.time()
         rng,_rng=jax.random.split(rng)
         print(_rng)
-        test_action=env.action_space().sample(_rng)
+        test_action=env.action_space().sample(_rng).astype(jnp.float32)
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         print("Time for step {} in loop is : {}",i,time.time()-start)
         obs.block_until_ready()

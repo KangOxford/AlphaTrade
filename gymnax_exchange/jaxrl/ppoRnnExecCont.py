@@ -19,6 +19,10 @@ from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction,
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
+import logging
+logging.getLogger("jax").setLevel(logging.INFO)
+
+
 #Code snippet to disable all jitting.
 from jax import config
 # config.update("jax_disable_jit", False)
@@ -178,7 +182,10 @@ def make_train(config):
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 # jax.debug.breakpoint()
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
+                action = pi.sample(seed=_rng)
+                jax.debug.print('Action: {}',action)
+                action=jnp.zeros((1,2,4,),dtype=jnp.int32)
+                jax.debug.print('Action: {}',action)
                 # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
                 # jax.debug.breakpoint()
                 log_prob = pi.log_prob(action)
@@ -187,6 +194,7 @@ def make_train(config):
                     action.squeeze(0),
                     log_prob.squeeze(0),
                 )
+                jax.debug.print('Action: {}',action)
 
                 if config.get("DEBUG"):
                     jax.debug.print("About to take step")
@@ -404,7 +412,7 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "NUM_ENVS": 2,
         "NUM_STEPS": 2,
-        "TOTAL_TIMESTEPS": 32,
+        "TOTAL_TIMESTEPS": 4,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 1,
         "GAMMA": 0.99,
@@ -428,3 +436,4 @@ if __name__ == "__main__":
     # jax.debug.breakpoint()
     out = train_jit(rng)
     #out = train(rng)
+    jax.debug.breakpoint()

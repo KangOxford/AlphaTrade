@@ -92,6 +92,7 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         print("Step being compiled")
+        print(key.shape,state.ask_raw_orders.shape,state.bid_raw_orders.shape,state.customIDcounter,state.init_price,state.init_time,state.quant_executed,state.step_counter,state.task_to_execute,state.time,state.trades.shape,state.window_index)
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
@@ -174,6 +175,8 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         print("Reset being compiled")
+        print(key.shape,params.message_data.shape,params.book_data.shape,params.episode_time,params.max_steps_in_episode,params.messages_per_step,params.time_per_step,params.time_delay_obs_act)
+
         """Reset environment state by sampling initial position in OB."""
         #jax.debug.breakpoint()
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())

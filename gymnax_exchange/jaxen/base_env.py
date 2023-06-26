@@ -52,8 +52,6 @@ class BaseLOBEnv(environment.Environment):
         self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
-
-
         self.nOrdersPerSide=100
         self.nTradesLogged=100
         self.book_depth=10
