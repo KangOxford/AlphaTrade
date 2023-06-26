@@ -18,6 +18,9 @@ sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
+from flax import struct
+
+
 
 import logging
 logging.getLogger("jax").setLevel(logging.INFO)
@@ -25,8 +28,8 @@ logging.getLogger("jax").setLevel(logging.INFO)
 
 #Code snippet to disable all jitting.
 from jax import config
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+#config.update("jax_disable_jit", False)
+#config.update("jax_disable_jit", True)
 
 
 class ScannedRNN(nn.Module):
@@ -98,7 +101,6 @@ class ActorCriticRNN(nn.Module):
         )
 
         return hidden, pi, jnp.squeeze(critic, axis=-1)
-
 
 class Transition(NamedTuple):
     done: jnp.ndarray
@@ -412,7 +414,7 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "NUM_ENVS": 2,
         "NUM_STEPS": 2,
-        "TOTAL_TIMESTEPS": 4,
+        "TOTAL_TIMESTEPS": 16,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 1,
         "GAMMA": 0.99,

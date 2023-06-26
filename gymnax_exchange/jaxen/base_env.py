@@ -40,7 +40,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
-    def __init__(self,alphatradePath):
+    def __init__(self,alphatradePath : str):
         super().__init__()
 
        
@@ -193,6 +193,13 @@ class BaseLOBEnv(environment.Environment):
         self.books=jnp.array(bks)       #2D Array: (n_windows x [4*n_depth])
 
         self.n_windows=len(self.books)
+
+        from collections.abc import Hashable
+        print('Hashable tests: \n')
+        print(isinstance(self.books,Hashable))
+        print(isinstance(self.n_actions,Hashable))
+        print(isinstance(self,Hashable))
+        print(self.__hash__())
 
 
 

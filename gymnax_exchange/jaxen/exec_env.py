@@ -61,10 +61,10 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    max_steps_in_episode: int = 100
-    messages_per_step: int=1
-    time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
+    episode_time: jnp.int32 =  1800 #60seconds times 30 minutes = 1800seconds
+    max_steps_in_episode: jnp.int32 = 100
+    messages_per_step: jnp.int32=1
+    time_per_step: jnp.int32= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
 
@@ -92,6 +92,10 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         print("Step being compiled")
+        print('Self:', self.__hash__(),'\n Key:', jnp.shape(key), jnp.dtype(key),\
+              '\n State:', jax.tree_map(jnp.shape,state), jax.tree_map(jnp.dtype,state),\
+              '\n Action:', jax.tree_map(jnp.shape,action), jax.tree_map(jnp.dtype,action),\
+                '\n Params:', jax.tree_map(jnp.shape,params))
         print(key.shape,state.ask_raw_orders.shape,state.bid_raw_orders.shape,state.customIDcounter,state.init_price,state.init_time,state.quant_executed,state.step_counter,state.task_to_execute,state.time,state.trades.shape,state.window_index)
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
@@ -175,6 +179,7 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         print("Reset being compiled")
+        print(self.__hash__())
         print(key.shape,params.message_data.shape,params.book_data.shape,params.episode_time,params.max_steps_in_episode,params.messages_per_step,params.time_per_step,params.time_delay_obs_act)
 
         """Reset environment state by sampling initial position in OB."""
