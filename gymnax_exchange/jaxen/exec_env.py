@@ -114,11 +114,19 @@ class ExecutionEnv(BaseLOBEnv):
         # --------------- info for deciding prices ---------------
     
         # =============== Limit/Market Order (prices/qtys) ===============
-        # jax.debug.print(f"params.episode_time:{params.episode_time}")
         # jax.debug.print(f"(state.time-state.init_time)[0]:{(state.time-state.init_time)[0]}")
-        remainingTime = (params.episode_time - (state.time-state.init_time)[0])
         # jax.debug.print("remainingtime:",remainingTime)
-        marketOrderTime = 60 # in seconds, means the last minute was left for market order
+        # marketOrderTime = 60 # in seconds, means the last minute was left for market order
+        # marketOrderTime = jnp.array([60, 60, 60, 60]) # in seconds, means the last minute was left for market order
+        remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+        ifMarketOrder = (remainingTime <= marketOrderTime)
+        # jax.debug.print(f"params.episode_time:{params.episode_time[0]}")
+        # jax.debug.breakpoint()
+        # print(f">>> ifMarketOrder: {ifMarketOrder.item()}")
+        # print(f">>> ifMarketOrder: {jax.device_get(ifMarketOrder)}")
+
+        '''
         def market_order_logic(state: EnvState, A: float):
             quants = state.task_to_execute - state.quant_executed
             prices = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
@@ -129,12 +137,15 @@ class ExecutionEnv(BaseLOBEnv):
             quants = action.astype(jnp.int32) # from action space
             prices = jnp.asarray((A, M, P, PP), jnp.int32)
             return quants, prices
-        quants, prices = lax.cond(remainingTime <= marketOrderTime,
+        # quants, prices = lax.cond(remainingTime <= marketOrderTime,
+        # quants, prices = lax.cond(jnp.all(remainingTime <= marketOrderTime),
+        quants, prices = lax.cond(ifMarketOrder,
                                 lambda _: market_order_logic(state, A),
                                 lambda _: normal_order_logic(state, action, A, M, P, PP),
                                 operand=None)
-        # quants = action.astype(jnp.int32) # from action space
-        # prices = jnp.asarray((A, M, P, PP), jnp.int32)
+        '''
+        quants = action.astype(jnp.int32) # from action space
+        prices = jnp.asarray((A, M, P, PP), jnp.int32)
         # =============== Limit/Market Order (prices/qtys) ===============
 
 
