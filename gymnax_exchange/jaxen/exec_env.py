@@ -103,7 +103,7 @@ class ExecutionEnv(BaseLOBEnv):
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
-        # --------------- info for diciding prices ---------------
+        # --------------- info for deciding prices ---------------
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
@@ -111,10 +111,13 @@ class ExecutionEnv(BaseLOBEnv):
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
         PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
-        # --------------- info for diciding prices ---------------
+        # --------------- info for deciding prices ---------------
     
         # =============== Limit/Market Order (prices/qtys) ===============
-        remainingTime = params.episode_time - (state.time-state.init_time)[0]
+        # jax.debug.print(f"params.episode_time:{params.episode_time}")
+        # jax.debug.print(f"(state.time-state.init_time)[0]:{(state.time-state.init_time)[0]}")
+        remainingTime = (params.episode_time - (state.time-state.init_time)[0])[0]
+        # jax.debug.print("remainingtime:",remainingTime)
         marketOrderTime = 60 # in seconds, means the last minute was left for market order
         def market_order_logic(state: EnvState, A: float):
             quants = state.task_to_execute - state.quant_executed
@@ -128,6 +131,8 @@ class ExecutionEnv(BaseLOBEnv):
                                 lambda _: market_order_logic(state, A),
                                 lambda _: normal_order_logic(state, action, A, M, P, PP),
                                 operand=None)
+        # quants = action.astype(jnp.int32) # from action space
+        # prices = jnp.asarray((A, M, P, PP), jnp.int32)
         # =============== Limit/Market Order (prices/qtys) ===============
 
 
