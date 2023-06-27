@@ -116,12 +116,14 @@ class ExecutionEnv(BaseLOBEnv):
         # =============== Limit/Market Order (prices/qtys) ===============
         # jax.debug.print(f"params.episode_time:{params.episode_time}")
         # jax.debug.print(f"(state.time-state.init_time)[0]:{(state.time-state.init_time)[0]}")
-        remainingTime = (params.episode_time - (state.time-state.init_time)[0])[0]
+        remainingTime = (params.episode_time - (state.time-state.init_time)[0])
         # jax.debug.print("remainingtime:",remainingTime)
         marketOrderTime = 60 # in seconds, means the last minute was left for market order
         def market_order_logic(state: EnvState, A: float):
             quants = state.task_to_execute - state.quant_executed
             prices = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            # (self.tick_size * 100) : one dollar
+            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
             return quants, prices
         def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
             quants = action.astype(jnp.int32) # from action space
