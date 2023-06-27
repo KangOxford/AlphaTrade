@@ -203,8 +203,8 @@ class ExecutionEnv(BaseLOBEnv):
         """Check whether state is terminal."""
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
+    
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
-        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
         def compute_reward(self, state: EnvState, executed: jnp.ndarray) -> float:
             vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
@@ -215,11 +215,10 @@ class ExecutionEnv(BaseLOBEnv):
             rewardValue = advantage + Lambda * drift
             reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
             return reward
-        reward = lax.cond(jnp.all(executed == 0), 
-                        lambda _: 0.0, 
-                        lambda _: self.compute_reward(state, executed), 
+        reward = lax.cond(jnp.any((state.trades[:, 0] > 0)[:, jnp.newaxis]),
+                        lambda _: self.compute_reward(state, state.trades),
+                        lambda _: 0.0,
                         operand=None)
-
         return reward
 
 
