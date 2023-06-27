@@ -72,7 +72,7 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,debug):
+    def __init__(self,alphatradePath,task,debug=False):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
@@ -177,8 +177,6 @@ class ExecutionEnv(BaseLOBEnv):
         """Reset environment state by sampling initial position in OB."""
         #jax.debug.breakpoint()
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-
-
         #Get the init time based on the first message to be processed in the first step. 
         time=job.get_initial_time(params.message_data,idx_data_window) 
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
@@ -205,7 +203,7 @@ class ExecutionEnv(BaseLOBEnv):
     
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
-        def compute_reward(self, state: EnvState, executed: jnp.ndarray) -> float:
+        def compute_reward(state: EnvState, executed: jnp.ndarray) -> float:
             vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
             agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
@@ -216,7 +214,7 @@ class ExecutionEnv(BaseLOBEnv):
             reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
             return reward
         reward = lax.cond(jnp.any((state.trades[:, 0] > 0)[:, jnp.newaxis]),
-                        lambda _: self.compute_reward(state, state.trades),
+                        lambda _: compute_reward(state, state.trades),
                         lambda _: 0.0,
                         operand=None)
         return reward
@@ -286,16 +284,16 @@ class ExecutionEnv(BaseLOBEnv):
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
 
-    def action_space_disc(
-        self, params: Optional[EnvParams] = None
-    ) -> spaces.Dict:
-        """Action space of the environment."""
-        return spaces.Dict({
-                "aggressive": spaces.Discrete(100),
-                "mid": spaces.Discrete(100),
-                "passive": spaces.Discrete(100),
-                "ppassive": spaces.Discrete(100),
-            })
+    # def action_space_disc(
+    #     self, params: Optional[EnvParams] = None
+    # ) -> spaces.Dict:
+    #     """Action space of the environment."""
+    #     return spaces.Dict({
+    #             "aggressive": spaces.Discrete(100),
+    #             "mid": spaces.Discrete(100),
+    #             "passive": spaces.Discrete(100),
+    #             "ppassive": spaces.Discrete(100),
+    #         })
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
