@@ -99,25 +99,33 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        
-        
-        
-        quants=action.astype(jnp.int32) #from action space
-        # quants=action #from action space
-        # jax.debug.breakpoint()
-        
-        
+        # --------------- info for diciding prices ---------------
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
-        def get_prices(state,task):
-            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
-            A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
-            P = best_ask if task=='sell' else best_bid
-            PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
-            return (A,M,P,PP)
-
-        prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
+        best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
+        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
+        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        P = best_ask if self.task=='sell' else best_bid
+        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
+        # --------------- info for diciding prices ---------------
+    
+        
+        remainingTime = params.episode_time - (state.time-state.init_time)[0]
+        marketOrderTime = 60 # in seconds, means the last minute was left for market order
+        if remainingTime <= marketOrderTime:
+            # ---------------- last market order ----------------
+            quants = state.task_to_execute - state.quant_executed
+            prices = A + (-1 if self.task=='sell' else 1) * (self.tick_size * 100) * 100
+            # market order prices decided by the adding or extracting multiple tick_sizes
+            # ---------------- last market order ----------------
+        else: 
+            # ---------------- normal limit order ----------------
+            quants=action.astype(jnp.int32) #from action space
+            prices=jnp.asarray((A,M,P,PP),jnp.int32)
+            # ---------------- normal limit order ----------------
+        
+        
+        
         # jax.debug.print("Prices: \n {}",prices)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
