@@ -99,6 +99,10 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
+        #Stack (Concatenate) the info into an array 
         # --------------- info for diciding prices ---------------
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
@@ -109,28 +113,24 @@ class ExecutionEnv(BaseLOBEnv):
         PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
         # --------------- info for diciding prices ---------------
     
-        
+        # =============== Limit/Market Order (prices/qtys) ===============
         remainingTime = params.episode_time - (state.time-state.init_time)[0]
         marketOrderTime = 60 # in seconds, means the last minute was left for market order
-        if remainingTime <= marketOrderTime:
-            # ---------------- last market order ----------------
+        def market_order_logic(state: EnvState, A: float):
             quants = state.task_to_execute - state.quant_executed
-            prices = A + (-1 if self.task=='sell' else 1) * (self.tick_size * 100) * 100
-            # market order prices decided by the adding or extracting multiple tick_sizes
-            # ---------------- last market order ----------------
-        else: 
-            # ---------------- normal limit order ----------------
-            quants=action.astype(jnp.int32) #from action space
-            prices=jnp.asarray((A,M,P,PP),jnp.int32)
-            # ---------------- normal limit order ----------------
-        
-        
-        
-        # jax.debug.print("Prices: \n {}",prices)
-        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
-        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
-        #Stack (Concatenate) the info into an array 
+            prices = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            return quants, prices
+        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
+            quants = action.astype(jnp.int32) # from action space
+            prices = jnp.asarray((A, M, P, PP), jnp.int32)
+            return quants, prices
+        quants, prices = lax.cond(remainingTime <= marketOrderTime,
+                                lambda _: self.market_order_logic(state, A),
+                                lambda _: self.normal_order_logic(state, action, A, M, P, PP),
+                                operand=None)
+        # =============== Limit/Market Order (prices/qtys) ===============
+
+
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         #jax.debug.print(f"action shape: {action_msgs.shape}")
