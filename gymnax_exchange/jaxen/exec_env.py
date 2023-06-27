@@ -204,21 +204,24 @@ class ExecutionEnv(BaseLOBEnv):
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
-        # ========== get_executed_piars for rewards ==========
-        # TODO  no valid trades(all -1) case (might) hasn't be handled.
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
-        assert  executed[:1].sum() > 0
-        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
-        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
-        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
-        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
-        drift = agentTrades[:,1].sum() * (vwap - state.init_price)
-        rewardValue = advantage + Lambda * drift
-        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
-        # ========== get_executed_piars for rewards ==========
-        # jax.debug.breakpoint()
+        def compute_reward(self, state: EnvState, executed: jnp.ndarray) -> float:
+            vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
+            mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+            agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+            advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+            Lambda = 0.5 # FIXME should be moved to EnvState or EnvParams
+            drift = agentTrades[:,1].sum() * (vwap - state.init_price)
+            rewardValue = advantage + Lambda * drift
+            reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+            return reward
+        reward = lax.cond(jnp.all(executed == 0), 
+                        lambda _: 0.0, 
+                        lambda _: self.compute_reward(state, executed), 
+                        operand=None)
+
         return reward
+
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
