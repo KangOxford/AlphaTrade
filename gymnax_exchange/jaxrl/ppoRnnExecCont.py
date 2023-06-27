@@ -421,6 +421,7 @@ if __name__ == "__main__":
     train_jit = jax.jit(make_train(config))
 
     if config["DEBUG"]:
+        pass
         #chexify the function
         #NOTE: use chex.asserts inside the code, under a if DEBUG. 
 
