@@ -125,8 +125,8 @@ class ExecutionEnv(BaseLOBEnv):
             prices = jnp.asarray((A, M, P, PP), jnp.int32)
             return quants, prices
         quants, prices = lax.cond(remainingTime <= marketOrderTime,
-                                lambda _: self.market_order_logic(state, A),
-                                lambda _: self.normal_order_logic(state, action, A, M, P, PP),
+                                lambda _: market_order_logic(state, A),
+                                lambda _: normal_order_logic(state, action, A, M, P, PP),
                                 operand=None)
         # =============== Limit/Market Order (prices/qtys) ===============
 
