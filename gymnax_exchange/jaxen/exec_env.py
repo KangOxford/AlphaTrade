@@ -126,10 +126,12 @@ class ExecutionEnv(BaseLOBEnv):
         # print(f">>> ifMarketOrder: {ifMarketOrder.item()}")
         # print(f">>> ifMarketOrder: {jax.device_get(ifMarketOrder)}")
 
-        '''
+        # '''
         def market_order_logic(state: EnvState, A: float):
-            quants = state.task_to_execute - state.quant_executed
-            prices = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            quant = state.task_to_execute - state.quant_executed
+            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            quants = jnp.asarray((quant//4,quant//4,quant//4,quant//4),jnp.int32)
+            prices = jnp.asarray((price, price , price, price),jnp.int32)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
             return quants, prices
@@ -143,7 +145,7 @@ class ExecutionEnv(BaseLOBEnv):
                                 lambda _: market_order_logic(state, A),
                                 lambda _: normal_order_logic(state, action, A, M, P, PP),
                                 operand=None)
-        '''
+        # '''
         quants = action.astype(jnp.int32) # from action space
         prices = jnp.asarray((A, M, P, PP), jnp.int32)
         # =============== Limit/Market Order (prices/qtys) ===============
