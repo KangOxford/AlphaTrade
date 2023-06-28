@@ -36,7 +36,10 @@ class TimewindowExchange(Exchange):
         # ···················· 01.01.02 ····················
         # First, submit the agent's order, and then submit the orders of other traders within the next step.
         # Each step contains Config.window messages.
-        super().step(action) # no. 1 这一步包含了两个行为
+        try:
+            super().step(action) # no. 1 这一步包含了两个行为
+        except:
+            breakpoint()
         # ···················· 01.01.03 ····················
         for i in range(Config.window_size -1): # no. Config.window_size -1
             # print(f"innerloop step {i}") #$

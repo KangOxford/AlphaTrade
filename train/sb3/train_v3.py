@@ -73,8 +73,8 @@ def main():
         # batch_size=4,
         # n_steps=10,
 
-        batch_size=10000,
-        n_steps=50,
+        batch_size=2500,
+        n_steps=10000,
 
         n_epochs=4,
         verbose=1,
