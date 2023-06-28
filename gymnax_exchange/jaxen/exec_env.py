@@ -212,10 +212,13 @@ class ExecutionEnv(BaseLOBEnv):
     
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
-        def compute_reward(state: EnvState, executed: jnp.ndarray) -> float:
+        def compute_reward(state: EnvState, trades: jnp.ndarray) -> float:
             # if there is some orders get executed in the last step, by rl agents or other agents
+            executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
+            # executed = trades
             vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+            jax.debug.breakpoint()
             agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
             advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
             Lambda = 0.5 # FIXME should be moved to EnvState or EnvParams
@@ -228,8 +231,10 @@ class ExecutionEnv(BaseLOBEnv):
         reward = jnp.where(condition, compute_reward(state, state.trades), 0.0)
         # =========== solve nan issue ===============
         reward=jnp.nan_to_num(reward,)
+        jax.debug.print("--------")
         jax.debug.print('Reward from step: {}',reward)
         jax.debug.print('Reward from step after convert: {}',reward)
+        jax.debug.print("--------\n")
         # =========== solve nan issue ===============
         return reward
 
@@ -382,8 +387,12 @@ if __name__ == "__main__":
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        
+        if done:
+            break
 
     # ####### Testing the vmap abilities ########
     

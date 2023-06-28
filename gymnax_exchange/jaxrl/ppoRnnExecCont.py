@@ -194,7 +194,7 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                jax.debug.breakpoint()
+                # jax.debug.breakpoint()
                 obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
