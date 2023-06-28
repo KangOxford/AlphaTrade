@@ -4,15 +4,23 @@ import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
 sys.path.append('/homes/80/kang/AlphaTrade')
+sys.path.append('../purejaxrl')
+
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
 import time
+from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
+
 
 import faulthandler
 
 faulthandler.enable()
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+
+from jax import config 
+config.update("jax_check_tracer_leaks",False)
+
 
 chex.assert_gpu_available(backend=None)
 
@@ -29,14 +37,15 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
-    enable_vmap=False 
+    enable_vmap=True 
 
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env=ExecutionEnv(ATFolder,'buy')
+    env=ExecutionEnv(ATFolder,'buy',True)
     env_params=env.default_params
+    env = LogWrapper(env)
     print('Shape of message data and book data',env_params.message_data.shape, env_params.book_data.shape)
     
     
@@ -109,7 +118,7 @@ if __name__ == "__main__":
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
         vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 1000
+        num_envs = 5
         vmap_keys = jax.random.split(rng, num_envs)
 
         test_actions=vmap_act_sample(vmap_keys)

@@ -24,6 +24,8 @@ from jax import config
 # config.update("jax_disable_jit", False)
 #config.update("jax_disable_jit", True)
 
+config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -118,9 +120,9 @@ def make_train(config):
     env = LogWrapper(env)
     
     #FIXME : Uncomment normalisation.
-    # if config["NORMALIZE_ENV"]:
-    #     env = NormalizeVecObservation(env)
-    #     env = NormalizeVecReward(env, config["GAMMA"])
+    #if config["NORMALIZE_ENV"]:
+         #env = NormalizeVecObservation(env)
+         #env = NormalizeVecReward(env, config["GAMMA"])
     
 
     def linear_schedule(count):
@@ -134,8 +136,6 @@ def make_train(config):
     def train(rng):
         # INIT NETWORK
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
-        print("env.action_space(env_params).shape[0]: {env.action_space(env_params).shape[0]}")
-        # jax.debug.breakpoint()
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -183,8 +183,8 @@ def make_train(config):
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
                 # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
-                # jax.debug.breakpoint()
                 log_prob = pi.log_prob(action)
+
                 value, action, log_prob = (
                     value.squeeze(0),
                     action.squeeze(0),
@@ -194,14 +194,14 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                # jax.debug.breakpoint()
-                obsv, env_state, reward, done, info = jax.vmap(
+                jax.debug.breakpoint()
+                obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
                 transition = Transition(
-                    done, action, value, reward, log_prob, last_obs, info
+                    done_step, action, value, reward_step, log_prob, last_obs, info_step
                 )
-                runner_state = (train_state, env_state, obsv, done, hstate, rng)
+                runner_state = (train_state, env_state_step, obsv_step, done_step, hstate, rng)
                 return runner_state, transition
 
             initial_hstate = runner_state[-2]
@@ -399,7 +399,7 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "NUM_ENVS": 4,
         "NUM_STEPS": 2,
-        "TOTAL_TIMESTEPS": 5e5,
+        "TOTAL_TIMESTEPS": 5e1,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,

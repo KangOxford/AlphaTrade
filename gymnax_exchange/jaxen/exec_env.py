@@ -88,14 +88,12 @@ class ExecutionEnv(BaseLOBEnv):
         # Default environment parameters
         return EnvParams(self.messages,self.books)
 
-    #@chex.assert_max_traces(n=1)
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
-
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
@@ -158,9 +156,7 @@ class ExecutionEnv(BaseLOBEnv):
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
         ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
-        #ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades),self.stepLines)
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        #new_execution=get_exec_quant(ordersides[2],)
         
         # =========ECEC QTY========
         # ------ choice1 ----------
@@ -184,13 +180,11 @@ class ExecutionEnv(BaseLOBEnv):
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
-    #@chex.assert_max_traces(n=2)
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
-        
-        """Reset environment state by sampling initial position in OB."""
         #jax.debug.breakpoint()
+        """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
         #Get the init time based on the first message to be processed in the first step. 
         time=job.get_initial_time(params.message_data,idx_data_window) 
@@ -219,6 +213,7 @@ class ExecutionEnv(BaseLOBEnv):
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         def compute_reward(state: EnvState, executed: jnp.ndarray) -> float:
+            # if there is some orders get executed in the last step, by rl agents or other agents
             vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
             agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
@@ -228,10 +223,14 @@ class ExecutionEnv(BaseLOBEnv):
             rewardValue = advantage + Lambda * drift
             reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
             return reward
-
+        
         condition = jnp.any((state.trades[:, 0] > 0)[:, jnp.newaxis])
         reward = jnp.where(condition, compute_reward(state, state.trades), 0.0)
-
+        # =========== solve nan issue ===============
+        reward=jnp.nan_to_num(reward,)
+        jax.debug.print('Reward from step: {}',reward)
+        jax.debug.print('Reward from step after convert: {}',reward)
+        # =========== solve nan issue ===============
         return reward
 
 
