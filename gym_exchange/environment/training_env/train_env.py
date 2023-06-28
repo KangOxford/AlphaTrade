@@ -11,7 +11,7 @@ import numpy as np
 # class StableBaselinesTradingEnvironment(VecEnv):
 #     pass
 from gym_exchange import Config
-import sys; sys.path.append('/Users/kang/AlphaTrade/')
+import sys; sys.path.append('../AlphaTrade/')
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
 from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv

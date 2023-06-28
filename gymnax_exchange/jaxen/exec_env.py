@@ -215,9 +215,7 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.breakpoint()
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
         
-        jax.debug.print('Sum value: {}',executed[:1].sum())
         vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
-        jax.debug.print('Vwap quant: {}',vwap)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
@@ -226,9 +224,7 @@ class ExecutionEnv(BaseLOBEnv):
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get_executed_piars for rewards ==========
-        jax.debug.print('Reward from step: {}',reward)
-        reward=jnp.nan_to_num(reward,)
-        jax.debug.print('Reward from step after convert: {}',reward)
+        reward=jnp.nan_to_num(reward)
         return reward
 
 
