@@ -177,7 +177,8 @@ class ExecutionEnv(BaseLOBEnv):
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
         
-        return self.get_obs(state,params),state,reward,done,{"info":0}
+        # return self.get_obs(state,params),state,reward,done,{"info":0}
+        return self.get_obs(state,params),state,reward,done,{"info":0,'action':action,"reward":reward}
 
 
     def reset_env(
@@ -230,10 +231,10 @@ class ExecutionEnv(BaseLOBEnv):
         reward = jnp.where(condition, compute_reward(state, state.trades), 0.0)
         # =========== solve nan issue ===============
         reward=jnp.nan_to_num(reward,)
-        jax.debug.print("--------")
-        jax.debug.print('Reward from step: {}',reward)
-        jax.debug.print('Reward from step after convert: {}',reward)
-        jax.debug.print("--------\n")
+        # jax.debug.print("--------")
+        # jax.debug.print('Reward from step: {}',reward)
+        # jax.debug.print('Reward from step after convert: {}',reward)
+        # jax.debug.print("--------\n")
         # =========== solve nan issue ===============
         return reward
 

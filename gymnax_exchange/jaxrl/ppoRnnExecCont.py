@@ -361,10 +361,15 @@ def make_train(config):
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
+                    # info
+                    jax.debug.breakpoint()
                     for t in range(len(timesteps)):
                         print(
                             f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         )
+                        # print(
+                        #     f"global step={timesteps[t]}, episodic return={return_values[t]}, action={ac}"
+                        # )                        
 
                 jax.debug.callback(callback, metric)
 
@@ -397,9 +402,12 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 4,
-        "NUM_STEPS": 2,
-        "TOTAL_TIMESTEPS": 5e1,
+        # "NUM_ENVS": 4,
+        # "NUM_STEPS": 2,
+        "NUM_ENVS": 1,
+        "NUM_STEPS": 1,
+        "TOTAL_TIMESTEPS": 5e5,
+        # "TOTAL_TIMESTEPS": 5e1,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
