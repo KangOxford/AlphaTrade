@@ -213,15 +213,14 @@ class ExecutionEnv(BaseLOBEnv):
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         def compute_reward(state: EnvState, trades: jnp.ndarray) -> float:
-            # if there is some orders get executed in the last step, by rl agents or other agents
-            executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
-            # executed = trades
+            # when there is some orders get executed in the last step, by rl agents or other agents
+            mask1 = (trades[:, 0] > 0)[:, jnp.newaxis]
+            executed = jnp.where(mask1, trades, 0)
             vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:,1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
-            # jax.debug.breakpoint()
             agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
             advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
-            Lambda = 0.5 # FIXME should be moved to EnvState or EnvParams
+            Lambda = 0.05 # FIXME should be moved to EnvState or EnvParams
             drift = agentTrades[:,1].sum() * (vwap - state.init_price)
             rewardValue = advantage + Lambda * drift
             reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
