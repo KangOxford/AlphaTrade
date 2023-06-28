@@ -395,7 +395,7 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
-    config = {
+    ppo_config = {
         "LR": 2.5e-4,
         "NUM_ENVS": 4,
         "NUM_STEPS": 2,
@@ -408,7 +408,7 @@ if __name__ == "__main__":
         "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 0.5,
-        "ENV_NAME": "CartPole-v1",
+        "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
         "DEBUG": True,
         "NORMALIZE_ENV": False,
@@ -417,7 +417,14 @@ if __name__ == "__main__":
     }
 
     rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(config))
+    # jax.debug.breakpoint()
+    train_jit = jax.jit(make_train(ppo_config))
 
-    
+    if ppo_config["DEBUG"]:
+        pass
+        #chexify the function
+        #NOTE: use chex.asserts inside the code, under a if DEBUG. 
+
+    # train = make_train(ppo_config)
+    # jax.debug.breakpoint()
     out = train_jit(rng)

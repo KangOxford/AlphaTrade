@@ -72,7 +72,7 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,debug):
+    def __init__(self,alphatradePath,task,debug=False):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
@@ -97,30 +97,43 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        
-        
-        
-        quants=action.astype(jnp.int32) #from action space
-        # quants=action #from action space
-        # jax.debug.breakpoint()
-        
-        
-        # Can only use these if statements because self is a static arg.
-        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
-        def get_prices(state,task):
-            best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
-            A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
-            P = best_ask if task=='sell' else best_bid
-            PP= best_ask+self.tick_size*self.n_ticks_in_book if task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
-            return (A,M,P,PP)
-
-        prices=jnp.asarray(get_prices(state,self.task),jnp.int32)
-        # jax.debug.print("Prices: \n {}",prices)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
+        # --------------- info for deciding prices ---------------
+        # Can only use these if statements because self is a static arg.
+        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
+        best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
+        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
+        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        P = best_ask if self.task=='sell' else best_bid
+        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
+        # --------------- info for deciding prices ---------------
+    
+        # =============== Limit/Market Order (prices/qtys) ===============
+        remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+        ifMarketOrder = (remainingTime <= marketOrderTime)
+        def market_order_logic(state: EnvState, A: float):
+            quant = state.task_to_execute - state.quant_executed
+            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
+            prices = jnp.asarray((price, price , price, price),jnp.int32)
+            # (self.tick_size * 100) : one dollar
+            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
+            return quants, prices
+        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
+            quants = action.astype(jnp.int32) # from action space
+            prices = jnp.asarray((A, M, P, PP), jnp.int32)
+            return quants, prices
+        quants, prices = lax.cond(ifMarketOrder,
+                                lambda _: market_order_logic(state, A),
+                                lambda _: normal_order_logic(state, action, A, M, P, PP),
+                                operand=None)
+        # =============== Limit/Market Order (prices/qtys) ===============
+
+
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         #jax.debug.print(f"action shape: {action_msgs.shape}")
@@ -171,8 +184,6 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.breakpoint()
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-
-
         #Get the init time based on the first message to be processed in the first step. 
         time=job.get_initial_time(params.message_data,idx_data_window) 
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
@@ -197,6 +208,7 @@ class ExecutionEnv(BaseLOBEnv):
         """Check whether state is terminal."""
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
+    
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         # ========== get_executed_piars for rewards ==========
         # TODO  no valid trades(all -1) case (might) hasn't be handled.
@@ -218,6 +230,7 @@ class ExecutionEnv(BaseLOBEnv):
         reward=jnp.nan_to_num(reward,)
         jax.debug.print('Reward from step after convert: {}',reward)
         return reward
+
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
@@ -283,16 +296,16 @@ class ExecutionEnv(BaseLOBEnv):
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
 
-    def action_space_disc(
-        self, params: Optional[EnvParams] = None
-    ) -> spaces.Dict:
-        """Action space of the environment."""
-        return spaces.Dict({
-                "aggressive": spaces.Discrete(100),
-                "mid": spaces.Discrete(100),
-                "passive": spaces.Discrete(100),
-                "ppassive": spaces.Discrete(100),
-            })
+    # def action_space_disc(
+    #     self, params: Optional[EnvParams] = None
+    # ) -> spaces.Dict:
+    #     """Action space of the environment."""
+    #     return spaces.Dict({
+    #             "aggressive": spaces.Discrete(100),
+    #             "mid": spaces.Discrete(100),
+    #             "passive": spaces.Discrete(100),
+    #             "ppassive": spaces.Discrete(100),
+    #         })
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
@@ -340,14 +353,38 @@ if __name__ == "__main__":
     print(env_params.message_data.shape, env_params.book_data.shape)
 
     for i in range(1,100):
-        #
+        # ==================== ACTION ====================
+        # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
-        # #
-        # ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
-        # import ** network
-        # hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+        # ---------- acion from trained network ----------
+        ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
+        ## import ** network
+        from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
+        ppo_config = {
+            "LR": 2.5e-4,
+            "NUM_ENVS": 4,
+            "NUM_STEPS": 2,
+            "TOTAL_TIMESTEPS": 5e5,
+            "UPDATE_EPOCHS": 4,
+            "NUM_MINIBATCHES": 4,
+            "GAMMA": 0.99,
+            "GAE_LAMBDA": 0.95,
+            "CLIP_EPS": 0.2,
+            "ENT_COEF": 0.01,
+            "VF_COEF": 0.5,
+            "MAX_GRAD_NORM": 0.5,
+            "ENV_NAME": "alphatradeExec-v0",
+            "ANNEAL_LR": True,
+            "DEBUG": True,
+            "NORMALIZE_ENV": False,
+            "ATFOLDER": ATFolder,
+            "TASKSIDE":'buy'
+        }
+        # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
+        # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+        # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
         # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
-        # #
+        # ==================== ACTION ====================
         
         
         print(f"Sampled {i}th actions are: ",test_action)
