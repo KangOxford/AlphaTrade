@@ -29,7 +29,7 @@ def main():
 
     config = {
         "policy_type": "MlpLstmPolicy",
-        "total_timesteps": int(1e12),
+        "total_timesteps": int(500000),
         # "ent_coef" : 1,
         # ent_coef = 0.95,
         "ent_coef" : 0.5,
@@ -57,8 +57,8 @@ def main():
         env = TrainEnv()  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
-    # venv = DummyVecEnv([make_env] * 4)
-    venv = DummyVecEnv([make_env] )
+    venv = DummyVecEnv([make_env] * 1000)
+    # venv = DummyVecEnv([make_env] )
 
 
     model = RecurrentPPO(
@@ -69,7 +69,10 @@ def main():
         gamma= config["gamma"],
         gae_lambda= config["gae_lambda"],
         clip_range= config["clip_range"],
+        batch_size=4,
         # env = venv,
+        n_steps=10,
+        n_epochs=4,
         verbose=1,
         # learning_rate=utils.linear_schedule(5e-3),
         learning_rate = int(1e-4),
