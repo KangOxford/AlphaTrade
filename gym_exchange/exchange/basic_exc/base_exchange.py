@@ -62,7 +62,10 @@ class BaseExchange():
         # if self.index ==16:
         #     print(self.order_book)
         #     print()#$
-        self.process_tasks()
+        try:
+            self.process_tasks()
+        except:
+            breakpoint()
         self.accumulating()
         return self.order_book
 
@@ -79,13 +82,27 @@ class BaseExchange():
             if not (item is None or item.quantity == 0):
                 message = item.to_message
                 if item.type == 1 or item.type == 0:
-                    self.type1_handler(message, index)
+                    try:
+                        self.type1_handler(message, index)
+                    except:
+                        # breakpoint()
+                        pass
+                        print(f"skip: {message}")
+                    # print("1")
                     # print(item.type,item.timestamp,self.latest_timestamp) #$
                 elif item.type == 2:
-                    self.type2_handler(message)
+                    try:
+                        self.type2_handler(message)
+                    except:
+                        breakpoint()
                     # print(item.type,item.timestamp,self.latest_timestamp) #$
+                    # print("2")
                 elif item.type == 3:
-                    self.type3_handler(message)
+                    try:
+                        self.type3_handler(message)
+                    except:
+                        breakpoint()
+                    # print("3")
                     # print(item.type,item.timestamp,self.latest_timestamp) #$
                 # assert item.timestamp >= self.latest_timestamp, 'The timestamp of a new order should be later than the timestamp of the auto_cancel action in the previous step' #$
                 self.latest_timestamp = item.timestamp
@@ -106,7 +123,11 @@ class BaseExchange():
     # ··········· component of the process_tasks ················
     def type1_handler(self, message, index):
         trades, order_in_book = self.order_book.process_order(message, True, False)
-        self.executed_pairs_recoder.step(trades, self.index) # 2nd para: kind
+        try:
+            self.executed_pairs_recoder.step(trades, self.index) # 2nd para: kind
+        except:
+            breakpoint()
+            print("type1_handler")
 
     def type2_handler(self, message):
         ''' Cancellation (Partial deletion of a limit order)'''
