@@ -218,7 +218,7 @@ class ExecutionEnv(BaseLOBEnv):
             # executed = trades
             vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:,1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
-            jax.debug.breakpoint()
+            # jax.debug.breakpoint()
             agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
             advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
             Lambda = 0.5 # FIXME should be moved to EnvState or EnvParams
