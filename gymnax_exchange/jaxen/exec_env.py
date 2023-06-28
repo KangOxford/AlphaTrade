@@ -216,7 +216,7 @@ class ExecutionEnv(BaseLOBEnv):
             # if there is some orders get executed in the last step, by rl agents or other agents
             executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
             # executed = trades
-            vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum()
+            vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:,1].sum()
             mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
             jax.debug.breakpoint()
             agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
