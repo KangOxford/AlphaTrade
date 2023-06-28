@@ -354,14 +354,38 @@ if __name__ == "__main__":
     print(env_params.message_data.shape, env_params.book_data.shape)
 
     for i in range(1,100):
-        #
+        # ==================== ACTION ====================
+        # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
-        # #
-        # ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
-        # import ** network
-        # hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+        # ---------- acion from trained network ----------
+        ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
+        ## import ** network
+        from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
+        ppo_config = {
+            "LR": 2.5e-4,
+            "NUM_ENVS": 4,
+            "NUM_STEPS": 2,
+            "TOTAL_TIMESTEPS": 5e5,
+            "UPDATE_EPOCHS": 4,
+            "NUM_MINIBATCHES": 4,
+            "GAMMA": 0.99,
+            "GAE_LAMBDA": 0.95,
+            "CLIP_EPS": 0.2,
+            "ENT_COEF": 0.01,
+            "VF_COEF": 0.5,
+            "MAX_GRAD_NORM": 0.5,
+            "ENV_NAME": "alphatradeExec-v0",
+            "ANNEAL_LR": True,
+            "DEBUG": True,
+            "NORMALIZE_ENV": False,
+            "ATFOLDER": ATFolder,
+            "TASKSIDE":'buy'
+        }
+        # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
+        # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+        # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
         # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
-        # #
+        # ==================== ACTION ====================
         
         
         print(f"Sampled {i}th actions are: ",test_action)
