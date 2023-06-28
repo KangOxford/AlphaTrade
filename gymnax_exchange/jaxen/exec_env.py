@@ -228,11 +228,12 @@ class ExecutionEnv(BaseLOBEnv):
             rewardValue = advantage + Lambda * drift
             reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
             return reward
-        reward = lax.cond(jnp.any((state.trades[:, 0] > 0)[:, jnp.newaxis]),
-                        lambda _: compute_reward(state, state.trades),
-                        lambda _: 0.0,
-                        operand=None)
+
+        condition = jnp.any((state.trades[:, 0] > 0)[:, jnp.newaxis])
+        reward = jnp.where(condition, compute_reward(state, state.trades), 0.0)
+
         return reward
+
 
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
