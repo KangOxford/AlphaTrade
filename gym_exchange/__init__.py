@@ -29,8 +29,8 @@ class Config:
 
     # --------------- 00 Data ---------------
     # ············· 00.01 Window ············
-    window_size = 200
-    # window_size = 100
+    # window_size = 200
+    window_size = 100
     # ············· 00.01 Adapter ············
     raw_price_level = 10
     # raw_horizon = 2048
