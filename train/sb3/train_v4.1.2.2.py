@@ -10,13 +10,15 @@ os.system("export PYTHONPATH=$PYTHONPATH:/home/duser/AlphaTrade/")
 os.system("export PYTHONPATH=$PYTHONPATH:/homes/80/kang/SpeedTesting/")
 # path = utils.get_path_by_platform()
 
-os.sys.path.append("/homes/80/kang/SpeedTesting/")
+# os.sys.path.append("/homes/80/kang/SpeedTesting/")
+os.sys.path.append("/home/kanli/speedTesting/")
 print(os.sys.path)
 
 from pathlib import Path
 home = str(Path.home())
 # path = home + "/AlphaTrade/"
-path = home + "/SpeedTesting/"
+# path = home + "/SpeedTesting/"
+path = home + "/speedTesting/"
 import platform
 if platform.system() == 'Darwin':
     print("Running on MacOS")
@@ -85,7 +87,7 @@ def main():
         env = TrainEnv()  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
-    venv = DummyVecEnv([make_env] * 1)
+    venv = DummyVecEnv([make_env] * 1000)
     # venv = DummyVecEnv([make_env] )
 
 
@@ -102,7 +104,7 @@ def main():
         # n_steps=10,
 
         batch_size=4,
-        n_steps=10000,
+        n_steps=10,
 
         n_epochs=4,
         verbose=1,

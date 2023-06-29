@@ -85,7 +85,7 @@ def main():
         env = TrainEnv()  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
-    venv = DummyVecEnv([make_env] * 1)
+    venv = DummyVecEnv([make_env] * 1000)
     # venv = DummyVecEnv([make_env] )
 
 
@@ -102,7 +102,7 @@ def main():
         # n_steps=10,
 
         batch_size=4,
-        n_steps=10000,
+        n_steps=10,
 
         n_epochs=4,
         verbose=1,

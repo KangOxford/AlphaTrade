@@ -81,7 +81,7 @@ class BaseEnv(gym.Env):
     def step(self, delta_action):
         '''input : action
            return: observation, reward, done, info'''
-        print(f"delta_action {delta_action}") #$
+        # print(f"delta_action {delta_action}") #$
         state, reward, done, info = self.state(delta_action), self.reward, self.done, self.info
         return state, reward, done, info
 
@@ -89,10 +89,11 @@ class BaseEnv(gym.Env):
 
     def state(self, action):
         if self.cur_step == 87:
-            print()
+            # print()
+            pass
         kind = 'limit_order'
         if self.cur_step == Config.max_horizon-1:
-            print(f"self.cur_step,{self.cur_step} == Config.max_horizon-1,{Config.max_horizon-1}")#$
+            # print(f"self.cur_step,{self.cur_step} == Config.max_horizon-1,{Config.max_horizon-1}")#$
             num_left = self.num_left_processor.num_left
             action = [action[0],num_left,1] # aggressive order
             kind = 'market_order'
