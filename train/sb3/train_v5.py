@@ -117,7 +117,7 @@ def main():
         env = TrainEnv(flow_lists_initialized)  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
-    venv = DummyVecEnv([make_env] * 1000)
+    venv = DummyVecEnv([make_env] * 1000) # <= <= <= <= <= <= Your can tune this
     # venv = DummyVecEnv([make_env] )
 
 
@@ -130,14 +130,12 @@ def main():
         gae_lambda= config["gae_lambda"],
         clip_range= config["clip_range"],
 
-        # batch_size=4,
-        # n_steps=10,
 
-        batch_size=4,
-        n_steps=10,
+        batch_size=4, # <= <= <= <= <= <= Your can tune this
+        n_steps=10, # <= <= <= <= <= <= Your can tune this
 
-        n_epochs=4,
-        verbose=1,
+        n_epochs=4, # <= <= <= <= <= <= Your can tune this
+        verbose=1, 
         # learning_rate=utils.linear_schedule(5e-3),
         learning_rate = int(1e-4),
         tensorboard_log=f"{path}train/output/runs/{run.id}")
