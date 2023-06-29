@@ -1,39 +1,15 @@
 # ========================= 01 =========================
 from gym_exchange import Config
 from gym_exchange.orderbook import OrderBook
-from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder,RawEncoder
-from gym_exchange.data_orderbook_adapter.decoder import Decoder
-from gym_exchange.data_orderbook_adapter.encoder import Encoder
-from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
+
 from gym_exchange.exchange.basic_exc.assets.executed_pairs import ExecutedPairsRecorder
 
 
 # ========================= 03 =========================
 class BaseExchange():
     # -------------------------- 03.01 ----------------------------
-    def __init__(self):
-        self.flow_lists = self.flow_lists_initialization()
-
-    def flow_lists_initialization(self):
-        if Config.exchange_data_source == "encoder":
-            decoder = Decoder(**DataPipeline()())
-            encoder = Encoder(decoder)
-        elif Config.exchange_data_source == "raw_encoder":
-            decoder = RawDecoder(**DataPipeline()())
-            encoder = RawEncoder(decoder)
-        else: raise NotImplementedError
-        flow_lists= encoder()
-        flow_lists= self.to_order_flow_lists(flow_lists)
-        return flow_lists
-
-    def to_order_flow_lists(self, flow_lists):
-        '''change side format from bid/ask to 1/-1
-        side = -1 if item.side == 'ask' else 1'''
-        for flow_list in flow_lists:
-            for item in flow_list:
-                side = -1 if item.side == 'ask' else 1
-                item.side = side
-        return flow_lists
+    def __init__(self, flow_lists_initialized):
+        self.flow_lists = flow_lists_initialized
 
     # -------------------------- 03.02 ----------------------------
     def reset(self):

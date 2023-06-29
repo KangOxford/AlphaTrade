@@ -92,7 +92,7 @@ class OrderFlowGenerator(object):
                 "time":self.time,
             }
         else: raise NotImplementedError
-        print(f"real_action(order_flow):{content_dict}")#$
+        # print(f"real_action(order_flow):{content_dict}")#$
         if content_dict['price'] == None:
             print()
         '''used for to-be-sumbmitted oreders'''

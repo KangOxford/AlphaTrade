@@ -9,10 +9,11 @@ from gym_exchange.environment.basic_env.basic_env import BasicEnv # DO NOT DELET
 
 class TimewindowEnv(locals()[Config.train_env]):
     # ========================== 01 ==========================
-    def __init__(self):
+    def __init__(self, flow_lists_initialized):
+        print("===TimewindowEnv===")
         if 'exchange' not in dir(self):
-            self.exchange = TimewindowExchange()
-        super().__init__()
+            self.exchange = TimewindowExchange(flow_lists_initialized)
+        super().__init__(flow_lists_initialized)
         self.state_space =  spaces.Box(
               low   = -10,
               high  = 10,

@@ -18,9 +18,9 @@ from gym_exchange.environment.base_env.utils import broadcast_lists
 # *************************** 2 *************************** #
 class BaseEnv(gym.Env):
     # ========================== 01 ==========================
-    def __init__(self):
+    def __init__(self, flow_lists_initialized):
         if 'exchange' not in dir(self):
-            self.exchange = Exchange()
+            self.exchange = Exchange(flow_lists_initialized)
         super().__init__()
         self.action_space, self.state_space = self.space_definition()
         self.observation_space = self.state_space

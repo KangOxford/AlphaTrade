@@ -13,10 +13,10 @@ from gym_exchange import Config
 # *************************** 2 *************************** #
 class BasicEnv(BaseEnv):
     # ========================== 01 ==========================
-    def __init__(self):
+    def __init__(self, flow_lists_initialized):
         if 'exchange' not in dir(self):
-            self.exchange = Exchange()
-        super().__init__()
+            self.exchange = Exchange(flow_lists_initialized)
+        super().__init__(flow_lists_initialized)
         self.observation_space = self.state_space
 
     # ========================== 02 ==========================

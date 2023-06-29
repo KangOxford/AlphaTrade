@@ -11,8 +11,8 @@ from gym_exchange.exchange.basic_exc.assets.order_flow import OrderFlow
 
 # ========================= 03 =========================
 class Exchange(BaseExchange):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, flow_lists_initialized):
+        super().__init__(flow_lists_initialized)
         
     # -------------------------- 03.01 ----------------------------
     def reset(self):

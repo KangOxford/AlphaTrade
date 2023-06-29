@@ -39,6 +39,36 @@ print(f"Config.train_env: {Config.train_env}")
 
 from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
 
+
+
+# ============load data==============
+from gym_exchange.data_orderbook_adapter.raw_encoder import RawDecoder,RawEncoder
+from gym_exchange.data_orderbook_adapter.decoder import Decoder
+from gym_exchange.data_orderbook_adapter.encoder import Encoder
+from gym_exchange.data_orderbook_adapter.data_pipeline import DataPipeline
+def to_order_flow_lists(flow_lists):
+    '''change side format from bid/ask to 1/-1
+    side = -1 if item.side == 'ask' else 1'''
+    for flow_list in flow_lists:
+        for item in flow_list:
+            side = -1 if item.side == 'ask' else 1
+            item.side = side
+    return flow_lists
+def flow_lists_initialization():
+    if Config.exchange_data_source == "encoder":
+        decoder = Decoder(**DataPipeline()())
+        encoder = Encoder(decoder)
+    elif Config.exchange_data_source == "raw_encoder":
+        decoder = RawDecoder(**DataPipeline()())
+        encoder = RawEncoder(decoder)
+    else:
+        raise NotImplementedError
+    flow_lists = encoder()
+    flow_lists = to_order_flow_lists(flow_lists)
+    return flow_lists
+
+flow_lists_initialized = flow_lists_initialization()
+# ============load data==============
 class TrainEnv(TimewindowEnv):
 
     # ========================== 03 ==========================
@@ -84,7 +114,7 @@ def main():
 
 
     def make_env():
-        env = TrainEnv()  # record stats such as returns
+        env = TrainEnv(flow_lists_initialized)  # record stats such as returns
         env = Monitor(env)  # record stats such as returns
         return env
     venv = DummyVecEnv([make_env] * 1000)

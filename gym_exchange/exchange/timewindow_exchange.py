@@ -23,8 +23,8 @@ def get_state_memo(order_book):
 
 # ========================= 01 =========================
 class TimewindowExchange(Exchange):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, flow_lists_initialized):
+        super().__init__(flow_lists_initialized)
         # self.out_executed_pairs_recoder =
 
     # -------------------------- 01.01 ----------------------------
