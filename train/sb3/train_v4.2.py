@@ -69,11 +69,8 @@ def main():
         gae_lambda= config["gae_lambda"],
         clip_range= config["clip_range"],
 
-        # batch_size=4,
-        # n_steps=10,
-
-        # batch_size=2500,
-        # n_steps=10000,
+        batch_size=4,
+        n_steps=10,
 
         n_epochs=4,
         verbose=1,
@@ -84,11 +81,11 @@ def main():
     model.learn(
        tb_log_name="RNN_PPO_Wandb",
         total_timesteps=config["total_timesteps"],
-        callback=WandbCallback(
-            gradient_save_freq=100,
-            model_save_path=f"models/{run.id}",
-            verbose=1,
-        ),
+        # callback=WandbCallback(
+        #     # gradient_save_freq=100,
+        #     model_save_path=f"models/{run.id}",
+        #     verbose=1,
+        # ),
         log_interval=1,
 
     )

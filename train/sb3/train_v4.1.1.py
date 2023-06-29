@@ -25,6 +25,8 @@ class TrainEnv(TimewindowEnv):
 def main():
     # env = Monitor(TrainEnv())  # record stats such as returns
     # check_env(env)  # $
+    import time
+    start = time.time()
 
     config = {
         "policy_type": "MlpLstmPolicy",
@@ -84,15 +86,16 @@ def main():
     model.learn(
        tb_log_name="RNN_PPO_Wandb",
         total_timesteps=config["total_timesteps"],
-        # callback=WandbCallback(
-        #     # gradient_save_freq=100,
-        #     model_save_path=f"models/{run.id}",
-        #     verbose=1,
-        # ),
+        callback=WandbCallback(
+            gradient_save_freq=100,
+            model_save_path=f"models/{run.id}",
+            verbose=1,
+        ),
         log_interval=1,
 
     )
-
+    end = time.time()
+    print(f"*** mian starts at {start}, and ends at {end}, takes {end-start}.")
     run.finish()
 
 if __name__ == "__main__":
