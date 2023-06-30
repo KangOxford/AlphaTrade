@@ -118,7 +118,7 @@ class ExecutionEnv(BaseLOBEnv):
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState, A: float):
+        def market_order_logic(state: EnvState,  A: float):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
@@ -130,11 +130,12 @@ class ExecutionEnv(BaseLOBEnv):
             quants = action.astype(jnp.int32) # from action space
             prices = jnp.asarray((A, M, P, PP), jnp.int32)
             return quants, prices
-        quants, prices = lax.cond(ifMarketOrder,
-                                lambda _: market_order_logic(state, A),
-                                lambda _: normal_order_logic(state, action, A, M, P, PP),
-                                operand=None)
+        market_quants, market_prices = market_order_logic(state, A)
+        normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
+        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
+        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
         # =============== Limit/Market Order (prices/qtys) ===============
+
 
 
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
@@ -285,18 +286,6 @@ class ExecutionEnv(BaseLOBEnv):
         """Action space of the environment."""
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
-
-    # def action_space_disc(
-    #     self, params: Optional[EnvParams] = None
-    # ) -> spaces.Dict:
-    #     """Action space of the environment."""
-    #     return spaces.Dict({
-    #             "aggressive": spaces.Discrete(100),
-    #             "mid": spaces.Discrete(100),
-    #             "passive": spaces.Discrete(100),
-    #             "ppassive": spaces.Discrete(100),
-    #         })
-
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
