@@ -37,8 +37,8 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
-    enable_vmap=True 
-    enable_simple=False
+    enable_vmap=False 
+    enable_simple=True
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
