@@ -127,7 +127,8 @@ class BaseEnv(gym.Env):
     @property
     def reward(self):
         if self.cur_step == Config.max_horizon:
-            print()#$
+            # print()#$
+            pass
         self.reward_generator.update(self.exchange.executed_pairs_recoder.market_agent_executed_pairs_in_last_step, self.exchange.mid_prices[-1])
         reward = self.reward_generator.step()
         # if self.done:

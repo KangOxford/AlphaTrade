@@ -4,7 +4,8 @@ from collections import deque  # a faster insert/pop queue
 from six.moves import cStringIO as StringIO  # pyright: ignore
 from decimal import Decimal
 # import jax
-from gymnax_exchange.jaxob.JaxOrderbook import INITID
+# from gymnax_exchange.jaxob.JaxOrderbook import INITID
+INITID=90000000
 
 from .ordertree import OrderTree
 
