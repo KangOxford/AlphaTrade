@@ -362,7 +362,7 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     # info
-                    jax.debug.breakpoint()
+                    # jax.debug.breakpoint()
                     for t in range(len(timesteps)):
                         print(
                             f"global step={timesteps[t]}, episodic return={return_values[t]}"
