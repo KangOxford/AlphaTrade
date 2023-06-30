@@ -195,7 +195,9 @@ class ExecutionEnv(BaseLOBEnv):
         reward_where_end = timeit.default_timer()
         
         reward_calc_start = timeit.default_timer()
-        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
+        E = executed.T @ executed
+        vwap = E[0,1]/E[1,1]
+        # vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
         advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
         Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentTrades[:,1].sum() * (vwap - state.init_price)
