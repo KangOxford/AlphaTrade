@@ -120,6 +120,25 @@ def cond_type_side_save_states(ordersides,data):
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),(ask,bid,trade)
 
+@jax.jit
+def cond_type_side_save_bidask(ordersides,data):
+    askside,bidside,trades=ordersides
+    #jax.debug.breakpoint()
+    #jax.debug.print("Askside before is \n {}",askside)
+    msg={
+    'side':data[1],
+    'type':data[0],
+    'price':data[3],
+    'quantity':data[2],
+    'orderid':data[5],
+    'traderid':data[4],
+    'time':data[6],
+    'time_ns':data[7]}
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
+    #jax.debug.print("Askside after is \n {}",ask)
+    return (ask,bid,trade),get_best_bid_and_ask(ask,bid)
+
 vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
 
 
@@ -131,6 +150,11 @@ def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
     #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
     last,all=jax.lax.scan(cond_type_side_save_states,ordersides,msg_array)
     return (all[0][-steplines:],all[1][-steplines:],last[2])
+
+def scan_through_entire_array_save_bidask(msg_array,ordersides,steplines):
+    #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
+    last,all=jax.lax.scan(cond_type_side_save_bidask,ordersides,msg_array)
+    return (last[0],last[1],last[2],all[0],all[1])
 
 vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
 

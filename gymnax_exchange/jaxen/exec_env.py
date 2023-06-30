@@ -46,8 +46,8 @@ class EnvState:
     ask_raw_orders: chex.Array
     bid_raw_orders: chex.Array
     trades: chex.Array
-    best_asks:chex.Array
-    best_bids:chex.Array
+    best_asks: chex.Array
+    best_bids: chex.Array
     init_time: chex.Array
     time: chex.Array
     customIDcounter: int
@@ -156,9 +156,12 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        ordersides=job.scan_through_entire_array_save_states(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
+        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         
+        state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
+
+
         # =========ECEC QTY========
         # ------ choice1 ----------
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
@@ -172,7 +175,6 @@ class ExecutionEnv(BaseLOBEnv):
         # =========================
         # jax.debug.breakpoint()
         
-        state = EnvState(*ordersides,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         # jax.debug.print("Trades: \n {}",state.trades)
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
@@ -204,8 +206,10 @@ class ExecutionEnv(BaseLOBEnv):
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
 
         #Craft the first state
-        state = EnvState(jnp.resize(ordersides[0],(self.stepLines,self.nOrdersPerSide,6)),jnp.resize(ordersides[1],(self.stepLines,self.nOrdersPerSide,6)),ordersides[2],time,time,0,idx_data_window,0,M,self.task_size,0)
-        
+        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
+        jax.debug.print('State: {}',state)
+
+
         return self.get_obs(state,params),state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
