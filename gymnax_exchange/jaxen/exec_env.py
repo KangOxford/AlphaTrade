@@ -42,11 +42,12 @@ from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
 
-@struct.dataclass
 class EnvState:
     ask_raw_orders: chex.Array
     bid_raw_orders: chex.Array
     trades: chex.Array
+    best_asks:chex.Array
+    best_bids:chex.Array
     init_time: chex.Array
     time: chex.Array
     customIDcounter: int
