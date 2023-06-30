@@ -8,7 +8,7 @@ sys.path.append('/homes/80/kang/AlphaTrade')
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
-import time
+import timeit
 
 import faulthandler
 
@@ -41,6 +41,7 @@ from flax import struct
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
+import time 
 
 @struct.dataclass
 class EnvState:
@@ -97,13 +98,19 @@ class ExecutionEnv(BaseLOBEnv):
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
+        
+        # ============================== Get Action_msgs ==============================
+        Action_msgs_start = timeit.default_timer()  # Start the timer
+        # --------------- 01 rest info for deciding action_msgs ---------------
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
-        # --------------- info for deciding prices ---------------
+        # --------------- 01 rest info for deciding action_msgs ---------------
+        
+        # --------------- 02 info for deciding prices ---------------
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         # jax.debug.breakpoint()
@@ -112,9 +119,9 @@ class ExecutionEnv(BaseLOBEnv):
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
         PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
-        # --------------- info for deciding prices ---------------
+        # --------------- 02 info for deciding prices ---------------
     
-        # =============== Limit/Market Order (prices/qtys) ===============
+        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
@@ -134,7 +141,9 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
-        # =============== Limit/Market Order (prices/qtys) ===============
+        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
+        Action_msgs_end = timeit.default_timer()  # Start the timer
+        # ============================== Get Action_msgs ==============================
 
 
 
@@ -168,15 +177,27 @@ class ExecutionEnv(BaseLOBEnv):
         # CAUTION the array executed here is calculated from the last state
         # CAUTION while the array executedin reward is calc from the update state in this step
         # =========ECEC QTY========
+        scan_start = timeit.default_timer()
         state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-
+        scan_end = timeit.default_timer()
         # jax.debug.print("Trades: \n {}",state.trades)
+        
+        
+        reward_start = timeit.default_timer()
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
+        reward_end = timeit.default_timer()
         # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
+
         
-        return self.get_obs(state,params),state,reward,done,{"info":0}
+        obs_start = timeit.default_timer()
+        obs = self.get_obs(state,params)
+        obs_end = timeit.default_timer()
+        return obs,state,reward,done,{"obs_":obs_end-obs_start,"scan_":scan_end-scan_start,"act_":Action_msgs_end-Action_msgs_start,"rew_":reward_end-reward_start}
+        # return obs,state,reward,done,{"obs":obs_end-obs_start,"scan":scan_end-scan_start,"action":Action_msgs_end-Action_msgs_start,"reward":reward_end-reward_start}
+        
+        # return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
     def reset_env(
