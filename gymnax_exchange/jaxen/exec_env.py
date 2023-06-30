@@ -19,8 +19,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+config.update("jax_disable_jit", False)
+# config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -201,7 +201,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Craft the first state
         state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
-        jax.debug.print('State: {}',state)
+        # jax.debug.print('State: {}',state)
         # jax.debug.breakpoint()
 
 
