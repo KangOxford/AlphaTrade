@@ -19,8 +19,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -83,7 +83,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.n_ticks_in_book=20
         self.debug : bool = False
         # self.vwap = 0.0 # vwap at current step
-        assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
+        # assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
     def default_params(self) -> EnvParams:
@@ -106,7 +106,8 @@ class ExecutionEnv(BaseLOBEnv):
         # --------------- info for deciding prices ---------------
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
-        best_ask, best_bid = job.get_best_bid_and_ask(state.ask_raw_orders[-1],state.bid_raw_orders[-1]) # doesnt work
+        # jax.debug.breakpoint()
+        best_ask, best_bid = state.best_asks[-1], state.best_bids[-1]
         A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
@@ -140,7 +141,7 @@ class ExecutionEnv(BaseLOBEnv):
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         #jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders[-1] if self.task=='sell' else state.bid_raw_orders[-1],-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
+        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
         #Add to the top of the data messages
@@ -155,28 +156,23 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
+        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[:,:],state.bid_raw_orders[:,:],trades_reinit),self.stepLines) 
+        # scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         
-        state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-
-
         # =========ECEC QTY========
-        # ------ choice1 ----------
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
-        sumExecutedQty = executed[:,1].sum()
-        new_execution = sumExecutedQty
+        new_execution = executed[:,1].sum() # sumExecutedQty
         # CAUTION not same executed with the one in the reward
         # CAUTION the array executed here is calculated from the last state
         # CAUTION while the array executedin reward is calc from the update state in this step
-        # ------ choice2 ----------
-        # new_execution=10
-        # =========================
-        # jax.debug.breakpoint()
-        
+        # =========ECEC QTY========
+        state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
+
         # jax.debug.print("Trades: \n {}",state.trades)
         done = self.is_terminal(state,params)
         reward=self.get_reward(state, params)
+        # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
         
         return self.get_obs(state,params),state,reward,done,{"info":0}
@@ -206,6 +202,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Craft the first state
         state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
         jax.debug.print('State: {}',state)
+        # jax.debug.breakpoint()
 
 
         return self.get_obs(state,params),state
@@ -237,46 +234,37 @@ class ExecutionEnv(BaseLOBEnv):
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
-        # b = np.max(state.bid_raw_orders[:, :, 0], axis=1)
-        # jax.debug.breakpoint()
-        # state.bid_raw_orders[:,:,0]
-        # -----------------------1--------------------------
-        get_best_bids = lambda x: jnp.max(x[:, :, 0], axis=1)
-        best_bids = get_best_bids(state.bid_raw_orders)
-        get_best_asks = lambda x: jnp.min(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], np.inf), axis=1).astype(jnp.int32)
-        best_asks = get_best_asks(state.ask_raw_orders)
         # -----------------------2--------------------------
-        mid_prices = (best_asks + best_bids)//2//self.tick_size*self.tick_size 
-        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        
+        mid_prices = (state.best_asks + state.best_bids)//2//self.tick_size*self.tick_size 
+        second_passives = state.best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else state.best_bids-self.tick_size*self.n_ticks_in_book
         # -----------------------3--------------------------
+        
         timeOfDay = state.time
         deltaT = state.time - state.init_time
         # -----------------------4--------------------------
+        
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
         # -----------------------5--------------------------
-        spread = best_asks -best_bids
+        spreads = state.best_asks - state.best_bids
         # -----------------------6--------------------------
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
         # -----------------------7--------------------------
-        def getShallowImbalance(state):
-            getBestAsksQtys = lambda x: x[:, jnp.argmin(jnp.where(x[:, :, 0] >= 0, x[:, :, 0], jnp.inf), axis=1), 1][:,0]
-            getBestBidsQtys = lambda x: x[:, jnp.argmax(x[:, :, 0], axis=1), 1][:,0]
-            # bestAsksQtys, bestBidsQtys = map(lambda func, orders: func(orders), [getBestAsksQtys, getBestBidsQtys], [state.ask_raw_orders, state.bid_raw_orders])
-            bestAsksQtys = getBestAsksQtys(state.ask_raw_orders)
-            bestBidsQtys = getBestBidsQtys(state.bid_raw_orders)
-            imb = bestAsksQtys - bestBidsQtys
-            return imb
-        shallowImbalance = getShallowImbalance(state)
-        # -----------------------8--------------------------
-        getQuants=lambda x: jnp.sum(jnp.where(x==-1,0,x))
-        askQuant=jax.lax.map(getQuants,state.ask_raw_orders[:,:,1])
-        bidQuant=jax.lax.map(getQuants,state.bid_raw_orders[:,:,1])
-        deepImbalance=askQuant-bidQuant
-
+        
+        getQuants = lambda raw_quants: jnp.where(raw_quants>0, raw_quants, 0)
+        askQuants,bidQuants = jax.lax.map(getQuants, state.ask_raw_orders[:,1]), jax.lax.map(getQuants, state.bid_raw_orders[:,1])
+        OFI_series = askQuants - bidQuants
+        lastShallowImbalance, lastDeepImbalance = jnp.array([OFI_series[0]]), jnp.array([OFI_series.sum()])
         # ========= self.get_obs(state,params) =============
-        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
+        
+        # --------------------------------------------------
+        # the below is the original obs
+        # obs = jnp.concatenate((state.best_asks,state.best_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
+        obs = jnp.concatenate((state.best_asks,state.best_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),lastShallowImbalance, lastDeepImbalance))
+        # the above is the new obs with lastShallowImbalance, lastDeepImbalance
+        # --------------------------------------------------
         # jax.debug.breakpoint()
         return obs
 
@@ -312,7 +300,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32)
+        # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
+        space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
