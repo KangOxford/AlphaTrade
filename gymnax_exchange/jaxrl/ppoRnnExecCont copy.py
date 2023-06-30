@@ -194,7 +194,7 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-
+                jax.debug.breakpoint()
                 obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
@@ -361,15 +361,10 @@ def make_train(config):
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
-                    # info
-                    jax.debug.breakpoint()
                     for t in range(len(timesteps)):
                         print(
                             f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         )
-                        # print(
-                        #     f"global step={timesteps[t]}, episodic return={return_values[t]}, action={ac}"
-                        # )                        
 
                 jax.debug.callback(callback, metric)
 
@@ -399,12 +394,12 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
-    
+
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 5e5,
+        "NUM_ENVS": 4,
+        "NUM_STEPS": 2,
+        "TOTAL_TIMESTEPS": 5e1,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -420,6 +415,26 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'buy'
     }
+    
+    
+    from gym_exchange import Config
+    import sys; sys.path.append('/Users/kang/AlphaTrade/')
+    from gym_exchange.environment.basic_env.basic_env import BasicEnv
+    from gym_exchange.environment.base_env.base_env import BaseEnv
+    from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
+    from stable_baselines3.common.env_checker import check_env
+
+
+    # *************************** 2 *************************** #
+    class TrainEnv(TimewindowEnv):
+
+        # ========================== 03 ==========================
+        def state(self, action):
+            action[0] = 1 # 1 means sell stocks, 0 means buy stocks, "Execution-2FreeDegrees"
+            # action[2] = 0 # passive orders
+            # print(f"{action[0]} {action[1]} {action[2]}")  #$ less memory use
+            state = super().state(action)
+            return state
 
     rng = jax.random.PRNGKey(30)
     # jax.debug.breakpoint()
@@ -432,7 +447,4 @@ if __name__ == "__main__":
 
     # train = make_train(ppo_config)
     # jax.debug.breakpoint()
-    start=time.time()
     out = train_jit(rng)
-    print("Time: ", time.time()-start)
-

@@ -115,7 +115,9 @@ class ExecutionEnv(BaseLOBEnv):
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState, A: float):
+        # jax.debug.breakpoint()
+            
+        def market_order_logic(state: EnvState,  A: float):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
@@ -127,10 +129,10 @@ class ExecutionEnv(BaseLOBEnv):
             quants = action.astype(jnp.int32) # from action space
             prices = jnp.asarray((A, M, P, PP), jnp.int32)
             return quants, prices
-        quants, prices = lax.cond(ifMarketOrder,
-                                lambda _: market_order_logic(state, A),
-                                lambda _: normal_order_logic(state, action, A, M, P, PP),
-                                operand=None)
+        market_quants, market_prices = market_order_logic(state, A)
+        normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
+        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
+        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
         # =============== Limit/Market Order (prices/qtys) ===============
 
 
@@ -175,7 +177,8 @@ class ExecutionEnv(BaseLOBEnv):
         reward=self.get_reward(state, params)
         #jax.debug.print("Final state after step: \n {}", state)
         
-        return self.get_obs(state,params),state,reward,done,{"info":0}
+        # return self.get_obs(state,params),state,reward,done,{"info":0}
+        return self.get_obs(state,params),state,reward,done,{"info":0,'action':action,"reward":reward}
 
 
     def reset_env(
@@ -226,6 +229,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ========== get_executed_piars for rewards ==========
         reward=jnp.nan_to_num(reward)
         return reward
+
 
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
@@ -292,17 +296,6 @@ class ExecutionEnv(BaseLOBEnv):
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
 
-    # def action_space_disc(
-    #     self, params: Optional[EnvParams] = None
-    # ) -> spaces.Dict:
-    #     """Action space of the environment."""
-    #     return spaces.Dict({
-    #             "aggressive": spaces.Discrete(100),
-    #             "mid": spaces.Discrete(100),
-    #             "passive": spaces.Discrete(100),
-    #             "ppassive": spaces.Discrete(100),
-    #         })
-
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
@@ -348,34 +341,34 @@ if __name__ == "__main__":
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
-    for i in range(1,100):
+    for i in range(1,500):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
         # ---------- acion from trained network ----------
-        ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
-        ## import ** network
-        from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-        ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 4,
-            "NUM_STEPS": 2,
-            "TOTAL_TIMESTEPS": 5e5,
-            "UPDATE_EPOCHS": 4,
-            "NUM_MINIBATCHES": 4,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'buy'
-        }
+        # ac_in = (obs[jnp.newaxis, :], obs[jnp.newaxis, :])
+        # ## import ** network
+        # from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
+        # ppo_config = {
+        #     "LR": 2.5e-4,
+        #     "NUM_ENVS": 4,
+        #     "NUM_STEPS": 2,
+        #     "TOTAL_TIMESTEPS": 5e5,
+        #     "UPDATE_EPOCHS": 4,
+        #     "NUM_MINIBATCHES": 4,
+        #     "GAMMA": 0.99,
+        #     "GAE_LAMBDA": 0.95,
+        #     "CLIP_EPS": 0.2,
+        #     "ENT_COEF": 0.01,
+        #     "VF_COEF": 0.5,
+        #     "MAX_GRAD_NORM": 0.5,
+        #     "ENV_NAME": "alphatradeExec-v0",
+        #     "ANNEAL_LR": True,
+        #     "DEBUG": True,
+        #     "NORMALIZE_ENV": False,
+        #     "ATFOLDER": ATFolder,
+        #     "TASKSIDE":'buy'
+        # }
         # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
         # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
         # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
@@ -386,12 +379,16 @@ if __name__ == "__main__":
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        
+        if done:
+            break
 
     # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
+    enable_vmap=False
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
