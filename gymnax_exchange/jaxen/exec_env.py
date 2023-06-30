@@ -183,10 +183,30 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("Trades: \n {}",state.trades)
         
         
-        reward_start = timeit.default_timer()
+        done_start = timeit.default_timer()
         done = self.is_terminal(state,params)
-        reward=self.get_reward(state, params)
-        reward_end = timeit.default_timer()
+        done_end = timeit.default_timer()
+        
+        reward_where_start = timeit.default_timer()
+        # reward=self.get_reward(state, params)
+        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        reward_where_end = timeit.default_timer()
+        
+        reward_calc_start = timeit.default_timer()
+        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
+        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        drift = agentTrades[:,1].sum() * (vwap - state.init_price)
+        rewardValue = advantage + Lambda * drift
+        reward_calc_end = timeit.default_timer()
+        
+        reward_nan_start = timeit.default_timer()
+        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        reward=jnp.nan_to_num(reward)
+        reward_nan_end = timeit.default_timer()
+        
         # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
 
@@ -194,7 +214,12 @@ class ExecutionEnv(BaseLOBEnv):
         obs_start = timeit.default_timer()
         obs = self.get_obs(state,params)
         obs_end = timeit.default_timer()
-        return obs,state,reward,done,{"obs_":obs_end-obs_start,"scan_":scan_end-scan_start,"act_":Action_msgs_end-Action_msgs_start,"rew_":reward_end-reward_start}
+        return obs,state,reward,done,{"obs_":obs_end-obs_start,\
+            "scan_":scan_end-scan_start,"act_":Action_msgs_end-Action_msgs_start,\
+            "rew_nan_":reward_nan_end-reward_nan_start,\
+            "rew_where_":reward_where_end-reward_where_start,\
+            "rew_calc_":reward_calc_end-reward_calc_start,\
+            "done_":done_end-done_start}
         # return obs,state,reward,done,{"obs":obs_end-obs_start,"scan":scan_end-scan_start,"action":Action_msgs_end-Action_msgs_start,"reward":reward_end-reward_start}
         
         # return self.get_obs(state,params),state,reward,done,{"info":0}

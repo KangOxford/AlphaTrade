@@ -364,10 +364,13 @@ def make_train(config):
                     
                     # info
                     print("-------------------------")
-                    print(f"obs: {info['obs_'][0,0]}")
-                    print(f"scan:{info['scan_'][0,0]}")
-                    print(f"act: {info['act_'][0,0]}")
-                    print(f"rew: {info['rew_'][0,0]}")
+                    print(f"obs:        {info['obs_'][0,0]}")
+                    print(f"scan:       {info['scan_'][0,0]}")
+                    print(f"act:        {info['act_'][0,0]}")
+                    print(f"done        {info['done_'][0,0]}")
+                    print(f"rew_nan_:   {info['rew_nan_'][0,0]}")
+                    print(f"rew_where_: {info['rew_where_'][0,0]}")
+                    print(f"rew_calc_:  {info['rew_calc_'][0,0]}")
                     print("-------------------------")
                     # jax.debug.breakpoint()
                     
