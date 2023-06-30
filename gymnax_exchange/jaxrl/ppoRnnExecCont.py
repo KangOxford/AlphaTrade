@@ -194,7 +194,7 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                # jax.debug.breakpoint()
+
                 obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
@@ -399,15 +399,12 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
-
+    
     ppo_config = {
         "LR": 2.5e-4,
-        # "NUM_ENVS": 4,
-        # "NUM_STEPS": 2,
-        "NUM_ENVS": 1,
-        "NUM_STEPS": 1,
+        "NUM_ENVS": 1000,
+        "NUM_STEPS": 10,
         "TOTAL_TIMESTEPS": 5e5,
-        # "TOTAL_TIMESTEPS": 5e1,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -435,4 +432,7 @@ if __name__ == "__main__":
 
     # train = make_train(ppo_config)
     # jax.debug.breakpoint()
+    start=time.time()
     out = train_jit(rng)
+    print("Time: ", time.time()-start)
+
