@@ -45,7 +45,6 @@ import time
 
 @struct.dataclass
 class NEnvState:
-    num_envs: int
     nask_raw_orders: chex.Array
     nbid_raw_orders: chex.Array
     ntrades: chex.Array
@@ -64,9 +63,9 @@ class NEnvState:
 
 @struct.dataclass
 class NEnvParams:
-    nmessage_data: chex.Array
-    nbook_data: chex.Array
-    # ------------------------------------------------------------------
+    message_data: chex.Array
+    book_data: chex.Array
+    num_envs: int = 3
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     max_steps_in_episode: int = 100
     messages_per_step: int=1
@@ -232,33 +231,60 @@ class ExecutionEnv(BaseLOBEnv):
 
 
     def reset_env(
-        self, key: chex.PRNGKey, params: NEnvParams
+        self, key: chex.PRNGKey, nparams: NEnvParams
     ) -> Tuple[chex.Array, NEnvState]:
         #jax.debug.breakpoint()
         """Reset environment state by sampling initial position in OB."""
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        key, nparams = key_reset,env_params#$
+        keys = jax.random.split(key, nparams.num_envs)
+        nidx_data_window = [jax.random.randint(keys[i], minval=0, maxval=12, shape=()) for i in range(nparams.num_envs)]
+        # nidx_data_window = [jax.random.randint(keys[i], minval=0, maxval=self.n_windows, shape=()) for i in range(nparams.num_envs)]
         #Get the init time based on the first message to be processed in the first step. 
-        time=job.get_initial_time(params.message_data,idx_data_window) 
+        ntime=[job.get_initial_time(nparams.message_data,idx_data_window) for idx_data_window in nidx_data_window]
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-        init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
+        ninit_orders=[job.get_initial_orders(nparams.book_data,nidx_data_window[i],ntime[i]) for i in range(nparams.num_envs)]
         #Initialise both sides of the book as being empty
-        asks_raw=job.init_orderside(self.nOrdersPerSide)
-        bids_raw=job.init_orderside(self.nOrdersPerSide)
-        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        nasks_raw=[job.init_orderside(100) for i in range(nparams.num_envs)] 
+        nbids_raw=[job.init_orderside(100) for i in range(nparams.num_envs)]  
+        # nasks_raw=[job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)]  
+        # nbids_raw=[job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)]  
+        ntrades_init=[(jnp.ones((100,6))*-1).astype(jnp.int32) for i in range(nparams.num_envs)]  
+        # ntrades_init=[(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32) for i in range(nparams.num_envs)]  
         #Process the initial messages through the orderbook
-        ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+        
+        nordersides=jnp.array([job.scan_through_entire_array(ninit_orders[i],(nasks_raw[i],nbids_raw[i],ntrades_init[i])) for i in range(nparams.num_envs)])
+        # nordersides = jnp.vstack(nordersides) # TODO, wrong here, as ordersides has three elems
 
         # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
-        best_ask, best_bid = job.get_best_bid_and_ask(ordersides[0],ordersides[1])
-        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        # [(best_ask, best_bid) = job.get_best_bid_and_ask(ordersides[0],ordersides[1])]
+        bestAskBid_pairs = jnp.array([job.get_best_bid_and_ask(ordersides[0],ordersides[1]) for ordersides in nordersides])
+        Ms = [(best_bid + best_ask)//2//100*100 for best_bid, best_ask in bestBidAsk_pairs]
+        # Ms = [(best_bid + best_ask)//2//self.tick_size*self.tick_size for best_bid, best_ask in bestBidAsk_pairs]
 
         #Craft the first state
-        state = NEnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
+        # states = [NEnvState(*nordersides[i],jnp.resize(bestBidAsk_pairs[i][0],(self.stepLines,)),jnp.resize(bestBidAsk_pairs[i][0],(self.stepLines,)),time,time,0,nidx_data_window[i],0,Ms[i],self.task_size,0) for i in range(nparams.num_envs)]
         # jax.debug.print('State: {}',state)
         # jax.debug.breakpoint()
+        
+        # jnp.resize(bestBidAsk_pairs[i][0],(self.stepLines,)) # TODO not done yet
+        nask_raw_orders, nbid_raw_orders, ntrades = map(jnp.stack, [nordersides[:, i] for i in range(nordersides.shape[0])])
+        best_asks,best_bids = jnp.hsplit(bestAskBid_pairs, 2)
+        best_asks = jnp.repeat(best_asks,100,axis =1)
+        best_bids = jnp.repeat(best_bids,100,axis =1)
+        # best_asks = jnp.resize(best_asks,(self.stepLines,))
+        ntime, ntime 
+        ncumstomIDcounter = jnp.zeros((nparams.num_envs,),dtype=jnp.int32)
+        nidx_data_window
+        jnp.zeros((nparams.num_envs,),dtype=jnp.int32)
+        Ms
+        200 * jnp.ones((nparams.num_envs,),dtype=jnp.int32)
+        # self.task_size * jnp.ones((nparams.num_envs,),dtype=jnp.int32)
+        jnp.zeros((nparams.num_envs,),dtype=jnp.int32)
+        
 
-
-        return self.get_obs(state,params),state
+        
+        jnp.vstack(states[0])
+        return self.get_obs(state,nparams),state
 
     def is_terminal(self, state: NEnvState, params: NEnvParams) -> bool:
         """Check whether state is terminal."""

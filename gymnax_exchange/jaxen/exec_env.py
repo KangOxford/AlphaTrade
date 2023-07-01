@@ -139,23 +139,8 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         done_end = timeit.default_timer()
         
-        
-        
         # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
-
-        
-        # obs_start = timeit.default_timer()
-        # obs = self.get_obs(state,params)
-        # obs_end = timeit.default_timer()
-        # return obs,state,reward,done,{"obs_":obs_end-obs_start,\
-        #     "scan_":scan_end-scan_start,"act_":Action_msgs_end-Action_msgs_start,\
-        #     "rew_nan_":reward_nan_end-reward_nan_start,\
-        #     "rew_where_":reward_where_end-reward_where_start,\
-        #     "rew_calc_":reward_calc_end-reward_calc_start,\
-        #     "done_":done_end-done_start}
-        # return obs,state,reward,done,{"obs":obs_end-obs_start,"scan":scan_end-scan_start,"action":Action_msgs_end-Action_msgs_start,"reward":reward_end-reward_start}
-        
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
