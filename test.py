@@ -438,9 +438,78 @@ rewardValue_ = jnp.array(2.6544957e+08, dtype=jnp.float32)
 # reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
 # reward=jnp.nan_to_num(reward) 
 
-a = jnp.array([0, 1, 0, 0, 0, 0])
-b = jnp.ones(100,dtype=jnp.int32).T
+# a = jnp.array([0, 1, 0, 0, 0, 0])
+# b = jnp.ones(100,dtype=jnp.int32).T
 
+
+# @jax.jit
+# def get1(trades):
+#     # reward=self.get_reward(state, params)
+#     executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
+#     mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+#     agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+#     return agentTrades
+# @jax.jit
+# def get2(executed, agentTrades):
+#     E = executed.T @ executed
+#     e = executed @ a
+#     esum= e @ b
+#     vwap = E[0, 1] / esum
+#     # vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
+#     advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+#     Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+#     drift = agentTrades[:,1].sum() * (vwap - 36000000)
+#     rewardValue = advantage + Lambda * drift
+#     return rewardValue
+# @jax.jit
+# def get3(agentTrades, rewardValue):
+#     reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+#     reward=jnp.nan_to_num(reward)
+#     return reward
+
+# @jax.jit
+# def get4(trades):
+#     return get3(agentTrades_,get2(executed_, get1(trades)))
+
+# # execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=1)
+# # execution_time0 = timeit.timeit(lambda: jax.device_get(get2(executed_, agentTrades_).block_until_ready()), number=1)
+# # execution_time0 = timeit.timeit(lambda: jax.device_get(get3(agentTrades_, rewardValue_).block_until_ready()), number=1)
+# execution_time0 = timeit.timeit(lambda: jax.device_get(get4(trades).block_until_ready()), number=1)
+
+
+# # execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=1)
+# # print("Execution time for get1():", execution_time0, "seconds")
+# # execution_time0 = timeit.timeit(lambda: jax.device_get(get2(executed_, agentTrades_).block_until_ready()), number=1)
+# # print("Execution time for get2():", execution_time0, "seconds")
+# # execution_time0 = timeit.timeit(lambda: jax.device_get(get3(agentTrades_, rewardValue_).block_until_ready()), number=1)
+# # print("Execution time for get3():", execution_time0, "seconds")
+# execution_time0 = timeit.timeit(lambda: jax.device_get(get4(trades).block_until_ready()), number=1)
+# print("Execution time for get4():", execution_time0, "seconds")
+
+
+# # #------------------------ testing ------------------------
+# # # Measure the execution time for get1()
+# # execution_time = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=100000)
+# # print("Execution time for get1():", execution_time, "seconds")
+
+# # # Measure the execution time for get2()
+# # execution_time = timeit.timeit(lambda: jax.device_get(get2(executed_, agentTrades_).block_until_ready()), number=100000)
+# # print("Execution time for get2():", execution_time, "seconds")
+
+# # # Measure the execution time for get3()
+# # execution_time = timeit.timeit(lambda: jax.device_get(get3(agentTrades_, rewardValue_).block_until_ready()), number=100000)
+# # print("Execution time for get3():", execution_time, "seconds")
+# # # # Perform the computation and measure the time
+
+# # # Measure the execution time for get3()
+# # execution_time = timeit.timeit(lambda: jax.device_get(get4(trades).block_until_ready()), number=100000)
+# # print("Execution time for get4():", execution_time, "seconds")
+# # # # Perform the computation and measure the time
+
+
+# # ================================================================================
+
+trades_big = jnp.tile(trades,(1000,1))
 
 @jax.jit
 def get1(trades):
@@ -449,59 +518,23 @@ def get1(trades):
     mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
     agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
     return agentTrades
-@jax.jit
-def get2(executed, agentTrades):
-    E = executed.T @ executed
-    e = executed @ a
-    esum= e @ b
-    vwap = E[0, 1] / esum
-    # vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
-    advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
-    Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
-    drift = agentTrades[:,1].sum() * (vwap - 36000000)
-    rewardValue = advantage + Lambda * drift
-    return rewardValue
-@jax.jit
-def get3(agentTrades, rewardValue):
-    reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
-    reward=jnp.nan_to_num(reward)
-    return reward
 
-@jax.jit
-def get4(trades):
-    return get3(agentTrades_,get2(executed_, get1(trades)))
-
-# execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=1)
-# execution_time0 = timeit.timeit(lambda: jax.device_get(get2(executed_, agentTrades_).block_until_ready()), number=1)
-# execution_time0 = timeit.timeit(lambda: jax.device_get(get3(agentTrades_, rewardValue_).block_until_ready()), number=1)
-execution_time0 = timeit.timeit(lambda: jax.device_get(get4(trades).block_until_ready()), number=1)
+execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=1)
 
 
-# execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=1)
-# print("Execution time for get1():", execution_time0, "seconds")
-# execution_time0 = timeit.timeit(lambda: jax.device_get(get2(executed_, agentTrades_).block_until_ready()), number=1)
-# print("Execution time for get2():", execution_time0, "seconds")
-# execution_time0 = timeit.timeit(lambda: jax.device_get(get3(agentTrades_, rewardValue_).block_until_ready()), number=1)
-# print("Execution time for get3():", execution_time0, "seconds")
-execution_time0 = timeit.timeit(lambda: jax.device_get(get4(trades).block_until_ready()), number=1)
-print("Execution time for get4():", execution_time0, "seconds")
+
+execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=1)
+print("Execution time for get1_sml():", execution_time0, "seconds")
+execution_time0 = timeit.timeit(lambda: jax.device_get(get1(trades_big).block_until_ready()), number=1)
+print("Execution time for get1_big():", execution_time0, "seconds")
 
 
 # #------------------------ testing ------------------------
-# # Measure the execution time for get1()
-# execution_time = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=100000)
-# print("Execution time for get1():", execution_time, "seconds")
+# Measure the execution time for get1()
+execution_time = timeit.timeit(lambda: jax.device_get(get1(trades).block_until_ready()), number=100*1000)
+print("Execution time for get1_sml():", execution_time, "seconds")
 
-# # Measure the execution time for get2()
-# execution_time = timeit.timeit(lambda: jax.device_get(get2(executed_, agentTrades_).block_until_ready()), number=100000)
-# print("Execution time for get2():", execution_time, "seconds")
+# Measure the execution time for get2()
+execution_time = timeit.timeit(lambda: jax.device_get(get1(trades_big).block_until_ready()), number=100*1000)
+print("Execution time for get1_big():", execution_time, "seconds")
 
-# # Measure the execution time for get3()
-# execution_time = timeit.timeit(lambda: jax.device_get(get3(agentTrades_, rewardValue_).block_until_ready()), number=100000)
-# print("Execution time for get3():", execution_time, "seconds")
-# # # Perform the computation and measure the time
-
-# Measure the execution time for get3()
-execution_time = timeit.timeit(lambda: jax.device_get(get4(trades).block_until_ready()), number=100000)
-print("Execution time for get4():", execution_time, "seconds")
-# # Perform the computation and measure the time

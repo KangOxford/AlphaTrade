@@ -98,57 +98,8 @@ class ExecutionEnv(BaseLOBEnv):
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
-        
-        # ============================== Get Action_msgs ==============================
-        Action_msgs_start = timeit.default_timer()  # Start the timer
-        # --------------- 01 rest info for deciding action_msgs ---------------
-        types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
-        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
-        #Stack (Concatenate) the info into an array 
-        # --------------- 01 rest info for deciding action_msgs ---------------
-        
-        # --------------- 02 info for deciding prices ---------------
-        # Can only use these if statements because self is a static arg.
-        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
-        # jax.debug.breakpoint()
-        best_ask, best_bid = state.best_asks[-1], state.best_bids[-1]
-        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
-        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
-        P = best_ask if self.task=='sell' else best_bid
-        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
-        # --------------- 02 info for deciding prices ---------------
-    
-        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-        ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState,  A: float):
-            quant = state.task_to_execute - state.quant_executed
-            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
-            prices = jnp.asarray((price, price , price, price),jnp.int32)
-            # (self.tick_size * 100) : one dollar
-            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
-            return quants, prices
-        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
-            quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((A, M, P, PP), jnp.int32)
-            return quants, prices
-        market_quants, market_prices = market_order_logic(state, A)
-        normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
-        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
-        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
-        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        Action_msgs_end = timeit.default_timer()  # Start the timer
-        # ============================== Get Action_msgs ==============================
 
-
-
-        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
-        action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+        action_msgs = self.getActionMsgs(action, state, params)
         #jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
@@ -189,7 +140,7 @@ class ExecutionEnv(BaseLOBEnv):
         done_end = timeit.default_timer()
         
         
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         reward_where_start = timeit.default_timer()
         # reward=self.get_reward(state, params)
         executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
@@ -214,18 +165,18 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Final state after step: \n {}", state)
 
         
-        obs_start = timeit.default_timer()
-        obs = self.get_obs(state,params)
-        obs_end = timeit.default_timer()
-        return obs,state,reward,done,{"obs_":obs_end-obs_start,\
-            "scan_":scan_end-scan_start,"act_":Action_msgs_end-Action_msgs_start,\
-            "rew_nan_":reward_nan_end-reward_nan_start,\
-            "rew_where_":reward_where_end-reward_where_start,\
-            "rew_calc_":reward_calc_end-reward_calc_start,\
-            "done_":done_end-done_start}
+        # obs_start = timeit.default_timer()
+        # obs = self.get_obs(state,params)
+        # obs_end = timeit.default_timer()
+        # return obs,state,reward,done,{"obs_":obs_end-obs_start,\
+        #     "scan_":scan_end-scan_start,"act_":Action_msgs_end-Action_msgs_start,\
+        #     "rew_nan_":reward_nan_end-reward_nan_start,\
+        #     "rew_where_":reward_where_end-reward_where_start,\
+        #     "rew_calc_":reward_calc_end-reward_calc_start,\
+        #     "done_":done_end-done_start}
         # return obs,state,reward,done,{"obs":obs_end-obs_start,"scan":scan_end-scan_start,"action":Action_msgs_end-Action_msgs_start,"reward":reward_end-reward_start}
         
-        # return self.get_obs(state,params),state,reward,done,{"info":0}
+        return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
     def reset_env(
@@ -261,6 +212,53 @@ class ExecutionEnv(BaseLOBEnv):
         """Check whether state is terminal."""
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
+    def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
+        # ============================== Get Action_msgs ==============================
+        # --------------- 01 rest info for deciding action_msgs ---------------
+        types=jnp.ones((self.n_actions,),jnp.int32)
+        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
+        #Stack (Concatenate) the info into an array 
+        # --------------- 01 rest info for deciding action_msgs ---------------
+        
+        # --------------- 02 info for deciding prices ---------------
+        # Can only use these if statements because self is a static arg.
+        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
+        # jax.debug.breakpoint()
+        best_ask, best_bid = state.best_asks[-1], state.best_bids[-1]
+        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
+        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        P = best_ask if self.task=='sell' else best_bid
+        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
+        # --------------- 02 info for deciding prices ---------------
+
+        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
+        remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+        ifMarketOrder = (remainingTime <= marketOrderTime)
+        def market_order_logic(state: EnvState,  A: float):
+            quant = state.task_to_execute - state.quant_executed
+            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
+            prices = jnp.asarray((price, price , price, price),jnp.int32)
+            # (self.tick_size * 100) : one dollar
+            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
+            return quants, prices
+        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
+            quants = action.astype(jnp.int32) # from action space
+            prices = jnp.asarray((A, M, P, PP), jnp.int32)
+            return quants, prices
+        market_quants, market_prices = market_order_logic(state, A)
+        normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
+        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
+        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
+        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
+        action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+        return action_msgs
+        # ============================== Get Action_msgs ==============================
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         # ========== get_executed_piars for rewards ==========

@@ -44,27 +44,29 @@ from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 import time 
 
 @struct.dataclass
-class EnvState:
-
-    ask_raw_orders: chex.Array
-    bid_raw_orders: chex.Array
-    trades: chex.Array
-    best_asks: chex.Array
-    best_bids: chex.Array
-    init_time: chex.Array
-    time: chex.Array
-    customIDcounter: int
-    window_index:int
-    step_counter: int
-    init_price:int
-    task_to_execute:int
-    quant_executed:int
-
+class NEnvState:
+    num_envs: int
+    nask_raw_orders: chex.Array
+    nbid_raw_orders: chex.Array
+    ntrades: chex.Array
+    nbest_asks: chex.Array
+    nbest_bids: chex.Array
+    ninit_time: chex.Array
+    ntime: chex.Array
+    # ----------------------------
+    ncustomIDcounter: chex.Array
+    nwindow_index: chex.Array
+    nstep_counter: chex.Array
+    ninit_price: chex.Array
+    ntask_to_execute: chex.Array
+    nquant_executed: chex.Array
+    
 
 @struct.dataclass
-class EnvParams:
-    message_data: chex.Array
-    book_data: chex.Array
+class NEnvParams:
+    nmessage_data: chex.Array
+    nbook_data: chex.Array
+    # ------------------------------------------------------------------
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     max_steps_in_episode: int = 100
     messages_per_step: int=1
@@ -88,13 +90,13 @@ class ExecutionEnv(BaseLOBEnv):
         # assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
-    def default_params(self) -> EnvParams:
+    def default_params(self) -> NEnvParams:
         # Default environment parameters
-        return EnvParams(self.messages,self.books)
+        return NEnvParams(self.messages,self.books)
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        self, key: chex.PRNGKey, state: NEnvState, action: Dict, params: NEnvParams
+    ) -> Tuple[chex.Array, NEnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
@@ -126,7 +128,7 @@ class ExecutionEnv(BaseLOBEnv):
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState,  A: float):
+        def market_order_logic(state: NEnvState,  A: float):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
@@ -134,7 +136,7 @@ class ExecutionEnv(BaseLOBEnv):
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
             return quants, prices
-        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
+        def normal_order_logic(state: NEnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
             quants = action.astype(jnp.int32) # from action space
             prices = jnp.asarray((A, M, P, PP), jnp.int32)
             return quants, prices
@@ -179,7 +181,7 @@ class ExecutionEnv(BaseLOBEnv):
         # CAUTION while the array executedin reward is calc from the update state in this step
         # =========ECEC QTY========
         scan_start = timeit.default_timer()
-        state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
+        state = NEnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         scan_end = timeit.default_timer()
         # jax.debug.print("Trades: \n {}",state.trades)
         
@@ -201,7 +203,7 @@ class ExecutionEnv(BaseLOBEnv):
         reward_calc_start = timeit.default_timer()
         vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
         advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
-        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        Lambda = 0.5 # FIXME shoud be moved to NEnvState or NEnvParams
         drift = agentTrades[:,1].sum() * (vwap - state.init_price)
         rewardValue = advantage + Lambda * drift
         reward_calc_end = timeit.default_timer()
@@ -230,8 +232,8 @@ class ExecutionEnv(BaseLOBEnv):
 
 
     def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
+        self, key: chex.PRNGKey, params: NEnvParams
+    ) -> Tuple[chex.Array, NEnvState]:
         #jax.debug.breakpoint()
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
@@ -251,19 +253,19 @@ class ExecutionEnv(BaseLOBEnv):
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
 
         #Craft the first state
-        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
+        state = NEnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
         # jax.debug.print('State: {}',state)
         # jax.debug.breakpoint()
 
 
         return self.get_obs(state,params),state
 
-    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
+    def is_terminal(self, state: NEnvState, params: NEnvParams) -> bool:
         """Check whether state is terminal."""
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
     
-    def get_reward(self, state: EnvState, params: EnvParams) -> float:
+    def get_reward(self, state: NEnvState, params: NEnvParams) -> float:
         # ========== get_executed_piars for rewards ==========
         # TODO  no valid trades(all -1) case (might) hasn't be handled.
         #jax.debug.breakpoint()
@@ -273,7 +275,7 @@ class ExecutionEnv(BaseLOBEnv):
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
-        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        Lambda = 0.5 # FIXME shoud be moved to NEnvState or NEnvParams
         drift = agentTrades[:,1].sum() * (vwap - state.init_price)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
@@ -282,7 +284,7 @@ class ExecutionEnv(BaseLOBEnv):
         return reward
 
 
-    def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+    def get_obs(self, state: NEnvState, params:NEnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
         # -----------------------2--------------------------
@@ -331,13 +333,13 @@ class ExecutionEnv(BaseLOBEnv):
 
 
     def action_space(
-        self, params: Optional[EnvParams] = None
+        self, params: Optional[NEnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
-    def observation_space(self, params: EnvParams):
+    def observation_space(self, params: NEnvParams):
         """Observation space of the environment."""
         # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
         space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
@@ -345,7 +347,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
     #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
-    def state_space(self, params: EnvParams) -> spaces.Dict:
+    def state_space(self, params: NEnvParams) -> spaces.Dict:
         """State space of the environment."""
         return spaces.Dict(
             {
