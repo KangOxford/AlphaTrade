@@ -154,27 +154,32 @@ class ExecutionEnv(BaseLOBEnv):
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices) 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         times_s, times_ns =  times[:,:,0].T, times[:,:,1].T
-        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids,times_s, times_ns],axis=1) 
-        return action_msgs
+        naction_msgs_=jnp.stack([types,sides,quants,prices,trader_ids,order_ids,times_s, times_ns],axis=1) 
+        naction_msgs = jnp.transpose(naction_msgs_, axes=(2, 0, 1))
+        return naction_msgs
         # ============================== Get Action_msgs ==============================    
 
     def step_env(
         self, key: chex.PRNGKey, nstate: NEnvState, naction: chex.Array, nparams: NEnvParams
     ) -> Tuple[chex.Array, NEnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        ndata_messages=jnp.array([job.get_data_messages(nparams.message_data,nstate.window_index,nstate.step_counter) for i in range(nparams.num_envs)])
+        ndata_messages=jnp.array([job.get_data_messages(nparams.message_data,nstate.nwindow_index[i],nstate.nstep_counter[i]) for i in range(nparams.num_envs)])
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
-        action_msgs = self.getActionMsgs(naction, nstate, nparams)
+        naction_msgs = self.getActionMsgs(naction, nstate, nparams)
 
         #jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
+        ncnl_msgs=jnp.array([job.getCancelMsgs(nstate.nask_raw_orders[i] if "sell"=='sell' else nstate.nbid_raw_orders[i],
+                                   -8999,2*4,-1 if "sell"=='sell' else 1) for i in range(nparams.num_envs)])
+        # ncnl_msgs=jnp.array([job.getCancelMsgs(nstate.nask_raw_orders[i] if self.task=='sell' else nstate.nbid_raw_orders[i],
+        #                            -8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1) for i in range(nparams.num_envs)])
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
+
         #Add to the top of the data messages
-        total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
+        total_messages=jnp.concatenate([naction_msgs,ndata_messages],axis=1)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
         # jax.debug.print("Total messages: \n {}",total_messages)
 

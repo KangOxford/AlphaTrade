@@ -109,6 +109,7 @@ class ExecutionEnv(BaseLOBEnv):
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
         # jax.debug.print("Total messages: \n {}",total_messages)
+        jax.debug.breakpoint()
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
