@@ -153,8 +153,8 @@ class ExecutionEnv(BaseLOBEnv):
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants) 
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices) 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1) # TODO not sure about this step
-        action_msgs=jnp.concatenate([action_msgs,times],axis=1) # TODO not sure about this step
+        times_s, times_ns =  times[:,:,0].T, times[:,:,1].T
+        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids,times_s, times_ns],axis=1) 
         return action_msgs
         # ============================== Get Action_msgs ==============================    
 

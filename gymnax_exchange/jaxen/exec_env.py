@@ -137,6 +137,7 @@ class ExecutionEnv(BaseLOBEnv):
         done_start = timeit.default_timer()
         # .block_until_ready()
         done = self.is_terminal(state,params)
+        reward = self.get_reward(state, params)
         done_end = timeit.default_timer()
         
         # jax.debug.breakpoint()
@@ -221,6 +222,7 @@ class ExecutionEnv(BaseLOBEnv):
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
+        jax.debug.breakpoint()
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         return action_msgs
         # ============================== Get Action_msgs ==============================
@@ -259,7 +261,6 @@ class ExecutionEnv(BaseLOBEnv):
         
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
-        jax.debug.breakpoint()
         # -----------------------5--------------------------
         spreads = state.best_asks - state.best_bids
         # -----------------------6--------------------------
