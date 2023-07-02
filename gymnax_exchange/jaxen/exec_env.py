@@ -81,7 +81,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.task = task
         self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
-        self.n_ticks_in_book=20
+        self.n_ticks_in_book=20 
         self.debug : bool = False
         # self.vwap = 0.0 # vwap at current step
         # assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
@@ -259,6 +259,7 @@ class ExecutionEnv(BaseLOBEnv):
         
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
+        jax.debug.breakpoint()
         # -----------------------5--------------------------
         spreads = state.best_asks - state.best_bids
         # -----------------------6--------------------------
