@@ -119,13 +119,13 @@ class ExecutionEnv(BaseLOBEnv):
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         # jax.debug.breakpoint()
         nbest_ask, nbest_bid = nstate.nbest_asks[-1,:], nstate.nbest_bids[-1,:]
-        A = nbest_bid if "sell"=='sell' else nbest_ask # aggressive would be at bids
+        As = nbest_bid if "sell"=='sell' else nbest_ask # aggressive would be at bids
         # A = nbest_bid if self.task=='sell' else nbest_ask # aggressive would be at bids
-        M = (nbest_bid + nbest_ask)//2//100*100
+        Ms = (nbest_bid + nbest_ask)//2//100*100
         # M = (nbest_bid + nbest_ask)//2//self.tick_size*self.tick_size 
-        P = nbest_ask if "sell"=='sell' else nbest_bid
+        Ps = nbest_ask if "sell"=='sell' else nbest_bid
         # P = nbest_ask if self.task=='sell' else nbest_bid
-        PP= nbest_ask+100*20 if "sell"=='sell' else nbest_bid-100*20
+        PPs= nbest_ask+100*20 if "sell"=='sell' else nbest_bid-100*20
         # PP= nbest_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else nbest_bid-self.tick_size*self.n_ticks_in_book
         # --------------- 02 info for deciding prices ---------------
 
@@ -134,25 +134,26 @@ class ExecutionEnv(BaseLOBEnv):
         marketOrderTime = jnp.array(60, dtype=jnp.int32).repeat(nparams.num_envs) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
         
-        def market_order_logic(nstate: NEnvState,  A: float):
-            quant = nstate.task_to_execute - nstate.quant_executed
-            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
-            prices = jnp.asarray((price, price , price, price),jnp.int32)
+        def market_order_logic(nstate: NEnvState,  As: jnp.ndarray):
+            quant = nstate.ntask_to_execute - nstate.nquant_executed
+            price = As + (-1 if "sell" == 'sell' else 1) * (100 * 100) * 100
+            # price = As + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            quants = jnp.array((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
+            prices = jnp.array((price, price , price, price),jnp.int32)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
             return quants, prices
-        def normal_order_logic(nstate: NEnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
-            quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((A, M, P, PP), jnp.int32)
+        def normal_order_logic(nstate: NEnvState, naction: jnp.ndarray, As: jnp.ndarray, Ms: jnp.ndarray, Ps: jnp.ndarray, PPs: jnp.ndarray):
+            quants = naction # from action space
+            prices = jnp.vstack((As, Ms, Ps, PPs))
             return quants, prices
-        market_quants, market_prices = market_order_logic(nstate, A)
-        normal_quants, normal_prices = normal_order_logic(nstate, action, A, M, P, PP)
-        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
-        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        market_quants, market_prices = market_order_logic(nstate, As)
+        normal_quants, normal_prices = normal_order_logic(nstate, naction, As, Ms, Ps, PPs)
+        quants = jnp.where(ifMarketOrder, market_quants, normal_quants) # TODO not sure about this step
+        prices = jnp.where(ifMarketOrder, market_prices, normal_prices) # TODO not sure about this step
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
-        action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1) # TODO not sure about this step
+        action_msgs=jnp.concatenate([action_msgs,times],axis=1) # TODO not sure about this step
         return action_msgs
         # ============================== Get Action_msgs ==============================    
 
@@ -245,7 +246,7 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print('nstate: {}',nstate)
         # jax.debug.breakpoint()
         
-        ones = jnp.zeros((nparams.num_envs,),dtype=jnp.int32)
+        ones = jnp.ones((nparams.num_envs,),dtype=jnp.int32)
         nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,200*ones,0*ones)
         # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         
