@@ -108,7 +108,8 @@ class ExecutionEnv(BaseLOBEnv):
         # sides=-1*jnp.ones((self.n_actions,nparams.num_envs),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions,nparams.num_envs),jnp.int32) #if self.task=='buy'
         trader_ids=jnp.ones((4,nparams.num_envs),jnp.int32)*(-8999) #This agent will always have the same (unique) trader ID
         # trader_ids=jnp.ones((self.n_actions,nparams.num_envs),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,nparams.num_envs),jnp.int32)*(self.trader_unique_id+nstate.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        order_ids=jnp.ones((4,nparams.num_envs),jnp.int32)*(-8999+nstate.ncustomIDcounter)+jnp.arange(0,4).reshape(-1, 1).repeat(nparams.num_envs, axis=1) #Each message has a unique ID
+        # order_ids=jnp.ones((self.n_actions,nparams.num_envs),jnp.int32)*(self.trader_unique_id+nstate.customIDcounter)+jnp.arange(0,self.n_actions).reshape(-1, 1).repeat(nparams.num_envs, axis=1) #Each message has a unique ID
         times=jnp.resize(nstate.ntime+nparams.time_delay_obs_act,(nparams.num_envs,4,2)) #time from last (data) message of prev. step + some delay
         # times=jnp.resize(nstate.time+nparams.time_delay_obs_act,(nparams.num_envs,self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
@@ -149,8 +150,8 @@ class ExecutionEnv(BaseLOBEnv):
             return quants, prices
         market_quants, market_prices = market_order_logic(nstate, As)
         normal_quants, normal_prices = normal_order_logic(nstate, naction, As, Ms, Ps, PPs)
-        quants = jnp.where(ifMarketOrder, market_quants, normal_quants) # TODO not sure about this step
-        prices = jnp.where(ifMarketOrder, market_prices, normal_prices) # TODO not sure about this step
+        quants = jnp.where(ifMarketOrder, market_quants, normal_quants) 
+        prices = jnp.where(ifMarketOrder, market_prices, normal_prices) 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1) # TODO not sure about this step
         action_msgs=jnp.concatenate([action_msgs,times],axis=1) # TODO not sure about this step
