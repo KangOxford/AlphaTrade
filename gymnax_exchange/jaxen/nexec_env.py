@@ -119,7 +119,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         # jax.debug.breakpoint()
-        nbest_ask, nbest_bid = nstate.nbest_asks[-1,:], nstate.nbest_bids[-1,:]
+        nbest_ask, nbest_bid = nstate.nbest_asks[:,-1], nstate.nbest_bids[:,-1]
         As = nbest_bid if "sell"=='sell' else nbest_ask # aggressive would be at bids
         # A = nbest_bid if self.task=='sell' else nbest_ask # aggressive would be at bids
         Ms = (nbest_bid + nbest_ask)//2//100*100
@@ -210,6 +210,9 @@ class ExecutionEnv(BaseLOBEnv):
         # nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+self.n_actions,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
         # jax.debug.print("Trades: \n {}",state.trades)
         
+        # for key, value in nstate.__dict__.items():
+        #     print(key, value.shape)
+        
         
         # .block_until_ready()
         nreward = self.get_reward(nstate, nparams)
@@ -234,7 +237,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         ninit_orders=jnp.array([job.get_initial_orders(nparams.book_data,nidx_data_window[i],ntime[i]) for i in range(nparams.num_envs)])
         #Initialise both sides of the book as being empty
-        nasks_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)]) 
+        nasks_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)])
         nbids_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)])
         # nasks_raw=jnp.array([job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)])  
         # nbids_raw=jnp.array([job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)])  
@@ -256,10 +259,11 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
         
         ones = jnp.ones((nparams.num_envs,),dtype=jnp.int32)
-        nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,200*ones,0*ones)
+        nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,200*ones,0*ones)
         # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         
-
+        # for key, value in nstate.__dict__.items():
+        #     print(key, value.shape)
         
         # jnp.vstack(states[0])
         return self.get_obs(nstate,nparams),nstate
@@ -275,27 +279,27 @@ class ExecutionEnv(BaseLOBEnv):
         nsecond_passives =  nstate.nbest_asks+100*20 if 'sell'=='sell' else  nstate.nbest_bids-100*20
         # nsecond_passives =  nstate.nbest_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else  nstate.nbest_bids-self.tick_size*self.n_ticks_in_book
         # -----------------------3--------------------------
-        ntimeOfDay =  nstate.ntime.T
-        ndeltaT =  ntimeOfDay -  nstate.ninit_time.T
+        ntimeOfDay =  nstate.ntime
+        ndeltaT =  ntimeOfDay -  nstate.ninit_time
         # -----------------------4--------------------------
         
-        ninitPrice =  nstate.ninit_price.reshape(1,-1)
-        npriceDrift = nmid_prices[-1,:].reshape(1,-1) -  ninitPrice
+        ninitPrice =  nstate.ninit_price.reshape(-1,1)
+        npriceDrift = nmid_prices[:,-1].reshape(-1,1) -  ninitPrice
         # -----------------------5--------------------------
         nspreads =  nstate.nbest_asks -  nstate.nbest_bids
         # -----------------------6--------------------------
-        ntaskSize =  nstate.ntask_to_execute.reshape(1,-1)
-        nexecuted_quant= nstate.nquant_executed.reshape(1,-1)
+        ntaskSize =  nstate.ntask_to_execute.reshape(-1,1)
+        nexecuted_quant= nstate.nquant_executed.reshape(-1,1)
         # -----------------------7--------------------------
         getQuants = lambda raw_quants: jnp.where(raw_quants>0, raw_quants, 0)
         naskQuants,nbidQuants = jax.lax.map(getQuants,nstate.nask_raw_orders[:,:,1]), jax.lax.map(getQuants,nstate.nbid_raw_orders[:,:,1])
         nOFI_series = naskQuants - nbidQuants
-        nlastShallowImbalance, nlastDeepImbalance = jnp.array([nOFI_series[:,0]]), jnp.array([nOFI_series.sum(axis=1)])
+        nlastShallowImbalance, nlastDeepImbalance = nOFI_series[:,0][:,jnp.newaxis], jnp.sum(nOFI_series,axis=1)[:,jnp.newaxis]
         # ========= self.get_obs( nstate,nparams) =============
         # --------------------------------------------------
         # the below is the original obs
         # obs = jnp.concatenate(( nstate.nbest_asks, nstate.nbest_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
-        obs = jnp.concatenate(( nstate.nbest_asks, nstate.nbest_bids,nmid_prices,nsecond_passives,nspreads,ntimeOfDay,ndeltaT,ninitPrice,npriceDrift,ntaskSize,nexecuted_quant,nlastShallowImbalance, nlastDeepImbalance))
+        obs = jnp.concatenate(( nstate.nbest_asks, nstate.nbest_bids,nmid_prices,nsecond_passives,nspreads,ntimeOfDay,ndeltaT,ninitPrice,npriceDrift,ntaskSize,nexecuted_quant,nlastShallowImbalance, nlastDeepImbalance),axis=1)
         # the above is the new obs with lastShallowImbalance, lastDeepImbalance
         # --------------------------------------------------
         # jax.debug.breakpoint()
@@ -327,8 +331,6 @@ class ExecutionEnv(BaseLOBEnv):
         return reward
 
 
-
-
     @property
     def name(self) -> str:
         """Environment name."""
@@ -339,14 +341,12 @@ class ExecutionEnv(BaseLOBEnv):
         """Number of actions possible in environment."""
         return self.n_actions
 
-
-
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, nparams: NEnvParams):
         """Observation space of the environment."""
         # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
-        space = spaces.Box(-10000,99999999,(510,nparams.num_envs),dtype=jnp.int32)
+        space = spaces.Box(-10000,99999999,(nparams.num_envs,510),dtype=jnp.int32)
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
