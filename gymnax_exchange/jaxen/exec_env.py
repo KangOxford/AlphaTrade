@@ -140,8 +140,8 @@ class ExecutionEnv(BaseLOBEnv):
         
         done_start = timeit.default_timer()
         # .block_until_ready()
-        done = self.is_terminal(state,params)
         reward = self.get_reward(state, params)
+        done = self.is_terminal(state,params)
         done_end = timeit.default_timer()
         
         # jax.debug.breakpoint()

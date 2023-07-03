@@ -212,11 +212,12 @@ class ExecutionEnv(BaseLOBEnv):
         
         
         # .block_until_ready()
-        done = self.is_terminal(nstate,nparams)
+        nreward = self.get_reward(nstate, nparams)
+        ndone = self.is_terminal(nstate,nparams)
         
         # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
-        return self.get_obs(nstate,nparams),state,reward,done,{"info":0}
+        return self.get_obs(nstate,nparams),nstate,nreward,ndone,{"info":0}
 
 
     def reset_env(
@@ -311,16 +312,16 @@ class ExecutionEnv(BaseLOBEnv):
         # ========== get_executed_piars for rewards ==========
         # TODO  no valid trades(all -1) case (might) hasn't be handled.
         #jax.debug.breakpoint()
-        executed = jnp.where((nstate.trades[:, 0] > 0)[:, jnp.newaxis], nstate.trades, 0)
-        
-        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
-        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
-        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+        executed = jnp.where((nstate.ntrades[:,:, 0] > 0)[:,:, jnp.newaxis],nstate.ntrades, 0)        
+        vwap = jnp.sum((executed[:,:,0] * executed[:,:,1]),axis =1)/ jnp.sum(executed[:,:,1],axis =1)
+        mask2 = ((-9000 < executed[:,:, 2]) & (executed[:,:, 2] < 0)) | ((-9000 < executed[:,:, 3]) & (executed[:,:, 3] < 0))
+        agentTrades = jnp.where(mask2[:,:, jnp.newaxis], executed, 0)
+        agentTradesQuants = jnp.sum(agentTrades[:,:,1],axis =1)
+        advantage = jnp.sum(agentTrades[:,:,0] * agentTrades[:,:,1],axis =1) - vwap * agentTradesQuants
         Lambda = 0.5 # FIXME shoud be moved to NEnvState or NEnvParams
-        drift = agentTrades[:,1].sum() * (vwap - nstate.init_price)
+        drift = agentTradesQuants * (vwap - nstate.ninit_price)
         rewardValue = advantage + Lambda * drift
-        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        reward = jnp.sign(agentTrades[:,0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get_executed_piars for rewards ==========
         reward=jnp.nan_to_num(reward)
         return reward
