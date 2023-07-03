@@ -244,6 +244,11 @@ class ExecutionEnv(BaseLOBEnv):
         # ========== get_executed_piars for rewards ==========
         reward=jnp.nan_to_num(reward)
         return reward
+    
+    def revenueInfo(self, state: EnvState, params: EnvParams) -> float:
+        # Return revenue of this episode.
+        # TODO need to be implemented
+        return 0.0
 
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
