@@ -109,7 +109,6 @@ class ExecutionEnv(BaseLOBEnv):
         total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
         # jax.debug.print("Total messages: \n {}",total_messages)
-        jax.debug.breakpoint()
 
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
@@ -117,18 +116,22 @@ class ExecutionEnv(BaseLOBEnv):
         #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        jax.debug.breakpoint()
 
         scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[:,:],state.bid_raw_orders[:,:],trades_reinit),self.stepLines) 
         # scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         
-        # =========ECEC QTY========
-        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
-        new_execution = executed[:,1].sum() # sumExecutedQty
-        # CAUTION not same executed with the one in the reward
-        # CAUTION the array executed here is calculated from the last state
-        # CAUTION while the array executedin reward is calc from the update state in this step
-        # =========ECEC QTY========
+        def get_executed_num(trades):
+            # =========ECEC QTY========
+            executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+            return executed[:,1].sum() # sumExecutedQty
+            # CAUTION not same executed with the one in the reward
+            # CAUTION the array executed here is calculated from the last state
+            # CAUTION while the array executedin reward is calc from the update state in this step
+            # =========ECEC QTY========
+            
+        new_execution =  get_executed_num(scan_results.trades)
         scan_start = timeit.default_timer()
         state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         scan_end = timeit.default_timer()
@@ -223,7 +226,7 @@ class ExecutionEnv(BaseLOBEnv):
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
         return action_msgs
         # ============================== Get Action_msgs ==============================
