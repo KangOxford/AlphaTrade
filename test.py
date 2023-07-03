@@ -538,3 +538,17 @@ print("Execution time for get1_sml():", execution_time, "seconds")
 execution_time = timeit.timeit(lambda: jax.device_get(get1(trades_big).block_until_ready()), number=100*1000)
 print("Execution time for get1_big():", execution_time, "seconds")
 
+
+
+# # ================================================================================
+
+import jax
+import jax.numpy as jnp
+
+done = jnp.array([False, True, False])
+done = jnp.array(
+    [[False] * 510 , [True] * 510, [False] * 510]
+)
+obs_re = jnp.ones((3,510))
+obs_st = jnp.zeros((3,510))
+jax.lax.select(done, obs_re, obs_st)

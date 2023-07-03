@@ -1,17 +1,16 @@
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp
-import gymnax
 import sys
-sys.path.append('/Users/sasrey/AlphaTrade')
-sys.path.append('/homes/80/kang/AlphaTrade')
+sys.path.insert(0,'/Users/sasrey/AlphaTrade')
+sys.path.insert(0,'/homes/80/kang/AlphaTrade')
+import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
 import timeit
 
 import faulthandler
-
 faulthandler.enable()
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
@@ -93,11 +92,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Default environment parameters
         return NEnvParams(self.messages,self.books)
     
-    def action_space(
-            self, nparams: Optional[NEnvParams] = None
-        ) -> spaces.Box:
-        """Action space of the environment."""
-        return spaces.Box(0,100,(self.n_actions,nparams.num_envs),dtype=jnp.int32)
+
     
     def getActionMsgs(self, naction: chex.Array, nstate: NEnvState, nparams: NEnvParams):
         # ============================== Get Action_msgs ==============================
@@ -164,6 +159,7 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, NEnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         ndata_messages=jnp.array([job.get_data_messages(nparams.message_data,nstate.nwindow_index[i],nstate.nstep_counter[i]) for i in range(nparams.num_envs)])
+        # jax.debug.breakpoint()
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
@@ -190,9 +186,9 @@ class ExecutionEnv(BaseLOBEnv):
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
         # nscan_results_=[job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),100) for i in range(nparams.num_envs)]
-        nscan_results_=jnp.array([job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),self.stepLines) for i in range(nparams.num_envs)])
+        nscan_results_=[job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),self.stepLines) for i in range(nparams.num_envs)]
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        nscan_results = [jnp.stack([nscan_results_[i][j] for i in range(nparams.num_envs)]) for j in range(len(nscan_results_[0]))] # asks, bids, trades, best_asks, best_bids
+        nscan_results=[jnp.stack([nscan_results_[i][j] for i in range(nparams.num_envs)]) for j in range(len(nscan_results_[0]))] # asks, bids, trades, best_asks, best_bids
         
         def get_executed_num(trades):
             # =========ECEC QTY========
@@ -210,17 +206,19 @@ class ExecutionEnv(BaseLOBEnv):
         nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+self.n_actions,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
         # jax.debug.print("Trades: \n {}",state.trades)
         
-        # for key, value in nstate.__dict__.items():
-        #     print(key, value.shape)
+        for key, value in nstate.__dict__.items():
+            print(key, value.shape)
         
         
         # .block_until_ready()
         nreward = self.get_reward(nstate, nparams)
         ndone = self.is_terminal(nstate,nparams)
         
-        # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
-        return self.get_obs(nstate,nparams),nstate,nreward,ndone,{"info":0}
+        nobs = self.get_obs(nstate,nparams)
+        # jax.debug.breakpoint()
+        jax.debug.print(f"obs shape: {nobs.shape}")
+        return nobs,nstate,nreward,ndone,{"info":0}
 
 
     def reset_env(
@@ -264,10 +262,11 @@ class ExecutionEnv(BaseLOBEnv):
         # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,self.stepLines,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         
-        # for key, value in nstate.__dict__.items():
-        #     print(key, value.shape)
-        
-        return self.get_obs(nstate,nparams),nstate
+        for key, value in nstate.__dict__.items():
+            print(key, value.shape)
+        nobs = self.get_obs(nstate,nparams)
+        jax.debug.print(f"obs shape: {nobs.shape}")
+        return nobs,nstate
 
 
     def get_obs(self,  nstate: NEnvState, nparams:NEnvParams) -> chex.Array:
@@ -341,7 +340,12 @@ class ExecutionEnv(BaseLOBEnv):
     def num_actions(self) -> int:
         """Number of actions possible in environment."""
         return self.n_actions
-
+    
+    def action_space(
+            self, nparams: Optional[NEnvParams] = None
+        ) -> spaces.Box:
+        """Action space of the environment."""
+        return spaces.Box(0,100,(self.n_actions,nparams.num_envs),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, nparams: NEnvParams):
@@ -350,18 +354,18 @@ class ExecutionEnv(BaseLOBEnv):
         space = spaces.Box(-10000,99999999,(nparams.num_envs,510),dtype=jnp.int32)
         return space
 
-    #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
-    #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
-    def state_space(self, nparams: NEnvParams) -> spaces.Dict:
-        """nstate space of the environment."""
-        return spaces.Dict(
-            {
-                "bids": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
-                "asks": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
-                "trades": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nTradesLogged),dtype=jnp.int32),
-                "time": spaces.Discrete(nparams.max_steps_in_episode),
-            }
-        )
+    # #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
+    # #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
+    # def state_space(self, nparams: NEnvParams) -> spaces.Dict:
+    #     """nstate space of the environment."""
+    #     return spaces.Dict(
+    #         {
+    #             "bids": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+    #             "asks": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+    #             "trades": spaces.Box(-1,job.MAXPRICE,shape=(6,self.nTradesLogged),dtype=jnp.int32),
+    #             "time": spaces.Discrete(nparams.max_steps_in_episode),
+    #         }
+    #     )
 
 # ============================================================================= #
 # ============================================================================= #
@@ -384,7 +388,7 @@ if __name__ == "__main__":
     print(env_params.message_data.shape, env_params.book_data.shape)
 
     start=time.time()
-    obs,nstate=env.reset(key_reset,env_params)
+    nobs,nstate=env.reset(key_reset,env_params)
     print("nstate after reset: \n",nstate)
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
@@ -392,8 +396,9 @@ if __name__ == "__main__":
     for i in range(1,100):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
-        test_action=env.action_space().sample(key_policy)
+        test_action=env.action_space(env_params).sample(key_policy)
         # ---------- acion from trained network ----------
+        '''
         ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
         ## import ** network
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
@@ -421,12 +426,15 @@ if __name__ == "__main__":
         # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
         # hstate, pi, value = network.apply(runner_state.train_state.nparams, hstate, ac_in)
         # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
+        '''
         # ==================== ACTION ====================
         
         
-        print(f"Sampled {i}th actions are: ",test_action)
+        print(f"Sampled {i}th actions are: \n",test_action)
         start=time.time()
-        obs,nstate,reward,done,info=env.step(key_step, nstate,test_action, env_params)
+        # jax.debug.breakpoint()
+        nobs,nstate,reward,done,info=env.step(key_step,nstate,test_action,env_params)
+        # jax.debug.breakpoint()
         print(f"nstate after {i} step: \n",nstate,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
 
@@ -436,7 +444,7 @@ if __name__ == "__main__":
     if enable_vmap:
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+        vmap_act_sample=jax.vmap(env.action_space(env_params).sample, in_axes=(0))
 
         num_envs = 10
         vmap_keys = jax.random.split(rng, num_envs)
