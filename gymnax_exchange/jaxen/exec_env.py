@@ -249,37 +249,33 @@ class ExecutionEnv(BaseLOBEnv):
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
-        # -----------------------2--------------------------
-        
+        # -----------------------1--------------------------
         mid_prices = (state.best_asks + state.best_bids)//2//self.tick_size*self.tick_size 
         second_passives = state.best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else state.best_bids-self.tick_size*self.n_ticks_in_book
-        # -----------------------3--------------------------
-        
+        # -----------------------2--------------------------
         timeOfDay = state.time
         deltaT = state.time - state.init_time
-        # -----------------------4--------------------------
-        
+        # -----------------------3--------------------------
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
-        # -----------------------5--------------------------
+        # -----------------------4--------------------------
         spreads = state.best_asks - state.best_bids
-        # -----------------------6--------------------------
+        # -----------------------5--------------------------
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
-        # -----------------------7--------------------------
-        
+        # -----------------------6--------------------------
         getQuants = lambda raw_quants: jnp.where(raw_quants>0, raw_quants, 0)
         askQuants,bidQuants = jax.lax.map(getQuants, state.ask_raw_orders[:,1]), jax.lax.map(getQuants, state.bid_raw_orders[:,1])
         OFI_series = askQuants - bidQuants
         lastShallowImbalance, lastDeepImbalance = jnp.array([OFI_series[0]]), jnp.array([OFI_series.sum()])
         # ========= self.get_obs(state,params) =============
         
-        # --------------------------------------------------
+        # ==================================================
         # the below is the original obs
         # obs = jnp.concatenate((state.best_asks,state.best_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
         obs = jnp.concatenate((state.best_asks,state.best_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),lastShallowImbalance, lastDeepImbalance))
         # the above is the new obs with lastShallowImbalance, lastDeepImbalance
-        # --------------------------------------------------
+        # ==================================================
         # jax.debug.breakpoint()
         return obs
         
