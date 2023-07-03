@@ -131,7 +131,7 @@ class ExecutionEnv(BaseLOBEnv):
             # CAUTION while the array executedin reward is calc from the update state in this step
             # =========ECEC QTY========
             
-        new_execution =  get_executed_num(scan_results.trades)
+        new_execution =  get_executed_num(scan_results[3])
         scan_start = timeit.default_timer()
         state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         scan_end = timeit.default_timer()
