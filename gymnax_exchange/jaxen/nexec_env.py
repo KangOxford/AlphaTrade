@@ -196,17 +196,18 @@ class ExecutionEnv(BaseLOBEnv):
         
         def get_executed_num(trades):
             # =========ECEC QTY========
-            executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis],trades, 0)
-            return executed[:,1].sum() # sumExecutedQty
+            executed = jnp.where((trades[:,:, 0] > 0)[:,:, jnp.newaxis],trades, 0)
+            return jnp.sum(executed[:,:,1],axis =1)# sumExecutedQty
             # CAUTION not same executed with the one in the reward
             # CAUTION the array executed here is calculated from the last state
             # CAUTION while the array executedin reward is calc from the update state in this step
             # =========ECEC QTY========
-        new_execution =  get_executed_num(nscan_results[3])
+        nnew_execution =  get_executed_num(nscan_results[2])
         
         #Save time of final message to add to state
         ntime=jnp.array([ntotal_messages[i][-1:][0][-2:] for i in range(nparams.num_envs)])
-        state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
+        nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+4,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
+        # nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+self.n_actions,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
         # jax.debug.print("Trades: \n {}",state.trades)
         
         
@@ -303,7 +304,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, nstate: NEnvState, nparams: NEnvParams) -> bool:
         """Check whether nstate is terminal."""
-        return ((nstate.time-nstate.init_time)[0]>nparams.episode_time) | (nstate.task_to_execute-nstate.quant_executed<0)
+        return ((nstate.ntime-nstate.ninit_time)[:,0]>nparams.episode_time) | (nstate.ntask_to_execute-nstate.nquant_executed<0)
     
     
     def get_reward(self, nstate: NEnvState, nparams: NEnvParams) -> float:
