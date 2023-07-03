@@ -179,19 +179,18 @@ class ExecutionEnv(BaseLOBEnv):
 
 
         #Add to the top of the data messages
-        total_messages=jnp.concatenate([naction_msgs,ndata_messages],axis=1)
+        ntotal_messages=jnp.concatenate([naction_msgs,ndata_messages],axis=1)
         # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
         # jax.debug.print("Total messages: \n {}",total_messages)
 
-        #Save time of final message to add to state
-        time=total_messages[-1:][0][-2:]
 
         #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
-        trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        trades_reinit=(jnp.ones((100,6))*-1).astype(jnp.int32)
+        # trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[:,:],state.bid_raw_orders[:,:],trades_reinit),self.stepLines) 
-        # scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
+        nscan_results=[job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),100) for i in range(nparams.num_envs)]
+        # nscan_results=jnp.array([job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),self.stepLines) for i in range(nparams.num_envs)])
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         
         # =========ECEC QTY========
@@ -201,7 +200,10 @@ class ExecutionEnv(BaseLOBEnv):
         # CAUTION the array executed here is calculated from the last state
         # CAUTION while the array executedin reward is calc from the update state in this step
         # =========ECEC QTY========
+        
         scan_start = timeit.default_timer()
+        #Save time of final message to add to state
+        time=total_messages[-1:][0][-2:]
         state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
         scan_end = timeit.default_timer()
         # jax.debug.print("Trades: \n {}",state.trades)
