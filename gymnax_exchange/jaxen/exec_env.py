@@ -316,6 +316,11 @@ class ExecutionEnv(BaseLOBEnv):
         # --------------------------------------------------
         # jax.debug.breakpoint()
         return obs
+        
+    def revenueInfo(self, state: EnvState, params: EnvParams) -> float:
+        # Return revenue of this episode.
+        # TODO need to be implemented
+        return 0.0
 
     @property
     def name(self) -> str:
