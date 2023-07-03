@@ -195,7 +195,7 @@ class BaseLOBEnv(environment.Environment):
         self.books=jnp.array(bks)       #2D Array: (n_windows x [4*n_depth])
 
         self.n_windows=len(self.books)
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
 
 
 

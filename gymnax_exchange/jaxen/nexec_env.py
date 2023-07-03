@@ -171,26 +171,26 @@ class ExecutionEnv(BaseLOBEnv):
 
         #jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
-        ncnl_msgs=jnp.array([job.getCancelMsgs(nstate.nask_raw_orders[i] if "sell"=='sell' else nstate.nbid_raw_orders[i],
-                                   -8999,2*4,-1 if "sell"=='sell' else 1) for i in range(nparams.num_envs)])
-        # ncnl_msgs=jnp.array([job.getCancelMsgs(nstate.nask_raw_orders[i] if self.task=='sell' else nstate.nbid_raw_orders[i],
-        #                            -8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1) for i in range(nparams.num_envs)])
+        # ncnl_msgs=jnp.array([job.getCancelMsgs(nstate.nask_raw_orders[i] if "sell"=='sell' else nstate.nbid_raw_orders[i],
+        #                            -8999,2*4,-1 if "sell"=='sell' else 1) for i in range(nparams.num_envs)])
+        ncnl_msgs=jnp.array([job.getCancelMsgs(nstate.nask_raw_orders[i] if self.task=='sell' else nstate.nbid_raw_orders[i],
+                                   -8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1) for i in range(nparams.num_envs)])
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
 
         #Add to the top of the data messages
-        ntotal_messages=jnp.concatenate([naction_msgs,ndata_messages],axis=1)
-        # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
+        # ntotal_messages=jnp.concatenate([naction_msgs,ndata_messages],axis=1)
+        ntotal_messages=jnp.concatenate([ncnl_msgs,naction_msgs,ndata_messages],axis=1)
         # jax.debug.print("Total messages: \n {}",total_messages)
 
 
         #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
-        trades_reinit=(jnp.ones((100,6))*-1).astype(jnp.int32)
-        # trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        # trades_reinit=(jnp.ones((100,6))*-1).astype(jnp.int32)
+        trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        nscan_results_=[job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),100) for i in range(nparams.num_envs)]
-        # nscan_results=jnp.array([job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),self.stepLines) for i in range(nparams.num_envs)])
+        # nscan_results_=[job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),100) for i in range(nparams.num_envs)]
+        nscan_results_=jnp.array([job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),self.stepLines) for i in range(nparams.num_envs)])
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         nscan_results = [jnp.stack([nscan_results_[i][j] for i in range(nparams.num_envs)]) for j in range(len(nscan_results_[0]))] # asks, bids, trades, best_asks, best_bids
         
@@ -206,8 +206,8 @@ class ExecutionEnv(BaseLOBEnv):
         
         #Save time of final message to add to state
         ntime=jnp.array([ntotal_messages[i][-1:][0][-2:] for i in range(nparams.num_envs)])
-        nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+4,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
-        # nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+self.n_actions,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
+        # nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+4,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
+        nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+self.n_actions,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
         # jax.debug.print("Trades: \n {}",state.trades)
         
         # for key, value in nstate.__dict__.items():
@@ -230,19 +230,19 @@ class ExecutionEnv(BaseLOBEnv):
         """Reset environment nstate by sampling initial position in OB."""
         key, nparams = key_reset,env_params#$
         keys = jax.random.split(key, nparams.num_envs)
-        nidx_data_window = jnp.array([jax.random.randint(keys[i], minval=0, maxval=12, shape=()) for i in range(nparams.num_envs)])
-        # nidx_data_window = jnp.array([jax.random.randint(keys[i], minval=0, maxval=self.n_windows, shape=()) for i in range(nparams.num_envs)])
+        # nidx_data_window = jnp.array([jax.random.randint(keys[i], minval=0, maxval=12, shape=()) for i in range(nparams.num_envs)])
+        nidx_data_window = jnp.array([jax.random.randint(keys[i], minval=0, maxval=self.n_windows, shape=()) for i in range(nparams.num_envs)])
         #Get the init time based on the first message to be processed in the first step. 
         ntime=jnp.array([job.get_initial_time(nparams.message_data,idx_data_window) for idx_data_window in nidx_data_window])
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         ninit_orders=jnp.array([job.get_initial_orders(nparams.book_data,nidx_data_window[i],ntime[i]) for i in range(nparams.num_envs)])
         #Initialise both sides of the book as being empty
-        nasks_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)])
-        nbids_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)])
-        # nasks_raw=jnp.array([job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)])  
-        # nbids_raw=jnp.array([job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)])  
-        ntrades_init=jnp.array([(jnp.ones((100,6))*-1).astype(jnp.int32) for i in range(nparams.num_envs)])
-        # ntrades_init=jnp.array([(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32) for i in range(nparams.num_envs)])  
+        # nasks_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)])
+        # nbids_raw=jnp.array([job.init_orderside(100) for i in range(nparams.num_envs)])
+        nasks_raw=jnp.array([job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)])  
+        nbids_raw=jnp.array([job.init_orderside(self.nOrdersPerSide) for i in range(nparams.num_envs)])  
+        # ntrades_init=jnp.array([(jnp.ones((100,6))*-1).astype(jnp.int32) for i in range(nparams.num_envs)])
+        ntrades_init=jnp.array([(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32) for i in range(nparams.num_envs)])  
         #Process the initial messages through the orderbook
         
         nordersides=jnp.array([job.scan_through_entire_array(ninit_orders[i],(nasks_raw[i],nbids_raw[i],ntrades_init[i])) for i in range(nparams.num_envs)])
@@ -250,8 +250,8 @@ class ExecutionEnv(BaseLOBEnv):
 
         # Mid Price after init added to env nstate as the initial price --> Do not at to self as this applies to all environments.
         bestAskBid_pairs = jnp.array([job.get_best_bid_and_ask(ordersides[0],ordersides[1]) for ordersides in nordersides])
-        Ms = jnp.array([(nbest_bid + nbest_ask)//2//100*100 for nbest_bid, nbest_ask in bestAskBid_pairs])
-        # Ms = jnp.array([(nbest_bid + nbest_ask)//2//self.tick_size*self.tick_size for nbest_bid, nbest_ask in bestBidAsk_pairs])
+        # Ms = jnp.array([(nbest_bid + nbest_ask)//2//100*100 for nbest_bid, nbest_ask in bestAskBid_pairs])
+        Ms = jnp.array([(nbest_bid + nbest_ask)//2//self.tick_size*self.tick_size for nbest_bid, nbest_ask in bestAskBid_pairs])
 
         #Craft the first nstate
         # states = [NEnvState(*nordersides[i],jnp.resize(bestBidAsk_pairs[i][0],(self.stepLines,)),jnp.resize(bestBidAsk_pairs[i][0],(self.stepLines,)),time,time,0,nidx_data_window[i],0,Ms[i],self.task_size,0) for i in range(nparams.num_envs)]
@@ -259,13 +259,14 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
         
         ones = jnp.ones((nparams.num_envs,),dtype=jnp.int32)
-        nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,200*ones,0*ones)
-        # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
+        # TODO not sure about what to be replace with the 100 below,tick_size? nTradesLogged? nOrdersPerSide? stepLines?
+        # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,200*ones,0*ones)
+        # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
+        nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,self.stepLines,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         
         # for key, value in nstate.__dict__.items():
         #     print(key, value.shape)
         
-        # jnp.vstack(states[0])
         return self.get_obs(nstate,nparams),nstate
 
 
@@ -274,10 +275,10 @@ class ExecutionEnv(BaseLOBEnv):
         """Return observation from raw  nstate trafo."""
         # ========= self.get_obs( nstate,nparams) =============
         # -----------------------2--------------------------
-        nmid_prices = (nstate.nbest_asks +  nstate.nbest_bids)//2//100*100
-        # nmid_prices = (nstate.nbest_asks +  nstate.nbest_bids)//2//self.tick_size*self.tick_size 
-        nsecond_passives =  nstate.nbest_asks+100*20 if 'sell'=='sell' else  nstate.nbest_bids-100*20
-        # nsecond_passives =  nstate.nbest_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else  nstate.nbest_bids-self.tick_size*self.n_ticks_in_book
+        # nmid_prices = (nstate.nbest_asks +  nstate.nbest_bids)//2//100*100
+        nmid_prices = (nstate.nbest_asks +  nstate.nbest_bids)//2//self.tick_size*self.tick_size 
+        # nsecond_passives =  nstate.nbest_asks+100*20 if 'sell'=='sell' else  nstate.nbest_bids-100*20
+        nsecond_passives =  nstate.nbest_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else  nstate.nbest_bids-self.tick_size*self.n_ticks_in_book
         # -----------------------3--------------------------
         ntimeOfDay =  nstate.ntime
         ndeltaT =  ntimeOfDay -  nstate.ninit_time
