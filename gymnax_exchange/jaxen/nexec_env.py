@@ -20,8 +20,9 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+config.update("jax_disable_jit", False)
+# config.update("jax_disable_jit", True)
+import time 
 # ============== testing scripts ===============
 
 
@@ -41,9 +42,6 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-
-import time 
-
 
 from typing import Tuple, Union, Optional
 from functools import partial
@@ -173,7 +171,8 @@ class ExecutionEnv(BaseLOBEnv):
         # Use default env parameters if no others specified
         if params is None:
             params = self.default_params
-        key, key_reset = jax.random.split(key)
+        key, _ = jax.random.split(key)
+        # key, key_reset = jax.random.split(key)
         obs_st, state_st, reward, done, info = self.step_env(
             key, state, action, params
         )
@@ -195,7 +194,17 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, nstate: NEnvState, naction: chex.Array, nparams: NEnvParams
     ) -> Tuple[chex.Array, NEnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        ndata_messages=jnp.array([job.get_data_messages(nparams.message_data,nstate.nwindow_index[i],nstate.nstep_counter[i]) for i in range(nparams.num_envs)])
+        ndata_messages=jnp.array([
+            job.get_data_messages(nparams.message_data,nstate.nwindow_index[i],nstate.nstep_counter[i]) 
+            for i in range(nparams.num_envs)])
+    
+    
+
+
+
+
+
+
         # jax.debug.breakpoint()
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
@@ -243,8 +252,8 @@ class ExecutionEnv(BaseLOBEnv):
         nstate = NEnvState(*nscan_results,nstate.ninit_time,ntime,nstate.ncustomIDcounter+self.n_actions,nstate.nwindow_index,nstate.nstep_counter+1,nstate.ninit_price,nstate.ntask_to_execute,nstate.nquant_executed+nnew_execution)
         # jax.debug.print("Trades: \n {}",state.trades)
         
-        for key, value in nstate.__dict__.items():
-            print(key, value.shape)
+        # for key, value in nstate.__dict__.items():
+        #     print(key, value.shape)
         
         
         # .block_until_ready()
@@ -254,7 +263,7 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Final state after step: \n {}", state)
         nobs = self.get_obs(nstate,nparams)
         # jax.debug.breakpoint()
-        jax.debug.print(f"obs shape: {nobs.shape}")
+        # jax.debug.print(f"obs shape: {nobs.shape}")
         return nobs,nstate,nreward,ndone,{"info":0}
 
 
@@ -299,10 +308,10 @@ class ExecutionEnv(BaseLOBEnv):
         # nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,100,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         nstate = NEnvState(*map(jnp.stack,[nordersides[:,i] for i in range(nordersides.shape[0])]),*(jnp.repeat(arr,self.stepLines,axis=0).reshape((nparams.num_envs,-1)) for arr in jnp.vsplit(bestAskBid_pairs.T, 2)),ntime,ntime,0*ones,nidx_data_window,0*ones,Ms,self.task_size*ones,0*ones)
         
-        for key, value in nstate.__dict__.items():
-            print(key, value.shape)
+        # for key, value in nstate.__dict__.items():
+        #     print(key, value.shape)
         nobs = self.get_obs(nstate,nparams)
-        jax.debug.print(f"obs shape: {nobs.shape}")
+        # jax.debug.print(f"obs shape: {nobs.shape}")
         return nobs,nstate
 
 
@@ -496,3 +505,5 @@ if __name__ == "__main__":
         start=time.time()
         n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, nstate, test_actions, env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+        
+        

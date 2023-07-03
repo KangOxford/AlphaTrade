@@ -132,17 +132,13 @@ class ExecutionEnv(BaseLOBEnv):
             # =========ECEC QTY========
             
         new_execution =  get_executed_num(scan_results[2])
-        scan_start = timeit.default_timer()
         state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-        scan_end = timeit.default_timer()
         # jax.debug.print("Trades: \n {}",state.trades)
         
         
-        done_start = timeit.default_timer()
         # .block_until_ready()
         reward = self.get_reward(state, params)
         done = self.is_terminal(state,params)
-        done_end = timeit.default_timer()
         
         # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
