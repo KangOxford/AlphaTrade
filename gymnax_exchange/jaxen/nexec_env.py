@@ -2,8 +2,10 @@
 import jax
 import jax.numpy as jnp
 import sys
-sys.path.insert(0,'/Users/sasrey/AlphaTrade')
-sys.path.insert(0,'/homes/80/kang/AlphaTrade')
+# sys.path.insert(0,'/Users/sasrey/AlphaTrade')
+# sys.path.insert(0,'/homes/80/kang/AlphaTrade')
+sys.path.append('/Users/sasrey/AlphaTrade')
+sys.path.append('/homes/80/kang/AlphaTrade')
 import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
@@ -18,8 +20,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -41,6 +43,11 @@ from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
 import time 
+
+
+from typing import Tuple, Union, Optional
+from functools import partial
+    
 
 @struct.dataclass
 class NEnvState:
@@ -153,6 +160,36 @@ class ExecutionEnv(BaseLOBEnv):
         naction_msgs = jnp.transpose(naction_msgs_, axes=(2, 0, 1))
         return naction_msgs
         # ============================== Get Action_msgs ==============================    
+
+    @partial(jax.jit, static_argnums=(0,))
+    def step(
+        self,
+        key: chex.PRNGKey,
+        state: NEnvState,
+        action: Union[int, float],
+        params: Optional[NEnvParams] = None,
+    ) -> Tuple[chex.Array, NEnvState, float, bool, dict]:
+        """Performs step transitions in the environment."""
+        # Use default env parameters if no others specified
+        if params is None:
+            params = self.default_params
+        key, key_reset = jax.random.split(key)
+        obs_st, state_st, reward, done, info = self.step_env(
+            key, state, action, params
+        )
+        ''' we NEVER use the obs_re and state_re
+        obs_re, state_re = self.reset_env(key_reset, params)
+        # Auto-reset environment based on termination
+        done_obs = jax.numpy.tile(done[:, jax.numpy.newaxis], (1, obs.shape[1]))
+        obs = jax.lax.select(done_obs, obs_re, obs_st)
+        jax.debug.breakpoint()
+        done_state = 
+        state = jax.tree_map(
+            lambda x, y: jax.lax.select(done_state, x, y), state_re, state_st
+        )
+        return obs, state, reward, done, info
+        '''
+        return obs_st, state_st, reward, done, info
 
     def step_env(
         self, key: chex.PRNGKey, nstate: NEnvState, naction: chex.Array, nparams: NEnvParams
