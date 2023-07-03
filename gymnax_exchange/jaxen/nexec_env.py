@@ -192,17 +192,17 @@ class ExecutionEnv(BaseLOBEnv):
         nscan_results_=[job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),100) for i in range(nparams.num_envs)]
         # nscan_results=jnp.array([job.scan_through_entire_array_save_bidask(ntotal_messages[i],(nstate.nask_raw_orders[i,:,:],nstate.nbid_raw_orders[i,:,:],trades_reinit),self.stepLines) for i in range(nparams.num_envs)])
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        
+        nscan_results = [jnp.stack([nscan_results_[i][j] for i in range(nparams.num_envs)]) for j in range(len(nscan_results_[0]))] # asks, bids, trades, best_asks, best_bids
         
         def get_executed_num(trades):
             # =========ECEC QTY========
-            executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+            executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis],trades, 0)
             return executed[:,1].sum() # sumExecutedQty
             # CAUTION not same executed with the one in the reward
             # CAUTION the array executed here is calculated from the last state
             # CAUTION while the array executedin reward is calc from the update state in this step
             # =========ECEC QTY========
-        new_execution =  get_executed_num(scan_results[3])
+        new_execution =  get_executed_num(nscan_results[3])
         
         #Save time of final message to add to state
         ntime=jnp.array([ntotal_messages[i][-1:][0][-2:] for i in range(nparams.num_envs)])
