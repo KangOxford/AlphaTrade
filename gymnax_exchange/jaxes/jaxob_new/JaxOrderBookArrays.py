@@ -137,7 +137,7 @@ def cond_type_side_save_bidask(ordersides,data):
     index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
-    return (ask,bid,trade),get_best_bid_and_ask(ask,bid)
+    return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
 
 vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
 
@@ -331,6 +331,15 @@ def get_best_bid_and_ask(asks,bids):
     # jax.debug.breakpoint()
     best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
     best_bid=jnp.max(bids[:,0])
+    return best_ask,best_bid
+
+def get_best_bid_and_ask_inclQuants(asks,bids):
+    # jax.debug.breakpoint()
+    best_ask,best_bid=get_best_bid_and_ask(asks,bids)
+    best_ask_Q=jnp.sum(jnp.where(asks[:,0]==best_ask,asks[:,1],0))                     
+    best_bid_Q=jnp.sum(jnp.where(bids[:,0]==best_bid,bids[:,1],0))
+    best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)             
+    best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)             
     return best_ask,best_bid
 
 
