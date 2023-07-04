@@ -196,7 +196,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         # jax.debug.breakpoint()
-        best_ask, best_bid = state.best_asks[-1], state.best_bids[-1]
+        best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
         A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
@@ -210,7 +210,8 @@ class ExecutionEnv(BaseLOBEnv):
         def market_order_logic(state: EnvState,  A: float):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
+            #FIXME not very clean way to implement, but works:
+            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32) 
             prices = jnp.asarray((price, price , price, price),jnp.int32)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
@@ -223,6 +224,7 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        jax.debug.breakpoint()
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         # jax.debug.breakpoint()
@@ -255,6 +257,9 @@ class ExecutionEnv(BaseLOBEnv):
         # -----------------------1--------------------------
         best_asks=state.best_asks[:,0]
         best_bids =state.best_bids[:,0]
+        mid_prices=(best_asks+best_bids)//2//self.tick_size*self.tick_size 
+        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        spreads = best_asks - best_bids
 
         # -----------------------2--------------------------
         timeOfDay = state.time
@@ -263,7 +268,6 @@ class ExecutionEnv(BaseLOBEnv):
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
         # -----------------------4--------------------------
-        spreads = state.best_asks - state.best_bids
         # -----------------------5--------------------------
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
@@ -277,7 +281,7 @@ class ExecutionEnv(BaseLOBEnv):
         # -----------------------8--------------------------
 
         # ========= self.get_obs(state,params) =============
-        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
+        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
         return obs
         
