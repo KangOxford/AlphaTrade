@@ -238,7 +238,6 @@ def getCancelMsgs(bookside,agentID,size,side):
 
 def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
     cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
-    #truearray=
     indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
     cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*side, \
                                 jnp.ones((1,size),dtype=jnp.int32)*2, \
@@ -328,13 +327,11 @@ def get_L2_state(N,asks,bids):
     return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
 
 def get_best_bid_and_ask(asks,bids):
-    # jax.debug.breakpoint()
     best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
     best_bid=jnp.max(bids[:,0])
     return best_ask,best_bid
 
 def get_best_bid_and_ask_inclQuants(asks,bids):
-    # jax.debug.breakpoint()
     best_ask,best_bid=get_best_bid_and_ask(asks,bids)
     best_ask_Q=jnp.sum(jnp.where(asks[:,0]==best_ask,asks[:,1],0))                     
     best_bid_Q=jnp.sum(jnp.where(bids[:,0]==best_bid,bids[:,1],0))
@@ -345,7 +342,7 @@ def get_best_bid_and_ask_inclQuants(asks,bids):
 
 @partial(jax.jit,static_argnums=0)
 def init_orderside(nOrders=100):
-    return (jnp.ones((nOrders,6))*-1).astype("int32")
+    return (jnp.ones((nOrders,6))*-1).astype(jnp.int32)
 
 
 #TODO: Actually complete this function to not only return dummy vars
@@ -374,28 +371,7 @@ def get_data_messages(messageData,idx_window,step_counter):
     messages=messageData[idx_window,step_counter,:,:]
     return messages
     
-    
-    """return jnp.array([[1,-1,200,210000,8888888,8888889,3567,455768],
-                        [1,-1,100,210009,8888888,8888890,3577,4567]])"""
 
-
-
-"""def init_msgs_from_l2(book: Union[pd.Series, onp.ndarray]) -> jnp.ndarray:
-    """"""
-    orderbookLevels = len(book) // 4  # price/quantity for bid/ask
-    data = jnp.array(book).reshape(int(orderbookLevels*2),2)
-    newarr = jnp.zeros((int(orderbookLevels*2),8))
-    initOB = newarr \
-        .at[:,3].set(data[:,0]) \
-        .at[:,2].set(data[:,1]) \
-        .at[:,0].set(1) \
-        .at[0:orderbookLevels*4:2,1].set(-1) \
-        .at[1:orderbookLevels*4:2,1].set(1) \
-        .at[:,4].set(0) \
-        .at[:,5].set(job.INITID) \
-        .at[:,6].set(34200) \
-        .at[:,7].set(0).astype('int32')
-    return initOB"""
 
 
 
