@@ -194,6 +194,7 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+
                 obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
@@ -360,10 +361,23 @@ def make_train(config):
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
-                    for t in range(len(timesteps)):
-                        print(
-                            f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        )
+                    
+                    # info
+                    print("-------------------------")
+                    print(f"obs:        {info['obs_'][0,0]}")
+                    print(f"scan:       {info['scan_'][0,0]}")
+                    print(f"act:        {info['act_'][0,0]}")
+                    print(f"done        {info['done_'][0,0]}")
+                    print(f"rew_nan_:   {info['rew_nan_'][0,0]}")
+                    print(f"rew_where_: {info['rew_where_'][0,0]}")
+                    print(f"rew_calc_:  {info['rew_calc_'][0,0]}")
+                    print("-------------------------")
+                    # jax.debug.breakpoint()
+                    
+                    # for t in range(len(timesteps)):
+                    #     print(
+                    #         f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                    #     )                     
 
                 jax.debug.callback(callback, metric)
 
@@ -393,7 +407,7 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
-
+    
     ppo_config = {
         "LR": 2.5e-4,
         "NUM_ENVS": 1000,

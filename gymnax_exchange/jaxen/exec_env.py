@@ -8,7 +8,7 @@ sys.path.append('/homes/80/kang/AlphaTrade')
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
-import time
+import timeit
 
 import faulthandler
 
@@ -41,6 +41,7 @@ from flax import struct
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
+import time 
 
 @struct.dataclass
 class EnvState:
@@ -80,10 +81,10 @@ class ExecutionEnv(BaseLOBEnv):
         self.task = task
         self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
-        self.n_ticks_in_book=20
+        self.n_ticks_in_book=20 
         self.debug : bool = False
         # self.vwap = 0.0 # vwap at current step
-        assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
+        # assert task in ['buy','sell'], "\n{'='*20}\nCannot handle this task[{task}], must be chosen from ['buy','sell'].\n{'='*20}\n"
 
     @property
     def default_params(self) -> EnvParams:
@@ -97,48 +98,8 @@ class ExecutionEnv(BaseLOBEnv):
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
-        types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
-        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
-        #Stack (Concatenate) the info into an array 
-        # --------------- info for deciding prices ---------------
-        # Can only use these if statements because self is a static arg.
-        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
-        best_ask=state.best_asks[-1][0]
-        best_bid=state.best_bids[-1][0]
-        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
-        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size
-        P = best_ask if self.task=='sell' else best_bid
-        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
-        # --------------- info for deciding prices ---------------
-    
-        # =============== Limit/Market Order (prices/qtys) ===============
-        remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-        ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState, A: float):
-            quant = state.task_to_execute - state.quant_executed
-            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
-            prices = jnp.asarray((price, price , price, price),jnp.int32)
-            # (self.tick_size * 100) : one dollar
-            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
-            return quants, prices
-        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
-            quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((A, M, P, PP), jnp.int32)
-            return quants, prices
-        quants, prices = lax.cond(ifMarketOrder,
-                                lambda _: market_order_logic(state, A),
-                                lambda _: normal_order_logic(state, action, A, M, P, PP),
-                                operand=None)
-        # =============== Limit/Market Order (prices/qtys) ===============
 
-
-        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
-        action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+        action_msgs = self.getActionMsgs(action, state, params)
         #jax.debug.print(f"action shape: {action_msgs.shape}")
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
@@ -155,6 +116,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        jax.debug.breakpoint()
 
         scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -177,10 +139,14 @@ class ExecutionEnv(BaseLOBEnv):
 
         
         # jax.debug.print("Trades: \n {}",state.trades)
-        done = self.is_terminal(state,params)
-        reward=self.get_reward(state, params)
-        #jax.debug.print("Final state after step: \n {}", state)
         
+        
+        # .block_until_ready()
+        reward = self.get_reward(state, params)
+        done = self.is_terminal(state,params)
+        
+        # jax.debug.breakpoint()
+        #jax.debug.print("Final state after step: \n {}", state)
         return self.get_obs(state,params),state,reward,done,{"info":0}
 
 
@@ -215,6 +181,54 @@ class ExecutionEnv(BaseLOBEnv):
         """Check whether state is terminal."""
         return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
     
+    def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
+        # ============================== Get Action_msgs ==============================
+        # --------------- 01 rest info for deciding action_msgs ---------------
+        types=jnp.ones((self.n_actions,),jnp.int32)
+        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
+        #Stack (Concatenate) the info into an array 
+        # --------------- 01 rest info for deciding action_msgs ---------------
+        
+        # --------------- 02 info for deciding prices ---------------
+        # Can only use these if statements because self is a static arg.
+        # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
+        # jax.debug.breakpoint()
+        best_ask, best_bid = state.best_asks[-1], state.best_bids[-1]
+        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
+        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        P = best_ask if self.task=='sell' else best_bid
+        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
+        # --------------- 02 info for deciding prices ---------------
+
+        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
+        remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+        ifMarketOrder = (remainingTime <= marketOrderTime)
+        def market_order_logic(state: EnvState,  A: float):
+            quant = state.task_to_execute - state.quant_executed
+            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
+            prices = jnp.asarray((price, price , price, price),jnp.int32)
+            # (self.tick_size * 100) : one dollar
+            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
+            return quants, prices
+        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
+            quants = action.astype(jnp.int32) # from action space
+            prices = jnp.asarray((A, M, P, PP), jnp.int32)
+            return quants, prices
+        market_quants, market_prices = market_order_logic(state, A)
+        normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
+        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
+        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        # --------------- 03 Limit/Market Order (prices/qtys) ---------------
+        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
+        # jax.debug.breakpoint()
+        action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+        return action_msgs
+        # ============================== Get Action_msgs ==============================
     
     def get_reward(self, state: EnvState, params: EnvParams) -> float:
         # ========== get_executed_piars for rewards ==========
@@ -238,25 +252,19 @@ class ExecutionEnv(BaseLOBEnv):
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
-        # b = np.max(state.bid_raw_orders[:, :, 0], axis=1)
-        # jax.debug.breakpoint()
-        # state.bid_raw_orders[:,:,0]
         # -----------------------1--------------------------
         best_asks=state.best_asks[:,0]
         best_bids =state.best_bids[:,0]
 
         # -----------------------2--------------------------
-        mid_prices = (best_asks + best_bids)//2//self.tick_size*self.tick_size 
-        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
-        # -----------------------3--------------------------
         timeOfDay = state.time
         deltaT = state.time - state.init_time
-        # -----------------------4--------------------------
+        # -----------------------3--------------------------
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
+        # -----------------------4--------------------------
+        spreads = state.best_asks - state.best_bids
         # -----------------------5--------------------------
-        spread = best_asks -best_bids
-        # -----------------------6--------------------------
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
         # -----------------------7--------------------------
@@ -272,6 +280,11 @@ class ExecutionEnv(BaseLOBEnv):
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spread,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
         return obs
+        
+    def revenueInfo(self, state: EnvState, params: EnvParams) -> float:
+        # Return revenue of this episode.
+        # TODO need to be implemented
+        return 0.0
 
     @property
     def name(self) -> str:
@@ -290,22 +303,11 @@ class ExecutionEnv(BaseLOBEnv):
         """Action space of the environment."""
         return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
-
-    # def action_space_disc(
-    #     self, params: Optional[EnvParams] = None
-    # ) -> spaces.Dict:
-    #     """Action space of the environment."""
-    #     return spaces.Dict({
-    #             "aggressive": spaces.Discrete(100),
-    #             "mid": spaces.Discrete(100),
-    #             "passive": spaces.Discrete(100),
-    #             "ppassive": spaces.Discrete(100),
-    #         })
-
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32)
+        # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
+        space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
