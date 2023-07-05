@@ -387,7 +387,7 @@ if __name__ == "__main__":
             remainedQuant = state.task_to_execute - state.quant_executed
             remainedStep = params.max_steps_in_episode - state.step_counter
             stepQunt =  remainedQuant if ifMarketOrder else remainedQuant//remainedStep
-            quants = [remainedQuant//4, remainedQuant//4, remainedQuant//4, remainedQuant - 3*remainedQuant//4]
+            quants = [stepQunt//4, stepQunt//4, stepQunt//4, stepQunt - 3*stepQunt//4]
             # ---------- quants ----------
             return jnp.array([prices, quants])
             
