@@ -48,8 +48,10 @@ class BaseLOBEnv(environment.Environment):
        
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        self.messagePath = alphatradePath+"/data/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data/Book_10/"
+        self.messagePath = alphatradePath+"/data_whole/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data_whole/Book_10/"
+        # self.messagePath = alphatradePath+"/data/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
 
@@ -61,7 +63,6 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id=-9000+1
         self.tick_size=100
-
 
 
         # Load the image MNIST data at environment init
@@ -157,7 +158,6 @@ class BaseLOBEnv(environment.Environment):
             # i = 6 ; message,orderbook = messages[i],orderbooks[i]
             # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
 
-
             def nestlist2flattenlist(nested_list):
                 import itertools
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
@@ -195,6 +195,8 @@ class BaseLOBEnv(environment.Environment):
         self.books=jnp.array(bks)       #2D Array: (n_windows x [4*n_depth])
 
         self.n_windows=len(self.books)
+        print(f"num_of_data_windows:{self.n_windows}")
+        
         # jax.debug.breakpoint()
 
 
