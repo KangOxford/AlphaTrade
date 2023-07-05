@@ -64,10 +64,10 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    max_steps_in_episode: int = 100
-    messages_per_step: int=1
-    time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
+    episode_time: int = 60*30 #60seconds times 30 minutes = 1800seconds
+    max_steps_in_episode: int = 100 # TODO should be different for each state.window_index
+    messages_per_step: int = 1
+    time_per_step: int = 0 ##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
 
@@ -353,6 +353,49 @@ if __name__ == "__main__":
 
     for i in range(1,100):
         # ==================== ACTION ====================
+        # ---------- acion from given strategy  ----------
+        test_action=env.action_space().sample(key_policy)
+        
+        # env_state, last_obs, last_done, rng = runner_state
+        # rng, _rng = jax.random.split(rng)
+        # rng_action=jax.random.split(_rng, config["NUM_ENVS"])
+        # action = jax.vmap(env.action_space().sample, in_axes=(0))(rng_action)
+        # rng, _rng = jax.random.split(rng)
+        # rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+        # obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
+        #     env.step, in_axes=(0, 0, 0, None)
+        # )(rng_step, env_state, action, env_params)
+        
+        def twap(obs, state, params):
+            # ---------- ifMarketOrder ----------
+            remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+            ifMarketOrder = (remainingTime <= marketOrderTime)
+            # ---------- ifMarketOrder ----------
+            # ---------- prices ----------
+            task = ppo_config["TASKSIDE"]
+            tick_size = 100
+            n_ticks_in_book = 20 
+            best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
+            A = best_bid if task=='sell' else best_ask # aggressive would be at bids
+            M = (best_bid + best_ask)//2//tick_size*tick_size 
+            P = best_ask if task=='sell' else best_bid
+            PP= best_ask+ tick_size* n_ticks_in_book if  task=='sell' else best_bid-tick_size*n_ticks_in_book
+            prices = [A,M,P,PP]
+            # ---------- prices ----------
+            # ---------- quants ----------
+            remainedQuant = state.task_to_execute - state.quant_executed
+            remainedStep = params.max_steps_in_episode - state.step_counter
+            stepQunt =  remainedQuant if ifMarketOrder else remainedQuant//remainedStep
+            quants = [remainedQuant//4, remainedQuant//4, remainedQuant//4, remainedQuant - 3*remainedQuant//4]
+            # ---------- quants ----------
+            return jnp.array([prices, quants])
+            
+            
+        action_twap = twap(obs, state, env_params)
+        
+        
+        
         # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
         # ---------- acion from trained network ----------
@@ -394,22 +437,22 @@ if __name__ == "__main__":
 
     # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
-    if enable_vmap:
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+    # enable_vmap=True
+    # if enable_vmap:
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 10
-        vmap_keys = jax.random.split(rng, num_envs)
+    #     num_envs = 10
+    #     vmap_keys = jax.random.split(rng, num_envs)
 
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
+    #     test_actions=vmap_act_sample(vmap_keys)
+    #     print(test_actions)
 
-        start=time.time()
-        obs, state = vmap_reset(vmap_keys, env_params)
-        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     obs, state = vmap_reset(vmap_keys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
 
-        start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
