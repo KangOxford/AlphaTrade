@@ -422,14 +422,14 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
-    # ----------------------------------------------------------------------------    
-    '''
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 10,
+        # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 5e5,
+        "TOTAL_TIMESTEPS": 5e3,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -445,57 +445,38 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'buy'
     }
-
-    rng = jax.random.PRNGKey(30)
-    # jax.debug.breakpoint()
-    train_jit = jax.jit(make_train(ppo_config))
-
-    if ppo_config["DEBUG"]:
-        pass
-        #chexify the function
-        #NOTE: use chex.asserts inside the code, under a if DEBUG. 
-
-    # train = make_train(ppo_config)
-    # jax.debug.breakpoint()
-    start=time.time()
-    out = train_jit(rng)
-    print("Time: ", time.time()-start)
-    '''
-    # ----------------------------------------------------------------------------    
-
-    ppo_config = {
-        "LR": 2.5e-4,
-        "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 1e7,
-        # "TOTAL_TIMESTEPS": 5e5,
-        "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 4,
-        "GAMMA": 0.99,
-        "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
-        "VF_COEF": 0.5,
-        "MAX_GRAD_NORM": 0.5,
-        "ENV_NAME": "alphatradeExec-v0",
-        "ANNEAL_LR": True,
-        "DEBUG": True,
-        "NORMALIZE_ENV": True,
-        "ATFOLDER": ATFolder,
-        "TASKSIDE":'buy'
-    }
-    
-    run = wandb.init(
-        project="AlphaTradeJAX",
-        config=ppo_config,
-        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-        save_code=True,  # optional
-    )
-
     rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
-    start=time.time()
-    out = train_jit(rng)
-    print("Time: ", time.time()-start)
     
-    run.finish()
+    
+    wandb_ = False
+    if wandb_:
+        run = wandb.init(
+            project="AlphaTradeJAX",
+            config=ppo_config,
+            sync_tensorboard=True,  # auto-upload  tensorboard metrics
+            save_code=True,  # optional
+        )
+        start=time.time()
+        out = train_jit(rng)
+        print("Time: ", time.time()-start)
+        run.finish()
+    else:
+        start=time.time()
+        out = train_jit(rng)
+        print("Time: ", time.time()-start)
+
+        
+    # # ---------- Save Output ----------
+    from flax.training import train_state, checkpoints
+
+    # Create a TrainState object
+    # state = train_state.TrainState.create(apply_fn=model.apply, params=params, ...)
+    train_state = out[0] # runner_state.train_state
+
+    # Save the state to a checkpoint directory
+    CKPT_DIR = '/homes/80/kang/AlphaTrade/checkpoints/'
+    checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR, target=train_state, step=0)
+    
+    # Restore the state from the checkpoint directory
+    # restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=state)
