@@ -144,17 +144,16 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[:,:],state.bid_raw_orders[:,:],trades_reinit),self.stepLines) 
-        # scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders[-1,:,:],state.bid_raw_orders[-1,:,:],trades_reinit),self.stepLines) 
+        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         
+
         executed = jnp.where((scan_results[2][:, 0] > 0)[:, jnp.newaxis], scan_results[2], 0)
-        state = EnvState(*scan_results,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+executed[:,1].sum())
-        # jax.debug.breakpoint()
-        # jax.debug.print("Trades: \n {}",state.trades)
-        
-        
-        # .block_until_ready()
+        sumExecutedQty = executed[:,1].sum()
+        new_execution = sumExecutedQty
+        state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
+
+
         reward, revenue = self.get_reward_revenue(state, params)
         done = self.is_terminal(state,params)
         
@@ -182,16 +181,14 @@ class ExecutionEnv(BaseLOBEnv):
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
-        best_ask, best_bid = job.get_best_bid_and_ask(ordersides[0],ordersides[1])
-        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+        M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
 
         #Craft the first state
-        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,)),jnp.resize(best_bid,(self.stepLines,)),time,time,0,idx_data_window,0,M,self.task_size,0)
-        # jax.debug.print('State: {}',state)
-        # jax.debug.breakpoint()
-
+        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0)
 
         return self.get_obs(state,params),state
+        #return 0,state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
@@ -212,7 +209,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         # jax.debug.breakpoint()
-        best_ask, best_bid = state.best_asks[-1], state.best_bids[-1]
+        best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
         A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
@@ -226,7 +223,8 @@ class ExecutionEnv(BaseLOBEnv):
         def market_order_logic(state: EnvState,  A: float):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32)
+            #FIXME not very clean way to implement, but works:
+            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32) 
             prices = jnp.asarray((price, price , price, price),jnp.int32)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
@@ -273,8 +271,12 @@ class ExecutionEnv(BaseLOBEnv):
         """Return observation from raw state trafo."""
         # ========= self.get_obs(state,params) =============
         # -----------------------1--------------------------
-        mid_prices = (state.best_asks + state.best_bids)//2//self.tick_size*self.tick_size 
-        second_passives = state.best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else state.best_bids-self.tick_size*self.n_ticks_in_book
+        best_asks=state.best_asks[:,0]
+        best_bids =state.best_bids[:,0]
+        mid_prices=(best_asks+best_bids)//2//self.tick_size*self.tick_size 
+        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        spreads = best_asks - best_bids
+
         # -----------------------2--------------------------
         timeOfDay = state.time
         deltaT = state.time - state.init_time
@@ -282,23 +284,20 @@ class ExecutionEnv(BaseLOBEnv):
         initPrice = state.init_price
         priceDrift = mid_prices[-1] - state.init_price
         # -----------------------4--------------------------
-        spreads = state.best_asks - state.best_bids
         # -----------------------5--------------------------
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
-        # -----------------------6--------------------------
-        getQuants = lambda raw_quants: jnp.where(raw_quants>0, raw_quants, 0)
-        askQuants,bidQuants = jax.lax.map(getQuants, state.ask_raw_orders[:,1]), jax.lax.map(getQuants, state.bid_raw_orders[:,1])
-        OFI_series = askQuants - bidQuants
-        lastShallowImbalance, lastDeepImbalance = jnp.array([OFI_series[0]]), jnp.array([OFI_series.sum()])
+        # -----------------------7--------------------------
+        def getShallowImbalance(state):
+            bestAsksQtys = state.best_asks[:,1]
+            bestBidsQtys = state.best_bids[:,1]
+            imb = bestAsksQtys - bestBidsQtys
+            return imb
+        shallowImbalance = getShallowImbalance(state)
+        # -----------------------8--------------------------
+
         # ========= self.get_obs(state,params) =============
-        
-        # ==================================================
-        # the below is the original obs
-        # obs = jnp.concatenate((state.best_asks,state.best_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),deepImbalance))
-        obs = jnp.concatenate((state.best_asks,state.best_bids,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),lastShallowImbalance, lastDeepImbalance))
-        # the above is the new obs with lastShallowImbalance, lastDeepImbalance
-        # ==================================================
+        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
         return obs
         
@@ -329,8 +328,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
-        space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
+        space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
+        #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 

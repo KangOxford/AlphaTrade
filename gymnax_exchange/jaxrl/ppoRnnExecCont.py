@@ -362,7 +362,7 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     
-                    # info
+                    """# info
                     print("-------------------------")
                     print(f"obs:        {info['obs_'][0,0]}")
                     print(f"scan:       {info['scan_'][0,0]}")
@@ -372,12 +372,12 @@ def make_train(config):
                     print(f"rew_where_: {info['rew_where_'][0,0]}")
                     print(f"rew_calc_:  {info['rew_calc_'][0,0]}")
                     print("-------------------------")
-                    # jax.debug.breakpoint()
+                    # jax.debug.breakpoint()"""
                     
-                    # for t in range(len(timesteps)):
-                    #     print(
-                    #         f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                    #     )                     
+                    for t in range(len(timesteps)):
+                        print(
+                        f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        )                     
 
                 jax.debug.callback(callback, metric)
 
