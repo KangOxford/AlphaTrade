@@ -468,7 +468,15 @@ if __name__ == "__main__":
 
         
     # # ---------- Save Output ----------
-    print(f"type of out.train_state.params: {type(out.train_state.params)}")
-    import json
-    with open("output.json", "w") as json_file:
-        json.dump(out.train_state.params, json_file)
+    from flax.training import train_state, checkpoints
+
+    # Create a TrainState object
+    # state = train_state.TrainState.create(apply_fn=model.apply, params=params, ...)
+    train_state = out[0] # runner_state.train_state
+
+    # Save the state to a checkpoint directory
+    CKPT_DIR = '/homes/80/kang/AlphaTrade/checkpoints/'
+    checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR, target=train_state, step=0)
+    
+    # Restore the state from the checkpoint directory
+    # restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=state)
