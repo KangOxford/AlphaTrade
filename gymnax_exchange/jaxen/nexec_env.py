@@ -159,36 +159,6 @@ class ExecutionEnv(BaseLOBEnv):
         return naction_msgs
         # ============================== Get Action_msgs ==============================    
 
-    @partial(jax.jit, static_argnums=(0,))
-    def step(
-        self,
-        key: chex.PRNGKey,
-        state: NEnvState,
-        action: Union[int, float],
-        params: Optional[NEnvParams] = None,
-    ) -> Tuple[chex.Array, NEnvState, float, bool, dict]:
-        """Performs step transitions in the environment."""
-        # Use default env parameters if no others specified
-        if params is None:
-            params = self.default_params
-        key, _ = jax.random.split(key)
-        # key, key_reset = jax.random.split(key)
-        obs_st, state_st, reward, done, info = self.step_env(
-            key, state, action, params
-        )
-        ''' we NEVER use the obs_re and state_re
-        obs_re, state_re = self.reset_env(key_reset, params)
-        # Auto-reset environment based on termination
-        done_obs = jax.numpy.tile(done[:, jax.numpy.newaxis], (1, obs.shape[1]))
-        obs = jax.lax.select(done_obs, obs_re, obs_st)
-        jax.debug.breakpoint()
-        done_state = 
-        state = jax.tree_map(
-            lambda x, y: jax.lax.select(done_state, x, y), state_re, state_st
-        )
-        return obs, state, reward, done, info
-        '''
-        return obs_st, state_st, reward, done, info
 
     def step_env(
         self, key: chex.PRNGKey, nstate: NEnvState, naction: chex.Array, nparams: NEnvParams
@@ -197,14 +167,7 @@ class ExecutionEnv(BaseLOBEnv):
         ndata_messages=jnp.array([
             job.get_data_messages(nparams.message_data,nstate.nwindow_index[i],nstate.nstep_counter[i]) 
             for i in range(nparams.num_envs)])
-    
-    
-
-
-
-
-
-
+        # TODO incompitable with jit
         # jax.debug.breakpoint()
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
