@@ -366,7 +366,7 @@ if __name__ == "__main__":
         #     env.step, in_axes=(0, 0, 0, None)
         # )(rng_step, env_state, action, env_params)
         
-        def twap(obs, state, params):
+        def twap(state, params):
             # ---------- ifMarketOrder ----------
             remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
             marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
@@ -392,7 +392,7 @@ if __name__ == "__main__":
             return jnp.array([prices, quants])
             
             
-        action_twap = twap(obs, state, env_params)
+        action_twap = twap(state, env_params)
         
         
         
