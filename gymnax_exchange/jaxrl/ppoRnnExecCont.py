@@ -365,7 +365,7 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     # jax.debug.breakpoint()
-                    # revenues = info["total_revenue"][info["returned_episode"]]
+                    revenues = info["total_revenue"][info["returned_episode"]]
 
                     
                     for t in range(len(timesteps)):
@@ -373,16 +373,16 @@ def make_train(config):
                         # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
                         # # f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         # )    
-                        print(
-                            f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        )      
-                        # wandb.log(
-                        #     {
-                        #         "global_step": timesteps[t],
-                        #         "episodic_return": return_values[t],
-                        #         "episodic_revenue": revenues[t],
-                        #     }
-                        # )          
+                        # print(
+                        #     f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        # )      
+                        wandb.log(
+                            {
+                                "global_step": timesteps[t],
+                                "episodic_return": return_values[t],
+                                "episodic_revenue": revenues[t],
+                            }
+                        )          
 
                 jax.debug.callback(callback, metric)
 
@@ -436,12 +436,12 @@ if __name__ == "__main__":
         "TASKSIDE":'buy'
     }
     
-    # run = wandb.init(
-    #     project="AlphaTradeJAX",
-    #     config=ppo_config,
-    #     # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-    #     save_code=True,  # optional
-    # )
+    run = wandb.init(
+        project="AlphaTradeJAX",
+        config=ppo_config,
+        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+        save_code=True,  # optional
+    )
 
     rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
@@ -449,7 +449,7 @@ if __name__ == "__main__":
     out = train_jit(rng)
     print("Time: ", time.time()-start)
     
-    # run.finish()
+    run.finish()
     
 
     # '''
