@@ -365,21 +365,24 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     # jax.debug.breakpoint()
-                    revenues = info["total_revenue"][info["returned_episode"]]
+                    # revenues = info["total_revenue"][info["returned_episode"]]
 
                     
                     for t in range(len(timesteps)):
                         # print(
                         # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
                         # # f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        # )     
-                        wandb.log(
-                            {
-                                "global_step": timesteps[t],
-                                "episodic_return": return_values[t],
-                                "episodic_revenue": revenues[t],
-                            }
-                        )          
+                        # )    
+                        print(
+                            f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        )      
+                        # wandb.log(
+                        #     {
+                        #         "global_step": timesteps[t],
+                        #         "episodic_return": return_values[t],
+                        #         "episodic_revenue": revenues[t],
+                        #     }
+                        # )          
 
                 jax.debug.callback(callback, metric)
 
@@ -414,9 +417,9 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 5e5,
-        # "TOTAL_TIMESTEPS": 1e4,
+        "TOTAL_TIMESTEPS": 1e4,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -433,12 +436,12 @@ if __name__ == "__main__":
         "TASKSIDE":'buy'
     }
     
-    run = wandb.init(
-        project="AlphaTradeJAX",
-        config=ppo_config,
-        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-        save_code=True,  # optional
-    )
+    # run = wandb.init(
+    #     project="AlphaTradeJAX",
+    #     config=ppo_config,
+    #     # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+    #     save_code=True,  # optional
+    # )
 
     rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
@@ -446,26 +449,28 @@ if __name__ == "__main__":
     out = train_jit(rng)
     print("Time: ", time.time()-start)
     
-    run.finish()
+    # run.finish()
     
 
     # '''
     # # ---------- Save Output ----------
     import flax
-    from flax.training import checkpoints
 
     train_state = out['runner_state'][0] # runner_state.train_state
-    params = out['runner_state'][0].params
+    params = train_state.params
     
     # Save the params to a file using flax.serialization.to_bytes
     with open('params_file', 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
+        print(f"pramas saved")
 
     # Load the params from the file using flax.serialization.from_bytes
     with open('params_file', 'rb') as f:
-        params = flax.serialization.from_bytes(params, f.read())
-  
+        restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        print(f"pramas restored")
+        
     # jax.debug.breakpoint()
+    # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
     # print(">>>")
-    # # '''
+    # '''
     
