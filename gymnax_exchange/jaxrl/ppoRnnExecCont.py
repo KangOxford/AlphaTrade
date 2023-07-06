@@ -466,7 +466,7 @@ if __name__ == "__main__":
         out = train_jit(rng)
         print("Time: ", time.time()-start)
 
-    '''
+    # '''
     # # ---------- Save Output ----------
     from flax.training import checkpoints
 
@@ -480,4 +480,4 @@ if __name__ == "__main__":
     
     # Restore the state from the checkpoint directory
     # restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=state)
-    '''
+    # '''
