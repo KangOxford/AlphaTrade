@@ -365,13 +365,13 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     # jax.debug.breakpoint()
-                    revenues = info["total_revenue"][info["returned_episode"]]
+                    # revenues = info["total_revenue"][info["returned_episode"]]
 
                     
                     for t in range(len(timesteps)):
                         print(
-                        f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
-                        # f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                            # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
+                            f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         )     
                         # wandb.log(
                         #     {
@@ -450,11 +450,10 @@ if __name__ == "__main__":
     # run.finish()
     
 
-    # '''
+    '''
     # # ---------- Save Output ----------
     import flax
-    from flax.training import checkpoints
-
+    
     train_state = out['runner_state'][0] # runner_state.train_state
     params = out['runner_state'][0].params
     
@@ -462,10 +461,12 @@ if __name__ == "__main__":
     with open('params_file', 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
         print(">>> params saved")
+    print(params)
 
-    # Load the params from the file using flax.serialization.from_bytes
-    with open('params_file', 'rb') as f:
-        params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict,f.read())
-        print(">>> params restored")
+    # # Load the params from the file using flax.serialization.from_bytes
+    # with open('params_file', 'rb') as f:
+    #     params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict,f.read())
+    #     print(">>> params restored")
+    '''
   
     
