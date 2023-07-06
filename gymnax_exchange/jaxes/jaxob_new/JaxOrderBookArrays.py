@@ -12,29 +12,29 @@ from functools import partial, partialmethod
 def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
     orderside=orderside.at[emptyidx,:].set(jnp.array([msg['price'],jnp.maximum(0,msg['quantity']),msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype(jnp.int32)
-    return removeZeroQuant(orderside)
+    return removeZeroNegQuant(orderside)
 
 @jax.jit
-def removeZeroQuant(orderside):
-    return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype("int32"),y=orderside)
+def removeZeroNegQuant(orderside):
+    return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype(jnp.int32),y=orderside)
 
 
 @jax.jit
 def cancel_order(orderside,msg):
     condition=((orderside[:,2]==msg['orderid']) | ((orderside[:,0]==msg['price']) & (orderside[:,2]<=-9000)))
     idx=jnp.where(condition,size=1,fill_value=-1)[0]
-    orderside=orderside.at[idx,1].set(jnp.minimum(0,orderside[idx,1]-msg['quantity']))
-    return removeZeroQuant(orderside)
+    orderside=orderside.at[idx,1].set(orderside[idx,1]-msg['quantity'])
+    return removeZeroNegQuant(orderside)
 
 @jax.jit
 def match_order(data_tuple):
     orderside,qtm,price,top_order_idx,trade,agrOID,time,time_ns=data_tuple
-    newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm)
+    newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm) #Could theoretically be removed as an operation because the removeZeroQuand func also removes negatives. 
     qtm=qtm-orderside[top_order_idx,1]
     qtm=qtm.astype(jnp.int32)
     emptyidx=jnp.where(trade==-1,size=1,fill_value=-1)[0]
     trade=trade.at[emptyidx,:].set(jnp.array([orderside[top_order_idx,0],orderside[top_order_idx,1]-newquant,orderside[top_order_idx,2],[agrOID],[time],[time_ns]]).transpose())
-    orderside=removeZeroQuant(orderside.at[top_order_idx,1].set(newquant))
+    orderside=removeZeroNegQuant(orderside.at[top_order_idx,1].set(newquant))
     top_order_idx=get_top_bid_order_idx(orderside)
     return (orderside.astype(jnp.int32),jnp.squeeze(qtm),price,top_order_idx,trade,agrOID,time,time_ns)
 

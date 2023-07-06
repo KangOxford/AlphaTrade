@@ -120,9 +120,9 @@ def make_train(config):
     env = LogWrapper(env)
     
     #FIXME : Uncomment normalisation.
-    #if config["NORMALIZE_ENV"]:
-         #env = NormalizeVecObservation(env)
-         #env = NormalizeVecReward(env, config["GAMMA"])
+    if config["NORMALIZE_ENV"]:
+        env = NormalizeVecObservation(env)
+        env = NormalizeVecReward(env, config["GAMMA"])
     
 
     def linear_schedule(count):
@@ -424,7 +424,7 @@ if __name__ == "__main__":
         "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
         "DEBUG": True,
-        "NORMALIZE_ENV": False,
+        "NORMALIZE_ENV": True,
         "ATFOLDER": ATFolder,
         "TASKSIDE":'buy'
     }
