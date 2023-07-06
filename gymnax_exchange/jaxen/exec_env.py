@@ -122,29 +122,15 @@ class ExecutionEnv(BaseLOBEnv):
         
         asks,bids,trades,bestasks,bestbids=scan_results
 
-        # =========ECEC QTY========
-        # ------ choice1 ----------
+
         executed = jnp.where((scan_results[2][:, 0] > 0)[:, jnp.newaxis], scan_results[2], 0)
-        sumExecutedQty = executed[:,1].sum()
-        new_execution = sumExecutedQty
-        # CAUTION not same executed with the one in the reward
-        # CAUTION the array executed here is calculated from the last state
-        # CAUTION while the array executedin reward is calc from the update state in this step
-        # ------ choice2 ----------
-        # new_execution=10
-        # =========================
-        # jax.debug.breakpoint()
+        new_execution = executed[:,1].sum()
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
 
-        
         # jax.debug.print("Trades: \n {}",state.trades)
-        
-    
         
         reward, revenue = self.get_reward_revenue(state, params)
         done = self.is_terminal(state,params)
-        
-        # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
         # "EpisodicRevenue" TODO need this info to assess the policy
         return self.get_obs(state,params),state,reward,done,{"revenue":revenue}
