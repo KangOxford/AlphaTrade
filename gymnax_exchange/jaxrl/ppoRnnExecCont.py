@@ -378,21 +378,21 @@ def make_train(config):
                     # jax.debug.breakpoint()"""
                     
                     for t in range(len(timesteps)):
-                        # print(
-                        # f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        # )     
+                        print(
+                        f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        )     
                         # wandb.info(
                         #     {
                         #         "global_step": timesteps[t],
                         #         "episodic_return": return_values[t]
                         #     }
                         # )      
-                        wandb.log(
-                            {
-                                "global_step": timesteps[t],
-                                "episodic_return": return_values[t]
-                            }
-                        )          
+                        # wandb.log(
+                        #     {
+                        #         "global_step": timesteps[t],
+                        #         "episodic_return": return_values[t]
+                        #     }
+                        # )          
 
                 jax.debug.callback(callback, metric)
 
@@ -422,53 +422,14 @@ if __name__ == "__main__":
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
-    # ----------------------------------------------------------------------------    
-    '''
-    ppo_config = {
-        "LR": 2.5e-4,
-        "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 1e7,
-        # "TOTAL_TIMESTEPS": 5e5,
-        "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 4,
-        "GAMMA": 0.99,
-        "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
-        "VF_COEF": 0.5,
-        "MAX_GRAD_NORM": 0.5,
-        "ENV_NAME": "alphatradeExec-v0",
-        "ANNEAL_LR": True,
-        "DEBUG": True,
-        "NORMALIZE_ENV": True,
-        "ATFOLDER": ATFolder,
-        "TASKSIDE":'buy'
-    }
-
-    rng = jax.random.PRNGKey(30)
-    # jax.debug.breakpoint()
-    train_jit = jax.jit(make_train(ppo_config))
-
-    if ppo_config["DEBUG"]:
-        pass
-        #chexify the function
-        #NOTE: use chex.asserts inside the code, under a if DEBUG. 
-
-    # train = make_train(ppo_config)
-    # jax.debug.breakpoint()
-    start=time.time()
-    out = train_jit(rng)
-    print("Time: ", time.time()-start)
-    '''
-    # ----------------------------------------------------------------------------    
 
     ppo_config = {
         "LR": 2.5e-4,
         "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 5e5,
+        "TOTAL_TIMESTEPS": 5e4,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -485,12 +446,12 @@ if __name__ == "__main__":
         "TASKSIDE":'buy'
     }
     
-    run = wandb.init(
-        project="AlphaTradeJAX",
-        config=ppo_config,
-        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-        save_code=True,  # optional
-    )
+    # run = wandb.init(
+    #     project="AlphaTradeJAX",
+    #     config=ppo_config,
+    #     # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+    #     save_code=True,  # optional
+    # )
 
     rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
@@ -498,4 +459,4 @@ if __name__ == "__main__":
     out = train_jit(rng)
     print("Time: ", time.time()-start)
     
-    run.finish()
+    # run.finish()
