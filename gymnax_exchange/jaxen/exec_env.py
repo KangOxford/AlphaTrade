@@ -139,14 +139,16 @@ class ExecutionEnv(BaseLOBEnv):
         
         # jax.debug.print("Trades: \n {}",state.trades)
         
+    
         
-        # .block_until_ready()
-        reward = self.get_reward(state, params)
+        reward, revenue = self.get_reward_revenue(state, params)
         done = self.is_terminal(state,params)
         
         # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
-        return self.get_obs(state,params),state,reward,done,{"info":0}
+        # "EpisodicRevenue" TODO need this info to assess the policy
+        return self.get_obs(state,params),state,reward,done,{"revenue":revenue}
+
 
 
     def reset_env(
@@ -230,7 +232,9 @@ class ExecutionEnv(BaseLOBEnv):
         return action_msgs
         # ============================== Get Action_msgs ==============================
     
-    def get_reward(self, state: EnvState, params: EnvParams) -> float:
+    
+    
+    def get_reward_revenue(self, state: EnvState, params: EnvParams) -> float:
         # ========== get_executed_piars for rewards ==========
         # TODO  no valid trades(all -1) case (might) hasn't be handled.
         #jax.debug.breakpoint()
@@ -239,14 +243,19 @@ class ExecutionEnv(BaseLOBEnv):
         vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
+        
+        revenue = (agentTrades[:,0] * agentTrades[:,1]).sum()
+        agentQuant = agentTrades[:,1].sum()
+        
+        advantage = revenue - vwap * agentQuant
         Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
-        drift = agentTrades[:,1].sum() * (vwap - state.init_price)
+        drift = agentQuant * (vwap - state.init_price)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get_executed_piars for rewards ==========
         reward=jnp.nan_to_num(reward)
-        return reward
+        return reward, revenue    
+
 
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
@@ -282,11 +291,6 @@ class ExecutionEnv(BaseLOBEnv):
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
         return obs
-        
-    def revenueInfo(self, state: EnvState, params: EnvParams) -> float:
-        # Return revenue of this episode.
-        # TODO need to be implemented
-        return 0.0
 
     @property
     def name(self) -> str:
