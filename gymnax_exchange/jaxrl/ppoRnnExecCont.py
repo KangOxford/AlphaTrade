@@ -364,33 +364,20 @@ def make_train(config):
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
-                    
-                    """# info
-                    print("-------------------------")
-                    print(f"obs:        {info['obs_'][0,0]}")
-                    print(f"scan:       {info['scan_'][0,0]}")
-                    print(f"act:        {info['act_'][0,0]}")
-                    print(f"done        {info['done_'][0,0]}")
-                    print(f"rew_nan_:   {info['rew_nan_'][0,0]}")
-                    print(f"rew_where_: {info['rew_where_'][0,0]}")
-                    print(f"rew_calc_:  {info['rew_calc_'][0,0]}")
-                    print("-------------------------")
-                    # jax.debug.breakpoint()"""
+                    # jax.debug.breakpoint()
+                    revenues = info["total_revenue"][info["returned_episode"]]
+
                     
                     for t in range(len(timesteps)):
                         print(
-                        f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
+                        # f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         )     
-                        # wandb.info(
-                        #     {
-                        #         "global_step": timesteps[t],
-                        #         "episodic_return": return_values[t]
-                        #     }
-                        # )      
                         # wandb.log(
                         #     {
                         #         "global_step": timesteps[t],
-                        #         "episodic_return": return_values[t]
+                        #         "episodic_return": return_values[t],
+                        #         "episodic_revenue": revenues[t],
                         #     }
                         # )          
 
