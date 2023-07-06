@@ -129,6 +129,7 @@ class ExecutionEnv(BaseLOBEnv):
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         revenue = (agentTrades[:,0] * agentTrades[:,1]).sum()
+        jax.debug.breakpoint()
         agentQuant = agentTrades[:,1].sum()
         vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
         advantage = revenue - vwap * agentQuant
