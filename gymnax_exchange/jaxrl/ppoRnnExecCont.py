@@ -369,17 +369,17 @@ def make_train(config):
 
                     
                     for t in range(len(timesteps)):
-                        print(
-                        f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
-                        # f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        )     
-                        # wandb.log(
-                        #     {
-                        #         "global_step": timesteps[t],
-                        #         "episodic_return": return_values[t],
-                        #         "episodic_revenue": revenues[t],
-                        #     }
-                        # )          
+                        # print(
+                        # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
+                        # # f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        # )     
+                        wandb.log(
+                            {
+                                "global_step": timesteps[t],
+                                "episodic_return": return_values[t],
+                                "episodic_revenue": revenues[t],
+                            }
+                        )          
 
                 jax.debug.callback(callback, metric)
 
@@ -414,9 +414,9 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        # "TOTAL_TIMESTEPS": 1e7,
+        "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 5e5,
-        "TOTAL_TIMESTEPS": 1e4,
+        # "TOTAL_TIMESTEPS": 1e4,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -433,12 +433,12 @@ if __name__ == "__main__":
         "TASKSIDE":'buy'
     }
     
-    # run = wandb.init(
-    #     project="AlphaTradeJAX",
-    #     config=ppo_config,
-    #     # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-    #     save_code=True,  # optional
-    # )
+    run = wandb.init(
+        project="AlphaTradeJAX",
+        config=ppo_config,
+        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+        save_code=True,  # optional
+    )
 
     rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
@@ -446,7 +446,7 @@ if __name__ == "__main__":
     out = train_jit(rng)
     print("Time: ", time.time()-start)
     
-    # run.finish()
+    run.finish()
     
 
     # '''
@@ -456,15 +456,6 @@ if __name__ == "__main__":
 
     train_state = out['runner_state'][0] # runner_state.train_state
     params = out['runner_state'][0].params
-
-    # # Save the state to a checkpoint directory
-    # CKPT_DIR = '/homes/80/kang/AlphaTrade/checkpoints/'
-    # checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR, target=train_state, step=0)
-    
-    # # Create a state object
-    # state = train_state.TrainState.create(apply_fn=model.apply, params=params, ...)
-    # # # Restore the state from the checkpoint directory
-    # restored_state = checkpoints.restore_checkpoint(ckpt_dir=CKPT_DIR, target=state)
     
     # Save the params to a file using flax.serialization.to_bytes
     with open('params_file', 'wb') as f:
@@ -474,7 +465,7 @@ if __name__ == "__main__":
     with open('params_file', 'rb') as f:
         params = flax.serialization.from_bytes(params, f.read())
   
-    jax.debug.breakpoint()
-    print(">>>")
-    # '''
+    # jax.debug.breakpoint()
+    # print(">>>")
+    # # '''
     
