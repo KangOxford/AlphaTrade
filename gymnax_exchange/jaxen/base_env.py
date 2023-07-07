@@ -201,15 +201,13 @@ class BaseLOBEnv(environment.Environment):
         # ==================================================================
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+        
+            
 
-        def get_state():
-            #jax.debug.breakpoint()
-            """Reset environment state by sampling initial position in OB."""
-            idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-            #Get the init time based on the first message to be processed in the first step. 
-            time=job.get_initial_time(params.message_data,idx_data_window) 
+        def get_state(self, message_data, book_data):
+            time=job.get_initial_time(message_data,idx_data_window) 
             #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-            init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
+            init_orders=job.get_initial_orders(book_data,idx_data_window,time)
             #Initialise both sides of the book as being empty
             asks_raw=job.init_orderside(self.nOrdersPerSide)
             bids_raw=job.init_orderside(self.nOrdersPerSide)
@@ -220,7 +218,7 @@ class BaseLOBEnv(environment.Environment):
             # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
             best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
             M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
-        def get_obs():
+        def get_obs(self, state):
             """Return observation from raw state trafo."""
             # ========= self.get_obs(state,params) =============
             # -----------------------1--------------------------
@@ -252,7 +250,11 @@ class BaseLOBEnv(environment.Environment):
             # ========= self.get_obs(state,params) =============
             obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
             # jax.debug.breakpoint()
-       
+        def get_state_obs(self, message_data, book_data):
+            state = self.get_state(self, message_data, book_data)
+            obs = self.get_obs(self, state)
+            return state, obs
+        
         self.state_list = 
         self.obs_list =  
         # ================= CAUTION NOT BELONG TO BASE ENV =================
