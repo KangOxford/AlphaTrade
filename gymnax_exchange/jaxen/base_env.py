@@ -185,6 +185,7 @@ class BaseLOBEnv(environment.Environment):
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB
+
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
         #List of message cubes 
@@ -196,6 +197,69 @@ class BaseLOBEnv(environment.Environment):
 
         self.n_windows=len(self.books)
         # jax.debug.breakpoint()
+        
+        # ==================================================================
+        # ================= CAUTION NOT BELONG TO BASE ENV =================
+        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+
+        def get_state():
+            #jax.debug.breakpoint()
+            """Reset environment state by sampling initial position in OB."""
+            idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+            #Get the init time based on the first message to be processed in the first step. 
+            time=job.get_initial_time(params.message_data,idx_data_window) 
+            #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+            init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
+            #Initialise both sides of the book as being empty
+            asks_raw=job.init_orderside(self.nOrdersPerSide)
+            bids_raw=job.init_orderside(self.nOrdersPerSide)
+            trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+            #Process the initial messages through the orderbook
+            ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+
+            # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+            best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+            M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
+        def get_obs():
+            """Return observation from raw state trafo."""
+            # ========= self.get_obs(state,params) =============
+            # -----------------------1--------------------------
+            best_asks=state.best_asks[:,0]
+            best_bids =state.best_bids[:,0]
+            mid_prices=(best_asks+best_bids)//2//self.tick_size*self.tick_size 
+            second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+            spreads = best_asks - best_bids
+
+            # -----------------------2--------------------------
+            timeOfDay = state.time
+            deltaT = state.time - state.init_time
+            # -----------------------3--------------------------
+            initPrice = state.init_price
+            priceDrift = mid_prices[-1] - state.init_price
+            # -----------------------4--------------------------
+            # -----------------------5--------------------------
+            taskSize = state.task_to_execute
+            executed_quant=state.quant_executed
+            # -----------------------7--------------------------
+            def getShallowImbalance(state):
+                bestAsksQtys = state.best_asks[:,1]
+                bestBidsQtys = state.best_bids[:,1]
+                imb = bestAsksQtys - bestBidsQtys
+                return imb
+            shallowImbalance = getShallowImbalance(state)
+            # -----------------------8--------------------------
+
+            # ========= self.get_obs(state,params) =============
+            obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
+            # jax.debug.breakpoint()
+       
+        self.state_list = 
+        self.obs_list =  
+        # ================= CAUTION NOT BELONG TO BASE ENV =================
+        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+        # ==================================================================
+        
+
 
 
 
