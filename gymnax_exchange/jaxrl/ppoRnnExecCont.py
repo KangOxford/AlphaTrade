@@ -43,12 +43,16 @@ class ScannedRNN(nn.Module):
         """Applies the module."""
         rnn_state = carry
         ins, resets = x
-        print(ins)
+        print(f"carry:{carry}")
+        print(f"x:{x}")
+        print(f"ins:{ins}")
+        print(f"resets:{resets}")
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(ins.shape[0], ins.shape[1]),
             rnn_state,
         )
+        jax.debug.breakpoint()
         new_rnn_state, y = nn.GRUCell()(rnn_state, ins)
         return new_rnn_state, y
 
@@ -416,7 +420,9 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 1,
+        # "NUM_ENVS": 4,
+        # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
         "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 5e5,

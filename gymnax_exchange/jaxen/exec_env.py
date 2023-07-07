@@ -337,6 +337,7 @@ class ExecutionEnv(BaseLOBEnv):
 # ============================================================================= #
 
 if __name__ == "__main__":
+    '''
     try:
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
@@ -364,9 +365,26 @@ if __name__ == "__main__":
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+    '''
     
     '''
     # ==================== Restored Params ====================
+    try:
+        ATFolder = sys.argv[1]
+        print("AlphaTrade folder:",ATFolder)
+    except:
+        ATFolder = '/homes/80/kang/AlphaTrade'
+        
+    rng = jax.random.PRNGKey(0)
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+
+    env=ExecutionEnv(ATFolder,"sell")
+    env_params=env.default_params
+    print(env_params.message_data.shape, env_params.book_data.shape)
+
+    start=time.time()
+    obs,state=env.reset(key_reset,env_params)
+    print("Time for reset: \n",time.time()-start)
     
     import flax
     # Load the params from the file using flax.serialization.from_bytes
