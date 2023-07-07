@@ -228,7 +228,7 @@ class BaseLOBEnv(environment.Environment):
         
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
         def get_state(message_data, book_data):
-            time=message_data[0,0,-2:]
+            time=jnp.array(message_data[0,0,-2:])
             #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
             def get_initial_orders(book_data,time):
                 orderbookLevels=10
@@ -302,6 +302,25 @@ class BaseLOBEnv(environment.Environment):
 
         state_obs = [get_state_obs(message_data, book_data) for message_data, book_data in Cubes_withOB]
         self.state_list = [state for state, obs_sell, obs_buy in state_obs]
+        
+        # for item in self.state_list[0]:
+        #     try:
+        #         print(f"{item.shape}, {type(item)}")
+        #     except:
+        #         print(f"{type(item)}")
+        # self.state_list[0][-4]
+        state =  self.state_list[0]
+        # state_ = jax.tree_util.tree_structure(state)
+        
+        from jax.tree_util import tree_flatten
+        arrays, tree_def = tree_flatten(state)
+        
+        
+        from jax.tree_util import tree_unflatten
+        state_ = tree_unflatten(tree_def, arrays)
+        print(state) # EnvState(pos=DeviceArray([1, 2], dtype=int32), goal=DeviceArray([3, 4], dtype=int32))
+
+        jax.debug.breakpoint()
         # self.obs_sell_list = [obs_sell for state, obs_sell, obs_buy in state_obs]
         # self.obs_buy_list =  [obs_buy for state, obs_sell, obs_buy in state_obs]
         # self.state_list = jnp.array([jnp.array(state) for state, obs_sell, obs_buy in state_obs])
