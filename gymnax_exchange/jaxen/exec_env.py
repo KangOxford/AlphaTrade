@@ -103,7 +103,12 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams(self.messages,self.books)
+        # return EnvParams(self.messages,self.books)
+        return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+    # @property
+    # def default_params(self) -> EnvParams:
+    #     # Default environment parameters
+    #     return EnvParams(self.messages,self.books)
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams

@@ -26,27 +26,27 @@ class EnvState:
     step_counter: int
 
 
-@struct.dataclass
-class EnvParams:
-    message_data: chex.Array
-    book_data: chex.Array
-    state_list: chex.Array
-    obs_sell_list: chex.Array
-    obs_buy_list: chex.Array
-    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    max_steps_in_episode: int = 100
-    time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
-    time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
-    
-    
 # @struct.dataclass
 # class EnvParams:
 #     message_data: chex.Array
 #     book_data: chex.Array
+#     state_list: chex.Array
+#     obs_sell_list: chex.Array
+#     obs_buy_list: chex.Array
 #     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
 #     max_steps_in_episode: int = 100
 #     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
 #     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
+    
+    
+@struct.dataclass
+class EnvParams:
+    message_data: chex.Array
+    book_data: chex.Array
+    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
+    max_steps_in_episode: int = 100
+    time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
+    time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
 
 
@@ -323,8 +323,13 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        # return EnvParams(self.messages,self.books)
-        return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+        return EnvParams(self.messages,self.books)
+        # return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+    # @property
+    # def default_params(self) -> EnvParams:
+    #     # Default environment parameters
+    #     # return EnvParams(self.messages,self.books)
+    #     return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
 
 
     def step_env(
