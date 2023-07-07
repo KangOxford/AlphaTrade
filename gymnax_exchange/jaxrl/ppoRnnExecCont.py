@@ -172,6 +172,19 @@ def make_train(config):
         # jax.debug.breakpoint()
         # TRAIN LOOP
         def _update_step(runner_state, unused):
+
+            """
+            Pseudocode
+            if i%50 ==0:
+                envparam.message_data.reshuffled()
+                envparam.book_data.reshuffled()
+            
+            reshuffled():
+                0-30,30-60.... --> 5-35,35-65
+                                    ...or 40-70,70-100
+            
+            """
+
             # COLLECT TRAJECTORIES
             def _env_step(runner_state, unused):
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
