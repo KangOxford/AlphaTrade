@@ -30,10 +30,23 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
+    state_list: chex.Array
+    obs_sell_list: chex.Array
+    obs_buy_list: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     max_steps_in_episode: int = 100
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
+    
+    
+# @struct.dataclass
+# class EnvParams:
+#     message_data: chex.Array
+#     book_data: chex.Array
+#     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
+#     max_steps_in_episode: int = 100
+#     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
+#     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
 
 
@@ -210,8 +223,8 @@ class BaseLOBEnv(environment.Environment):
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
             
-        message_data, book_data = msgs[0],bks[0]
-        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        # message_data, book_data = msgs[0],bks[0]
+        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
         def get_state(message_data, book_data):
@@ -310,7 +323,8 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams(self.messages,self.books)
+        # return EnvParams(self.messages,self.books)
+        return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
 
 
     def step_env(
