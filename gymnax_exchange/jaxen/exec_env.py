@@ -105,6 +105,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Default environment parameters
         # return EnvParams(self.messages,self.books)
         return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+    
     # @property
     # def default_params(self) -> EnvParams:
     #     # Default environment parameters
@@ -155,8 +156,6 @@ class ExecutionEnv(BaseLOBEnv):
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         reward=jnp.nan_to_num(reward)
-        jax.debug.print("Numpy? {}",isinstance(executed, jax.numpy.ndarray))
-        jax.debug.breakpoint()
         # ========== get reward and revenue ==========
         
         
@@ -180,6 +179,8 @@ class ExecutionEnv(BaseLOBEnv):
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
         
         
+        
+        
         # #Get the init time based on the first message to be processed in the first step. 
         # time=job.get_initial_time(params.message_data,idx_data_window) 
         # #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
@@ -199,11 +200,19 @@ class ExecutionEnv(BaseLOBEnv):
         # state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0,0)
         # return self.get_obs(state,params),state
 
-        state_ = params.state_list[idx_data_window]
+
+        state_ = jax.tree_util.tree_map(lambda element: element[idx_data_window], params.state_list)
+        # state_ = params.state_list[idx_data_window]
+        # jax.debug.breakpoint()
         obs_sell = params.obs_sell_list[idx_data_window]
+        # jax.debug.breakpoint()
         obs_buy = params.obs_buy_list[idx_data_window]
+        # jax.debug.breakpoint()
         state = EnvState(*state_)
+        state.window_index = idx_data_window
+        # jax.debug.breakpoint()
         obs = obs_sell if self.task == "sell" else obs_buy
+        # jax.debug.breakpoint()
         return obs,state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:

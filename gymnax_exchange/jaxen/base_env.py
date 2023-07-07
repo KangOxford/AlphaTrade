@@ -304,6 +304,9 @@ class BaseLOBEnv(environment.Environment):
         self.state_list = [state for state, obs_sell, obs_buy in state_obs]
         self.obs_sell_list = [obs_sell for state, obs_sell, obs_buy in state_obs]
         self.obs_buy_list =  [obs_buy for state, obs_sell, obs_buy in state_obs]
+        # self.state_list = jnp.array([jnp.array(state) for state, obs_sell, obs_buy in state_obs])
+        # self.obs_sell_list = jnp.array([jnp.array(obs_sell) for state, obs_sell, obs_buy in state_obs])
+        # self.obs_buy_list =  jnp.array([jnp.array(obs_buy) for state, obs_sell, obs_buy in state_obs])
         print("FINISH: pre-reset in the initialization")
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
