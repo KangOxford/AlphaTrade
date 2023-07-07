@@ -58,6 +58,7 @@ class EnvState:
     init_price:int
     task_to_execute:int
     quant_executed:int
+    total_revenue:int
 
 
 @struct.dataclass
@@ -122,31 +123,35 @@ class ExecutionEnv(BaseLOBEnv):
         
         asks,bids,trades,bestasks,bestbids=scan_results
 
-        # =========ECEC QTY========
-        # ------ choice1 ----------
+        # ========== get reward and revenue ==========
         executed = jnp.where((scan_results[2][:, 0] > 0)[:, jnp.newaxis], scan_results[2], 0)
-        sumExecutedQty = executed[:,1].sum()
-        new_execution = sumExecutedQty
-        # CAUTION not same executed with the one in the reward
-        # CAUTION the array executed here is calculated from the last state
-        # CAUTION while the array executedin reward is calc from the update state in this step
-        # ------ choice2 ----------
-        # new_execution=10
-        # =========================
-        # jax.debug.breakpoint()
-        state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution)
-
+        new_execution = executed[:,1].sum()
+        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        revenue = (agentTrades[:,0] * agentTrades[:,1]).sum()
+        agentQuant = agentTrades[:,1].sum()
+        vwap =(executed[:,0] * executed[:,1]//self.tick_size).sum()//(executed[:,1]).sum()*self.tick_size
+        advantage = revenue - vwap * agentQuant
+        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        drift = agentQuant * (vwap - state.init_price)
+        rewardValue = advantage + Lambda * drift
+        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        reward=jnp.nan_to_num(reward)
+        jax.debug.print("Numpy? {}",isinstance(executed, jax.numpy.ndarray))
+        jax.debug.breakpoint()
+        # ========== get reward and revenue ==========
         
+        
+        
+        state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
+
         # jax.debug.print("Trades: \n {}",state.trades)
         
-        
-        # .block_until_ready()
-        reward = self.get_reward(state, params)
         done = self.is_terminal(state,params)
-        
-        # jax.debug.breakpoint()
         #jax.debug.print("Final state after step: \n {}", state)
-        return self.get_obs(state,params),state,reward,done,{"info":0}
+        # "EpisodicRevenue" TODO need this info to assess the policy
+        return self.get_obs(state,params),state,reward,done,{"total_revenue":state.total_revenue}
+
 
 
     def reset_env(
@@ -171,7 +176,7 @@ class ExecutionEnv(BaseLOBEnv):
         M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
 
         #Craft the first state
-        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0)
+        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0,0)
 
         return self.get_obs(state,params),state
         #return 0,state
@@ -230,23 +235,30 @@ class ExecutionEnv(BaseLOBEnv):
         return action_msgs
         # ============================== Get Action_msgs ==============================
     
-    def get_reward(self, state: EnvState, params: EnvParams) -> float:
-        # ========== get_executed_piars for rewards ==========
-        # TODO  no valid trades(all -1) case (might) hasn't be handled.
-        #jax.debug.breakpoint()
-        executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
+    
+    
+    # def get_reward_revenue(self, state: EnvState, params: EnvParams) -> float:
+    #     # ========== get_executed_piars for rewards ==========
+    #     # TODO  no valid trades(all -1) case (might) hasn't be handled.
+    #     #jax.debug.breakpoint()
+    #     executed = jnp.where((state.trades[:, 0] > 0)[:, jnp.newaxis], state.trades, 0)
         
-        vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
-        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
-        agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        advantage = (agentTrades[:,0] * agentTrades[:,1]).sum() - vwap * agentTrades[:,1].sum()
-        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
-        drift = agentTrades[:,1].sum() * (vwap - state.init_price)
-        rewardValue = advantage + Lambda * drift
-        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
-        # ========== get_executed_piars for rewards ==========
-        reward=jnp.nan_to_num(reward)
-        return reward
+    #     vwap = (executed[:,0] * executed[:,1]).sum()/ executed[:1].sum() 
+    #     mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+    #     agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        
+    #     revenue = (agentTrades[:,0] * agentTrades[:,1]).sum()
+    #     agentQuant = agentTrades[:,1].sum()
+        
+    #     advantage = revenue - vwap * agentQuant
+    #     Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+    #     drift = agentQuant * (vwap - state.init_price)
+    #     rewardValue = advantage + Lambda * drift
+    #     reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+    #     # ========== get_executed_piars for rewards ==========
+    #     reward=jnp.nan_to_num(reward)
+    #     return reward, revenue    
+
 
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
@@ -282,11 +294,6 @@ class ExecutionEnv(BaseLOBEnv):
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
         return obs
-        
-    def revenueInfo(self, state: EnvState, params: EnvParams) -> float:
-        # Return revenue of this episode.
-        # TODO need to be implemented
-        return 0.0
 
     @property
     def name(self) -> str:
