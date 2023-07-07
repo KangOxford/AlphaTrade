@@ -43,6 +43,7 @@ class ScannedRNN(nn.Module):
         """Applies the module."""
         rnn_state = carry
         ins, resets = x
+        print(ins)
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(ins.shape[0], ins.shape[1]),
@@ -449,7 +450,6 @@ if __name__ == "__main__":
     out = train_jit(rng)
     print("Time: ", time.time()-start)
     
-    run.finish()
     
 
     # '''
@@ -474,3 +474,4 @@ if __name__ == "__main__":
     # print(">>>")
     # '''
     
+    run.finish()

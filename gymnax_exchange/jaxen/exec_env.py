@@ -355,66 +355,98 @@ if __name__ == "__main__":
     print("State after reset: \n",state)
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
-
+    
     for i in range(1,100):
-        # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
-        # ---------- acion from trained network ----------
-        ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
-        ## import ** network
-        from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-        ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 4,
-            "NUM_STEPS": 2,
-            "TOTAL_TIMESTEPS": 5e5,
-            "UPDATE_EPOCHS": 4,
-            "NUM_MINIBATCHES": 4,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'buy'
-        }
-        # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
-        # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-        # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
-        # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
-        # ==================== ACTION ====================
-        
-        
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
-
-    # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
-    if enable_vmap:
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
-
-        num_envs = 10
-        vmap_keys = jax.random.split(rng, num_envs)
-
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
-
+    '''
+    # ==================== Restored Params ====================
+    
+    import flax
+    # Load the params from the file using flax.serialization.from_bytes
+    with open('params_file', 'rb') as f:
+        restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        print(f"pramas restored")
+    
+    from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
+    from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
+    ppo_config = {
+        "LR": 2.5e-4,
+        "NUM_ENVS": 1,
+        # "NUM_ENVS": 1000,
+        "NUM_STEPS": 10,
+        "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 5e5,
+        # "TOTAL_TIMESTEPS": 1e4,
+        "UPDATE_EPOCHS": 4,
+        "NUM_MINIBATCHES": 4,
+        "GAMMA": 0.99,
+        "GAE_LAMBDA": 0.95,
+        "CLIP_EPS": 0.2,
+        "ENT_COEF": 0.01,
+        "VF_COEF": 0.5,
+        "MAX_GRAD_NORM": 0.5,
+        "ENV_NAME": "alphatradeExec-v0",
+        "ANNEAL_LR": True,
+        "DEBUG": True,
+        "NORMALIZE_ENV": True,
+        "ATFOLDER": ATFolder,
+        "TASKSIDE":'buy'
+    }
+    network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+    init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
+    done = np.array([False]*ppo_config["NUM_ENVS"])
+    
+    ac_in = (obs[np.newaxis, :], done[np.newaxis, :])
+    hstate, pi, value = network.apply(restored_params, init_hstate, ac_in)
+    action = pi.sample(seed=rng)
+    
+    obs,state,reward,done,info=env.step(key_step, state, action, env_params)
+    
+    for i in range(1,100):
+        # ==================== ACTION ====================
+        # ---------- acion from trained network ----------
+        ac_in = (obs[np.newaxis, :], done[np.newaxis, :])
+        ## import ** network
+        # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
+        hstate, pi, value = network.apply(restored_params, hstate, ac_in) 
+        # hstate, pi, value = network.apply(restored_params, hstate, ac_in) # TODO does it need to be from the out?
+        # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
+        action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
+        # ==================== ACTION ====================
+        
+        
+        print(f"Sampled {i}th actions are: ",action)
         start=time.time()
-        obs, state = vmap_reset(vmap_keys, env_params)
-        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+        obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+        print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
+        print(f"Time for {i} step: \n",time.time()-start)
 
-        start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    # # ####### Testing the vmap abilities ########
+    
+    # enable_vmap=True
+    # if enable_vmap:
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+
+    #     num_envs = 10
+    #     vmap_keys = jax.random.split(rng, num_envs)
+
+    #     test_actions=vmap_act_sample(vmap_keys)
+    #     print(test_actions)
+
+    #     start=time.time()
+    #     obs, state = vmap_reset(vmap_keys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+
+    #     start=time.time()
+    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    '''
