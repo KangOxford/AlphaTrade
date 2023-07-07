@@ -181,39 +181,46 @@ class ExecutionEnv(BaseLOBEnv):
         
         
         
-        # #Get the init time based on the first message to be processed in the first step. 
-        # time=job.get_initial_time(params.message_data,idx_data_window) 
-        # #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-        # init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
-        # #Initialise both sides of the book as being empty
-        # asks_raw=job.init_orderside(self.nOrdersPerSide)
-        # bids_raw=job.init_orderside(self.nOrdersPerSide)
-        # trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
-        # #Process the initial messages through the orderbook
-        # ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+        #Get the init time based on the first message to be processed in the first step. 
+        time=job.get_initial_time(params.message_data,idx_data_window) 
+        #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+        init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
+        #Initialise both sides of the book as being empty
+        asks_raw=job.init_orderside(self.nOrdersPerSide)
+        bids_raw=job.init_orderside(self.nOrdersPerSide)
+        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        #Process the initial messages through the orderbook
+        ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
-        # # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
-        # best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
-        # M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
+        # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+        M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
 
-        # #Craft the first state
-        # state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0,0)
+        #Craft the first state
+        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0,0)
+        
         # return self.get_obs(state,params),state
-
-
-        state_ = jax.tree_util.tree_map(lambda element: element[idx_data_window], params.state_list)
-        # state_ = params.state_list[idx_data_window]
-        # jax.debug.breakpoint()
+        
+        
         obs_sell = params.obs_sell_list[idx_data_window]
-        # jax.debug.breakpoint()
         obs_buy = params.obs_buy_list[idx_data_window]
-        # jax.debug.breakpoint()
-        state = EnvState(*state_)
-        state.window_index = idx_data_window
-        # jax.debug.breakpoint()
         obs = obs_sell if self.task == "sell" else obs_buy
-        # jax.debug.breakpoint()
         return obs,state
+
+
+        # state_ = jax.tree_util.tree_map(lambda element: element[idx_data_window], params.state_list)
+        # # state_ = params.state_list[idx_data_window]
+        # # jax.debug.breakpoint()
+        # obs_sell = params.obs_sell_list[idx_data_window]
+        # # jax.debug.breakpoint()
+        # obs_buy = params.obs_buy_list[idx_data_window]
+        # # jax.debug.breakpoint()
+        # state = EnvState(*state_)
+        # state.window_index = idx_data_window
+        # # jax.debug.breakpoint()
+        # obs = obs_sell if self.task == "sell" else obs_buy
+        # # jax.debug.breakpoint()
+        # return obs,state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
