@@ -301,7 +301,7 @@ class BaseLOBEnv(environment.Environment):
             return state, obs_sell, obs_buy
 
         state_obs = [get_state_obs(message_data, book_data) for message_data, book_data in Cubes_withOB]
-        self.state_list = [state for state, obs_sell, obs_buy in state_obs]
+        state_list = [state for state, obs_sell, obs_buy in state_obs]
         
         # for item in self.state_list[0]:
         #     try:
@@ -309,16 +309,28 @@ class BaseLOBEnv(environment.Environment):
         #     except:
         #         print(f"{type(item)}")
         # self.state_list[0][-4]
-        state =  self.state_list[0]
-        # state_ = jax.tree_util.tree_structure(state)
         
         from jax.tree_util import tree_flatten
-        arrays, tree_def = tree_flatten(state)
+        arrays_list, tree_def_list = zip(*[tree_flatten(state) for state in state_list])
+        arrays = [jnp.concatenate(arrays, axis=0) for arrays in zip(*arrays_list)]
+        tree_def = tree_def_list[0] # assume all states have the same structure
+        # return arrays and tree_def
         
-        
+        # given arrays and tree_def
         from jax.tree_util import tree_unflatten
-        state_ = tree_unflatten(tree_def, arrays)
-        print(state) # EnvState(pos=DeviceArray([1, 2], dtype=int32), goal=DeviceArray([3, 4], dtype=int32))
+        state_list = [tree_unflatten(tree_def, arrays) for arrays in zip(*[jnp.split(array, len(state_obs)) for array in arrays])]
+        print(state_list) #
+        
+        # print(arrays) # [DeviceArray([[1, 2], [3, 4]], dtype=int32), DeviceArray([[5, 6], [7, 8]], dtype=int32)]
+        # print(tree_def) # PyTreeDef(namedtuple[EnvState], [*,*])
+        # state =  self.state_list[0]
+        
+        # arrays, tree_def = tree_flatten(state)
+        
+        
+        # from jax.tree_util import tree_unflatten
+        # state_ = tree_unflatten(tree_def, arrays)
+        # print(state) # EnvState(pos=DeviceArray([1, 2], dtype=int32), goal=DeviceArray([3, 4], dtype=int32))
 
         jax.debug.breakpoint()
         # self.obs_sell_list = [obs_sell for state, obs_sell, obs_buy in state_obs]
