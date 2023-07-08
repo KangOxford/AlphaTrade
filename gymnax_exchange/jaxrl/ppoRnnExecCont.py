@@ -453,14 +453,25 @@ if __name__ == "__main__":
         # sync_tensorboard=True,  # auto-upload  tensorboard metrics
         save_code=True,  # optional
     )
-
-    num_devices = 4
+    
+    
+    # +++++ Gingle GPU +++++
     rng = jax.random.PRNGKey(30)
-    rngs = jax.random.split(rng, num_devices)
-    train_fn = lambda rng: make_train(ppo_config)(rng)
+    train_jit = jax.jit(make_train(ppo_config))
     start=time.time()
-    out = jax.pmap(train_fn)(rngs)
+    out = train_jit(rng)
     print("Time: ", time.time()-start)
+    # +++++ Gingle GPU +++++
+
+    # # +++++ Multiple GPUs +++++
+    # num_devices = 4
+    # rng = jax.random.PRNGKey(30)
+    # rngs = jax.random.split(rng, num_devices)
+    # train_fn = lambda rng: make_train(ppo_config)(rng)
+    # start=time.time()
+    # out = jax.pmap(train_fn)(rngs)
+    # print("Time: ", time.time()-start)
+    # # +++++ Multiple GPUs +++++
     
     
 
