@@ -454,9 +454,10 @@ if __name__ == "__main__":
     )
 
     rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(ppo_config))
+    rngs = jax.random.split(rng, num_devices=4)
+    train_fn = lambda rng: make_train(ppo_config)(rng)
     start=time.time()
-    out = train_jit(rng)
+    out = jax.pmap(train_fn)(rngs)
     print("Time: ", time.time()-start)
     
     
