@@ -19,8 +19,8 @@ chex.assert_gpu_available(backend=None)
 
 #Code snippet to disable all jitting.
 from jax import config
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -65,7 +65,7 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    state_list: chex.Array
+    stateArray_list: chex.Array
     obs_sell_list: chex.Array
     obs_buy_list: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
@@ -104,7 +104,7 @@ class ExecutionEnv(BaseLOBEnv):
     def default_params(self) -> EnvParams:
         # Default environment parameters
         # return EnvParams(self.messages,self.books)
-        return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+        return EnvParams(self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
     
     # @property
     # def default_params(self) -> EnvParams:
@@ -181,46 +181,70 @@ class ExecutionEnv(BaseLOBEnv):
         
         
         
-        #Get the init time based on the first message to be processed in the first step. 
-        time=job.get_initial_time(params.message_data,idx_data_window) 
-        #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-        init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
-        #Initialise both sides of the book as being empty
-        asks_raw=job.init_orderside(self.nOrdersPerSide)
-        bids_raw=job.init_orderside(self.nOrdersPerSide)
-        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
-        #Process the initial messages through the orderbook
-        ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+        # #Get the init time based on the first message to be processed in the first step. 
+        # time=job.get_initial_time(params.message_data,idx_data_window) 
+        # #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+        # init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
+        # #Initialise both sides of the book as being empty
+        # asks_raw=job.init_orderside(self.nOrdersPerSide)
+        # bids_raw=job.init_orderside(self.nOrdersPerSide)
+        # trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        # #Process the initial messages through the orderbook
+        # ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
-        # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
-        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
-        M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
+        # # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+        # best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+        # M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
 
-        #Craft the first state
-        state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0,0)
+        # #Craft the first state
+        # state = EnvState(*ordersides,jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),time,time,0,idx_data_window,0,M,self.task_size,0,0)
         
-        # return self.get_obs(state,params),state
+        # # return self.get_obs(state,params),state
+        # print(state.best_asks.shape)
+        # print(state.best_bids.shape)
+        # print(state.init_time.shape)
+        # print(state.time.shape)
+        # print(state.init_price)
+        # jax.debug.breakpoint()
         
-        
-        obs_sell = params.obs_sell_list[idx_data_window]
-        obs_buy = params.obs_buy_list[idx_data_window]
-        obs = obs_sell if self.task == "sell" else obs_buy
-        return obs,state
-
-
-        # state_ = jax.tree_util.tree_map(lambda element: element[idx_data_window], params.state_list)
-        # # state_ = params.state_list[idx_data_window]
-        # # jax.debug.breakpoint()
         # obs_sell = params.obs_sell_list[idx_data_window]
-        # # jax.debug.breakpoint()
         # obs_buy = params.obs_buy_list[idx_data_window]
-        # # jax.debug.breakpoint()
-        # state = EnvState(*state_)
-        # state.window_index = idx_data_window
-        # # jax.debug.breakpoint()
         # obs = obs_sell if self.task == "sell" else obs_buy
-        # # jax.debug.breakpoint()
         # return obs,state
+        
+        
+
+        def stateArray2state(stateArray):
+            # state_5 = jnp.hstack((state[-8],state[-9],state[-4]))
+            # padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
+            # stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
+            state0 = stateArray[:,0:6]
+            state1 = stateArray[:,6:12]
+            state2 = stateArray[:,12:18]
+            state3 = stateArray[:,18:20]
+            state4 = stateArray[:,20:22]
+            state5 = stateArray[0:2,22:23].squeeze(axis=-1)
+            state6 = stateArray[2:4,22:23].squeeze(axis=-1)
+            state10 = int(stateArray[4:5,22:23])
+            # print(state3.shape)
+            # print(state4.shape)
+            # print(state5.shape)
+            # print(state6.shape)
+            # print(state10.shape)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,0,state10,self.task_size,0,0)
+        stateArray = params.stateArray_list[idx_data_window]
+        state_ = stateArray2state(stateArray)
+        # state_ = params.state_list[idx_data_window]
+        # jax.debug.breakpoint()
+        obs_sell = params.obs_sell_list[idx_data_window]
+        # jax.debug.breakpoint()
+        obs_buy = params.obs_buy_list[idx_data_window]
+        # jax.debug.breakpoint()
+        state = EnvState(*state_)
+        # jax.debug.breakpoint()
+        obs = obs_sell if self.task == "sell" else obs_buy
+        # jax.debug.breakpoint()
+        return obs,state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""

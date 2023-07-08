@@ -223,10 +223,11 @@ class BaseLOBEnv(environment.Environment):
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
             
-        # message_data, book_data = msgs[0],bks[0]
-        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        message_data, book_data = msgs[0],bks[0]
+        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
+        
         def get_state(message_data, book_data):
             time=jnp.array(message_data[0,0,-2:])
             #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
@@ -303,39 +304,13 @@ class BaseLOBEnv(environment.Environment):
         state_obs = [get_state_obs(message_data, book_data) for message_data, book_data in Cubes_withOB]
         state_list = [state for state, obs_sell, obs_buy in state_obs]
         
-        # for item in self.state_list[0]:
-        #     try:
-        #         print(f"{item.shape}, {type(item)}")
-        #     except:
-        #         print(f"{type(item)}")
-        # self.state_list[0][-4]
+        def state2stateArray(state):
+            state_5 = jnp.hstack((state[-8],state[-9],state[-4]))
+            padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
+            stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
+            return stateArray
         
-        from jax.tree_util import tree_flatten
-        arrays_list, tree_def_list = zip(*[tree_flatten(state) for state in state_list])
-        arrays = [jnp.concatenate(arrays, axis=0) for arrays in zip(*arrays_list)]
-        tree_def = tree_def_list[0] # assume all states have the same structure
-        # return arrays and tree_def
-        
-        # given arrays and tree_def
-        from jax.tree_util import tree_unflatten
-        state_list = [tree_unflatten(tree_def, arrays) for arrays in zip(*[jnp.split(array, len(state_obs)) for array in arrays])]
-        print(state_list) #
-        
-        # print(arrays) # [DeviceArray([[1, 2], [3, 4]], dtype=int32), DeviceArray([[5, 6], [7, 8]], dtype=int32)]
-        # print(tree_def) # PyTreeDef(namedtuple[EnvState], [*,*])
-        # state =  self.state_list[0]
-        
-        # arrays, tree_def = tree_flatten(state)
-        
-        
-        # from jax.tree_util import tree_unflatten
-        # state_ = tree_unflatten(tree_def, arrays)
-        # print(state) # EnvState(pos=DeviceArray([1, 2], dtype=int32), goal=DeviceArray([3, 4], dtype=int32))
-
-        jax.debug.breakpoint()
-        # self.obs_sell_list = [obs_sell for state, obs_sell, obs_buy in state_obs]
-        # self.obs_buy_list =  [obs_buy for state, obs_sell, obs_buy in state_obs]
-        # self.state_list = jnp.array([jnp.array(state) for state, obs_sell, obs_buy in state_obs])
+        self.stateArray_list = jnp.array([state2stateArray(state) for state, obs_sell, obs_buy in state_obs])
         self.obs_sell_list = jnp.array([jnp.array(obs_sell) for state, obs_sell, obs_buy in state_obs])
         self.obs_buy_list =  jnp.array([jnp.array(obs_buy) for state, obs_sell, obs_buy in state_obs])
         print("FINISH: pre-reset in the initialization")
