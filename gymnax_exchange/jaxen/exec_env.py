@@ -128,12 +128,12 @@ class ExecutionEnv(BaseLOBEnv):
         new_execution = executed[:,1].sum()
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        revenue = (agentTrades[:,0] * agentTrades[:,1]).sum()
+        revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
         agentQuant = agentTrades[:,1].sum()
-        vwap =(executed[:,0] * executed[:,1]//self.tick_size).sum()//(executed[:,1]).sum()*self.tick_size
-        advantage = revenue - vwap * agentQuant
+        vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
+        advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
-        drift = agentQuant * (vwap - state.init_price)
+        drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         reward=jnp.nan_to_num(reward)
