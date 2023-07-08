@@ -25,7 +25,6 @@ class EnvState:
     window_index:int
     step_counter: int
 
-
 @struct.dataclass
 class EnvParams:
     message_data: chex.Array
@@ -185,7 +184,15 @@ class BaseLOBEnv(environment.Environment):
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB
+
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        
+        # ----------------------------------------------------------------------
+        alphatradePath = '/homes/80/kang/AlphaTrade'
+        messagePath = alphatradePath+"/data_small/Flow_10/"
+        orderbookPath = alphatradePath+"/data_small/Book_10/"
+        Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        # ----------------------------------------------------------------------
         
         #List of message cubes 
         msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
@@ -196,6 +203,108 @@ class BaseLOBEnv(environment.Environment):
 
         self.n_windows=len(self.books)
         # jax.debug.breakpoint()
+        
+        # ==================================================================
+        # ================= CAUTION NOT BELONG TO BASE ENV =================
+        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+        print("START:  pre-reset in the initialization")
+            
+        message_data, book_data = msgs[0],bks[0]
+        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        
+        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
+        
+        def get_state(message_data, book_data):
+            time=jnp.array(message_data[0,0,-2:])
+            #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+            def get_initial_orders(book_data,time):
+                orderbookLevels=10
+                initid=-9000
+                data=jnp.array(book_data).reshape(int(10*2),2)
+                newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
+                initOB = newarr \
+                    .at[:,3].set(data[:,0]) \
+                    .at[:,2].set(data[:,1]) \
+                    .at[:,0].set(1) \
+                    .at[0:orderbookLevels*4:2,1].set(-1) \
+                    .at[1:orderbookLevels*4:2,1].set(1) \
+                    .at[:,4].set(initid) \
+                    .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
+                    .at[:,6].set(time[0]) \
+                    .at[:,7].set(time[1])
+                return initOB
+            init_orders=get_initial_orders(book_data,time)
+            #Initialise both sides of the book as being empty
+            asks_raw=job.init_orderside(nOrdersPerSide)
+            bids_raw=job.init_orderside(nOrdersPerSide)
+            trades_init=(jnp.ones((nTradesLogged,6))*-1).astype(jnp.int32)
+            #Process the initial messages through the orderbook
+            ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+
+            # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+            best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+            M = (best_bid[0] + best_ask[0])//2//tick_size*tick_size 
+            
+            state = (*ordersides,jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),time,time,0,-1,0,M,task_size,0,0)
+            # replace -1 with idx_data_window
+            return state
+        
+        def get_obs(state):
+            """Return observation from raw state trafo."""
+            # ========= self.get_obs(state,params) =============
+            # -----------------------1--------------------------
+            best_asks=state[3][:,0]
+            best_bids =state[4][:,0]
+            mid_prices=(best_asks+best_bids)//2//tick_size*tick_size 
+            second_passives_sell_task = best_asks+tick_size*n_ticks_in_book 
+            second_passives_buy_task =  best_bids-tick_size*n_ticks_in_book
+            spreads = best_asks - best_bids
+
+            # -----------------------2--------------------------
+            timeOfDay = state[6] #state.time
+            deltaT = timeOfDay -  state[5] # state.init_time
+            # -----------------------3--------------------------
+            initPrice = state[10] # state.init_price
+            priceDrift = mid_prices[-1] - initPrice
+            # -----------------------4--------------------------
+            # -----------------------5--------------------------
+            taskSize = state[11] # state.task_to_execute
+            executed_quant=state[12] # state.quant_executed
+            # -----------------------7--------------------------
+            bestAsksQtys = state[3][:,1]
+            bestBidsQtys = state[4][:,1]
+            shallowImbalance = bestAsksQtys - bestBidsQtys # ShallowImbalance
+            # -----------------------8--------------------------
+
+            # ========= self.get_obs(state,params) =============
+            obs_sell = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
+            obs_buy = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_buy_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
+            # jax.debug.breakpoint()
+            return obs_sell, obs_buy
+        
+        def get_state_obs(message_data, book_data):
+            state = get_state(message_data, book_data)
+            obs_sell, obs_buy = get_obs(state)
+            return state, obs_sell, obs_buy
+
+        state_obs = [get_state_obs(message_data, book_data) for message_data, book_data in Cubes_withOB]
+        state_list = [state for state, obs_sell, obs_buy in state_obs]
+        
+        def state2stateArray(state):
+            state_5 = jnp.hstack((state[-8],state[-9],state[-4]))
+            padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
+            stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
+            return stateArray
+        
+        self.stateArray_list = jnp.array([state2stateArray(state) for state, obs_sell, obs_buy in state_obs])
+        self.obs_sell_list = jnp.array([jnp.array(obs_sell) for state, obs_sell, obs_buy in state_obs])
+        self.obs_buy_list =  jnp.array([jnp.array(obs_buy) for state, obs_sell, obs_buy in state_obs])
+        print("FINISH: pre-reset in the initialization")
+        # ================= CAUTION NOT BELONG TO BASE ENV =================
+        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+        # ==================================================================
+        
+
 
 
 
@@ -210,6 +319,12 @@ class BaseLOBEnv(environment.Environment):
     def default_params(self) -> EnvParams:
         # Default environment parameters
         return EnvParams(self.messages,self.books)
+        # return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+    # @property
+    # def default_params(self) -> EnvParams:
+    #     # Default environment parameters
+    #     # return EnvParams(self.messages,self.books)
+    #     return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
 
 
     def step_env(

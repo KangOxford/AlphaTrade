@@ -26,6 +26,8 @@ from jax import config
 
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
+import wandb
+
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -375,21 +377,24 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     
-                    """# info
-                    print("-------------------------")
-                    print(f"obs:        {info['obs_'][0,0]}")
-                    print(f"scan:       {info['scan_'][0,0]}")
-                    print(f"act:        {info['act_'][0,0]}")
-                    print(f"done        {info['done_'][0,0]}")
-                    print(f"rew_nan_:   {info['rew_nan_'][0,0]}")
-                    print(f"rew_where_: {info['rew_where_'][0,0]}")
-                    print(f"rew_calc_:  {info['rew_calc_'][0,0]}")
-                    print("-------------------------")
-                    # jax.debug.breakpoint()"""
+                    # jax.debug.breakpoint()
+                    revenues = info["total_revenue"][info["returned_episode"]]
+
                     
                     for t in range(len(timesteps)):
-                        print(
-                        f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        # print(
+                        # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
+                        # # f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        # )    
+                        # print(
+                        #     f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        # )      
+                        wandb.log(
+                            {
+                                "global_step": timesteps[t],
+                                "episodic_return": return_values[t],
+                                "episodic_revenue": revenues[t],
+                            }
                         )                     
 
                 jax.debug.callback(callback, metric)
@@ -413,19 +418,18 @@ def make_train(config):
 
     return train
 
-
 if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1] 
     except:
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
-    
+
     ppo_config = {
         "LR": 2.5e-4,
         "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 5e5,
+        "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
@@ -441,19 +445,42 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'buy'
     }
+    
+    run = wandb.init(
+        project="AlphaTradeJAX",
+        config=ppo_config,
+        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+        save_code=True,  # optional
+    )
 
     rng = jax.random.PRNGKey(30)
-    # jax.debug.breakpoint()
     train_jit = jax.jit(make_train(ppo_config))
-
-    if ppo_config["DEBUG"]:
-        pass
-        #chexify the function
-        #NOTE: use chex.asserts inside the code, under a if DEBUG. 
-
-    # train = make_train(ppo_config)
-    # jax.debug.breakpoint()
     start=time.time()
     out = train_jit(rng)
     print("Time: ", time.time()-start)
+    
+    
 
+    # '''
+    # # ---------- Save Output ----------
+    import flax
+
+    train_state = out['runner_state'][0] # runner_state.train_state
+    params = train_state.params
+    
+    # Save the params to a file using flax.serialization.to_bytes
+    with open('params_file', 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"pramas saved")
+
+    # Load the params from the file using flax.serialization.from_bytes
+    with open('params_file', 'rb') as f:
+        restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        print(f"pramas restored")
+        
+    # jax.debug.breakpoint()
+    # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
+    # print(">>>")
+    # '''
+    
+    run.finish()
