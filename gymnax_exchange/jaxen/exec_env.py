@@ -11,8 +11,8 @@ import chex
 import timeit
 
 import faulthandler
-
 faulthandler.enable()
+
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 chex.assert_gpu_available(backend=None)

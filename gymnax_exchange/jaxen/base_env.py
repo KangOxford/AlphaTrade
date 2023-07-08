@@ -208,12 +208,13 @@ class BaseLOBEnv(environment.Environment):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        
-        # # ------------------------------- TESTING ------------------------------
-        # message_data, book_data = msgs[0],bks[0]
-        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
-        # # ------------------------------- TESTING ------------------------------
-        
+
+        ##TESTING    
+        #message_data, book_data = msgs[0],bks[0]
+        #nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        ##TESTING    
+
+
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
         
         def get_state(message_data, book_data):
