@@ -310,7 +310,8 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        ATFolder = '/homes/80/kang/AlphaTrade'
+        ATFolder = '/home/duser/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
