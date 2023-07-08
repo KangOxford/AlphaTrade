@@ -187,11 +187,12 @@ class BaseLOBEnv(environment.Environment):
 
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
-        # ----------------------------------------------------------------------
-        messagePath = alphatradePath+"/data/Flow_10/"
-        orderbookPath = alphatradePath+"/data/Book_10/"
-        Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
-        # ----------------------------------------------------------------------
+        # # ------------------------------- TESTING ------------------------------
+        # alphatradePath = '/homes/80/kang/AlphaTrade'
+        # messagePath = alphatradePath+"/data_small/Flow_10/"
+        # orderbookPath = alphatradePath+"/data_small/Book_10/"
+        # Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        # # ------------------------------- TESTING ------------------------------
         
         #List of message cubes 
         msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
@@ -305,9 +306,9 @@ class BaseLOBEnv(environment.Environment):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         # ==================================================================
-        
 
 
+        print(f"num of data_window: {self.n_windows}")
 
 
         """
