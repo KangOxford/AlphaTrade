@@ -188,9 +188,8 @@ class BaseLOBEnv(environment.Environment):
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
         # ----------------------------------------------------------------------
-        alphatradePath = '/homes/80/kang/AlphaTrade'
-        messagePath = alphatradePath+"/data_small/Flow_10/"
-        orderbookPath = alphatradePath+"/data_small/Book_10/"
+        messagePath = alphatradePath+"/data/Flow_10/"
+        orderbookPath = alphatradePath+"/data/Book_10/"
         Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
         # ----------------------------------------------------------------------
         
@@ -208,10 +207,13 @@ class BaseLOBEnv(environment.Environment):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-            
-        message_data, book_data = msgs[0],bks[0]
-        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
-        
+
+        ##TESTING    
+        #message_data, book_data = msgs[0],bks[0]
+        #nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        ##TESTING    
+
+
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
         
         def get_state(message_data, book_data):
