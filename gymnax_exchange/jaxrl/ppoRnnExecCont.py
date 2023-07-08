@@ -455,13 +455,13 @@ if __name__ == "__main__":
     )
     
     
-    # +++++ Gingle GPU +++++
+    # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
     start=time.time()
     out = train_jit(rng)
     print("Time: ", time.time()-start)
-    # +++++ Gingle GPU +++++
+    # +++++ Single GPU +++++
 
     # # +++++ Multiple GPUs +++++
     # num_devices = 4
@@ -482,13 +482,14 @@ if __name__ == "__main__":
     train_state = out['runner_state'][0] # runner_state.train_state
     params = train_state.params
     
+    import datetime;params_file_name = 'params_file_' + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # Save the params to a file using flax.serialization.to_bytes
-    with open('params_file', 'wb') as f:
+    with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
         print(f"pramas saved")
 
     # Load the params from the file using flax.serialization.from_bytes
-    with open('params_file', 'rb') as f:
+    with open(params_file_name, 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
         
