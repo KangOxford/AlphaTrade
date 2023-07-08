@@ -132,7 +132,7 @@ def main():
         clip_range= config["clip_range"],
 
 
-        batch_size=4, # <= <= <= <= <= <= Your can tune this
+        batch_size=2500, # <= <= <= <= <= <= Your can tune this
         n_steps=10, # <= <= <= <= <= <= Your can tune this
 
         n_epochs=4, # <= <= <= <= <= <= Your can tune this

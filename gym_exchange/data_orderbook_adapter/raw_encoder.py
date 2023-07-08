@@ -59,7 +59,8 @@ class RawDecoder():
         try:
             message = next(self.data_loader_iterrows)[1]
         except:
-            print()#$
+            pass
+            # print()#$
         if message['type'] in (1,2,3):
             order_flow = OrderFlow(
                 Type = message['type'],

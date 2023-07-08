@@ -11,6 +11,7 @@ def get_symbol_date(AlphaTradeRoot):
             date = filename.split("_")[1]
             # Process the file here
             break
+    symbol, date = "AMZN", "2021-04-01"
     return symbol, date
 
 class Config:

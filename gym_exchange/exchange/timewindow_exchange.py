@@ -44,7 +44,8 @@ class TimewindowExchange(Exchange):
         for i in range(Config.window_size -1): # no. Config.window_size -1
             # print(f"innerloop step {i}") #$
             if i == Config.window_size -2:
-                print() #$
+                # print() #$
+                pass
             super().step()
             self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos
         self.state_memos.append(get_state_memo(self.order_book)) # update_state_memos

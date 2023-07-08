@@ -8,4 +8,4 @@ class NumLeftProcessor():
         # self.num_left -= self.cur_action
         self.num_left -= 1
         pass
-        print()
+        # print()
