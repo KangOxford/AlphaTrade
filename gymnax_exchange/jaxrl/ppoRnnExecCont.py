@@ -422,7 +422,8 @@ if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1] 
     except:
-        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
+        ATFolder = '/home/duser/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
     ppo_config = {
@@ -453,10 +454,12 @@ if __name__ == "__main__":
         save_code=True,  # optional
     )
 
+    num_devices = 4
     rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(ppo_config))
+    rngs = jax.random.split(rng, num_devices)
+    train_fn = lambda rng: make_train(ppo_config)(rng)
     start=time.time()
-    out = train_jit(rng)
+    out = jax.pmap(train_fn)(rngs)
     print("Time: ", time.time()-start)
     
     
