@@ -1,39 +1,19 @@
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp
-import gymnax
 import sys
+from re import L
+import time 
 sys.path.append('/Users/sasrey/AlphaTrade')
 sys.path.append('/homes/80/kang/AlphaTrade')
-# from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
-import timeit
-import faulthandler
-faulthandler.enable()
+import faulthandler; faulthandler.enable()
 chex.assert_gpu_available(backend=None)
-#Code snippet to disable all jitting.
-from jax import config
+from jax import config # Code snippet to disable all jitting.
 config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
-# ============== testing scripts ===============
-from ast import Dict
-from contextlib import nullcontext
-from email import message
-from random import sample
-from re import L
-import jax
-import jax.numpy as jnp
-import numpy as np
-from jax import lax
-from gymnax.environments import environment, spaces
-from typing import Tuple, Optional
-import chex
-from flax import struct
-from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-import time 
 from gymnax_exchange.jaxen.exec_env import *
+# ============== testing scripts ===============
 
 if __name__ == "__main__":
     try:
@@ -89,10 +69,14 @@ if __name__ == "__main__":
     assert len(ac_in[0].shape) == 3
     hstate, pi, value = network.apply(restored_params, init_hstate, ac_in)
     print("Network Carry Initialized")
-    action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:] # CAUTION about the [0,0,:], only works for num_env=1
+    action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
     print(f"PPO 0th actions are: ",action)
+    print(action.sum())
     obs,state,reward,done,info=env.step(key_step, state, action, env_params)
+    # done, state.quant_executed
+    print(info)
     
+    i = 1
     for i in range(1,100):
         # ==================== ACTION ====================
         # ---------- acion from trained network ----------
@@ -102,13 +86,16 @@ if __name__ == "__main__":
         hstate, pi, value = network.apply(restored_params, hstate, ac_in) 
         # hstate, pi, value = network.apply(restored_params, hstate, ac_in) # TODO does hstate need to be from the out?
         # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
-        action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:] # 4*1, should be (4*4: 4actions * 4envs)
+        action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None)
         # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
         print(f"PPO {i}th actions are: ",action)
+        print(action.sum())
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         print(f"Time for {i} step: \n",time.time()-start)
+        # done, state.quant_executed
+        print(info)
         if done:
             break
-    print(info)
+    # print(info)

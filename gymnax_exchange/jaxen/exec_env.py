@@ -17,10 +17,10 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 chex.assert_gpu_available(backend=None)
 
-#Code snippet to disable all jitting.
-from jax import config
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# #Code snippet to disable all jitting.
+# from jax import config
+# config.update("jax_disable_jit", False)
+# # config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -80,7 +80,8 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        self.task_size = 200 # num to sell or buy for the task
+        self.task_size = 500 # num to sell or buy for the task
+        # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
         self.debug : bool = False
@@ -107,8 +108,8 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
 
         #Add to the top of the data messages
-        total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
-        # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
+        # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
+        total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         # jax.debug.print("Total messages: \n {}",total_messages)
 
         #Save time of final message to add to state
@@ -125,9 +126,9 @@ class ExecutionEnv(BaseLOBEnv):
 
         # ========== get reward and revenue ==========
         executed = jnp.where((scan_results[2][:, 0] > 0)[:, jnp.newaxis], scan_results[2], 0)
-        new_execution = executed[:,1].sum()
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
@@ -148,6 +149,7 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         #jax.debug.print("Final state after step: \n {}", state)
         # "EpisodicRevenue" TODO need this info to assess the policy
+        # jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 
