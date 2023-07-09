@@ -106,6 +106,7 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
+        tobe_cancelled_quant = cnl_msgs[:,2].sum()
 
         #Add to the top of the data messages
         # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
@@ -149,7 +150,7 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         #jax.debug.print("Final state after step: \n {}", state)
         # "EpisodicRevenue" TODO need this info to assess the policy
-        # jax.debug.breakpoint()
+        jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 

@@ -70,7 +70,7 @@ if __name__ == "__main__":
     hstate, pi, value = network.apply(restored_params, init_hstate, ac_in)
     print("Network Carry Initialized")
     action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
-    print(f"PPO 0th actions are: ",action)
+    print(f"-------------\nPPO 0th actions are: ",action)
     print(action.sum())
     obs,state,reward,done,info=env.step(key_step, state, action, env_params)
     # done, state.quant_executed
@@ -89,8 +89,8 @@ if __name__ == "__main__":
         action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None)
         # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
-        print(f"PPO {i}th actions are: ",action)
-        print(action.sum())
+        print(f"-------------\nPPO {i}th actions are: ",action)
+        print(f"action.sum {action.sum()}")
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         print(f"Time for {i} step: \n",time.time()-start)
