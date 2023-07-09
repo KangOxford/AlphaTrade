@@ -137,6 +137,7 @@ def cond_type_side_save_bidask(ordersides,data):
     index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
+    jax.debug.breakpoint()
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
 
 vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
@@ -222,7 +223,7 @@ def get_size(bookside,agentID):
     return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int32)
 
 def getCancelMsgs(bookside,agentID,size,side):
-    #jax.debug.print("Agent ID: {}",agentID)
+    #jax.debug.print("Agent/Trader ID: {}",agentID)
     bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
     indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
     #jax.debug.print("Indeces: {}",indeces_to_cancel)

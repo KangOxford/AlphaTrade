@@ -107,6 +107,7 @@ class ExecutionEnv(BaseLOBEnv):
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
         tobe_cancelled_quant = cnl_msgs[:,2].sum()
+        print(f"+++ cnl_msgs: \n{cnl_msgs}")
 
         #Add to the top of the data messages
         # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
@@ -120,13 +121,11 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
+        asks,bids,trades,bestasks,bestbids=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        
-        asks,bids,trades,bestasks,bestbids=scan_results
 
         # ========== get reward and revenue ==========
-        executed = jnp.where((scan_results[2][:, 0] > 0)[:, jnp.newaxis], scan_results[2], 0)
+        executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         new_execution = agentTrades[:,1].sum()
@@ -141,14 +140,8 @@ class ExecutionEnv(BaseLOBEnv):
         reward=jnp.nan_to_num(reward)
         # ========== get reward and revenue ==========
         
-        
-        
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
-
-        # jax.debug.print("Trades: \n {}",state.trades)
-        
         done = self.is_terminal(state,params)
-        #jax.debug.print("Final state after step: \n {}", state)
         # "EpisodicRevenue" TODO need this info to assess the policy
         jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
