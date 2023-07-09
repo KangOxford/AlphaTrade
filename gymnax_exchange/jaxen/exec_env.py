@@ -148,7 +148,7 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         #jax.debug.print("Final state after step: \n {}", state)
         # "EpisodicRevenue" TODO need this info to assess the policy
-        return self.get_obs(state,params),state,reward,done,{"total_revenue":state.total_revenue}
+        return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 
 
@@ -310,8 +310,8 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        ATFolder = '/home/duser/AlphaTrade'
-        # ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/home/duser/AlphaTrade'
+        ATFolder = '/homes/80/kang/AlphaTrade'
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -330,42 +330,13 @@ if __name__ == "__main__":
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
-        # ---------- acion from trained network ----------
-        ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
-        ## import ** network
-        from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-        ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 4,
-            "NUM_STEPS": 2,
-            "TOTAL_TIMESTEPS": 5e5,
-            "UPDATE_EPOCHS": 4,
-            "NUM_MINIBATCHES": 4,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'buy'
-        }
-        # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
-        # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-        # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
-        # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
-        # ==================== ACTION ====================
-        
-        
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        # ---------- acion from random sampling ----------
+        # ==================== ACTION ====================
 
     # ####### Testing the vmap abilities ########
     
