@@ -128,6 +128,10 @@ class ExecutionEnv(BaseLOBEnv):
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        def truncate(agentTrade, remindQuant):
+            truncatedAgentTrade = agentTrade # TODO not implemented yet
+            return truncatedAgentTrade
+        agentTrade = truncate(agentTrade, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
         agentQuant = agentTrades[:,1].sum()
