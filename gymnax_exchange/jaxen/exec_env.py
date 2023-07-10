@@ -150,7 +150,7 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
         # "EpisodicRevenue" TODO need this info to assess the policy
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 
@@ -182,7 +182,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
+        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<=0)
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         # ============================== Get Action_msgs ==============================

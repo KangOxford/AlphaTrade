@@ -13,6 +13,7 @@ from jax import config # Code snippet to disable all jitting.
 config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 from gymnax_exchange.jaxen.exec_env import *
+import json
 # ============== testing scripts ===============
 
 if __name__ == "__main__":
@@ -73,7 +74,8 @@ if __name__ == "__main__":
     print(f"-------------\nPPO 0th actions are: {action} with sum {action.sum()}")
     obs,state,reward,done,info=env.step(key_step, state, action, env_params)
     # done, state.quant_executed
-    print(info)
+    print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
+
     
     i = 1
     for i in range(1,100):
@@ -94,7 +96,7 @@ if __name__ == "__main__":
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         print(f"Time for {i} step: \n",time.time()-start)
         # done, state.quant_executed
-        print(info)
+        print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
         if done:
             break
     # print(info)
