@@ -274,6 +274,13 @@ class ExecutionEnv(BaseLOBEnv):
             }
         )
 
+
+
+def reslice_data(params:EnvParams)->EnvParams:
+    flattened=params.message_data
+    jax.debug.print('data flatetned: {}',flattened)
+
+    return params
 # ============================================================================= #
 # ============================================================================= #
 # ================================== MAIN ===================================== #
