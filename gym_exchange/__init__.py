@@ -11,7 +11,7 @@ def get_symbol_date(AlphaTradeRoot):
             date = filename.split("_")[1]
             # Process the file here
             break
-    symbol, date = "AMZN", "2021-04-01"
+    symbol, date = "TSLA", "2015-01-02"
     return symbol, date
 
 class Config:
@@ -106,8 +106,8 @@ class Config:
     # --------------- 06 Space ---------------
     max_action = 300
     max_quantity = 3000 # TODO is it the same function with max_action?
-    max_price = 35000000 # upper bound
-    min_price = 30000000 # lower bound
+    max_price = 10000000 # upper bound
+    min_price = 1000000 # lower bound
     min_quantity = 0
     scaling = 30000000
     min_num_left = 0

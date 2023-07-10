@@ -14,6 +14,7 @@ from gym_exchange.environment.base_env.assets.vwap_info import VwapEstimator
 from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.environment.base_env.utils import broadcast_lists
 
+import pdb
 
 # *************************** 2 *************************** #
 class BaseEnv(gym.Env):
@@ -49,7 +50,7 @@ class BaseEnv(gym.Env):
             f"unexpected state {self.cur_state}, \nwith shape {self.cur_state.shape}, \nshould be in {self.state_space}"
         state = self.cur_state
         assert self.cur_step == 0
-        print("env reset") #$
+        print("env reset",state)
         return state
     # ------------------------- 02.01 ------------------------
     def init_components(self):
@@ -67,6 +68,7 @@ class BaseEnv(gym.Env):
         order_book = self.exchange.order_book
         asks, bids = brief_order_book(order_book, 'ask'), brief_order_book(order_book, 'bid')
         asks, bids = np.array(asks), np.array(bids)
+        breakpoint()
 
         # ···················· 02.01.02 ····················
         price_indexes, quantity_indexes = [2*i for i in range(Config.price_level)], [2*i +1 for i in range(Config.price_level)]
@@ -74,6 +76,7 @@ class BaseEnv(gym.Env):
         bids = np.concatenate([bids[price_indexes],bids[quantity_indexes]]).reshape(-1,Config.price_level)
         state = np.concatenate([asks, bids]) # fixed sequence: first ask, then bid
         state = state.astype(np.int64)
+        print(state)
         assert state.shape == (4, Config.price_level)
         return state
 
@@ -99,6 +102,7 @@ class BaseEnv(gym.Env):
             kind = 'market_order'
         # ···················· 03.01.01 ····················
         # generate_wrapped_order_flow {
+        breakpoint()
         best_ask_bid_dict = {'ask':self.exchange.order_book.get_best_ask(), 'bid':self.exchange.order_book.get_best_bid()}
         # order_flows = self.order_flow_generator.step(action, best_ask_bid_dict) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
         order_flows = self.order_flow_generator.step(action, best_ask_bid_dict, self.num_hold_processor.num_hold, kind = kind) # redisual policy inside # price is wrapped into action here # price list is used for PriceDelta, only one side is needed
@@ -109,7 +113,7 @@ class BaseEnv(gym.Env):
         state = broadcast_lists(*tuple(map(lambda side: brief_order_book(self.exchange.order_book, side),('ask','bid'))))
         price, quantity = state[:,::2], state[:,1::2]
         state = np.concatenate([price,quantity],axis = 1)
-        state = state.reshape(4, Config.price_level).astype(np.int64)
+        state = state.reshape(4,Config.price_level).astype(np.int64)
         # ···················· 03.01.04 ····················
         # current_step, max_horizon, num_left, num2sell
         # broadcast from (4, 10) to (4, 11)

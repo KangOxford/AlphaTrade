@@ -73,6 +73,10 @@ def brief_order_book(order_book, side):
         my_list.append(quantity)
         if count == Config.price_level:
             break
+    while count!= Config.price_level:
+        count+=1
+        my_list.append(0)
+        my_list.append(0)
     return my_list
 
 def update_id(message):

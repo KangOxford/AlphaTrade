@@ -4,6 +4,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 # from train.sb3 import utils
 import warnings; warnings.filterwarnings("ignore") # clear warnings
 import wandb
+import numpy as np
 # from train.sb3.sb3 import WandbCallback
 import os
 os.system("export PYTHONPATH=$PYTHONPATH:/home/duser/AlphaTrade/")
@@ -38,7 +39,7 @@ from gym_exchange import Config
 Config.train_env = "BaseEnv"
 print(f"Config.train_env: {Config.train_env}")
 
-from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
+from gym_exchange.environment.jaxLike_env.jaxLike_env import JaxLikeEnv
 
 
 
@@ -70,16 +71,16 @@ def flow_lists_initialization():
 
 flow_lists_initialized = flow_lists_initialization()
 # ============load data==============
-class TrainEnv(TimewindowEnv):
+class TrainEnv(JaxLikeEnv):
 
     # ========================== 03 ==========================
     def state(self, action):
+        '''
         action[0] = 1 # 1 means sell stocks, 0 means buy stocks "Execution-3FreeDegrees"
         # action[2] = 0 # passive orders
-        ''''''
         action[1] = int(round(action[1]))
         action[2] = int(round(action[2]))
-        ''''''
+        '''
         state = super().state(action)
         return state
 def main():
@@ -88,9 +89,12 @@ def main():
     import time
     start = time.time()
 
+    play_around=True
+    train=False
+
     config = {
         "policy_type": "MlpLstmPolicy",
-        "total_timesteps": int(500000),
+        "total_timesteps": int(50000),
         # "ent_coef" : 1,
         # ent_coef = 0.95,
         "ent_coef" : 0.5,
@@ -106,55 +110,69 @@ def main():
         "clip_range" : 0.5,  # Increase this value to allow for more significant policy updates
     }
 
-    run = wandb.init(
-        project="Execution-2FreeDegrees",
+    def make_env():
+            env = TrainEnv(flow_lists_initialized)  # record stats such as returns
+            env = Monitor(env)  # record stats such as returns
+            return env
+    
+
+    if play_around:
+        test_env=make_env()
+        test_env.reset()
+        test_env.step(np.array([10,12,0,0]))
+
+        print('hello there')
+
+
+    if train:
+        run = wandb.init(
+        project="TestingCPU",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         save_code=True,  # optional
-    )
+        )
+
+        
+        venv = DummyVecEnv([make_env] * 1000) # <= <= <= <= <= <= Your can tune this
+        # venv = DummyVecEnv([make_env] )
 
 
-    def make_env():
-        env = TrainEnv(flow_lists_initialized)  # record stats such as returns
-        env = Monitor(env)  # record stats such as returns
-        return env
-    venv = DummyVecEnv([make_env] * 1000) # <= <= <= <= <= <= Your can tune this
-    # venv = DummyVecEnv([make_env] )
+        model = RecurrentPPO(
+            config["policy_type"],
+            venv,
+            ent_coef= config["ent_coef"],
+            vf_coef= config["vf_coef"],
+            gamma= config["gamma"],
+            gae_lambda= config["gae_lambda"],
+            clip_range= config["clip_range"],
 
 
-    model = RecurrentPPO(
-        config["policy_type"],
-        venv,
-        ent_coef= config["ent_coef"],
-        vf_coef= config["vf_coef"],
-        gamma= config["gamma"],
-        gae_lambda= config["gae_lambda"],
-        clip_range= config["clip_range"],
+            batch_size=2500, # <= <= <= <= <= <= Your can tune this
+            n_steps=10, # <= <= <= <= <= <= Your can tune this
+
+            n_epochs=4, # <= <= <= <= <= <= Your can tune this
+            verbose=1, 
+            # learning_rate=utils.linear_schedule(5e-3),
+            learning_rate = int(1e-4),
+            tensorboard_log=f"{path}train/output/runs/{run.id}"
+        )
 
 
-        batch_size=2500, # <= <= <= <= <= <= Your can tune this
-        n_steps=10, # <= <= <= <= <= <= Your can tune this
-
-        n_epochs=4, # <= <= <= <= <= <= Your can tune this
-        verbose=1, 
-        # learning_rate=utils.linear_schedule(5e-3),
-        learning_rate = int(1e-4),
-        tensorboard_log=f"{path}train/output/runs/{run.id}")
-
-    model.learn(
-       tb_log_name="RNN_PPO_Wandb",
-        total_timesteps=config["total_timesteps"],
-        # callback=WandbCallback(
-        #     gradient_save_freq=100,
-        #     model_save_path=f"models/{run.id}",
-        #     verbose=1,
-        # ),
-        log_interval=1,
-
-    )
-    end = time.time()
-    print(f"*** mian starts at {start}, and ends at {end}, takes {end-start}.")
-    run.finish()
+    
+        start = time.time()
+        model.learn(
+            tb_log_name="RNN_PPO_Wandb",
+            total_timesteps=config["total_timesteps"],
+            #callback=WandbCallback(
+            #    gradient_save_freq=100,
+            #    model_save_path=f"models/{run.id}",
+            #    verbose=1,
+            # ),
+            log_interval=1,
+        )
+        end = time.time()
+        print(f"*** main starts at {start}, and ends at {end}, takes {end-start}.")
+        #run.finish()
 
 if __name__ == "__main__":
     main()
