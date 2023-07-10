@@ -106,7 +106,6 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
-        # print(f"+++ cnl_msgs (sum: {cnl_msgs[:,2].sum()}): \n{cnl_msgs}")
 
         #Add to the top of the data messages
         # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
@@ -245,12 +244,7 @@ class ExecutionEnv(BaseLOBEnv):
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
         # -----------------------5--------------------------
-        def getShallowImbalance(state):
-            bestAsksQtys = state.best_asks[:,1]
-            bestBidsQtys = state.best_bids[:,1]
-            imb = bestAsksQtys - bestBidsQtys
-            return imb
-        shallowImbalance = getShallowImbalance(state)
+        shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
         # ========= self.get_obs(state,params) =============
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
