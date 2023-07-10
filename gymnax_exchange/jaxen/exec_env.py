@@ -17,9 +17,9 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 chex.assert_gpu_available(backend=None)
 
-# #Code snippet to disable all jitting.
-# from jax import config
-# config.update("jax_disable_jit", False)
+#Code snippet to disable all jitting.
+from jax import config
+config.update("jax_disable_jit", False)
 # # config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
