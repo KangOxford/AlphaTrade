@@ -21,7 +21,6 @@ chex.assert_gpu_available(backend=None)
 from jax import config
 config.update("jax_disable_jit", False)
 # # config.update("jax_disable_jit", True)
-from jax.experimental import checkify
 # ============== testing scripts ===============
 
 
@@ -93,7 +92,7 @@ class ExecutionEnv(BaseLOBEnv):
         # return EnvParams(self.messages,self.books)
         return EnvParams(self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
     
-    @checkify.checkify
+
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
@@ -136,7 +135,6 @@ class ExecutionEnv(BaseLOBEnv):
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
-        checkify.check(revenue >= 0, "revenue must be non-negative!")
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
@@ -150,7 +148,6 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
         # jax.debug.breakpoint()
-        checkify.check(jnp.sign(done) jnp.sign(state.total_revenue - int(str(state.init_price)[0] + '0' * (len(str(state.init_price)) - 1)))*state.task_to_execute)
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 
