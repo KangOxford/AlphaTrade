@@ -22,7 +22,7 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 #Code snippet to disable all jitting.
 from jax import config
 # config.update("jax_disable_jit", False)
-#config.update("jax_disable_jit", True)
+config.update("jax_disable_jit", True)
 
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
@@ -42,6 +42,12 @@ class ScannedRNN(nn.Module):
         """Applies the module."""
         rnn_state = carry
         ins, resets = x
+        
+        
+        # jax.debug.breakpoint()
+        # print(ins)
+        # print(ins.shape)
+        
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(ins.shape[0], ins.shape[1]),
@@ -71,6 +77,7 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.relu(embedding)
 
         rnn_in = (embedding, dones)
+        # jax.debug.breakpoint()
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
 
         actor_mean = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -195,6 +202,7 @@ def make_train(config):
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 # jax.debug.breakpoint()
+                # jax.debug.breakpoint()
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
                 # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
@@ -227,6 +235,7 @@ def make_train(config):
             # CALCULATE ADVANTAGE
             train_state, env_state, last_obs, last_done, hstate, rng = runner_state
             ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+            # jax.debug.breakpoint()
             _, _, last_val = network.apply(train_state.params, hstate, ac_in)
             last_val = last_val.squeeze(0)
             last_val = jnp.where(last_done, jnp.zeros_like(last_val), last_val)
@@ -422,17 +431,19 @@ if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1] 
     except:
-        # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = '/home/duser/AlphaTrade'
+        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/home/duser/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 1,
+        # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 4,
+        "NUM_MINIBATCHES": 1,
+        # "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
@@ -453,14 +464,25 @@ if __name__ == "__main__":
         # sync_tensorboard=True,  # auto-upload  tensorboard metrics
         save_code=True,  # optional
     )
-
-    num_devices = 4
+    
+    
+    # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(30)
-    rngs = jax.random.split(rng, num_devices)
-    train_fn = lambda rng: make_train(ppo_config)(rng)
+    train_jit = jax.jit(make_train(ppo_config))
     start=time.time()
-    out = jax.pmap(train_fn)(rngs)
+    out = train_jit(rng)
     print("Time: ", time.time()-start)
+    # +++++ Single GPU +++++
+
+    # # +++++ Multiple GPUs +++++
+    # num_devices = 4
+    # rng = jax.random.PRNGKey(30)
+    # rngs = jax.random.split(rng, num_devices)
+    # train_fn = lambda rng: make_train(ppo_config)(rng)
+    # start=time.time()
+    # out = jax.pmap(train_fn)(rngs)
+    # print("Time: ", time.time()-start)
+    # # +++++ Multiple GPUs +++++
     
     
 
@@ -471,13 +493,14 @@ if __name__ == "__main__":
     train_state = out['runner_state'][0] # runner_state.train_state
     params = train_state.params
     
+    import datetime;params_file_name = 'params_file_' + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # Save the params to a file using flax.serialization.to_bytes
-    with open('params_file', 'wb') as f:
+    with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
         print(f"pramas saved")
 
     # Load the params from the file using flax.serialization.from_bytes
-    with open('params_file', 'rb') as f:
+    with open(params_file_name, 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
         

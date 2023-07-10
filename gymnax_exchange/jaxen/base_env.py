@@ -47,8 +47,10 @@ class BaseLOBEnv(environment.Environment):
        
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        self.messagePath = alphatradePath+"/data/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data/Book_10/"
+        self.messagePath = alphatradePath+"/data_small/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data_small/Book_10/"
+        # self.messagePath = alphatradePath+"/data/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
 
@@ -209,10 +211,10 @@ class BaseLOBEnv(environment.Environment):
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
 
-        ##TESTING    
+        # # ------------------------------- TESTING ------------------------------
         #message_data, book_data = msgs[0],bks[0]
         #nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
-        ##TESTING    
+        # # ------------------------------- TESTING ------------------------------
 
 
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20

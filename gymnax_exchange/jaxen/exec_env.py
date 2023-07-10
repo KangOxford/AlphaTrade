@@ -17,10 +17,10 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 chex.assert_gpu_available(backend=None)
 
-#Code snippet to disable all jitting.
-from jax import config
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# #Code snippet to disable all jitting.
+# from jax import config
+# config.update("jax_disable_jit", False)
+# # config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -80,7 +80,8 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        self.task_size = 200 # num to sell or buy for the task
+        self.task_size = 500 # num to sell or buy for the task
+        # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
         self.debug : bool = False
@@ -105,10 +106,11 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
+        # print(f"+++ cnl_msgs (sum: {cnl_msgs[:,2].sum()}): \n{cnl_msgs}")
 
         #Add to the top of the data messages
-        total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
-        # total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0)
+        # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
+        total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         # jax.debug.print("Total messages: \n {}",total_messages)
 
         #Save time of final message to add to state
@@ -118,16 +120,21 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
 
-        scan_results=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
+        asks,bids,trades,bestasks,bestbids=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        
-        asks,bids,trades,bestasks,bestbids=scan_results
 
         # ========== get reward and revenue ==========
-        executed = jnp.where((scan_results[2][:, 0] > 0)[:, jnp.newaxis], scan_results[2], 0)
-        new_execution = executed[:,1].sum()
+        executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        def truncate_agent_trades(agentTrades, remainQuant):
+            quantities = agentTrades[:, 1]
+            cumsum_quantities = jnp.cumsum(quantities)
+            cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+            truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx, jnp.zeros_like(agentTrades[0]), agentTrades.at[:, 1].set(jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, jnp.where(jnp.arange(len(quantities)) == cut_idx, remainQuant - cumsum_quantities[cut_idx - 1], 0))))
+            return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
+        agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
+        new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
@@ -139,16 +146,10 @@ class ExecutionEnv(BaseLOBEnv):
         reward=jnp.nan_to_num(reward)
         # ========== get reward and revenue ==========
         
-        
-        
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
-
-        # jax.debug.print("Trades: \n {}",state.trades)
-        
         done = self.is_terminal(state,params)
-        #jax.debug.print("Final state after step: \n {}", state)
-        # "EpisodicRevenue" TODO need this info to assess the policy
-        return self.get_obs(state,params),state,reward,done,{"total_revenue":state.total_revenue}
+        # jax.debug.breakpoint()
+        return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 
 
@@ -159,15 +160,8 @@ class ExecutionEnv(BaseLOBEnv):
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
         def stateArray2state(stateArray):
-            state0 = stateArray[:,0:6]
-            state1 = stateArray[:,6:12]
-            state2 = stateArray[:,12:18]
-            state3 = stateArray[:,18:20]
-            state4 = stateArray[:,20:22]
-            state5 = stateArray[0:2,22:23].squeeze(axis=-1)
-            state6 = stateArray[2:4,22:23].squeeze(axis=-1)
-            state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            # jax.debug.breakpoint()
+            state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
+            state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
             return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,0,state10,self.task_size,0,0)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
@@ -179,7 +173,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<0)
+        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<=0)
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         # ============================== Get Action_msgs ==============================
@@ -310,8 +304,8 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        ATFolder = '/home/duser/AlphaTrade'
-        # ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/home/duser/AlphaTrade'
+        ATFolder = '/homes/80/kang/AlphaTrade'
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -330,42 +324,13 @@ if __name__ == "__main__":
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         test_action=env.action_space().sample(key_policy)
-        # ---------- acion from trained network ----------
-        ac_in = (obs[np.newaxis, :], obs[np.newaxis, :])
-        ## import ** network
-        from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-        ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 4,
-            "NUM_STEPS": 2,
-            "TOTAL_TIMESTEPS": 5e5,
-            "UPDATE_EPOCHS": 4,
-            "NUM_MINIBATCHES": 4,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'buy'
-        }
-        # runner_state = np.load("runner_state.npy") # FIXME/TODO save the runner_state after training
-        # network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-        # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
-        # action = pi.sample(seed=rng) # 4*1, should be (4*4: 4actions * 4envs)
-        # ==================== ACTION ====================
-        
-        
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        # ---------- acion from random sampling ----------
+        # ==================== ACTION ====================
 
     # ####### Testing the vmap abilities ########
     
