@@ -21,6 +21,7 @@ def removeZeroNegQuant(orderside):
 
 @jax.jit
 def cancel_order(orderside,msg):
+    # jax.debug.breakpoint()
     condition=((orderside[:,2]==msg['orderid']) | ((orderside[:,0]==msg['price']) & (orderside[:,2]<=-9000)))
     idx=jnp.where(condition,size=1,fill_value=-1)[0]
     orderside=orderside.at[idx,1].set(orderside[idx,1]-msg['quantity'])

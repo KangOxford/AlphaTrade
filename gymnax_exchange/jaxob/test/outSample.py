@@ -10,8 +10,8 @@ import chex
 import faulthandler; faulthandler.enable()
 chex.assert_gpu_available(backend=None)
 from jax import config # Code snippet to disable all jitting.
-config.update("jax_disable_jit", False)
-# config.update("jax_disable_jit", True)
+# config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", True)
 from gymnax_exchange.jaxen.exec_env import *
 import json
 # ============== testing scripts ===============
@@ -91,7 +91,6 @@ if __name__ == "__main__":
         # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
         print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")
-        print(f"action.sum {action.sum()}")
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         print(f"Time for {i} step: \n",time.time()-start)
