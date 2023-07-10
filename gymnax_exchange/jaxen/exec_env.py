@@ -150,11 +150,11 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
         # jax.debug.breakpoint()
-        condition_done = jnp.sign(done)
-        condition_revenue = jnp.sign(state.total_revenue - int(str(state.init_price)[0] + '0' * (len(str(state.init_price)) - 1)))*state.task_to_execute
-        checkify.check((not condition_done) | condition_revenue)
+        # condition_revenue = jnp.sign(state.total_revenue - state.init_price//int(pow(10,len(str(state.init_price))-1)))*state.task_to_execute
+        # checkify.check((not done) | condition_revenue)
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
+# int(str(state.init_price)[0] + '0' * (len(str(state.init_price)) - 1))
 
 
     def reset_env(
