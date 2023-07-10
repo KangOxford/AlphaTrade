@@ -106,8 +106,7 @@ class ExecutionEnv(BaseLOBEnv):
         #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
         #jax.debug.print("Output from cancel function: {}",cnl_msgs)
-        tobe_cancelled_quant = cnl_msgs[:,2].sum()
-        print(f"+++ cnl_msgs: \n{cnl_msgs}")
+        # print(f"+++ cnl_msgs (sum: {cnl_msgs[:,2].sum()}): \n{cnl_msgs}")
 
         #Add to the top of the data messages
         # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
@@ -149,7 +148,6 @@ class ExecutionEnv(BaseLOBEnv):
         
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
-        # "EpisodicRevenue" TODO need this info to assess the policy
         # jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
@@ -162,15 +160,8 @@ class ExecutionEnv(BaseLOBEnv):
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
         def stateArray2state(stateArray):
-            state0 = stateArray[:,0:6]
-            state1 = stateArray[:,6:12]
-            state2 = stateArray[:,12:18]
-            state3 = stateArray[:,18:20]
-            state4 = stateArray[:,20:22]
-            state5 = stateArray[0:2,22:23].squeeze(axis=-1)
-            state6 = stateArray[2:4,22:23].squeeze(axis=-1)
-            state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            # jax.debug.breakpoint()
+            state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
+            state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
             return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,0,state10,self.task_size,0,0)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
