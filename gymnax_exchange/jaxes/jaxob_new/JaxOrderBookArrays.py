@@ -7,7 +7,7 @@ from functools import partial, partialmethod
 #INITID=-9000
 #MAXPRICE=999999999
 
-
+ones5 = jnp.ones((5,5))
 @jax.jit
 def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
@@ -177,43 +177,43 @@ def branch_type_side(data,type,side,askside,bidside):
         if type==1:
             #match with asks side
             #add remainder to bids side
-            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
+            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],ones5*-1)
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             bids=add_order(bidside,msg)
             return (matchtuple[0],bids),matchtuple[3]
         elif type==2:
             #cancel order on bids side
-            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5))*-1
+            return (askside,cancel_order(bidside,msg)),ones5*-1
         elif type==3:
             #cancel order on bids side
-            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5))*-1
+            return (askside,cancel_order(bidside,msg)),ones5*-1
         elif type==4:
             msg["price"]=999999999
-            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
+            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],ones5*-1)
             #^(orderside,qtm,price,trade)
             return (matchtuple[0],bidside),matchtuple[3]
     else:
         if type==1:
             #match with bids side
             #add remainder to asks side
-            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
+            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],ones5*-1)
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             asks=add_order(askside,msg)
             return (asks,matchtuple[0]),matchtuple[3]
         elif type==2:
             #cancel order on asks side
-            return (cancel_order(askside,msg),bidside),jnp.ones((5,5))*-1
+            return (cancel_order(askside,msg),bidside),ones5*-1
         elif type==3:
             #cancel order on asks side
-            return (cancel_order(askside,msg),bidside),jnp.ones((5,5))*-1
+            return (cancel_order(askside,msg),bidside),ones5*-1
         elif type==4:
             #set price to 0
             #match with bids side 
             #no need to add remainder
             msg["price"]=0
-            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
+            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],ones5*-1)
             #^(orderside,qtm,price,trade)
             return (askside,matchtuple[0]),matchtuple[3]
 
