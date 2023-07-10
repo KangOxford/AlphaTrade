@@ -17,7 +17,6 @@ class JaxLikeEnv(locals()[Config.train_env]):
         self.action_space =  spaces.Box(
               low   = 0,
               high  = 100,
-              # shape = (100,4),
               shape = (4,0),
               dtype = np.int32,
         )
@@ -60,32 +59,8 @@ class JaxLikeEnv(locals()[Config.train_env]):
     def state(self, action):
         # ---------------- 01 ----------------
         state = super().state(action)
-        # ---------------- 02 ----------------
-        '''step_memo = self.exchange.state_memos
-        step_memo_arr = np.array(step_memo)
-        best_bids = step_memo_arr[:,1,0,:]
-        best_asks = step_memo_arr[:,0,-1,:]
-        best_prices = np.concatenate([best_asks,best_bids],axis=1)
 
-        # ---------------- 03 ----------------
-        # # a = step_memo_arr.reshape(100,10,4)
-        # arr = []
-        # for i in range(step_memo_arr.shape[0]):
-        #     result = np.concatenate((step_memo_arr[i,0], step_memo_arr[i,1]), axis=1)
-        #     arr.append(result)
-        # arrr = np.concatenate(arr)
-        # ---------------- 03 ----------------
-        step_memo_arr = best_prices.astype(np.float32) # 100, 4
-        step_memo_arr[:,::2] = (step_memo_arr[:,::2]-Config.price_mean)/ Config.price_std
-        step_memo_arr[:,1::2] = (step_memo_arr[:,1::2]-Config.qty_mean)/ Config.qty_std
-        # ---------------- 04 ----------------
-        task_info = self.task_info[:,0]
-        task_info[[0,1]] = task_info[[0,1]]/task_info[1]
-        task_info[[2,3]] = task_info[[2,3]]/task_info[3]
-        task_info = task_info.reshape(1, 4)
-        state = np.vstack((step_memo_arr, task_info))
-        # ---------------- 05 ----------------
-        assert state.shape[1] == 4 # (101, 4)'''
+
         return state
 
 if __name__ == "__main__":

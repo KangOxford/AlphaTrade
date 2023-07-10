@@ -50,7 +50,6 @@ class BaseEnv(gym.Env):
             f"unexpected state {self.cur_state}, \nwith shape {self.cur_state.shape}, \nshould be in {self.state_space}"
         state = self.cur_state
         assert self.cur_step == 0
-        print("env reset",state)
         return state
     # ------------------------- 02.01 ------------------------
     def init_components(self):
@@ -76,7 +75,6 @@ class BaseEnv(gym.Env):
         bids = np.concatenate([bids[price_indexes],bids[quantity_indexes]]).reshape(-1,Config.price_level)
         state = np.concatenate([asks, bids]) # fixed sequence: first ask, then bid
         state = state.astype(np.int64)
-        print(state)
         assert state.shape == (4, Config.price_level)
         return state
 
