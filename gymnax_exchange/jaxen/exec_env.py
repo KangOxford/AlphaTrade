@@ -21,7 +21,6 @@ chex.assert_gpu_available(backend=None)
 from jax import config
 config.update("jax_disable_jit", False)
 # # config.update("jax_disable_jit", True)
-from jax.experimental import checkify
 # ============== testing scripts ===============
 
 
@@ -93,7 +92,7 @@ class ExecutionEnv(BaseLOBEnv):
         # return EnvParams(self.messages,self.books)
         return EnvParams(self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
     
-    @checkify.checkify
+
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
@@ -124,7 +123,6 @@ class ExecutionEnv(BaseLOBEnv):
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
-        checkify.check(revenue >= 0, "revenue must be non-negative!")
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
