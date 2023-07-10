@@ -187,7 +187,6 @@ def make_train(config):
 
             # COLLECT TRAJECTORIES
             def _env_step(runner_state, unused):
-                jax.debug.print('Step')
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
                 rng, _rng = jax.random.split(rng)
 
