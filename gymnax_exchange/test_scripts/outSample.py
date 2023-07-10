@@ -10,8 +10,8 @@ import chex
 import faulthandler; faulthandler.enable()
 chex.assert_gpu_available(backend=None)
 from jax import config # Code snippet to disable all jitting.
-# config.update("jax_disable_jit", False)
-config.update("jax_disable_jit", True)
+config.update("jax_disable_jit", False)
+# config.update("jax_disable_jit", True)
 from gymnax_exchange.jaxen.exec_env import *
 import json
 # ============== testing scripts ===============

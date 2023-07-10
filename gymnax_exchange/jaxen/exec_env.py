@@ -18,9 +18,10 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 chex.assert_gpu_available(backend=None)
 
 # #Code snippet to disable all jitting.
-# from jax import config
-# config.update("jax_disable_jit", False)
+from jax import config
+config.update("jax_disable_jit", False)
 # # config.update("jax_disable_jit", True)
+from jax.experimental import checkify
 # ============== testing scripts ===============
 
 
@@ -82,6 +83,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.task = task
         self.task_size = 500 # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
+        self.n_fragment_max=2
         self.n_ticks_in_book=20 
         self.debug : bool = False
 
@@ -91,7 +93,7 @@ class ExecutionEnv(BaseLOBEnv):
         # return EnvParams(self.messages,self.books)
         return EnvParams(self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
     
-
+    @checkify.checkify
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
@@ -122,6 +124,7 @@ class ExecutionEnv(BaseLOBEnv):
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
+        checkify.check(revenue >= 0, "revenue must be non-negative!")
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
@@ -230,12 +233,7 @@ class ExecutionEnv(BaseLOBEnv):
         taskSize = state.task_to_execute
         executed_quant=state.quant_executed
         # -----------------------5--------------------------
-        def getShallowImbalance(state):
-            bestAsksQtys = state.best_asks[:,1]
-            bestBidsQtys = state.best_bids[:,1]
-            imb = bestAsksQtys - bestBidsQtys
-            return imb
-        shallowImbalance = getShallowImbalance(state)
+        shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
         # ========= self.get_obs(state,params) =============
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()

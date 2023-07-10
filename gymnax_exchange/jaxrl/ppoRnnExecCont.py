@@ -43,11 +43,6 @@ class ScannedRNN(nn.Module):
         rnn_state = carry
         ins, resets = x
         
-        
-        # jax.debug.breakpoint()
-        # print(ins)
-        # print(ins.shape)
-        
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(ins.shape[0], ins.shape[1]),
@@ -77,7 +72,6 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.relu(embedding)
 
         rnn_in = (embedding, dones)
-        # jax.debug.breakpoint()
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
 
         actor_mean = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -95,7 +89,6 @@ class ActorCriticRNN(nn.Module):
         pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         #New version ^^
 
-        # jax.debug.breakpoint()
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
@@ -174,11 +167,9 @@ def make_train(config):
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-        # jax.debug.breakpoint()
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
 
-        # jax.debug.breakpoint()
         # TRAIN LOOP
         def _update_step(runner_state, unused):
 
@@ -202,8 +193,6 @@ def make_train(config):
 
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
-                # jax.debug.breakpoint()
-                # jax.debug.breakpoint()
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
                 # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
@@ -236,7 +225,6 @@ def make_train(config):
             # CALCULATE ADVANTAGE
             train_state, env_state, last_obs, last_done, hstate, rng = runner_state
             ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
-            # jax.debug.breakpoint()
             _, _, last_val = network.apply(train_state.params, hstate, ac_in)
             last_val = last_val.squeeze(0)
             last_val = jnp.where(last_done, jnp.zeros_like(last_val), last_val)
@@ -387,7 +375,6 @@ def make_train(config):
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
                     
-                    # jax.debug.breakpoint()
                     revenues = info["total_revenue"][info["returned_episode"]]
 
                     
@@ -483,7 +470,7 @@ if __name__ == "__main__":
     # start=time.time()
     # out = jax.pmap(train_fn)(rngs)
     # print("Time: ", time.time()-start)
-    # # +++++ Multiple GPUs +++++
+    # # +++++ Multiple GPUs +++++s
     
     
 
