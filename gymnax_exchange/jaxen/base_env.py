@@ -47,10 +47,10 @@ class BaseLOBEnv(environment.Environment):
        
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        self.messagePath = alphatradePath+"/data_small/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data_small/Book_10/"
-        # self.messagePath = alphatradePath+"/data/Flow_10/"
-        # self.orderbookPath = alphatradePath+"/data/Book_10/"
+        # self.messagePath = alphatradePath+"/data_small/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data_small/Book_10/"
+        self.messagePath = alphatradePath+"/data/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
 
