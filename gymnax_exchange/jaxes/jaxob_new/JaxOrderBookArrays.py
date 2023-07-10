@@ -241,8 +241,8 @@ def getCancelMsgs(bookside,agentID,size,side):
 def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
     cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
     indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*side, \
-                                jnp.ones((1,size),dtype=jnp.int32)*2, \
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2, \
+                                jnp.ones((1,size),dtype=jnp.int32)*side, \
                                 bookside[indeces_to_cancel,1], \
                                 bookside[indeces_to_cancel,0], \
                                 bookside[indeces_to_cancel,3], \
