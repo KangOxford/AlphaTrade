@@ -552,3 +552,185 @@ done = jnp.array(
 obs_re = jnp.ones((3,510))
 obs_st = jnp.zeros((3,510))
 jax.lax.select(done, obs_re, obs_st)
+
+
+import jax.numpy as jnp
+import jax
+agentTrades = \
+jnp.array([[ 31272500,         9,     -8999,     -8999,     43200,   1922666],
+       [ 31278200,        13,     -8998,     -8998,     43200,   1922666],
+       [ 31279400,         1, 201543641,     -8997,     43200,   1922666],
+       [ 31279400,         1, 201543925,     -8996,     43200,   1922666],
+       [ 31285900,        25,     -8996,     -8995,     43204,  55146332],
+       [ 31285900,         3,     -8996,     -8994,     43204,  55146332],
+       [ 31283900,         8,     -8997,     -8994,     43204,  55146332],
+       [        0,         0,         0,         0,         0,         0],
+       [        0,         0,         0,         0,         0,         0],
+       [        0,         0,         0,         0,         0,         0],
+       [        0,         0,         0,         0,         0,         0],
+       [        0,         0,         0,         0,         0,         0],
+       [        0,         0,         0,         0,         0,         0],
+       [        0,         0,         0,         0,         0,         0]])
+
+# quantities = agentTrades[:, 1]
+# cut_idx = jnp.argmax(jnp.cumsum(quantities) > remainQuant)
+# # Handle special case when all quantities are smaller than remainQuant
+# cut_idx = jnp.where(cut_idx == 0, len(quantities), cut_idx)
+# remaining_in_cut_idx = remainQuant - jnp.where(cut_idx > 0, jnp.cumsum(quantities)[cut_idx - 1], 0)
+
+
+
+# quantities = agentTrades[:, 1]
+# cumsum_quantities = jnp.cumsum(quantities)
+# cut_idx = jnp.argmax(cumsum_quantities > remainQuant)
+
+# # Handle special case when all quantities are smaller than remainQuant
+# cut_idx = jnp.where(cut_idx == 0, len(quantities), cut_idx)
+
+# remaining_in_cut_idx = remainQuant - jnp.where(cut_idx > 0, cumsum_quantities[cut_idx - 1], 0)
+
+# new_second_col = jnp.where(jnp.arange(len(quantities)) == cut_idx, remaining_in_cut_idx, quantities)
+# new_second_col = jnp.where(jnp.arange(len(quantities)) > cut_idx, 0, new_second_col)
+
+# truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, None] >= cut_idx, 0, agentTrades)
+# truncated_agentTrades = truncated_agentTrades.at[:, 1].set(new_second_col)
+
+# def truncate_agent_trades(agentTrades, remainQuant):
+#     quantities = agentTrades[:, 1]
+#     total_quant = jnp.sum(quantities)
+    
+#     # If remaining quantity is greater than total quantity, return original agentTrades
+#     if remainQuant >= total_quant:
+#         return agentTrades
+    
+#     cumsum_quantities = jnp.cumsum(quantities)
+
+#     # If remaining quantity is smaller than the first quantity, return immediately.
+#     if remainQuant <= quantities[0]:
+#         new_agentTrades = jnp.zeros_like(agentTrades)
+#         new_agentTrades = new_agentTrades.at[0, :].set(agentTrades[0])
+#         new_agentTrades = new_agentTrades.at[0, 1].set(remainQuant)
+#         return new_agentTrades
+    
+#     cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+#     remaining_in_cut_idx = remainQuant - cumsum_quantities[cut_idx - 1]
+    
+#     new_second_col = jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, 0)
+#     new_second_col = jnp.where(jnp.arange(len(quantities)) == cut_idx, remaining_in_cut_idx, new_second_col)
+    
+#     truncated_agentTrades = agentTrades.at[:, 1].set(new_second_col)
+    
+#     zero_row = jnp.zeros_like(agentTrades[0])
+#     truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, None] > cut_idx, zero_row, truncated_agentTrades)
+    
+#     return truncated_agentTrades
+remainQuant = 2
+remainQuant = 25
+remainQuant = 23
+remainQuant = 230
+remainQuant = 60
+remainQuant = 61
+remainQuant = 59
+# remainQuant = 52
+
+# def truncate_agent_trades(agentTrades, remainQuant):
+    
+#     quantities = agentTrades[:, 1]
+#     if remainQuant >= jnp.sum(quantities):
+#         return agentTrades
+    
+#     elif remainQuant <= quantities[0]:
+#         new_agentTrades = jnp.zeros_like(agentTrades)
+#         new_agentTrades = new_agentTrades.at[0, :].set(agentTrades[0])
+#         new_agentTrades = new_agentTrades.at[0, 1].set(remainQuant)
+#         return new_agentTrades
+
+#     elif quantities[0] < remainQuant < jnp.sum(quantities):
+#         cumsum_quantities = jnp.cumsum(quantities)
+#         cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+#         remaining_in_cut_idx = remainQuant - cumsum_quantities[cut_idx - 1]
+        
+#         new_second_col = jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, 0)
+#         new_second_col = jnp.where(jnp.arange(len(quantities)) == cut_idx, remaining_in_cut_idx, new_second_col)
+        
+#         truncated_agentTrades = agentTrades.at[:, 1].set(new_second_col)
+#         zero_row = jnp.zeros_like(agentTrades[0])
+#         truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, None] > cut_idx, zero_row, truncated_agentTrades)
+        
+#         return truncated_agentTrades
+
+
+remainQuant = 2
+# remainQuant = 25
+remainQuant = 23
+remainQuant = 230
+remainQuant = 60
+# remainQuant = 61
+# remainQuant = 59
+remainQuant = 52
+
+import jax.numpy as jnp
+
+def truncate_agent_trades(agentTrades, remainQuant):
+    quantities = agentTrades[:, 1]
+    cumsum_quantities = jnp.cumsum(quantities)
+    cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+    truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx, jnp.zeros_like(agentTrades[0]), agentTrades.at[:, 1].set(jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, jnp.where(jnp.arange(len(quantities)) == cut_idx, remainQuant - cumsum_quantities[cut_idx - 1], 0))))
+    return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
+
+def truncate_agent_trades(agentTrades, remainQuant):
+    quantities = agentTrades[:, 1]
+    cumsum_quantities = jnp.cumsum(quantities)
+    cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+    
+    truncated_agentTrades = jnp.where(
+        jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx,
+        jnp.zeros_like(agentTrades[0]),
+        agentTrades.at[:, 1].set(
+            jnp.where(
+                jnp.arange(len(quantities)) < cut_idx,
+                quantities,
+                jnp.where(
+                    jnp.arange(len(quantities)) == cut_idx,
+                    remainQuant - cumsum_quantities[cut_idx - 1],
+                    0
+                )
+            )
+        )
+    )
+    
+    return jnp.where(
+        remainQuant >= jnp.sum(quantities),
+        agentTrades,
+        jnp.where(
+            remainQuant <= quantities[0],
+            jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant),
+            truncated_agentTrades
+        )
+    )
+
+# def truncate_agent_trades(agentTrades, remainQuant):
+#     quantities = agentTrades[:, 1]
+#     new_agentTrades = jnp.zeros_like(agentTrades)
+
+#     new_agentTrades = new_agentTrades.at[0, :].set(agentTrades[0])
+#     new_agentTrades = new_agentTrades.at[0, 1].set(remainQuant)
+
+#     cumsum_quantities = jnp.cumsum(quantities)
+#     cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+#     remaining_in_cut_idx = remainQuant - cumsum_quantities[cut_idx - 1]
+
+#     new_second_col = jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, 0)
+#     new_second_col = jnp.where(jnp.arange(len(quantities)) == cut_idx, remaining_in_cut_idx, new_second_col)
+
+#     truncated_agentTrades = agentTrades.at[:, 1].set(new_second_col)
+#     zero_row = jnp.zeros_like(agentTrades[0])
+#     truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, None] > cut_idx, zero_row, truncated_agentTrades)
+
+#     return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], new_agentTrades, truncated_agentTrades))
+
+truncated_agentTrades = truncate_agent_trades(agentTrades, remainQuant)
+truncated_agentTrades
+
+
+agentTrades[:,1].sum()

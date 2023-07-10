@@ -128,10 +128,13 @@ class ExecutionEnv(BaseLOBEnv):
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        def truncate(agentTrade, remindQuant):
-            truncatedAgentTrade = agentTrade # TODO not implemented yet
-            return truncatedAgentTrade
-        agentTrade = truncate(agentTrade, state.task_to_execute-state.quant_executed)
+        def truncate_agent_trades(agentTrades, remainQuant):
+            quantities = agentTrades[:, 1]
+            cumsum_quantities = jnp.cumsum(quantities)
+            cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
+            truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx, jnp.zeros_like(agentTrades[0]), agentTrades.at[:, 1].set(jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, jnp.where(jnp.arange(len(quantities)) == cut_idx, remainQuant - cumsum_quantities[cut_idx - 1], 0))))
+            return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
+        agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
         agentQuant = agentTrades[:,1].sum()

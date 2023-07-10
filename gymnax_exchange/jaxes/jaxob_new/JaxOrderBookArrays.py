@@ -137,7 +137,7 @@ def cond_type_side_save_bidask(ordersides,data):
     index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
-    jax.debug.breakpoint()
+    # jax.debug.breakpoint()
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
 
 vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
