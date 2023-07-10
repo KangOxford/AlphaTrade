@@ -82,7 +82,6 @@ class ExecutionEnv(BaseLOBEnv):
         self.task = task
         self.task_size = 500 # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
-        self.n_fragment_max=2
         self.n_ticks_in_book=20 
         self.debug : bool = False
 
@@ -98,31 +97,18 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
-        #jax.debug.print("Data Messages to process \n: {}",data_messages)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
-
         action_msgs = self.getActionMsgs(action, state, params)
-        #jax.debug.print(f"action shape: {action_msgs.shape}")
-        #jax.debug.print("Input to cancel function: {}",state.bid_raw_orders[-1])
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_fragment_max*self.n_actions,-1 if self.task=='sell' else 1)
-        #jax.debug.print("Output from cancel function: {}",cnl_msgs)
-        # print(f"+++ cnl_msgs (sum: {cnl_msgs[:,2].sum()}): \n{cnl_msgs}")
-
+        #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
+        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
-        # total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
         total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
-        # jax.debug.print("Total messages: \n {}",total_messages)
-
         #Save time of final message to add to state
         time=total_messages[-1:][0][-2:]
-
-        #Process messages of step (action+data) through the orderbook
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
-
+        #Process messages of step (action+data) through the orderbook
         asks,bids,trades,bestasks,bestbids=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
-        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-
         # ========== get reward and revenue ==========
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
@@ -144,11 +130,10 @@ class ExecutionEnv(BaseLOBEnv):
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         reward=jnp.nan_to_num(reward)
-        # ========== get reward and revenue ==========
-        
+        # ========== get reward and revenue END ==========
+        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
-        # jax.debug.breakpoint()
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 

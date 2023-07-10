@@ -7,7 +7,6 @@ from functools import partial, partialmethod
 #INITID=-9000
 #MAXPRICE=999999999
 
-ones5 = jnp.ones((5,5))
 @jax.jit
 def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
@@ -177,43 +176,43 @@ def branch_type_side(data,type,side,askside,bidside):
         if type==1:
             #match with asks side
             #add remainder to bids side
-            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],ones5*-1)
+            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             bids=add_order(bidside,msg)
             return (matchtuple[0],bids),matchtuple[3]
         elif type==2:
             #cancel order on bids side
-            return (askside,cancel_order(bidside,msg)),ones5*-1
+            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==3:
             #cancel order on bids side
-            return (askside,cancel_order(bidside,msg)),ones5*-1
+            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==4:
             msg["price"]=999999999
-            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],ones5*-1)
+            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             return (matchtuple[0],bidside),matchtuple[3]
     else:
         if type==1:
             #match with bids side
             #add remainder to asks side
-            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],ones5*-1)
+            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             asks=add_order(askside,msg)
             return (asks,matchtuple[0]),matchtuple[3]
         elif type==2:
             #cancel order on asks side
-            return (cancel_order(askside,msg),bidside),ones5*-1
+            return (cancel_order(askside,msg),bidside),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==3:
             #cancel order on asks side
-            return (cancel_order(askside,msg),bidside),ones5*-1
+            return (cancel_order(askside,msg),bidside),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==4:
             #set price to 0
             #match with bids side 
             #no need to add remainder
             msg["price"]=0
-            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],ones5*-1)
+            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             return (askside,matchtuple[0]),matchtuple[3]
 
@@ -224,10 +223,8 @@ def get_size(bookside,agentID):
     return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int32)
 
 def getCancelMsgs(bookside,agentID,size,side):
-    #jax.debug.print("Agent/Trader ID: {}",agentID)
     bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
     indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
-    #jax.debug.print("Indeces: {}",indeces_to_cancel)
     cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,\
                                  jnp.ones((1,size),dtype=jnp.int32)*side, \
                                 bookside[indeces_to_cancel,1], \
