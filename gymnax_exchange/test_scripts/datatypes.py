@@ -40,7 +40,7 @@ class OrderBook():
         trades=self.trades
         ordersides=(askside.astype(jnp.int32),bidside.astype(jnp.int32),trades.astype(jnp.int32))
         for msg in order_array:
-            ordersides=job.cond_type_side(ordersides,msg)
+            ordersides,_=job.cond_type_side(ordersides,msg)
         self.asks=ordersides[0]
         self.bids=ordersides[1]
         self.trades=ordersides[2]
@@ -54,18 +54,6 @@ class OrderBook():
         self.bids=ordersides[1]
         self.trades=ordersides[2]
         return ordersides[0],ordersides[1],ordersides[2]
-
-    def process_mult_order_arrays(self,single_array,Nparallel):
-        bidsides=self.bids
-        asksides=self.asks
-        for i in jnp.arange(Nparallel):
-            bidside=self.bids
-            askside=self.asks
-            for msg in single_array:
-                askside,bidside,trades=job.branch_type_side(msg[2:],int(msg[0]),int(msg[1]),askside.astype("int32"),bidside.astype("int32"))
-            asksides=jnp.concatenate((asksides,askside),axis=1)
-            bidsides=jnp.concatenate((bidsides,bidside),axis=1)
-        return (asksides,bidsides)
 
 
     def vprocess_mult_order_arrays(self,single_array,Nparallel):
@@ -84,12 +72,12 @@ class OrderBook():
         msg_arrays=jnp.stack([single_array]*Nparallel,axis=2)
         bidsides=jnp.stack([self.bids]*Nparallel,axis=0).astype("int32")
         asksides=jnp.stack([self.asks]*Nparallel,axis=0).astype("int32")
-        ordersides=(asksides,bidsides)
+        ordersides=(asksides,bidsides,jnp.ones_like(bidsides)*-1)
         print("Msg Batch Shape:",msg_arrays.shape)
         print("Bidside Batch Shape:",bidsides.shape)
         print("Askside Batch Shape:",asksides.shape)
-        ordersides,trades=job.vscan_through_entire_array(msg_arrays,ordersides)
-        return ordersides,trades
+        ordersides=job.vscan_through_entire_array(msg_arrays,ordersides)
+        return ordersides
 
 
     def get_L2_state_experimental(self,N):
@@ -117,73 +105,6 @@ class OrderBook():
     def _tree_unflatten(cls, aux_data, children):
         return cls(**aux_data)
 
-class OrderBook_ifBranches(OrderBook):
-    def __init__(self,nOrders=10) -> None:
-        super.__init__(self,nOrders)
-
-    @partial(jax.jit,static_argnums=(2,3))
-    def branch_type_side(self,data,type,side,askside,bidside):
-        msg={
-        'side':side,
-        'type':type,
-        'price':data[1],
-        'quantity':data[0],
-        'orderid':data[3],
-        'traderid':data[2],
-        'time':data[4],
-        'time_ns':data[5]
-        }   
-        if side==1:
-            if type==1:
-                #match with asks side
-                #add remainder to bids side
-                matchtuple=job.match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
-                #^(orderside,qtm,price,trade)
-                msg["quantity"]=matchtuple[1]
-                bids=job.add_order(bidside,msg)
-                return matchtuple[0],bids,matchtuple[3]
-            elif type==2:
-                #cancel order on bids side
-                return askside,job.cancel_order(bidside,msg),jnp.ones((5,5))*-1
-            elif type==3:
-                #cancel order on bids side
-                return askside,job.cancel_order(bidside,msg),jnp.ones((5,5))*-1
-            elif type==4:
-                msg["price"]=99999999
-                matchtuple=job.match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
-                #^(orderside,qtm,price,trade)
-                return matchtuple[0],bidside,matchtuple[3]
-        else:
-            if type==1:
-                #match with bids side
-                #add remainder to asks side
-                matchtuple=job.match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
-                #^(orderside,qtm,price,trade)
-                msg["quantity"]=matchtuple[1]
-                asks=job.add_order(askside,msg)
-                return asks,matchtuple[0],matchtuple[3]
-            elif type==2:
-                #cancel order on asks side
-                return job.cancel_order(askside,msg),bidside,jnp.ones((5,5))*-1
-            elif type==3:
-                #cancel order on asks side
-                return job.cancel_order(askside,msg),bidside,jnp.ones((5,5))*-1
-            elif type==4:
-                #set price to 0
-                #match with bids side 
-                #no need to add remainder
-                msg["price"]=0
-                matchtuple=job.match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5))*-1)
-                #^(orderside,qtm,price,trade)
-                return askside,matchtuple[0],matchtuple[3]
-    
-    def process_order_array_branch(self,order_array):
-        bidside=self.bids
-        askside=self.asks
-        for msg in order_array:
-            ordersides,trades=job.branch_type_side(msg[2:],int(msg[0]),int(msg[1]),askside.astype("int32"),bidside.astype("int32"))
-        self.asks=ordersides[0]
-        self.bids=ordersides[1]
 
 jax.tree_util.register_pytree_node(OrderBook,
                                     OrderBook._tree_flatten,
@@ -206,16 +127,16 @@ def to_order_flow_lists(flow_lists):
 if __name__ == "__main__":
      ##Configuration variables:
     ordersPerSide=100
-    instancesInParallel=10
-    runfirstcall=False
-    run2ndcall=False
+    instancesInParallel=1000
+    runfirstcall=True
+    run2ndcall=True
     runmult_for=False
-    runmult_scan=False
-    printTimes=False
+    runmult_scan=True
+    printTimes=True
     printResults=False
     time_individual_msgs=True
     develop=True
-    load_data=False
+    load_data=True
     if load_data:
         #Loading data from the LOBSTER dataset using Kang's data encoder - where all the pre-processing is done. 
         decoder = RawDecoder(**DataPipeline()())
