@@ -3,36 +3,65 @@ from __future__ import print_function
 from random import *
 import sys
 sys.path.append('..')
-from gym_trading.envs.orderbook import OrderBook
+#from gym_trading.envs.orderbook import OrderBook
 
 
-def generate_new_buy(trade_id):
+def generate_new_buy(trade_id,order_id,timestamp):
     return {'type' : 'limit', 
            'side' : 'bid', 
            'quantity' : randint(1,1000),
            'price' : randint(900,1050),
-           'trade_id' : trade_id}
+           'trade_id' : trade_id,
+           'order_id' : order_id,
+          'timestamp': timestamp}
            
-def generate_cross_buy(trade_id):
+def generate_cross_buy(trade_id,order_id,timestamp):
     return {'type' : 'limit', 
             'side' : 'bid', 
-            'quantity' : randint(1,1000), 
+            'quantity' : randint(1,10000), 
             'price' : randint(1055,1200),
-            'trade_id' : trade_id}
+           'trade_id' : trade_id,
+           'order_id' : order_id,
+          'timestamp': timestamp}
 
-def generate_new_sell(trade_id):
+def generate_new_sell(trade_id,order_id,timestamp):
     return {'type' : 'limit', 
             'side' : 'ask', 
             'quantity' : randint(1,1000), 
             'price' : randint(1055,1200),
-            'trade_id' : trade_id}
+           'trade_id' : trade_id,
+           'order_id' : order_id,
+          'timestamp': timestamp}
             
-def generate_cross_sell(trade_id):
+def generate_cross_sell(trade_id,order_id,timestamp):
     return {'type' : 'limit', 
             'side' : 'ask', 
             'quantity' : randint(1,1000),
             'price' : randint(900,1050),
-            'trade_id' : trade_id}
+           'trade_id' : trade_id,
+           'order_id' : order_id,
+          'timestamp': timestamp}
+
+def generate_market_sell(trade_id,order_id,timestamp):
+    return {'type' : 'market', 
+            'side' : 'ask', 
+            'quantity' : randint(1,100),
+            'price' : randint(900,1050),
+           'trade_id' : trade_id,
+           'order_id' : order_id,
+          'timestamp': timestamp}
+
+def generate_market_buy(trade_id,order_id,timestamp):
+    return {'type' : 'market', 
+            'side' : 'bid', 
+            'quantity' : randint(1,100), 
+            'price' : randint(1055,1200),
+           'trade_id' : trade_id,
+           'order_id' : order_id,
+          'timestamp': timestamp}
+
+"""
+
 
 def treat_trades(trades, side):
     if not trades:
@@ -126,7 +155,7 @@ def testCases(trade_id, action, side, verbose = False):
 
 buys = {}
 sells = {}
-order_book = OrderBook()
+#order_book = OrderBook()
 
 # nb buys and sells to prefill orderbook
 prefill(10)
@@ -141,8 +170,9 @@ prefill(10)
 for trade_id in xrange(10, 100):
     testCases(trade_id, choice('C'), choice('BS'), False)
 
-print(order_book)
+#print(order_book)
 
 # quit()
 
 
+"""
