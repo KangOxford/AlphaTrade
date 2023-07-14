@@ -135,6 +135,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
+        print(f"revenue{revenue}, new_execution{new_execution}, executed{state.quant_executed}")
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
 
@@ -299,7 +300,20 @@ if __name__ == "__main__":
     obs,state=env.reset(key_reset,env_params)
     print("State after reset: \n",state)
     print("Time for reset: \n",time.time()-start)
+
     print(env_params.message_data.shape, env_params.book_data.shape)
+    # # ==================== ACTION ====================
+    # # ---------- acion from random sampling ----------
+    # i=0;test_action=env.action_space().sample(key_policy)
+    # print(f"Sampled {i}th actions are: ",test_action)
+    # start=time.time()
+    # obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+    # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
+    # print(f"Time for {i} step: \n",time.time()-start)
+    # # ---------- acion from random sampling ----------
+    # # ==================== ACTION ====================
+# jitted_func = jax.jit(env.step)
+    # jax.jit(env.step) 
 
     for i in range(1,100):
         # ==================== ACTION ====================
@@ -317,8 +331,34 @@ if __name__ == "__main__":
     
     enable_vmap=True
     if enable_vmap:
+        # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+
+        num_envs = 10
+        vmap_keys = jax.random.split(rng, num_envs)
+
+        test_actions=vmap_act_sample(vmap_keys)
+        print(test_actions)
+
+        start=time.time()
+        obs, state = vmap_reset(vmap_keys, env_params)
+        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+
+        start=time.time()
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+
+
+
+    enable_vmap=True
+    if enable_vmap:
+        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        
+        with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
+            vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
         vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
         num_envs = 10
