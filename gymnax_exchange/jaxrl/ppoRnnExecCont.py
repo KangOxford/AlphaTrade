@@ -483,7 +483,7 @@ if __name__ == "__main__":
     train_state = out['runner_state'][0] # runner_state.train_state
     params = train_state.params
     
-    import datetime;params_file_name = 'params_file_' + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    import datetime;params_file_name = f'params_file_{wandb.run.name}_id{wandb.run.id}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))

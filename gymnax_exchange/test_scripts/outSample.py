@@ -22,7 +22,9 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         # ATFolder = '/home/duser/AlphaTrade'
-        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade/testing'
+        ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -60,7 +62,8 @@ if __name__ == "__main__":
     import flax
     from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
     from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-    with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
+    with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
+    # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
     network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
@@ -78,7 +81,7 @@ if __name__ == "__main__":
 
     
     i = 1
-    for i in range(1,100):
+    for i in range(1,10000):
         # ==================== ACTION ====================
         # ---------- acion from trained network ----------
         ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])

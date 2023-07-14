@@ -126,7 +126,8 @@ class ExecutionEnv(BaseLOBEnv):
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
+        # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
@@ -353,24 +354,24 @@ if __name__ == "__main__":
 
 
 
-    enable_vmap=True
-    if enable_vmap:
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+    # enable_vmap=True
+    # if enable_vmap:
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         
-        with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
-            vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+    #     with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
+    #         vmap_step = jax.block_until_ready(jax.vmap(env.step, in_axes=(0, 0, 0, None)))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 10
-        vmap_keys = jax.random.split(rng, num_envs)
+    #     num_envs = 10
+    #     vmap_keys = jax.random.split(rng, num_envs)
 
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
+    #     test_actions=vmap_act_sample(vmap_keys)
+    #     print(test_actions)
 
-        start=time.time()
-        obs, state = vmap_reset(vmap_keys, env_params)
-        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     obs, state = vmap_reset(vmap_keys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
 
-        start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
