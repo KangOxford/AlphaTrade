@@ -20,7 +20,7 @@ chex.assert_gpu_available(backend=None)
 # #Code snippet to disable all jitting.
 from jax import config
 config.update("jax_disable_jit", False)
-# # config.update("jax_disable_jit", True)
+# config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
 
 
@@ -121,23 +121,51 @@ class ExecutionEnv(BaseLOBEnv):
             truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx, jnp.zeros_like(agentTrades[0]), agentTrades.at[:, 1].set(jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, jnp.where(jnp.arange(len(quantities)) == cut_idx, remainQuant - cumsum_quantities[cut_idx - 1], 0))))
             return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
+        
+        # jax.debug.print(cnl_msgs[:10,:])
+        # jax.debug.print(action_msgs[:10,2:])
+        # jax.debug.print(agentTrades[:10,:])
+        # jax.debug.print(agentTrades)
+        # jax.debug.print('some string: {}', agentTrades[:10,:])
+        # jax.debug.print('some string: {}', agentTrades)
+        a0 = agentTrades[:,0]//self.tick_size
+        count_nonzero = jnp.count_nonzero(a0)
+        a1 = agentTrades[:,1]
+        a2 = (a0*a1).sum()
+        # jax.debug.breakpoint()
+        
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
+        jax.debug.print("exectued quants {}",(executed[:,1]).sum())
+        jax.debug.print("vwap {}",vwap)
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
         # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        jax.debug.print("reward            {}",reward)
         reward=jnp.nan_to_num(reward)
+        jax.debug.print("reward nan_to_num {}",reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
-        print(f"revenue{revenue}, new_execution{new_execution}, executed{state.quant_executed}")
-        return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
+        # jax.debug.print(f"executed{state.quant_executed}")
+        # jax.debug.print(f"action{action},averagePrice{state.total_revenue/state.quant_executed},totalRevenue{state.total_revenue},new_execution{new_execution},executed{state.quant_executed}")
+        
+        # jax.debug.print("+++"*jnp.sign(not (300000.000<=state.total_revenue/state.quant_executed<=350000)))
+        return self.get_obs(state,params),state,reward,done,\
+            {"window_index":state.window_index,"total_revenue":state.total_revenue,\
+            "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
+            # "average_price":state.total_revenue/state.quant_executed}
+            "average_price":state.total_revenue/state.quant_executed,\
+            "average_agentTrades0":a0.sum()//count_nonzero.sum(),\
+            "average_agentTrades1":a1.sum(),\
+            "average_agentTrades2":a2
+            }
 
 
 
@@ -299,58 +327,63 @@ if __name__ == "__main__":
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print("State after reset: \n",state)
+    # print("State after reset: \n",state)
     print("Time for reset: \n",time.time()-start)
 
     print(env_params.message_data.shape, env_params.book_data.shape)
-    # # ==================== ACTION ====================
-    # # ---------- acion from random sampling ----------
-    # i=0;test_action=env.action_space().sample(key_policy)
-    # print(f"Sampled {i}th actions are: ",test_action)
-    # start=time.time()
-    # obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-    # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
-    # print(f"Time for {i} step: \n",time.time()-start)
-    # # ---------- acion from random sampling ----------
-    # # ==================== ACTION ====================
-# jitted_func = jax.jit(env.step)
-    # jax.jit(env.step) 
 
-    for i in range(1,100):
+    # for i in range(1,100):
+    for i in range(1,100000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
+        print("-"*20)
+        key_policy, _ =  jax.random.split(key_policy, 2)
         test_action=env.action_space().sample(key_policy)
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        for key, value in info.items():
+            print(key, value)
+
+        print("+++"+str(state.total_revenue/state.quant_executed)) if state.total_revenue/state.quant_executed>=350000.000 else print()
+        print(state.total_revenue/state.quant_executed)
+        print(state.total_revenue)
+        print(state.quant_executed)
+        
+        print("***"*(state.total_revenue/state.quant_executed>=350000.000))
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        # if done:
+        #     break
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
-
-    # ####### Testing the vmap abilities ########
-    
-    enable_vmap=True
-    if enable_vmap:
-        # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+        
+        
 
-        num_envs = 10
-        vmap_keys = jax.random.split(rng, num_envs)
+    # # ####### Testing the vmap abilities ########
+    
+    # enable_vmap=True
+    # if enable_vmap:
+    #     # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        
+    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
+    #     num_envs = 10
+    #     vmap_keys = jax.random.split(rng, num_envs)
 
-        start=time.time()
-        obs, state = vmap_reset(vmap_keys, env_params)
-        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+    #     test_actions=vmap_act_sample(vmap_keys)
+    #     print(test_actions)
 
-        start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     obs, state = vmap_reset(vmap_keys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+
+    #     start=time.time()
+    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
 
 
 
