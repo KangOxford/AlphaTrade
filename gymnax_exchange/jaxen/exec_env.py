@@ -122,7 +122,7 @@ class ExecutionEnv(BaseLOBEnv):
             return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
-        revenue = (agentTrades[:,0] * agentTrades[:,1]//self.tick_size).sum()
+        revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant

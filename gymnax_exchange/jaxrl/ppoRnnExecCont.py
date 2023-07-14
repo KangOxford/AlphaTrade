@@ -375,6 +375,7 @@ def make_train(config):
                     )
                     
                     revenues = info["total_revenue"][info["returned_episode"]]
+                    quant_executed = info["quant_executed"][info["returned_episode"]]
 
                     
                     for t in range(len(timesteps)):
@@ -390,6 +391,7 @@ def make_train(config):
                                 "global_step": timesteps[t],
                                 "episodic_return": return_values[t],
                                 "episodic_revenue": revenues[t],
+                                "quant_executed":quant_executed[t],
                             }
                         )                     
 
@@ -427,7 +429,7 @@ if __name__ == "__main__":
         #"NUM_ENVS": 1,
         "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        "TOTAL_TIMESTEPS": 5e5,
+        "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
         #"NUM_MINIBATCHES": 1,
         "NUM_MINIBATCHES": 4,
