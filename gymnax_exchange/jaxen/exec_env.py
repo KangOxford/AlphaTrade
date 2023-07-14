@@ -131,7 +131,6 @@ class ExecutionEnv(BaseLOBEnv):
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
-        reward=jnp.nan_to_num(reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
