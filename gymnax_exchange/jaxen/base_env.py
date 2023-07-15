@@ -162,25 +162,24 @@ class BaseLOBEnv(environment.Environment):
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
-            def Cubes_withOB_padding(Cubes_withOB):
-                def quantile(Cubes_withOB):
-                    length = [len(cube) for cube, ob in Cubes_withOB]
-                    quantile_95 = int(np.quantile(length, 0.9428))
-                    return quantile_95
 
-                quantile_95 = quantile(Cubes_withOB)
+            print(len(Cubes_withOB))
+            for m,o in Cubes_withOB:
+                print(m.shape)
+
+            def Cubes_withOB_padding(Cubes_withOB):
+                max_m = max(m.shape[0] for m, o in Cubes_withOB)
                 new_Cubes_withOB = []
                 for cube, OB in Cubes_withOB:
-                    if cube.shape[0] <= quantile_95:
-                        def padding(cube, target_shape):
-                            pad_width = np.zeros((100, 8))
-                            # Calculate the amount of padding required
-                            padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-                            padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-                            return padded_cube
+                    def padding(cube, target_shape):
+                        pad_width = np.zeros((100, 8))
+                        # Calculate the amount of padding required
+                        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+                        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+                        return padded_cube
 
-                        cube = padding(cube, quantile_95)
-                        new_Cubes_withOB.append((cube, OB))
+                    cube = padding(cube, max_m)
+                    new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB
@@ -191,15 +190,19 @@ class BaseLOBEnv(environment.Environment):
         # alphatradePath = '/homes/80/kang/AlphaTrade'
         # messagePath = alphatradePath+"/data_small/Flow_10/"
         # orderbookPath = alphatradePath+"/data_small/Book_10/"
+        # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
         # Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
         # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         # bks=[jnp.array(book) for cube, book in Cubes_withOB]
         # message_data, book_data = msgs[0],bks[0]
         # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # ------------------------------- TESTING ------------------------------
-        print(len(msgs))
-        for message_data in msgs:
-            print(message_data.shape)
+        # print(len(msgs))
+        # for message_data in msgs:
+        #     print(message_data.shape)
+            
+            
+            
         #List of message cubes 
         msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         bks=[jnp.array(book) for cube, book in Cubes_withOB]
