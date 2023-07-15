@@ -388,7 +388,7 @@ def make_train(config):
                     # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
                     
                     
-                    print(info["current_step"],info["total_revenue"],info['quant_executed'],info['action'])  
+                    print(info["current_step"][0,0],info["total_revenue"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
                     if info['done']: print("==="*20)      
                     # print(info["total_revenue"])  
                     # print(info["quant_executed"])   

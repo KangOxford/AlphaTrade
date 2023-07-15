@@ -103,8 +103,9 @@ class ExecutionEnv(BaseLOBEnv):
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         def truncate_action(action, remainQuant):
-            action = jnp.round(action).astype(jnp.int32).clip(0,None)
-            return action
+            action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
+            scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
+            return scaledAction
         action = truncate_action(action, state.task_to_execute-state.quant_executed)
         action_msgs = self.getActionMsgs(action, state, params)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
