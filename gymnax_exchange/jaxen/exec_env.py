@@ -137,7 +137,7 @@ class ExecutionEnv(BaseLOBEnv):
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
+        state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
 
@@ -152,7 +152,7 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,0,state10,self.task_size,0,0)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,0,state10,self.task_size,0,0,self.max_steps_in_episode_arr[idx_data_window])
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         obs_sell = params.obs_sell_list[idx_data_window]

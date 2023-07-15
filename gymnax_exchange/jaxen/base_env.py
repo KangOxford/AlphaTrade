@@ -167,7 +167,7 @@ class BaseLOBEnv(environment.Environment):
             # print(len(Cubes_withOB))
             # for m,o in Cubes_withOB:
             #     print(m.shape)
-            max_steps_in_episode_arr = jnp.arrary([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
+            max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
 
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
@@ -186,15 +186,14 @@ class BaseLOBEnv(environment.Environment):
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB, max_steps_in_episode_arr
 
-        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
-        self.max_steps_in_episode_arr = max_steps_in_episode_arr
+        Cubes_withOB, self.max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
         # # ------------------------------- TESTING ------------------------------
         # alphatradePath = '/homes/80/kang/AlphaTrade'
         # messagePath = alphatradePath+"/data_small/Flow_10/"
         # orderbookPath = alphatradePath+"/data_small/Book_10/"
         # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
-        # Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        # Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
         # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         # bks=[jnp.array(book) for cube, book in Cubes_withOB]
         # message_data, book_data = msgs[0],bks[0]
