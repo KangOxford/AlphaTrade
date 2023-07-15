@@ -411,7 +411,7 @@ def make_train(config):
                             )        
                         else:
                             print(
-                                f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}, average_price={average_price[t]}"
+                                f"global step={timesteps[t]:<11}, episodic return={return_values[t]:<11}, episodic revenue={revenues[t]:<11}, average_price={average_price[t]:<11}"
                             )              
 
                 jax.debug.callback(callback, metric)
@@ -446,7 +446,8 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 2.5e-4,
         #"NUM_ENVS": 1,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 4,
+        # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
