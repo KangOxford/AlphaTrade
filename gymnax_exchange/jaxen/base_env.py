@@ -192,8 +192,14 @@ class BaseLOBEnv(environment.Environment):
         # messagePath = alphatradePath+"/data_small/Flow_10/"
         # orderbookPath = alphatradePath+"/data_small/Book_10/"
         # Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
+        # bks=[jnp.array(book) for cube, book in Cubes_withOB]
+        # message_data, book_data = msgs[0],bks[0]
+        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # ------------------------------- TESTING ------------------------------
-        
+        print(len(msgs))
+        for message_data in msgs:
+            print(message_data.shape)
         #List of message cubes 
         msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         bks=[jnp.array(book) for cube, book in Cubes_withOB]
@@ -208,11 +214,6 @@ class BaseLOBEnv(environment.Environment):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-
-        # # ------------------------------- TESTING ------------------------------
-        #message_data, book_data = msgs[0],bks[0]
-        #nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
-        # # ------------------------------- TESTING ------------------------------
 
 
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
@@ -291,7 +292,6 @@ class BaseLOBEnv(environment.Environment):
             return state, obs_sell, obs_buy
 
         state_obs = [get_state_obs(message_data, book_data) for message_data, book_data in Cubes_withOB]
-        state_list = [state for state, obs_sell, obs_buy in state_obs]
         
         def state2stateArray(state):
             state_5 = jnp.hstack((state[-8],state[-9],state[-4]))
