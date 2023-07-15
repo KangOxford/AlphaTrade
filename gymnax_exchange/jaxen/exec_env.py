@@ -72,8 +72,8 @@ class EnvParams:
     obs_sell_list: chex.Array
     obs_buy_list: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    max_steps_in_episode: int = 100
-    messages_per_step: int=1
+    max_steps_in_episode: int = 100 # TODO should be a variable, decied by the data_window
+    # messages_per_step: int=1 # TODO never used, should be removed?
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
@@ -87,7 +87,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
-        self.debug : bool = False
+        # self.debug : bool = False
 
     @property
     def default_params(self) -> EnvParams:
