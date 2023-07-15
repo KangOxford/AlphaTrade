@@ -29,7 +29,9 @@ config.update("jax_disable_jit", False)
 
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
-import wandb
+wandbOn = False
+if wandbOn:
+    import wandb
 
 
 class ScannedRNN(nn.Module):
@@ -394,18 +396,23 @@ def make_train(config):
                         # print(
                         #     f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         # )      
-                        wandb.log(
-                            {
-                                "global_step": timesteps[t],
-                                "episodic_return": return_values[t],
-                                "episodic_revenue": revenues[t],
-                                "quant_executed":quant_executed[t],
-                                "average_price":average_price[t],
-                                "average_agentTrades0":average_agentTrades0[t],
-                                "average_agentTrades1":average_agentTrades1[t],
-                                "average_agentTrades2":average_agentTrades2[t],
-                            }
-                        )                     
+                        if wandbOn:
+                            wandb.log(
+                                {
+                                    "global_step": timesteps[t],
+                                    "episodic_return": return_values[t],
+                                    "episodic_revenue": revenues[t],
+                                    "quant_executed":quant_executed[t],
+                                    "average_price":average_price[t],
+                                    "average_agentTrades0":average_agentTrades0[t],
+                                    "average_agentTrades1":average_agentTrades1[t],
+                                    "average_agentTrades2":average_agentTrades2[t],
+                                }
+                            )        
+                        else:
+                            print(
+                                f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}, average_price={average_price[t]}"
+                            )              
 
                 jax.debug.callback(callback, metric)
 
@@ -458,15 +465,19 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'buy'
     }
-    
-    run = wandb.init(
-        project="AlphaTradeJAX",
-        config=ppo_config,
-        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-        save_code=True,  # optional
-    )
-    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-    print(f">>> Results would be saved to {params_file_name}")
+    if wandbOn:
+        run = wandb.init(
+            project="AlphaTradeJAX",
+            config=ppo_config,
+            # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+            save_code=True,  # optional
+        )
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results would be saved to {params_file_name}")
+    else:
+        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results would be saved to {params_file_name}")
+        
     
     # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(30)
@@ -509,5 +520,5 @@ if __name__ == "__main__":
     # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
     # print(">>>")
     # '''
-    
-    run.finish()
+    if wandbOn:
+        run.finish()

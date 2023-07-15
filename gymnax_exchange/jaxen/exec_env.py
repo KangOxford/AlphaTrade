@@ -141,17 +141,17 @@ class ExecutionEnv(BaseLOBEnv):
         revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
-        jax.debug.print("exectued quants {}",(executed[:,1]).sum())
-        jax.debug.print("vwap {}",vwap)
+        # jax.debug.print("exectued quants {}",(executed[:,1]).sum())
+        # jax.debug.print("vwap {}",vwap)
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
         # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
-        jax.debug.print("reward            {}",reward)
+        # jax.debug.print("reward {}",reward)
         reward=jnp.nan_to_num(reward)
-        jax.debug.print("reward nan_to_num {}",reward)
+        # jax.debug.print("reward nan_to_num {}",reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
