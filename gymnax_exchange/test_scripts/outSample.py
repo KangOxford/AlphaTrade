@@ -1,3 +1,5 @@
+from jax import config
+config.update("jax_enable_x64",True)
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp

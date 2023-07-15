@@ -1,3 +1,10 @@
+from jax import config
+config.update("jax_enable_x64",True)
+config.update("jax_disable_jit", False)
+#config.update("jax_disable_jit", True)
+config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+
+
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -20,11 +27,7 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
 #Code snippet to disable all jitting.
-from jax import config
-config.update("jax_disable_jit", False)
-#config.update("jax_disable_jit", True)
 
-config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 # import wandb
 
