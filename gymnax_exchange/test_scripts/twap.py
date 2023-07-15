@@ -1,4 +1,6 @@
 # ============== testing scripts ===============
+from jax import config
+config.update("jax_enable_x64",True)
 import jax
 import jax.numpy as jnp
 import sys
@@ -32,10 +34,11 @@ if __name__ == "__main__":
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print("State after reset: \n",state)
+    # print("State after reset: \n",state)
     print("Time for reset: \n",time.time()-start)
     print(env_params.message_data.shape, env_params.book_data.shape)
 
+    i = 1
     for i in range(1,100):
         # ==================== ACTION ====================
         # ---------- acion from given strategy  ----------
@@ -51,14 +54,13 @@ if __name__ == "__main__":
         #     env.step, in_axes=(0, 0, 0, None)
         # )(rng_step, env_state, action, env_params)
         
-        def twap(obs, state, params):
+        def twap(obs, state, params, task):
             # ---------- ifMarketOrder ----------
             remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
             marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
             ifMarketOrder = (remainingTime <= marketOrderTime)
             # ---------- ifMarketOrder ----------
             # ---------- prices ----------
-            task = ppo_config["TASKSIDE"]
             tick_size = 100
             n_ticks_in_book = 20 
             best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
@@ -77,7 +79,7 @@ if __name__ == "__main__":
             return jnp.array([prices, quants])
             
             
-        action_twap = twap(obs, state, env_params)
+        action_twap = twap(obs, state, env_params,task = ppo_config["TASKSIDE"])
         
         
         
