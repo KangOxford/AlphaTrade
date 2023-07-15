@@ -163,9 +163,9 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
 
-            print(len(Cubes_withOB))
-            for m,o in Cubes_withOB:
-                print(m.shape)
+            # print(len(Cubes_withOB))
+            # for m,o in Cubes_withOB:
+            #     print(m.shape)
 
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
