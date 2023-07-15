@@ -150,7 +150,7 @@ class ExecutionEnv(BaseLOBEnv):
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # jax.debug.print("reward {}",reward)
-        reward=jnp.nan_to_num(reward)
+        # reward=jnp.nan_to_num(reward)
         # jax.debug.print("reward nan_to_num {}",reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -159,16 +159,17 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print(f"executed{state.quant_executed}")
         # jax.debug.print(f"action{action},averagePrice{state.total_revenue/state.quant_executed},totalRevenue{state.total_revenue},new_execution{new_execution},executed{state.quant_executed}")
         
+        jax.debug.print("average_price {}",state.total_revenue/state.quant_executed)
         # jax.debug.print("+++"*jnp.sign(not (300000.000<=state.total_revenue/state.quant_executed<=350000)))
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
-            # "average_price":state.total_revenue/state.quant_executed}
-            "average_price":state.total_revenue/state.quant_executed,\
-            "average_agentTrades0":a0.sum()//count_nonzero.sum(),\
-            "average_agentTrades1":a1.sum(),\
-            "average_agentTrades2":a2
-            }
+            "average_price":state.total_revenue/state.quant_executed}
+            # "average_price":state.total_revenue/state.quant_executed,\
+            # "average_agentTrades0":a0.sum()//count_nonzero.sum(),\
+            # "average_agentTrades1":a1.sum(),\
+            # "average_agentTrades2":a2
+            # }
 
 
 
@@ -326,36 +327,37 @@ if __name__ == "__main__":
 
     env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
-    print(env_params.message_data.shape, env_params.book_data.shape)
+    # print(env_params.message_data.shape, env_params.book_data.shape)
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
     # print("State after reset: \n",state)
-    print("Time for reset: \n",time.time()-start)
+    # print("Time for reset: \n",time.time()-start)
 
-    print(env_params.message_data.shape, env_params.book_data.shape)
+    # print(env_params.message_data.shape, env_params.book_data.shape)
 
     # for i in range(1,100):
     for i in range(1,100000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
-        print("-"*20)
+        # print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
-        test_action=env.action_space().sample(key_policy)
-        print(f"Sampled {i}th actions are: ",test_action)
+        test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
+        # test_action=env.action_space().sample(key_policy)
+        # print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-        for key, value in info.items():
-            print(key, value)
+        # for key, value in info.items():
+        #     print(key, value)
 
-        print("+++"+str(info['total_revenue']/info['quant_executed'])) if info['total_revenue']/info['quant_executed']>=350000.000 else print("normal average_price")
-        print(info['total_revenue']/info['quant_executed'])
-        print(info['total_revenue'])
-        print(info['quant_executed'])
+        if info['total_revenue']/info['quant_executed']>=350000.000: print("+++"+str(info['total_revenue']/info['quant_executed'])) 
+        # print(info['total_revenue']/info['quant_executed'])
+        # print(info['total_revenue'])
+        # print(info['quant_executed'])
         
-        print("***" if (info['total_revenue']/info['quant_executed']>=350000.000) else print("normal average_price"))
-        print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
-        print(f"Time for {i} step: \n",time.time()-start)
+        # print("***" if (info['total_revenue']/info['quant_executed']>=350000.000) else print("normal average_price"))
+        # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
+        # print(f"Time for {i} step: \n",time.time()-start)
         if done:
             print("==="*20)
         # if done:

@@ -446,8 +446,8 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 2.5e-4,
         #"NUM_ENVS": 1,
-        "NUM_ENVS": 4,
-        # "NUM_ENVS": 1000,
+        # "NUM_ENVS": 4,
+        "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
