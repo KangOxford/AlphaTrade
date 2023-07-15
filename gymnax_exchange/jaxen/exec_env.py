@@ -159,7 +159,7 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print(f"executed{state.quant_executed}")
         # jax.debug.print(f"action{action},averagePrice{state.total_revenue/state.quant_executed},totalRevenue{state.total_revenue},new_execution{new_execution},executed{state.quant_executed}")
         
-        jax.debug.print("average_price {}",state.total_revenue/state.quant_executed)
+        # jax.debug.print("average_price {}",state.total_revenue/state.quant_executed)
         # jax.debug.print("+++"*jnp.sign(not (300000.000<=state.total_revenue/state.quant_executed<=350000)))
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\

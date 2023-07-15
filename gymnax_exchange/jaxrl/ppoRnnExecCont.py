@@ -1,5 +1,5 @@
-from jax import config
-config.update("jax_enable_x64",True)
+# from jax import config
+# config.update("jax_enable_x64",True)
 
 import jax
 import jax.numpy as jnp
@@ -383,9 +383,9 @@ def make_train(config):
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
-                    average_agentTrades0 = info["average_agentTrades0"][info["returned_episode"]]
-                    average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
-                    average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
+                    # average_agentTrades0 = info["average_agentTrades0"][info["returned_episode"]]
+                    # average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
+                    # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
 
                     
                     for t in range(len(timesteps)):
@@ -404,14 +404,14 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
-                                    "average_agentTrades0":average_agentTrades0[t],
-                                    "average_agentTrades1":average_agentTrades1[t],
-                                    "average_agentTrades2":average_agentTrades2[t],
+                                    # "average_agentTrades0":average_agentTrades0[t],
+                                    # "average_agentTrades1":average_agentTrades1[t],
+                                    # "average_agentTrades2":average_agentTrades2[t],
                                 }
                             )        
                         else:
                             print(
-                                f"global step={timesteps[t]:<11}, episodic return={return_values[t]:<11}, episodic revenue={revenues[t]:<11}, average_price={average_price[t]:<11}"
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
                             )              
 
                 jax.debug.callback(callback, metric)
@@ -445,14 +445,14 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        #"NUM_ENVS": 1,
+        "NUM_ENVS": 1,
         # "NUM_ENVS": 4,
-        "NUM_ENVS": 1000,
+        # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
-        #"NUM_MINIBATCHES": 1,
-        "NUM_MINIBATCHES": 4,
+        "NUM_MINIBATCHES": 1,
+        # "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
