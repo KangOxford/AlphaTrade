@@ -345,14 +345,16 @@ if __name__ == "__main__":
         for key, value in info.items():
             print(key, value)
 
-        print("+++"+str(state.total_revenue/state.quant_executed)) if state.total_revenue/state.quant_executed>=350000.000 else print()
-        print(state.total_revenue/state.quant_executed)
-        print(state.total_revenue)
-        print(state.quant_executed)
+        print("+++"+str(info['total_revenue']/info['quant_executed'])) if info['total_revenue']/info['quant_executed']>=350000.000 else print("normal average_price")
+        print(info['total_revenue']/info['quant_executed'])
+        print(info['total_revenue'])
+        print(info['quant_executed'])
         
-        print("***"*(state.total_revenue/state.quant_executed>=350000.000))
+        print("***" if (info['total_revenue']/info['quant_executed']>=350000.000) else print("normal average_price"))
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        if done:
+            print("==="*20)
         # if done:
         #     break
         # ---------- acion from random sampling ----------
