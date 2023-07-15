@@ -317,15 +317,18 @@ if __name__ == "__main__":
 # jitted_func = jax.jit(env.step)
     # jax.jit(env.step) 
 
-    for i in range(1,100):
+    for i in range(1,10000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
+        key_policy, _ = jax.random.split(key_policy)
         test_action=env.action_space().sample(key_policy)
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
+        if done:
+            print("==="*20)
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
 

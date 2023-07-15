@@ -177,7 +177,6 @@ class BaseLOBEnv(environment.Environment):
                         padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
                         padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
                         return padded_cube
-
                     cube = padding(cube, max_m)
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
