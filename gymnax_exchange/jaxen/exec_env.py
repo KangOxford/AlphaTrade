@@ -102,6 +102,10 @@ class ExecutionEnv(BaseLOBEnv):
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
+        def truncate_action(action, remainQuant):
+            action = jnp.round(action).astype(jnp.int32).clip(0,None)
+            return action
+        action = truncate_action(action, state.task_to_execute-state.quant_executed)
         action_msgs = self.getActionMsgs(action, state, params)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
@@ -164,7 +168,12 @@ class ExecutionEnv(BaseLOBEnv):
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
-            "average_price":state.total_revenue/state.quant_executed}
+            # "average_price":state.total_revenue/state.quant_executed}
+            "average_price":state.total_revenue/state.quant_executed,\
+            "current_step":state.step_counter,\
+            'done':done,\
+            'action':action,
+            }
             # "average_price":state.total_revenue/state.quant_executed,\
             # "average_agentTrades0":a0.sum()//count_nonzero.sum(),\
             # "average_agentTrades1":a1.sum(),\

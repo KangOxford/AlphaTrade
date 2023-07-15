@@ -386,8 +386,16 @@ def make_train(config):
                     # average_agentTrades0 = info["average_agentTrades0"][info["returned_episode"]]
                     # average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
                     # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
-
                     
+                    
+                    print(info["current_step"],info["total_revenue"],info['quant_executed'],info['action'])  
+                    if info['done']: print("==="*20)      
+                    # print(info["total_revenue"])  
+                    # print(info["quant_executed"])   
+                    # print(info["average_price"])   
+                    # print(info["returned_episode_returns"])
+                    
+                    '''
                     for t in range(len(timesteps)):
                         # print(
                         # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
@@ -410,9 +418,16 @@ def make_train(config):
                                 }
                             )        
                         else:
-                            print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
-                            )              
+                            # print(
+                            #     f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                            # )     
+                            print("==="*20)      
+                            print(info["current_step"])  
+                            # print(info["total_revenue"])  
+                            # print(info["quant_executed"])   
+                            # print(info["average_price"])   
+                            # print(info["returned_episode_returns"])
+                    '''
 
                 jax.debug.callback(callback, metric)
 
@@ -448,7 +463,8 @@ if __name__ == "__main__":
         "NUM_ENVS": 1,
         # "NUM_ENVS": 4,
         # "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
+        # "NUM_STEPS": 10,
+        "NUM_STEPS": 1,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
         "NUM_MINIBATCHES": 1,
