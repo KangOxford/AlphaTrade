@@ -13,12 +13,12 @@ from functools import partial, partialmethod
 @jax.jit
 def add_order(orderside,msg):
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
-    orderside=orderside.at[emptyidx,:].set(jnp.array([msg['price'],jnp.maximum(0,msg['quantity']),msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype(jnp.int64)
+    orderside=orderside.at[emptyidx,:].set(jnp.array([msg['price'],jnp.maximum(0,msg['quantity']),msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype(jnp.int32)
     return removeZeroNegQuant(orderside)
 
 @jax.jit
 def removeZeroNegQuant(orderside):
-    return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype(jnp.int64),y=orderside)
+    return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype(jnp.int32),y=orderside)
 
 
 @jax.jit
@@ -34,12 +34,12 @@ def match_order(data_tuple):
     orderside,qtm,price,top_order_idx,trade,agrOID,time,time_ns=data_tuple
     newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm) #Could theoretically be removed as an operation because the removeZeroQuand func also removes negatives. 
     qtm=qtm-orderside[top_order_idx,1]
-    qtm=qtm.astype(jnp.int64)
+    qtm=qtm.astype(jnp.int32)
     emptyidx=jnp.where(trade==-1,size=1,fill_value=-1)[0]
     trade=trade.at[emptyidx,:].set(jnp.array([orderside[top_order_idx,0],orderside[top_order_idx,1]-newquant,orderside[top_order_idx,2],[agrOID],[time],[time_ns]]).transpose())
     orderside=removeZeroNegQuant(orderside.at[top_order_idx,1].set(newquant))
     top_order_idx=get_top_bid_order_idx(orderside)
-    return (orderside.astype(jnp.int64),jnp.squeeze(qtm),price,top_order_idx,trade,agrOID,time,time_ns)
+    return (orderside.astype(jnp.int32),jnp.squeeze(qtm),price,top_order_idx,trade,agrOID,time,time_ns)
 
 @jax.jit
 def get_top_bid_order_idx(orderside):
@@ -99,7 +99,7 @@ def cond_type_side(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int64)
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),0
@@ -118,7 +118,7 @@ def cond_type_side_save_states(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int64)
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),(ask,bid,trade)
@@ -137,7 +137,7 @@ def cond_type_side_save_bidask(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int64)
+    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
     ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
     # jax.debug.breakpoint()
@@ -179,43 +179,43 @@ def branch_type_side(data,type,side,askside,bidside):
         if type==1:
             #match with asks side
             #add remainder to bids side
-            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int64)*-1)
+            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             bids=add_order(bidside,msg)
             return (matchtuple[0],bids),matchtuple[3]
         elif type==2:
             #cancel order on bids side
-            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5),dtype=jnp.int64)*-1
+            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==3:
             #cancel order on bids side
-            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5),dtype=jnp.int64)*-1
+            return (askside,cancel_order(bidside,msg)),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==4:
             msg["price"]=999999999
-            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int64)*-1)
+            matchtuple=match_against_ask_orders(askside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             return (matchtuple[0],bidside),matchtuple[3]
     else:
         if type==1:
             #match with bids side
             #add remainder to asks side
-            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int64)*-1)
+            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             msg["quantity"]=matchtuple[1]
             asks=add_order(askside,msg)
             return (asks,matchtuple[0]),matchtuple[3]
         elif type==2:
             #cancel order on asks side
-            return (cancel_order(askside,msg),bidside),jnp.ones((5,5),dtype=jnp.int64)*-1
+            return (cancel_order(askside,msg),bidside),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==3:
             #cancel order on asks side
-            return (cancel_order(askside,msg),bidside),jnp.ones((5,5),dtype=jnp.int64)*-1
+            return (cancel_order(askside,msg),bidside),jnp.ones((5,5),dtype=jnp.int32)*-1
         elif type==4:
             #set price to 0
             #match with bids side 
             #no need to add remainder
             msg["price"]=0
-            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int64)*-1)
+            matchtuple=match_against_bid_orders(bidside,msg["quantity"],msg["price"],jnp.ones((5,5),dtype=jnp.int32)*-1)
             #^(orderside,qtm,price,trade)
             return (askside,matchtuple[0]),matchtuple[3]
 
@@ -223,13 +223,13 @@ def branch_type_side(data,type,side,askside,bidside):
 
 
 def get_size(bookside,agentID):
-    return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int64)
+    return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int32)
 
 def getCancelMsgs(bookside,agentID,size,side):
-    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int64)],axis=0)
+    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
     indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int64)*2,\
-                                 jnp.ones((1,size),dtype=jnp.int64)*side, \
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,\
+                                 jnp.ones((1,size),dtype=jnp.int32)*side, \
                                 bookside[indeces_to_cancel,1], \
                                 bookside[indeces_to_cancel,0], \
                                 bookside[indeces_to_cancel,3], \
@@ -241,8 +241,8 @@ def getCancelMsgs(bookside,agentID,size,side):
 def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
     cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
     indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int64)*2, \
-                                jnp.ones((1,size),dtype=jnp.int64)*side, \
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2, \
+                                jnp.ones((1,size),dtype=jnp.int32)*side, \
                                 bookside[indeces_to_cancel,1], \
                                 bookside[indeces_to_cancel,0], \
                                 bookside[indeces_to_cancel,3], \
@@ -326,7 +326,7 @@ def get_L2_state(N,asks,bids):
     ask_quants=get_totquant_at_prices(asks,ask_prices)
     bid_quants=jnp.where(bid_quants<0,0,bid_quants)
     ask_quants=jnp.where(ask_quants<0,0,ask_quants)
-    return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int64)
+    return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
 
 def get_best_bid_and_ask(asks,bids):
     best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
@@ -337,14 +337,14 @@ def get_best_bid_and_ask_inclQuants(asks,bids):
     best_ask,best_bid=get_best_bid_and_ask(asks,bids)
     best_ask_Q=jnp.sum(jnp.where(asks[:,0]==best_ask,asks[:,1],0))                     
     best_bid_Q=jnp.sum(jnp.where(bids[:,0]==best_bid,bids[:,1],0))
-    best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int64)             
-    best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int64)             
+    best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)             
+    best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)             
     return best_ask,best_bid
 
 
 @partial(jax.jit,static_argnums=0)
 def init_orderside(nOrders=100):
-    return (jnp.ones((nOrders,6))*-1).astype(jnp.int64)
+    return (jnp.ones((nOrders,6))*-1).astype(jnp.int32)
 
 
 #TODO: Actually complete this function to not only return dummy vars
@@ -352,7 +352,7 @@ def get_initial_orders(bookData,idx_window,time):
     orderbookLevels=10
     initid=-9000
     data=jnp.array(bookData[idx_window]).reshape(int(10*2),2)
-    newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int64)
+    newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
     initOB = newarr \
         .at[:,3].set(data[:,0]) \
         .at[:,2].set(data[:,1]) \
