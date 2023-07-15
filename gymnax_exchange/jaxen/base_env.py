@@ -28,13 +28,14 @@ class EnvState:
     customIDcounter: int
     window_index:int
     step_counter: int
+    max_steps_in_episode: int
 
 @struct.dataclass
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    max_steps_in_episode: int = 100
+    # max_steps_in_episode: int = 100
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
@@ -163,9 +164,10 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
 
-            print(len(Cubes_withOB))
-            for m,o in Cubes_withOB:
-                print(m.shape)
+            # print(len(Cubes_withOB))
+            # for m,o in Cubes_withOB:
+            #     print(m.shape)
+            max_steps_in_episode_arr = jnp.arrary([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
 
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
@@ -182,9 +184,10 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            return Cubes_withOB
+            return Cubes_withOB, max_steps_in_episode_arr
 
-        Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        self.max_steps_in_episode_arr = max_steps_in_episode_arr
         
         # # ------------------------------- TESTING ------------------------------
         # alphatradePath = '/homes/80/kang/AlphaTrade'
@@ -363,7 +366,7 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)
@@ -389,7 +392,7 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         #Craft the first state
-        state = EnvState(*ordersides,time,time,0,idx_data_window,0)
+        state = EnvState(*ordersides,time,time,0,idx_data_window,0,self.max_steps_in_episode_arr[idx_data_window])
 
         return self.get_obs(state,params),state
 
