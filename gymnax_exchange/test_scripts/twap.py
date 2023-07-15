@@ -54,32 +54,22 @@ if __name__ == "__main__":
         #     env.step, in_axes=(0, 0, 0, None)
         # )(rng_step, env_state, action, env_params)
         
-        def twap(obs, state, params, task):
+        def twap(obs, state, params):
             # ---------- ifMarketOrder ----------
             remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
             marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
             ifMarketOrder = (remainingTime <= marketOrderTime)
             # ---------- ifMarketOrder ----------
-            # ---------- prices ----------
-            tick_size = 100
-            n_ticks_in_book = 20 
-            best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-            A = best_bid if task=='sell' else best_ask # aggressive would be at bids
-            M = (best_bid + best_ask)//2//tick_size*tick_size 
-            P = best_ask if task=='sell' else best_bid
-            PP= best_ask+ tick_size* n_ticks_in_book if  task=='sell' else best_bid-tick_size*n_ticks_in_book
-            prices = [A,M,P,PP]
-            # ---------- prices ----------
             # ---------- quants ----------
             remainedQuant = state.task_to_execute - state.quant_executed
             remainedStep = params.max_steps_in_episode - state.step_counter
-            stepQunt =  remainedQuant if ifMarketOrder else remainedQuant//remainedStep
-            quants = [remainedQuant//4, remainedQuant//4, remainedQuant//4, remainedQuant - 3*remainedQuant//4]
+            stepQuant = jnp.where(ifMarketOrder,remainedQuant,remainedQuant//remainedStep)
+            quants = [stepQuant//4, stepQuant//4, stepQuant//4, stepQuant - 3*stepQuant//4]
             # ---------- quants ----------
-            return jnp.array([prices, quants])
+            return jnp.array(quants)
             
             
-        action_twap = twap(obs, state, env_params,task = ppo_config["TASKSIDE"])
+        action_twap = twap(obs, state, env_params)
         
         
         
