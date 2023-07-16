@@ -108,6 +108,7 @@ class ExecutionEnv(BaseLOBEnv):
             return scaledAction
         action = truncate_action(action, state.task_to_execute-state.quant_executed)
         action_msgs = self.getActionMsgs(action, state, params)
+        jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
@@ -119,6 +120,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Process messages of step (action+data) through the orderbook
         # jax.debug.breakpoint()
         asks,bids,trades,bestasks,bestbids=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
+        # jax.debug.print("bestasks {}", bestbids)
         # jax.debug.breakpoint()
         # ========== get reward and revenue ==========
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
@@ -161,25 +163,31 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("reward nan_to_num {}",reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        # def bestPircesImpute(bestprices):
-        #     def replace_values(prev, curr):
-        #         last_non_999999999_values = jnp.where(curr != 999999999, curr, prev) #non_999999999_mask
-        #         replaced_curr = jnp.where(curr == 999999999, last_non_999999999_values, curr)
-        #         return last_non_999999999_values, replaced_curr
-        #     def forward_fill_999999999_int(arr):
-        #         last_non_999999999_values, replaced = jax.lax.scan(replace_values, arr[0], arr[1:])
-        #         return jnp.concatenate([arr[:1], replaced])
-        #     def forward_fill(arr):
-        #         index = jnp.argmax(arr[:, 0] != 999999999)
-        #         return forward_fill_999999999_int(arr.at[0, 0].set(jnp.where(index == 0, arr[0, 0], arr[index][0])))
-        #     back_fill = lambda arr: jnp.flip(forward_fill(jnp.flip(arr, axis=0)), axis=0)
-        #     mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
-        #     # return mean_forward_back_fill(bestprices)
-        #     # return forward_fill(bestprices)
-        #     return bestprices
-        # # jax.debug.breakpoint()
-        # bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:]),bestPircesImpute(bestbids[-self.stepLines:])
-        # jax.debug.print("bestasks {}", bestasks)
+        # '''
+        def bestPircesImpute(bestprices,lastBestPrice):
+            def replace_values(prev, curr):
+                last_non_999999999_values = jnp.where(curr != 999999999, curr, prev) #non_999999999_mask
+                replaced_curr = jnp.where(curr == 999999999, last_non_999999999_values, curr)
+                return last_non_999999999_values, replaced_curr
+            def forward_fill_999999999_int(arr):
+                last_non_999999999_values, replaced = jax.lax.scan(replace_values, arr[0], arr[1:])
+                return jnp.concatenate([arr[:1], replaced])
+            def forward_fill(arr):
+                index = jnp.argmax(arr[:, 0] != 999999999)
+                return forward_fill_999999999_int(arr.at[0, 0].set(jnp.where(index == 0, arr[0, 0], arr[index][0])))
+            back_fill = lambda arr: jnp.flip(forward_fill(jnp.flip(arr, axis=0)), axis=0)
+            mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
+            return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
+            # return forward_fill(bestprices)
+            # return bestprices
+        # jax.debug.breakpoint()
+        jax.debug.print("bestasks {}", bestbids)
+        bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
+        # '''
+        '''
+        bestasks, bestbids = bestasks[-self.stepLines:],bestbids[-self.stepLines:]
+        '''
+        # jax.debug.print("bestasks {}", bestbids)
         # jax.debug.breakpoint()
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
