@@ -29,7 +29,8 @@ config.update("jax_disable_jit", False)
 
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
-wandbOn = False
+wandbOn = True
+# wandbOn = False
 if wandbOn:
     import wandb
 
@@ -383,11 +384,12 @@ def make_train(config):
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
+                    current_step = info["current_step"][info["returned_episode"]]
                     # average_agentTrades0 = info["average_agentTrades0"][info["returned_episode"]]
                     # average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
                     # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
                     
-                    # '''
+                    '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
                     if info['done']: print("==="*10 + str(info["window_index"]) +"==="*10 + '\n')      
                     # if info['done']: print("==="*10 + "==="*10 + '\n')      
@@ -396,9 +398,9 @@ def make_train(config):
                     # print(info["quant_executed"])   
                     # print(info["average_price"])   
                     # print(info["returned_episode_returns"])
-                    # '''
-                    
                     '''
+                    
+                    # '''
                     for t in range(len(timesteps)):
                         # print(
                         # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
@@ -415,6 +417,7 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
+                                    "current_step":current_step[t],
                                     # "average_agentTrades0":average_agentTrades0[t],
                                     # "average_agentTrades1":average_agentTrades1[t],
                                     # "average_agentTrades2":average_agentTrades2[t],
@@ -430,7 +433,7 @@ def make_train(config):
                             # print(info["quant_executed"])   
                             # print(info["average_price"])   
                             # print(info["returned_episode_returns"])
-                    '''
+                    # '''
 
                 jax.debug.callback(callback, metric)
 
@@ -463,12 +466,12 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 1,
-        "NUM_STEPS": 1,
-        "NUM_MINIBATCHES": 1,
-        # "NUM_ENVS": 1000,
-        # "NUM_STEPS": 10,
-        # "NUM_MINIBATCHES": 4,
+        # "NUM_ENVS": 1,
+        # "NUM_STEPS": 1,
+        # "NUM_MINIBATCHES": 1,
+        "NUM_ENVS": 1000,
+        "NUM_STEPS": 10,
+        "NUM_MINIBATCHES": 4,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
@@ -482,7 +485,7 @@ if __name__ == "__main__":
         "DEBUG": True,
         "NORMALIZE_ENV": True,
         "ATFOLDER": ATFolder,
-        "TASKSIDE":'buy'
+        "TASKSIDE":'sell'
     }
     if wandbOn:
         run = wandb.init(

@@ -46,10 +46,10 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        self.messagePath = alphatradePath+"/data_small/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data_small/Book_10/"
-        # self.messagePath = alphatradePath+"/data/Flow_10/"
-        # self.orderbookPath = alphatradePath+"/data/Book_10/"
+        # self.messagePath = alphatradePath+"/data_small/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data_small/Book_10/"
+        self.messagePath = alphatradePath+"/data/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
         self.nOrdersPerSide=100
@@ -161,27 +161,23 @@ class BaseLOBEnv(environment.Environment):
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+            
             def Cubes_withOB_padding(Cubes_withOB):
-                def quantile(Cubes_withOB):
-                    length = [len(cube) for cube, ob in Cubes_withOB]
-                    quantile_95 = int(np.quantile(length, 0.9428))
-                    return quantile_95
-
-                quantile_95 = quantile(Cubes_withOB)
+                max_m = max(m.shape[0] for m, o in Cubes_withOB)
                 new_Cubes_withOB = []
                 for cube, OB in Cubes_withOB:
-                    if cube.shape[0] <= quantile_95:
-                        def padding(cube, target_shape):
-                            pad_width = np.zeros((100, 8))
-                            # Calculate the amount of padding required
-                            padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-                            padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-                            return padded_cube
+                    def padding(cube, target_shape):
+                        pad_width = np.zeros((100, 8))
+                        # Calculate the amount of padding required
+                        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+                        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+                        return padded_cube
 
-                        cube = padding(cube, quantile_95)
-                        new_Cubes_withOB.append((cube, OB))
+                    cube = padding(cube, max_m)
+                    new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
+            
             return Cubes_withOB
 
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
