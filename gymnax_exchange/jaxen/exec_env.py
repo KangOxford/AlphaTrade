@@ -153,8 +153,8 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("exectued quants {}",(executed[:,1]).sum())
         # jax.debug.print("vwap {}",vwap)
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
-        # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
+        # Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
+        Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
@@ -228,6 +228,9 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        
+        # idx_data_window = jnp.array(0,dtype=jnp.int32)
+        # jax.debug.breakpoint()
 
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
