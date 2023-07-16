@@ -387,16 +387,16 @@ def make_train(config):
                     # average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
                     # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
                     
-                    '''
+                    # '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
                     if info['done']: print("==="*10 + str(info["window_index"])[0,0] + "==="*10 + '\n')      
                     # print(info["total_revenue"])  
                     # print(info["quant_executed"])   
                     # print(info["average_price"])   
                     # print(info["returned_episode_returns"])
-                    '''
-                    
                     # '''
+                    
+                    '''
                     for t in range(len(timesteps)):
                         # print(
                         # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
@@ -428,7 +428,7 @@ def make_train(config):
                             # print(info["quant_executed"])   
                             # print(info["average_price"])   
                             # print(info["returned_episode_returns"])
-                    # '''
+                    '''
 
                 jax.debug.callback(callback, metric)
 
@@ -461,12 +461,12 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        # "NUM_ENVS": 1,
-        # "NUM_STEPS": 1,
-        # "NUM_MINIBATCHES": 1,
-        "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "NUM_MINIBATCHES": 4,
+        "NUM_ENVS": 1,
+        "NUM_STEPS": 1,
+        "NUM_MINIBATCHES": 1,
+        # "NUM_ENVS": 1000,
+        # "NUM_STEPS": 10,
+        # "NUM_MINIBATCHES": 4,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
@@ -497,7 +497,8 @@ if __name__ == "__main__":
         
     
     # +++++ Single GPU +++++
-    rng = jax.random.PRNGKey(30)
+    rng = jax.random.PRNGKey(0)
+    # rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
     start=time.time()
     out = train_jit(rng)
