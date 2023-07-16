@@ -227,9 +227,9 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        # idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
         
-        # idx_data_window = jnp.array(0,dtype=jnp.int32)
+        idx_data_window = jnp.array(0,dtype=jnp.int32)
         # jax.debug.breakpoint()
 
         def stateArray2state(stateArray):
