@@ -108,7 +108,7 @@ class ExecutionEnv(BaseLOBEnv):
             return scaledAction
         action = truncate_action(action, state.task_to_execute-state.quant_executed)
         action_msgs = self.getActionMsgs(action, state, params)
-        jax.debug.print("action_msgs {}",action_msgs)
+        # jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
@@ -163,6 +163,10 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("reward nan_to_num {}",reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
+        
+        
+        
+        
         # '''
         def bestPircesImpute(bestprices,lastBestPrice):
             def replace_values(prev, curr):
@@ -181,7 +185,7 @@ class ExecutionEnv(BaseLOBEnv):
             # return forward_fill(bestprices)
             # return bestprices
         # jax.debug.breakpoint()
-        jax.debug.print("bestasks {}", bestbids)
+        # jax.debug.print("bestasks {}", bestbids)
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
         # '''
         '''
@@ -190,6 +194,12 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("bestasks {}", bestbids)
         # jax.debug.breakpoint()
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
+        
+        
+        
+        
+        
+        
         done = self.is_terminal(state,params)
         # jax.debug.print(f"executed{state.quant_executed}")
         # jax.debug.print(f"action{action},averagePrice{state.total_revenue/state.quant_executed},totalRevenue{state.total_revenue},new_execution{new_execution},executed{state.quant_executed}")
