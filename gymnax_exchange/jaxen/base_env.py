@@ -307,7 +307,7 @@ class BaseLOBEnv(environment.Environment):
         # ==================================================================
 
 
-        print(f"num of data_window: {self.n_windows}")
+        print(f"Num of data_window: {self.n_windows}")
 
 
         """

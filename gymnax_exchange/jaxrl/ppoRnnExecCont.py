@@ -387,15 +387,16 @@ def make_train(config):
                     # average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
                     # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
                     
-                    
+                    '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
                     if info['done']: print("==="*10 + str(info["window_index"])[0,0] + "==="*10 + '\n')      
                     # print(info["total_revenue"])  
                     # print(info["quant_executed"])   
                     # print(info["average_price"])   
                     # print(info["returned_episode_returns"])
-                    
                     '''
+                    
+                    # '''
                     for t in range(len(timesteps)):
                         # print(
                         # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
@@ -418,16 +419,16 @@ def make_train(config):
                                 }
                             )        
                         else:
-                            # print(
-                            #     f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
-                            # )     
-                            print("==="*20)      
-                            print(info["current_step"])  
+                            print(
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                            )     
+                            # print("==="*20)      
+                            # print(info["current_step"])  
                             # print(info["total_revenue"])  
                             # print(info["quant_executed"])   
                             # print(info["average_price"])   
                             # print(info["returned_episode_returns"])
-                    '''
+                    # '''
 
                 jax.debug.callback(callback, metric)
 
@@ -460,15 +461,14 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        "NUM_ENVS": 1,
-        # "NUM_ENVS": 4,
-        # "NUM_ENVS": 1000,
-        # "NUM_STEPS": 10,
-        "NUM_STEPS": 1,
+        # "NUM_ENVS": 1,
+        # "NUM_STEPS": 1,
+        # "NUM_MINIBATCHES": 1,
+        "NUM_ENVS": 1000,
+        "NUM_STEPS": 10,
+        "NUM_MINIBATCHES": 4,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 1,
-        # "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
