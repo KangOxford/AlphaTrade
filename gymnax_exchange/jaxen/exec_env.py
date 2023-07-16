@@ -117,7 +117,9 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process messages of step (action+data) through the orderbook
+        # jax.debug.breakpoint()
         asks,bids,trades,bestasks,bestbids=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
+        # jax.debug.breakpoint()
         # ========== get reward and revenue ==========
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
@@ -159,7 +161,24 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("reward nan_to_num {}",reward)
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
+        def bestPircesImpute(bestprices):
+            def replace_values(prev, curr):
+                last_non_999999999_values = jnp.where(curr != 999999999, curr, prev) #non_999999999_mask
+                replaced_curr = jnp.where(curr == 999999999, last_non_999999999_values, curr)
+                return last_non_999999999_values, replaced_curr
+            def forward_fill_999999999_int(arr):
+                last_non_999999999_values, replaced = jax.lax.scan(replace_values, arr[0], arr[1:])
+                return jnp.concatenate([arr[:1], replaced])
+            def forward_fill(arr):
+                index = jnp.argmax(arr[:, 0] != 999999999)
+                return forward_fill_999999999_int(arr.at[0, 0].set(jnp.where(index == 0, arr[0, 0], arr[index][0])))
+            back_fill = lambda arr: jnp.flip(forward_fill(jnp.flip(arr, axis=0)), axis=0)
+            mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
+            return mean_forward_back_fill(bestprices)
+        # jax.debug.breakpoint()
+        bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:]),bestPircesImpute(bestbids[-self.stepLines:])
+        # jax.debug.breakpoint()
+        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
         done = self.is_terminal(state,params)
         # jax.debug.print(f"executed{state.quant_executed}")
         # jax.debug.print(f"action{action},averagePrice{state.total_revenue/state.quant_executed},totalRevenue{state.total_revenue},new_execution{new_execution},executed{state.quant_executed}")
@@ -225,6 +244,7 @@ class ExecutionEnv(BaseLOBEnv):
         M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
         PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
+        # jax.debug.breakpoint()
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------

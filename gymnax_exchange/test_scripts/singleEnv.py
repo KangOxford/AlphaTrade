@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
 
     
-    # i = 0
+    i = 0
     for i in range(0,10000):
         # ==================== ACTION ====================
         action = action_arr[i,:]

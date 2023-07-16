@@ -158,6 +158,7 @@ def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
 def scan_through_entire_array_save_bidask(msg_array,ordersides,steplines):
     #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
     last,all=jax.lax.scan(cond_type_side_save_bidask,ordersides,msg_array)
+    # jax.debug.breakpoint()
     return (last[0],last[1],last[2],all[0][-steplines:],all[1][-steplines:])
 
 vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
