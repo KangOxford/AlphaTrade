@@ -1,5 +1,5 @@
-from jax import config
-config.update("jax_enable_x64",True)
+# from jax import config
+# config.update("jax_enable_x64",True)
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp
@@ -64,7 +64,9 @@ if __name__ == "__main__":
     import flax
     from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
     from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-    with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
+    with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
+    # with open('/homes/80/kang/AlphaTrade/params_file_firm-fire-68_07-17_09-53', 'rb') as f:
+    # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
