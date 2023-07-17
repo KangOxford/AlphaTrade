@@ -402,14 +402,7 @@ def make_train(config):
                     '''
                     
                     # '''
-                    for t in range(len(timesteps)):
-                        print(
-                            f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
-                            # f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        )    
-                        # print(
-                        #     f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        # )      
+                    for t in range(len(timesteps)):  
                         if wandbOn:
                             wandb.log(
                                 {
@@ -419,9 +412,6 @@ def make_train(config):
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
                                     "current_step":current_step[t],
-                                    # "average_agentTrades0":average_agentTrades0[t],
-                                    # "average_agentTrades1":average_agentTrades1[t],
-                                    # "average_agentTrades2":average_agentTrades2[t],
                                 }
                             )        
                         else:
