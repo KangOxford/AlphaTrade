@@ -48,10 +48,10 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        # self.messagePath = alphatradePath+"/data_small/Flow_10/"
-        # self.orderbookPath = alphatradePath+"/data_small/Book_10/"
-        self.messagePath = alphatradePath+"/data/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data/Book_10/"
+        self.messagePath = alphatradePath+"/data_small/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data_small/Book_10/"
+        # self.messagePath = alphatradePath+"/data/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
         self.nOrdersPerSide=100
@@ -252,8 +252,14 @@ class BaseLOBEnv(environment.Environment):
             best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
             M = (best_bid[0] + best_ask[0])//2//tick_size*tick_size 
             
-            state = (*ordersides,jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),time,time,0,-1,M,task_size,0,0,0,0,max_steps_in_episode)
+            state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),\
+                time,time,0,-1,M,task_size,0,0,0,0,max_steps_in_episode)
             # replace -1 with idx_data_window
+            # for index,item in enumerate(state):
+            #     try:
+            #         print(index, item.shape)
+            #         # if index == 9 or 15: print(item)
+            #     except:print(index, item)
             return state
         
         def get_obs(state):
@@ -297,9 +303,10 @@ class BaseLOBEnv(environment.Environment):
         state_obs = [get_state_obs(Cubes_withOB[i][0], Cubes_withOB[i][1], max_steps_in_episode_arr[i]) for i in range(len(max_steps_in_episode_arr))]
         
         def state2stateArray(state):
-            state_5 = jnp.hstack((state[-8],state[-9],state[-4]))
+            state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
             padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
             stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
+            # jax.debug.breakpoint()
             return stateArray
         
         self.stateArray_list = jnp.array([state2stateArray(state) for state, obs_sell, obs_buy in state_obs])
@@ -363,7 +370,8 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.max_steps_in_episode)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,\
+            state.window_index,state.step_counter+1,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)

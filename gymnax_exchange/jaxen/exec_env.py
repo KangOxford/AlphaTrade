@@ -135,25 +135,10 @@ class ExecutionEnv(BaseLOBEnv):
             truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx, jnp.zeros_like(agentTrades[0]), agentTrades.at[:, 1].set(jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, jnp.where(jnp.arange(len(quantities)) == cut_idx, remainQuant - cumsum_quantities[cut_idx - 1], 0))))
             return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
-        
-        # jax.debug.print(cnl_msgs[:10,:])
-        # jax.debug.print(action_msgs[:10,2:])
-        # jax.debug.print(agentTrades[:10,:])
-        # jax.debug.print(agentTrades)
-        # jax.debug.print('some string: {}', agentTrades[:10,:])
-        # jax.debug.print('some string: {}', agentTrades)
-        a0 = agentTrades[:,0]//self.tick_size
-        count_nonzero = jnp.count_nonzero(a0)
-        a1 = agentTrades[:,1]
-        a2 = (a0*a1).sum()
-        # jax.debug.breakpoint()
-        
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
-        # jax.debug.print("exectued quants {}",(executed[:,1]).sum())
-        # jax.debug.print("vwap {}",vwap)
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         # Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
         Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
@@ -177,7 +162,8 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
-        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,state.max_steps_in_episode)
+        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
+            state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
@@ -185,6 +171,11 @@ class ExecutionEnv(BaseLOBEnv):
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
             'done':done,\
+            # 'terminal1':((state.time-state.init_time)[0]>params.episode_time),\
+            # 'terminal2':(state.time),\
+            # 'terminal3':(state.init_time),\
+            # 'terminal4':(state.time-state.init_time)[0],\
+            # 'terminal5':params.episode_time,\
             'action':action,
             }
 
@@ -198,13 +189,16 @@ class ExecutionEnv(BaseLOBEnv):
 
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
-            state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state10,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
+            state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
+        # print(self.max_steps_in_episode_arr[idx_data_window])
+        # jax.debug.breakpoint()
         obs_sell = params.obs_sell_list[idx_data_window]
         obs_buy = params.obs_buy_list[idx_data_window]
         state = EnvState(*state_)
+        # jax.debug.print("state after reset {}", state)
         obs = obs_sell if self.task == "sell" else obs_buy
         return obs,state
 
@@ -283,7 +277,8 @@ class ExecutionEnv(BaseLOBEnv):
         shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
         # ========= self.get_obs(state,params) =============
         # jax.debug.breakpoint()
-        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
+        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),\
+            jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
         # jax.debug.breakpoint()
         return obs
 
@@ -360,10 +355,11 @@ if __name__ == "__main__":
         key_policy, _ =  jax.random.split(key_policy, 2)
         test_action=env.action_space().sample(key_policy)
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
-        # print(f"Sampled {i}th actions are: ",test_action)
+        print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-        if info['total_revenue']/info['quant_executed']>=350000.000: print("+++"+str(info['total_revenue']/info['quant_executed'])) 
+        for key, value in info.items():
+            print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
         if done:
@@ -397,19 +393,3 @@ if __name__ == "__main__":
         start=time.time()
         n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
-
-
-
-    #     num_envs = 10
-    #     vmap_keys = jax.random.split(rng, num_envs)
-
-    #     test_actions=vmap_act_sample(vmap_keys)
-    #     print(test_actions)
-
-    #     start=time.time()
-    #     obs, state = vmap_reset(vmap_keys, env_params)
-    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
-
-    #     start=time.time()
-    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
