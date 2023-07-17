@@ -48,10 +48,10 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        self.messagePath = alphatradePath+"/data_small/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data_small/Book_10/"
-        # self.messagePath = alphatradePath+"/data/Flow_10/"
-        # self.orderbookPath = alphatradePath+"/data/Book_10/"
+        # self.messagePath = alphatradePath+"/data_small/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data_small/Book_10/"
+        self.messagePath = alphatradePath+"/data/Flow_10/"
+        self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
         self.nOrdersPerSide=100
@@ -254,12 +254,6 @@ class BaseLOBEnv(environment.Environment):
             
             state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),\
                 time,time,0,-1,M,task_size,0,0,0,0,max_steps_in_episode)
-            # replace -1 with idx_data_window
-            # for index,item in enumerate(state):
-            #     try:
-            #         print(index, item.shape)
-            #         # if index == 9 or 15: print(item)
-            #     except:print(index, item)
             return state
         
         def get_obs(state):
@@ -321,12 +315,6 @@ class BaseLOBEnv(environment.Environment):
         print(f"Num of data_window: {self.n_windows}")
 
 
-        """
-        self.num_data = int(fraction * len(labels))
-        self.image_shape = images.shape[1:]
-        self.images = jnp.array(images[: self.num_data])
-        self.labels = jnp.array(labels[: self.num_data])
-        """
 
     @property
     def default_params(self) -> EnvParams:

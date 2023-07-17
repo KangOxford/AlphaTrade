@@ -170,13 +170,7 @@ class ExecutionEnv(BaseLOBEnv):
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,\
-            # 'terminal1':((state.time-state.init_time)[0]>params.episode_time),\
-            # 'terminal2':(state.time),\
-            # 'terminal3':(state.init_time),\
-            # 'terminal4':(state.time-state.init_time)[0],\
-            # 'terminal5':params.episode_time,\
-            'action':action,
+            'done':done
             }
 
 
