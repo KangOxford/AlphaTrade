@@ -58,11 +58,11 @@ class EnvState:
     time: chex.Array
     customIDcounter: int
     window_index:int
-    step_counter: int
     init_price:int
     task_to_execute:int
     quant_executed:int
     total_revenue:int
+    step_counter: int
     max_steps_in_episode: int
 
 
@@ -177,7 +177,7 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
-        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.max_steps_in_episode)
+        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
@@ -199,7 +199,7 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state10= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,0,state10,self.task_size,0,0,self.max_steps_in_episode_arr[idx_data_window])
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state10,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         obs_sell = params.obs_sell_list[idx_data_window]
@@ -283,8 +283,8 @@ class ExecutionEnv(BaseLOBEnv):
         shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
         # ========= self.get_obs(state,params) =============
         # jax.debug.breakpoint()
-        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
-        jax.debug.breakpoint()
+        obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
+        # jax.debug.breakpoint()
         return obs
 
     @property
@@ -307,7 +307,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
+        space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
+        # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
         #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
 

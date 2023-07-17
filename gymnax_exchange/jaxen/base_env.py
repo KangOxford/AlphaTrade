@@ -184,8 +184,8 @@ class BaseLOBEnv(environment.Environment):
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB, max_steps_in_episode_arr
 
-        Cubes_withOB, self.max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
-        
+        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        self.max_steps_in_episode_arr = max_steps_in_episode_arr
         # # ------------------------------- TESTING ------------------------------
         # alphatradePath = '/homes/80/kang/AlphaTrade'
         # messagePath = alphatradePath+"/data_small/Flow_10/"
@@ -221,7 +221,7 @@ class BaseLOBEnv(environment.Environment):
 
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
         
-        def get_state(message_data, book_data):
+        def get_state(message_data, book_data,max_steps_in_episode):
             time=jnp.array(message_data[0,0,-2:])
             #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
             def get_initial_orders(book_data,time):
@@ -252,7 +252,7 @@ class BaseLOBEnv(environment.Environment):
             best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
             M = (best_bid[0] + best_ask[0])//2//tick_size*tick_size 
             
-            state = (*ordersides,jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),time,time,0,-1,0,M,task_size,0,0)
+            state = (*ordersides,jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),time,time,0,-1,M,task_size,0,0,0,0,max_steps_in_episode)
             # replace -1 with idx_data_window
             return state
         
@@ -282,19 +282,19 @@ class BaseLOBEnv(environment.Environment):
             bestBidsQtys = state[4][:,1]
             shallowImbalance = bestAsksQtys - bestBidsQtys # ShallowImbalance
             # -----------------------8--------------------------
-
+            step_counter=0;max_steps_in_episode=state[-1]
             # ========= self.get_obs(state,params) =============
-            obs_sell = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
-            obs_buy = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_buy_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
+            obs_sell = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
+            obs_buy  = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_buy_task, spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
             # jax.debug.breakpoint()
             return obs_sell, obs_buy
         
-        def get_state_obs(message_data, book_data):
-            state = get_state(message_data, book_data)
+        def get_state_obs(message_data, book_data,max_steps_in_episode):
+            state = get_state(message_data, book_data,max_steps_in_episode)
             obs_sell, obs_buy = get_obs(state)
             return state, obs_sell, obs_buy
 
-        state_obs = [get_state_obs(message_data, book_data) for message_data, book_data in Cubes_withOB]
+        state_obs = [get_state_obs(Cubes_withOB[i][0], Cubes_withOB[i][1], max_steps_in_episode_arr[i]) for i in range(len(max_steps_in_episode_arr))]
         
         def state2stateArray(state):
             state_5 = jnp.hstack((state[-8],state[-9],state[-4]))
