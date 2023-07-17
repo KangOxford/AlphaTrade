@@ -389,7 +389,7 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
-                    twap_total_revenue = info["twap_total_revenue"][info["returned_episode"]]
+                    benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
                     advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
                     
                     '''
@@ -414,7 +414,7 @@ def make_train(config):
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
                                     "current_step":current_step[t],
-                                    "twap_total_revenue":twap_total_revenue[t],
+                                    "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
                                     "advatange_in_bp":advatange_in_bp[t],
                                 }
                             )        
