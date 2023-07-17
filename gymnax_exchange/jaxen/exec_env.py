@@ -191,6 +191,7 @@ class ExecutionEnv(BaseLOBEnv):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             #FIXME not very clean way to implement, but works:
+            #TODO Can actually just submit a market order (type=4) to the orderbook
             quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32) 
             prices = jnp.asarray((price, price , price, price),jnp.int32)
             # (self.tick_size * 100) : one dollar

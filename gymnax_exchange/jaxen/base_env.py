@@ -302,6 +302,8 @@ class BaseLOBEnv(environment.Environment):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         # ==================================================================
+        #TODO Most of the state space should be exactly the same for the base and exec env, 
+        # can we think about keeping the base part seperate from the exec part? 
 
 
         print(f"num of data_window: {self.n_windows}")

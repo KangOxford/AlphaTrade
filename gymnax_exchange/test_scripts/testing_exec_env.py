@@ -37,8 +37,8 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
-    enable_vmap=False 
-    enable_simple=False
+    enable_vmap=True 
+    enable_simple=True
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     env = LogWrapper(env)
     print('Shape of message data and book data',env_params.message_data.shape, env_params.book_data.shape)
     
-    print(env_params.message_data[0,89:95,:,0])
+    #print(env_params.message_data[0,89:95,:,0])
     
     if enable_simple:
 
