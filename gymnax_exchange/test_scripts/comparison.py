@@ -25,15 +25,17 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        # ATFolder = '/homes/80/kang/AlphaTrade/testing'
-        ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
+        ATFolder = '/homes/80/kang/AlphaTrade/testing'
+        # ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
         
-    rngInitNum = 0
+    # rngInitNum = 0
+    env=ExecutionEnv(ATFolder,"sell")
+    env_params=env.default_params
+    print(env_params.message_data.shape, env_params.book_data.shape)
+    
     def get_ppo_average_price(rngInitNum):
         rng = jax.random.PRNGKey(rngInitNum)
         rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-        env=ExecutionEnv(ATFolder,"sell")
-        env_params=env.default_params
         obs,state=env.reset(key_reset,env_params)
         ppo_config = {
                 "LR": 2.5e-4,
@@ -103,11 +105,6 @@ if __name__ == "__main__":
     def get_twap_average_price(rngInitNum):
         rng = jax.random.PRNGKey(rngInitNum)
         rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-
-        env=ExecutionEnv(ATFolder,"sell")
-        env_params=env.default_params
-        print(env_params.message_data.shape, env_params.book_data.shape)
-
         start=time.time()
         obs,state=env.reset(key_reset,env_params)
         # print("State after reset: \n",state)
@@ -180,7 +177,7 @@ if __name__ == "__main__":
         assert window_index1 == window_index2
         return window_index1, (ppo-twap)/twap*10000, ppo, twap
     # result_list = [get_advantage(rngInitNum) for rngInitNum in range(100)]
-    for rngInitNum in range(100):
+    for rngInitNum in range(100,1000):
         result_tuple = get_advantage(rngInitNum) 
-        print(f"window_index {result_tuple[0]} , advantage {result_tuple[1]} , ppoAP {result_tuple[2]} , twapAP {result_tuple[3]}",file=open('comparison.txt','a'))
+        print(f"window_index {result_tuple[0]} , advantage {result_tuple[1]} , ppoAP {result_tuple[2]} , twapAP {result_tuple[3]}",file=open('comparison2.txt','a'))
         
