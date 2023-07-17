@@ -348,18 +348,18 @@ if __name__ == "__main__":
 
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
+    print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
-    # print("Time for reset: \n",time.time()-start)
+   
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-
-    # for i in range(1,100):
     for i in range(1,100000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         # print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
-        test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
+        test_action=env.action_space().sample(key_policy)
+        # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         # print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)

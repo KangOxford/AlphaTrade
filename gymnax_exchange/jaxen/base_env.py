@@ -164,7 +164,9 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
 
+
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
+
 
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
@@ -176,7 +178,6 @@ class BaseLOBEnv(environment.Environment):
                         padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
                         padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
                         return padded_cube
-
                     cube = padding(cube, max_m)
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
