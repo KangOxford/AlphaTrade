@@ -64,6 +64,7 @@ class EnvState:
     total_revenue:int
     step_counter: int
     max_steps_in_episode: int
+    twap_total_revenue: float
 
 
 @struct.dataclass
@@ -162,15 +163,20 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
+        twapPrice = bestbids[0,0] if self.task=="sell" else bestasks[0,0]
+        twapQuant = state.task_to_execute/state.max_steps_in_episode # CAUTION it is a float
+        twapRevenue = twapPrice*twapQuant
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
-            state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,state.max_steps_in_episode)
+            state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
+            state.max_steps_in_episode,state.twap_total_revenue+twapRevenue)
         done = self.is_terminal(state,params)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done
+            'done':done,\
+            "twap_total_revenue":state.twap_total_revenue
             }
 
 
@@ -184,7 +190,7 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         # print(self.max_steps_in_episode_arr[idx_data_window])
