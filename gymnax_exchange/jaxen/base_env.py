@@ -1,5 +1,5 @@
-from jax import config
-config.update("jax_enable_x64",True)
+# from jax import config
+# config.update("jax_enable_x64",True)
 
 from ast import Dict
 from contextlib import nullcontext
@@ -28,13 +28,14 @@ class EnvState:
     customIDcounter: int
     window_index:int
     step_counter: int
+    max_steps_in_episode: int
 
 @struct.dataclass
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    max_steps_in_episode: int = 100
+    # max_steps_in_episode: int = 100
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
@@ -163,9 +164,9 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
 
-            # print(len(Cubes_withOB))
-            # for m,o in Cubes_withOB:
-            #     print(m.shape)
+
+            max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
+
 
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
@@ -181,16 +182,16 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            return Cubes_withOB
+            return Cubes_withOB, max_steps_in_episode_arr
 
-        Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        Cubes_withOB, self.max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         
         # # ------------------------------- TESTING ------------------------------
         # alphatradePath = '/homes/80/kang/AlphaTrade'
         # messagePath = alphatradePath+"/data_small/Flow_10/"
         # orderbookPath = alphatradePath+"/data_small/Book_10/"
         # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
-        # Cubes_withOB = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        # Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
         # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         # bks=[jnp.array(book) for cube, book in Cubes_withOB]
         # message_data, book_data = msgs[0],bks[0]
@@ -227,7 +228,7 @@ class BaseLOBEnv(environment.Environment):
                 orderbookLevels=10
                 initid=-9000
                 data=jnp.array(book_data).reshape(int(10*2),2)
-                newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int64)
+                newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
                 initOB = newarr \
                     .at[:,3].set(data[:,0]) \
                     .at[:,2].set(data[:,1]) \
@@ -243,7 +244,7 @@ class BaseLOBEnv(environment.Environment):
             #Initialise both sides of the book as being empty
             asks_raw=job.init_orderside(nOrdersPerSide)
             bids_raw=job.init_orderside(nOrdersPerSide)
-            trades_init=(jnp.ones((nTradesLogged,6))*-1).astype(jnp.int64)
+            trades_init=(jnp.ones((nTradesLogged,6))*-1).astype(jnp.int32)
             #Process the initial messages through the orderbook
             ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
@@ -310,7 +311,7 @@ class BaseLOBEnv(environment.Environment):
         # ==================================================================
 
 
-        print(f"num of data_window: {self.n_windows}")
+        print(f"Num of data_window: {self.n_windows}")
 
 
         """
@@ -340,12 +341,12 @@ class BaseLOBEnv(environment.Environment):
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
-        types=jnp.ones((self.n_actions,),jnp.int64)
-        sides=((action["sides"]+1)/2).astype(jnp.int64)      #from action space
+        types=jnp.ones((self.n_actions,),jnp.int32)
+        sides=((action["sides"]+1)/2).astype(jnp.int32)      #from action space
         prices=action["prices"]     #from action space
         quants=action["quantities"] #from action space
-        trader_ids=jnp.ones((self.n_actions,),jnp.int64)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int64)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
@@ -362,7 +363,7 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         reward=0
         #jax.debug.print("Final state after step: \n {}", state)
@@ -383,12 +384,12 @@ class BaseLOBEnv(environment.Environment):
         #Initialise both sides of the book as being empty
         asks_raw=job.init_orderside(self.nOrdersPerSide)
         bids_raw=job.init_orderside(self.nOrdersPerSide)
-        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int64)
+        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process the initial messages through the orderbook
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         #Craft the first state
-        state = EnvState(*ordersides,time,time,0,idx_data_window,0)
+        state = EnvState(*ordersides,time,time,0,idx_data_window,0,self.max_steps_in_episode_arr[idx_data_window])
 
         return self.get_obs(state,params),state
 
@@ -417,9 +418,9 @@ class BaseLOBEnv(environment.Environment):
         """Action space of the environment."""
         return spaces.Dict(
             {
-                "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int64),
-                "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int64),
-                "prices":spaces.Box(0,99999999,(self.n_actions,),dtype=jnp.int64)
+                "sides":spaces.Box(0,2,(self.n_actions,),dtype=jnp.int32),
+                "quantities":spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32),
+                "prices":spaces.Box(0,99999999,(self.n_actions,),dtype=jnp.int32)
             }
         )
 
@@ -434,9 +435,9 @@ class BaseLOBEnv(environment.Environment):
         """State space of the environment."""
         return spaces.Dict(
             {
-                "bids": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int64),
-                "asks": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int64),
-                "trades": spaces.Box(-1,999999999,shape=(6,self.nTradesLogged),dtype=jnp.int64),
+                "bids": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+                "asks": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
+                "trades": spaces.Box(-1,999999999,shape=(6,self.nTradesLogged),dtype=jnp.int32),
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )
