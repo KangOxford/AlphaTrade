@@ -390,6 +390,7 @@ def make_train(config):
                     average_price = info["average_price"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
                     twap_total_revenue = info["twap_total_revenue"][info["returned_episode"]]
+                    advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -414,6 +415,7 @@ def make_train(config):
                                     "average_price":average_price[t],
                                     "current_step":current_step[t],
                                     "twap_total_revenue":twap_total_revenue[t],
+                                    "advatange_in_bp":advatange_in_bp[t],
                                 }
                             )        
                         else:
@@ -486,7 +488,7 @@ if __name__ == "__main__":
         run = wandb.init(
             project="AlphaTradeJAX",
             config=ppo_config,
-            sync_tensorboard=True,  # auto-upload  tensorboard metrics
+            # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
         )
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'

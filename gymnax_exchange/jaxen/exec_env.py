@@ -64,7 +64,8 @@ class EnvState:
     total_revenue:int
     step_counter: int
     max_steps_in_episode: int
-    twap_total_revenue: float
+    twap_total_revenue: int
+    # twap_quant_arr: chex.Array
 
 
 @struct.dataclass
@@ -80,6 +81,16 @@ class EnvParams:
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
+    
+# from functools import partial
+# @partial(jax.jit,static_argnums=(1,2))
+# def get_twap_quant_arr(task, max_size, array_size):
+#     base_allocation = task // array_size
+#     remaining_tasks = task % array_size
+#     array = jnp.full(array_size, base_allocation,dtype=jnp.int32)
+#     array = jnp.where(jnp.arange(array_size) < remaining_tasks, array + 1, array)
+#     return jnp.concatenate((array, jnp.zeros(max_size - array_size)))
+
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(self,alphatradePath,task,debug=False):
@@ -163,12 +174,18 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
+        
         twapPrice = bestbids[0,0] if self.task=="sell" else bestasks[0,0]
-        twapQuant = state.task_to_execute/state.max_steps_in_episode # CAUTION it is a float
+        task_size,content_size = self.task_size,self.max_steps_in_episode_arr[state.window_index] 
+        base_allocation,remaining_tasks = task_size // content_size,task_size % content_size
+        twapQuant = jnp.where(state.step_counter< remaining_tasks, base_allocation,
+                    jnp.where((remaining_tasks <= state.step_counter) & (state.step_counter< content_size), base_allocation + 1, 0))
         twapRevenue = twapPrice*twapQuant
+        
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
             state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
             state.max_steps_in_episode,state.twap_total_revenue+twapRevenue)
+            # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         done = self.is_terminal(state,params)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
@@ -176,7 +193,8 @@ class ExecutionEnv(BaseLOBEnv):
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
             'done':done,\
-            "twap_total_revenue":state.twap_total_revenue
+            "twap_total_revenue":state.twap_total_revenue,\
+            "advatange_in_bp":(state.total_revenue-state.twap_total_revenue)/state.twap_total_revenue*10000,\
             }
 
 
@@ -186,11 +204,20 @@ class ExecutionEnv(BaseLOBEnv):
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
         # idx_data_window = jnp.array(0,dtype=jnp.int32)
-
+        
+        # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],self.max_steps_in_episode_arr.max().astype(jnp.int32) 
+        # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],1000
+        # base_allocation = task_size // content_size
+        # remaining_tasks = task_size % content_size
+        # array = jnp.full(array_size, 0, dtype=jnp.int32)
+        # array = array.at[:remaining_tasks].set(base_allocation+1)
+        # twap_quant_arr = array.at[remaining_tasks:content_size].set(base_allocation)
+        
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
             return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0)
+            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         # print(self.max_steps_in_episode_arr[idx_data_window])
@@ -200,6 +227,7 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(*state_)
         # jax.debug.print("state after reset {}", state)
         obs = obs_sell if self.task == "sell" else obs_buy
+        
         return obs,state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
