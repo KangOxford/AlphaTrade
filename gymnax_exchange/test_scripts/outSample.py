@@ -1,3 +1,5 @@
+from jax import config
+config.update("jax_enable_x64",True)
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp
@@ -73,7 +75,7 @@ if __name__ == "__main__":
     assert len(ac_in[0].shape) == 3
     hstate, pi, value = network.apply(restored_params, init_hstate, ac_in)
     print("Network Carry Initialized")
-    action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
+    action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
     print(f"-------------\nPPO 0th actions are: {action} with sum {action.sum()}")
     obs,state,reward,done,info=env.step(key_step, state, action, env_params)
     # done, state.quant_executed
@@ -90,7 +92,7 @@ if __name__ == "__main__":
         hstate, pi, value = network.apply(restored_params, hstate, ac_in) 
         # hstate, pi, value = network.apply(restored_params, hstate, ac_in) # TODO does hstate need to be from the out?
         # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
-        action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None)
+        action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
         # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
         print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")

@@ -1,5 +1,5 @@
-# from jax import config
-# config.update("jax_enable_x64",True)
+from jax import config
+config.update("jax_enable_x64",True)
 
 import jax
 import jax.numpy as jnp
@@ -23,16 +23,20 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
 #Code snippet to disable all jitting.
+
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+
+
+
 
 wandbOn = True
 # wandbOn = False
 if wandbOn:
     import wandb
+
 
 
 class ScannedRNN(nn.Module):
@@ -385,9 +389,6 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
-                    # average_agentTrades0 = info["average_agentTrades0"][info["returned_episode"]]
-                    # average_agentTrades1 = info["average_agentTrades1"][info["returned_episode"]]
-                    # average_agentTrades2 = info["average_agentTrades2"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -402,10 +403,10 @@ def make_train(config):
                     
                     # '''
                     for t in range(len(timesteps)):
-                        # print(
-                        # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
-                        # # f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        # )    
+                        print(
+                            f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
+                            # f"global step={timesteps[t]}, episodic return={return_values[t]}"
+                        )    
                         # print(
                         #     f"global step={timesteps[t]}, episodic return={return_values[t]}"
                         # )      
@@ -434,6 +435,7 @@ def make_train(config):
                             # print(info["average_price"])   
                             # print(info["returned_episode_returns"])
                     # '''
+
 
                 jax.debug.callback(callback, metric)
 
@@ -487,11 +489,12 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell'
     }
+
     if wandbOn:
         run = wandb.init(
             project="AlphaTradeJAX",
             config=ppo_config,
-            # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+            sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
         )
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
@@ -500,6 +503,7 @@ if __name__ == "__main__":
         import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
         print(f"Results would be saved to {params_file_name}")
         
+
     
     # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(0)
@@ -518,7 +522,7 @@ if __name__ == "__main__":
     # start=time.time()
     # out = jax.pmap(train_fn)(rngs)
     # print("Time: ", time.time()-start)
-    # # +++++ Multiple GPUs +++++s
+    # # +++++ Multiple GPUs +++++
     
     
 
@@ -529,6 +533,10 @@ if __name__ == "__main__":
     train_state = out['runner_state'][0] # runner_state.train_state
     params = train_state.params
     
+
+
+    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
@@ -543,5 +551,7 @@ if __name__ == "__main__":
     # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
     # print(">>>")
     # '''
+
     if wandbOn:
         run.finish()
+

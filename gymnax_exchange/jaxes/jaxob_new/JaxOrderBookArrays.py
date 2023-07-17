@@ -1,6 +1,7 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
 
+
 from textwrap import fill
 from typing import OrderedDict
 from jax import numpy as jnp
@@ -9,6 +10,7 @@ from functools import partial, partialmethod
 
 #INITID=-9000
 #MAXPRICE=999999999
+
 
 @jax.jit
 def add_order(orderside,msg):
