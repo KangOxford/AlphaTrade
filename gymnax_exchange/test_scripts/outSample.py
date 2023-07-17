@@ -1,3 +1,5 @@
+from jax import config
+config.update("jax_enable_x64",True)
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp
@@ -22,7 +24,9 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         # ATFolder = '/home/duser/AlphaTrade'
-        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade/testing'
+        ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -60,7 +64,8 @@ if __name__ == "__main__":
     import flax
     from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
     from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-    with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
+    with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
+    # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
     network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
@@ -70,7 +75,7 @@ if __name__ == "__main__":
     assert len(ac_in[0].shape) == 3
     hstate, pi, value = network.apply(restored_params, init_hstate, ac_in)
     print("Network Carry Initialized")
-    action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
+    action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
     print(f"-------------\nPPO 0th actions are: {action} with sum {action.sum()}")
     obs,state,reward,done,info=env.step(key_step, state, action, env_params)
     # done, state.quant_executed
@@ -78,7 +83,7 @@ if __name__ == "__main__":
 
     
     i = 1
-    for i in range(1,100):
+    for i in range(1,10000):
         # ==================== ACTION ====================
         # ---------- acion from trained network ----------
         ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
@@ -87,7 +92,7 @@ if __name__ == "__main__":
         hstate, pi, value = network.apply(restored_params, hstate, ac_in) 
         # hstate, pi, value = network.apply(restored_params, hstate, ac_in) # TODO does hstate need to be from the out?
         # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
-        action = pi.sample(seed=rng).astype(jnp.int32)[0,0,:].clip( 0, None)
+        action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
         # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
         print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")

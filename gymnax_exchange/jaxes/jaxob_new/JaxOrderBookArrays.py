@@ -1,3 +1,7 @@
+# from jax import config
+# config.update("jax_enable_x64",True)
+
+
 from textwrap import fill
 from typing import OrderedDict
 from jax import numpy as jnp
@@ -164,6 +168,7 @@ def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
 def scan_through_entire_array_save_bidask(msg_array,ordersides,steplines):
     #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
     last,all=jax.lax.scan(cond_type_side_save_bidask,ordersides,msg_array)
+    # jax.debug.breakpoint()
     return (last[0],last[1],last[2],all[0][-steplines:],all[1][-steplines:])
 
 vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
@@ -281,6 +286,9 @@ def get_L2_state(N,asks,bids):
 def get_best_bid_and_ask(asks,bids):
     best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
     best_bid=jnp.max(bids[:,0])
+    # jax.debug.print("-----")
+    # jax.debug.print("best_bid from [get_best_bid_and_ask] {}", best_bid)
+    # jax.debug.print("bids {}", bids)
     return best_ask,best_bid
 
 def get_best_bid_and_ask_inclQuants(asks,bids):

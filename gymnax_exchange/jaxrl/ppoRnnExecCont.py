@@ -1,3 +1,6 @@
+# from jax import config
+# config.update("jax_enable_x64",True)
+
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -20,13 +23,20 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
 #Code snippet to disable all jitting.
-from jax import config
-config.update("jax_disable_jit", False)
-#config.update("jax_disable_jit", True)
 
+from jax import config
+config.update("jax_disable_jit", False) 
+# config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
-import wandb
+
+
+
+wandbOn = True
+# wandbOn = False
+if wandbOn:
+    import wandb
+
 
 
 class ScannedRNN(nn.Module):
@@ -376,24 +386,45 @@ def make_train(config):
                     
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
-
+                    average_price = info["average_price"][info["returned_episode"]]
+                    current_step = info["current_step"][info["returned_episode"]]
                     
-                    for t in range(len(timesteps)):
-                        # print(
-                        # f"global step={timesteps[t]}, episodic return={return_values[t]}, episodic revenue={revenues[t]}"
-                        # # f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        # )    
-                        # print(
-                        #     f"global step={timesteps[t]}, episodic return={return_values[t]}"
-                        # )      
-                        wandb.log(
-                            {
-                                "global_step": timesteps[t],
-                                "episodic_return": return_values[t],
-                                "episodic_revenue": revenues[t],
-                                "quant_executed":quant_executed[t],
-                            }
-                        )                     
+                    '''
+                    print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
+                    if info['done']: print("==="*10 + str(info["window_index"]) +"==="*10 + '\n')      
+                    # if info['done']: print("==="*10 + "==="*10 + '\n')      
+                    # if info['done']: print("==="*10 + str(info["window_index"])[0,0] + "==="*10 + '\n')      
+                    # print(info["total_revenue"])  
+                    # print(info["quant_executed"])   
+                    # print(info["average_price"])   
+                    # print(info["returned_episode_returns"])
+                    '''
+                    
+                    # '''
+                    for t in range(len(timesteps)):  
+                        if wandbOn:
+                            wandb.log(
+                                {
+                                    "global_step": timesteps[t],
+                                    "episodic_return": return_values[t],
+                                    "episodic_revenue": revenues[t],
+                                    "quant_executed":quant_executed[t],
+                                    "average_price":average_price[t],
+                                    "current_step":current_step[t],
+                                }
+                            )        
+                        else:
+                            print(
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                            )     
+                            # print("==="*20)      
+                            # print(info["current_step"])  
+                            # print(info["total_revenue"])  
+                            # print(info["quant_executed"])   
+                            # print(info["average_price"])   
+                            # print(info["returned_episode_returns"])
+                    # '''
+
 
                 jax.debug.callback(callback, metric)
 
@@ -426,13 +457,14 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 2.5e-4,
-        #"NUM_ENVS": 1,
+        # "NUM_ENVS": 1,
+        # "NUM_STEPS": 1,
+        # "NUM_MINIBATCHES": 1,
         "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
+        "NUM_MINIBATCHES": 4,
         "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
-        #"NUM_MINIBATCHES": 1,
-        "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
@@ -444,19 +476,27 @@ if __name__ == "__main__":
         "DEBUG": True,
         "NORMALIZE_ENV": True,
         "ATFOLDER": ATFolder,
-        "TASKSIDE":'buy'
+        "TASKSIDE":'sell'
     }
-    
-    run = wandb.init(
-        project="AlphaTradeJAX",
-        config=ppo_config,
-        # sync_tensorboard=True,  # auto-upload  tensorboard metrics
-        save_code=True,  # optional
-    )
-    
+
+    if wandbOn:
+        run = wandb.init(
+            project="AlphaTradeJAX",
+            config=ppo_config,
+            sync_tensorboard=True,  # auto-upload  tensorboard metrics
+            save_code=True,  # optional
+        )
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results would be saved to {params_file_name}")
+    else:
+        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results would be saved to {params_file_name}")
+        
+
     
     # +++++ Single GPU +++++
-    rng = jax.random.PRNGKey(30)
+    rng = jax.random.PRNGKey(0)
+    # rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
     start=time.time()
     out = train_jit(rng)
@@ -471,7 +511,7 @@ if __name__ == "__main__":
     # start=time.time()
     # out = jax.pmap(train_fn)(rngs)
     # print("Time: ", time.time()-start)
-    # # +++++ Multiple GPUs +++++s
+    # # +++++ Multiple GPUs +++++
     
     
 
@@ -482,7 +522,10 @@ if __name__ == "__main__":
     train_state = out['runner_state'][0] # runner_state.train_state
     params = train_state.params
     
-    import datetime;params_file_name = 'params_file_' + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
@@ -497,5 +540,7 @@ if __name__ == "__main__":
     # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
     # print(">>>")
     # '''
-    
-    run.finish()
+
+    if wandbOn:
+        run.finish()
+
