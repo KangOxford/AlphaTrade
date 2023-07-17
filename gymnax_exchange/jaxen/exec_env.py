@@ -2,8 +2,6 @@
 # config.update("jax_enable_x64",True)
 
 # ============== testing scripts ===============
-from jax import config
-config.update("jax_enable_x64",True)
 import jax
 import jax.numpy as jnp
 import gymnax
@@ -217,10 +215,10 @@ class ExecutionEnv(BaseLOBEnv):
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
-        types=jnp.ones((self.n_actions,),jnp.int64)
-        sides=-1*jnp.ones((self.n_actions,),jnp.int64) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int64) #if self.task=='buy'
-        trader_ids=jnp.ones((self.n_actions,),jnp.int64)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int64)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
+        types=jnp.ones((self.n_actions,),jnp.int32)
+        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
         # --------------- 01 rest info for deciding action_msgs ---------------
@@ -284,6 +282,7 @@ class ExecutionEnv(BaseLOBEnv):
         # -----------------------5--------------------------
         shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
         # ========= self.get_obs(state,params) =============
+        # jax.debug.breakpoint()
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
         # jax.debug.breakpoint()
         return obs
