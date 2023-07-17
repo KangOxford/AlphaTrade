@@ -177,7 +177,7 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
-        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
+        state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.max_steps_in_episode)
         done = self.is_terminal(state,params)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
@@ -284,7 +284,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ========= self.get_obs(state,params) =============
         # jax.debug.breakpoint()
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
-        # jax.debug.breakpoint()
+        jax.debug.breakpoint()
         return obs
 
     @property
