@@ -28,7 +28,6 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade/testing'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
         
-    # rngInitNum = 0
     env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
@@ -55,15 +54,12 @@ if __name__ == "__main__":
                 "DEBUG": True,
                 "NORMALIZE_ENV": False,
                 "ATFOLDER": ATFolder,
-                "TASKSIDE":'buy'
+                "TASKSIDE":'sell'
             }
         import flax
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
         with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
-        # with open('/homes/80/kang/AlphaTrade/params_file_firm-fire-68_07-17_09-53', 'rb') as f:
-        # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
-        # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
             restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
             print(f"pramas restored")
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
@@ -76,11 +72,8 @@ if __name__ == "__main__":
         action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
         print(f"-------------\nPPO 0th actions are: {action} with sum {action.sum()}")
         obs,state,reward,done,info=env.step(key_step, state, action, env_params)
-        # done, state.quant_executed
         print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
-
-        
-        i = 1
+        excuted_list = []
         for i in range(1,10000):
             # ==================== ACTION ====================
             # ---------- acion from trained network ----------
@@ -88,8 +81,6 @@ if __name__ == "__main__":
             assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
             assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
             hstate, pi, value = network.apply(restored_params, hstate, ac_in) 
-            # hstate, pi, value = network.apply(restored_params, hstate, ac_in) # TODO does hstate need to be from the out?
-            # hstate, pi, value = network.apply(runner_state.train_state.params, hstate, ac_in)
             action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
             # ---------- acion from trained network ----------
             # ==================== ACTION ====================    
@@ -97,40 +88,25 @@ if __name__ == "__main__":
             start=time.time()
             obs,state,reward,done,info=env.step(key_step, state,action, env_params)
             print(f"Time for {i} step: \n",time.time()-start)
-            # done, state.quant_executed
             print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
+            excuted_list.append(info["quant_executed"])
             if done:
                 break
-        return info['window_index'],info['average_price']
+        return info['window_index'],info['average_price'], excuted_list
     def get_twap_average_price(rngInitNum):
         rng = jax.random.PRNGKey(rngInitNum)
         rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
         start=time.time()
         obs,state=env.reset(key_reset,env_params)
-        # print("State after reset: \n",state)
         print("Time for reset: \n",time.time()-start)
         print(env_params.message_data.shape, env_params.book_data.shape)
-
-        i = 1
+        excuted_list = []
         for i in range(1,10000):
             # ==================== ACTION ====================
             # ---------- acion from given strategy  ----------
             print("---"*20)
             print("window_index ",state.window_index)
             key_policy, _ = jax.random.split(key_policy,2)
-            test_action=env.action_space().sample(key_policy)
-            
-            # env_state, last_obs, last_done, rng = runner_state
-            # rng, _rng = jax.random.split(rng)
-            # rng_action=jax.random.split(_rng, config["NUM_ENVS"])
-            # action = jax.vmap(env.action_space().sample, in_axes=(0))(rng_action)
-            # rng, _rng = jax.random.split(rng)
-            # rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-            # obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
-            #     env.step, in_axes=(0, 0, 0, None)
-            # )(rng_step, env_state, action, env_params)
-            # if i == 277:
-            #     jax.debug.breakpoint()
             def twap(state, env_params):
                 # ---------- ifMarketOrder ----------
                 remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -142,42 +118,118 @@ if __name__ == "__main__":
                 remainedQuant = state.task_to_execute - state.quant_executed
                 remainedStep = state.max_steps_in_episode - state.step_counter
                 stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                # quants = [stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4, stepQuant//4]
-                # quants = jax.random.permutation(key_policy, jnp.array([stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4, stepQuant//4]), independent=True)
-                # limit_quants_agressive = jax.random.permutation(key_policy, jnp.array([stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4,stepQuant//4]), independent=True)
-                # limit_quants_agressive = jax.random.permutation(key_policy, jnp.array([stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4, stepQuant//4]), independent=True).at[-1].set(max(stepQuant - 3*stepQuant//4,stepQuant//4))
                 limit_quants_agressive = jnp.append(jax.random.permutation(key_policy, jnp.array([stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4]), independent=True),max(stepQuant - 3*stepQuant//4,stepQuant//4))
-                # limit_quants_passive = jax.random.permutation(key_policy, jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4,remainedQuant//4]), independent=True)
                 limit_quants_passive = jnp.append(jax.random.permutation(key_policy, jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4]), independent=True),remainedQuant//4)
                 limit_quants = jnp.where(limit_quants_agressive.sum() <= remainedQuant,limit_quants_agressive,limit_quants_passive)
-                # assert limit_quants.sum() <= remainedQuant, f"{limit_quants}, {limit_quants.sum()} should less_equal than {remainedQuant}"
-                # if not limit_quants_agressive.sum() <= remainedQuant: print("+++")
                 market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
                 quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                 # ---------- quants ----------
                 return jnp.array(quants)
-                
-            twap_action = twap(state, env_params)
             
-            
-            # print(f"Sampled {i}th actions are: ",test_action)
+            def twapV3(state, env_params):
+                # ---------- ifMarketOrder ----------
+                remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+                marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                ifMarketOrder = (remainingTime <= marketOrderTime)
+                print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+                # ---------- ifMarketOrder ----------
+                # ---------- quants ----------
+                remainedQuant = state.task_to_execute - state.quant_executed
+                remainedStep = state.max_steps_in_episode - state.step_counter
+                stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+                limit_quants = jax.random.permutation(key_policy, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
+                market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+                quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+                # ---------- quants ----------
+                return jnp.array(quants)                
+            twap_action = twapV3(state, env_params)
             print(f"Sampled {i}th actions are: ",twap_action)
             start=time.time()
-            # obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
             obs,state,reward,done,info=env.step(key_step, state,twap_action, env_params)
-            print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
             print(f"Time for {i} step: \n",time.time()-start)
             print("excuted ",info["quant_executed"])
+            excuted_list.append(info["quant_executed"])
             if done:
                 break
-        return info['window_index'], info['average_price']
+        return info['window_index'], info['average_price'], excuted_list
+    def get_random_average_price(rngInitNum):
+        # ---------- init probabilities ----------
+        import numpy as np
+        p_0_1 = 0.9 # Define the probabilities for the numbers 0 and 1
+        p_2_10 = 0.1 # Define the remaining probability for the numbers 2 through 10
+        numbers_2_10 = np.arange(2, 200) # Define the numbers 2 through 10
+        pareto_distribution = (1 / numbers_2_10)**4 # Generate a Pareto distribution for the numbers 2 through 200
+        pareto_distribution /= pareto_distribution.sum()
+        pareto_distribution *= p_2_10
+        probabilities = np.array([p_0_1 / 2, p_0_1 / 2] + list(pareto_distribution)) # Combine the probabilities for all numbers from 0 to 10
+        assert np.isclose(probabilities.sum(), 1.0) # Verify that the probabilities sum to 1
+        # ---------- init probabilities ----------
+        rng = jax.random.PRNGKey(rngInitNum)
+        rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+        start=time.time()
+        obs,state=env.reset(key_reset,env_params)
+        print("Time for reset: \n",time.time()-start)
+        excuted_list = []
+        for i in range(1,10000):
+            print("---"*20)
+            print("window_index ",state.window_index)
+            key_policy, _ = jax.random.split(key_policy,2)
+            def randomV1(state, env_params):
+                quants = np.random.choice(np.arange(0, 200), size=4, p=probabilities) # Generate random data from the custom distribution
+                return jnp.array(quants)                
+            random_action = randomV1(state, env_params)
+            print(f"Sampled {i}th actions are: ",random_action)
+            start=time.time()
+            obs,state,reward,done,info=env.step(key_step, state,random_action, env_params)
+            print(f"Time for {i} step: \n",time.time()-start)
+            print("excuted ",info["quant_executed"])
+            excuted_list.append(info["quant_executed"])
+            if done:
+                break
+        return info['window_index'], info['average_price'], excuted_list
+    def get_hush_average_price(rngInitNum):
+        rng = jax.random.PRNGKey(rngInitNum)
+        rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+        start=time.time()
+        obs,state=env.reset(key_reset,env_params)
+        print("Time for reset: \n",time.time()-start)
+        excuted_list = []
+        for i in range(1,10000):
+            print("---"*20)
+            print("window_index ",state.window_index)
+            key_policy, _ = jax.random.split(key_policy,2)
+            def randomV1(state, env_params):
+                quants = np.random.choice(np.arange(0, 200), size=4) # Generate random data from the custom distribution
+                return jnp.array(quants)                
+            random_action = randomV1(state, env_params)
+            print(f"Sampled {i}th actions are: ",random_action)
+            start=time.time()
+            obs,state,reward,done,info=env.step(key_step, state,random_action, env_params)
+            print(f"Time for {i} step: \n",time.time()-start)
+            print("excuted ",info["quant_executed"])
+            excuted_list.append(info["quant_executed"])
+            if done:
+                break
+        return info['window_index'], info['average_price'], excuted_list
     def get_advantage(rngInitNum):
-        window_index1,twap=get_twap_average_price(rngInitNum)
-        window_index2,ppo=get_ppo_average_price(rngInitNum)
+        window_index1,ppo,executed_list1=get_ppo_average_price(rngInitNum)
+        window_index2,twap,executed_list2=get_twap_average_price(rngInitNum)
+        window_index3,random,executed_list3=get_random_average_price(rngInitNum)
+        window_index4,rush,executed_list4=get_hush_average_price(rngInitNum)
         assert window_index1 == window_index2
-        return window_index1, (ppo-twap)/twap*10000, ppo, twap
-    # result_list = [get_advantage(rngInitNum) for rngInitNum in range(100)]
+        assert window_index1 == window_index3
+        assert window_index1 == window_index4
+        return window_index1, (ppo-twap)/twap*10000, (ppo-random)/random*10000, (ppo-rush)/rush*10000, ppo, twap, random, rush, executed_list1, executed_list2, executed_list3
+    # result_list = []
     for rngInitNum in range(100,1000):
+        print(f"++++ rngInitNum {rngInitNum}")
         result_tuple = get_advantage(rngInitNum) 
-        print(f"window_index {result_tuple[0]} , advantage {result_tuple[1]} , ppoAP {result_tuple[2]} , twapAP {result_tuple[3]}",file=open('comparison2.txt','a'))
+        # result_list.append(result_tuple[0]) # window index
+        print(f"window_index {result_tuple[0]:<4} , advantageTWAP {result_tuple[1]:^20} , advantageRANDOM {result_tuple[2]:^20} , advantageRUSH {result_tuple[3]:^20} , ppoAP {result_tuple[4]:<20} , twapAP {result_tuple[5]:<20} , randomAP {result_tuple[6]:<20} , rushAP {result_tuple[7]:<20} , ppoExecuted { [int(x) for x in result_tuple[8]]} , twapExecuted { [int(x) for x in result_tuple[9]]} , randomExecuted { [int(x) for x in result_tuple[10]]} , rushExecuted { [int(x) for x in result_tuple[11]]}",\
+            file=open('comparison6.txt','a'))
         
+        
+        
+        
+
+
