@@ -198,10 +198,10 @@ if __name__ == "__main__":
             print("---"*20)
             print("window_index ",state.window_index)
             key_policy, _ = jax.random.split(key_policy,2)
-            def randomV1(state, env_params):
+            def rushV1(state, env_params):
                 quants = np.random.choice(np.arange(0, 200), size=4) # Generate random data from the custom distribution
                 return jnp.array(quants)                
-            random_action = randomV1(state, env_params)
+            random_action = rushV1(state, env_params)
             print(f"Sampled {i}th actions are: ",random_action)
             start=time.time()
             obs,state,reward,done,info=env.step(key_step, state,random_action, env_params)
