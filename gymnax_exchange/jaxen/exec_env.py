@@ -86,7 +86,8 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        self.task_size = 500 # num to sell or buy for the task
+        self.task_size = 2000 # num to sell or buy for the task
+        # self.task_size = 500 # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
