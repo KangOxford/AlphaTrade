@@ -211,30 +211,30 @@ if __name__ == "__main__":
             if done:
                 break
         return info['window_index'], info['average_price'], excuted_list
-    def get_best_price_average_price(rngInitNum):
-        rng = jax.random.PRNGKey(rngInitNum)
-        rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-        start=time.time()
-        obs,state=env.reset(key_reset,env_params)
-        print("Time for reset: \n",time.time()-start)
-        excuted_list = []
-        for i in range(1,10000):
-            print("---"*20)
-            print("window_index ",state.window_index)
-            key_policy, _ = jax.random.split(key_policy,2)
-            def bestPrice(state, env_params):
-                quants = jnp.array([min(remaining Q, size at best price), 0, 0, 0])
-                return jnp.array(quants)                
-            random_action = bestPrice(state, env_params)
-            print(f"Sampled {i}th actions are: ",random_action)
-            start=time.time()
-            obs,state,reward,done,info=env.step(key_step, state,random_action, env_params)
-            print(f"Time for {i} step: \n",time.time()-start)
-            print("excuted ",info["quant_executed"])
-            excuted_list.append(info["quant_executed"])
-            if done:
-                break
-        return info['window_index'], info['average_price'], excuted_list
+    # def get_best_price_average_price(rngInitNum):
+    #     rng = jax.random.PRNGKey(rngInitNum)
+    #     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+    #     start=time.time()
+    #     obs,state=env.reset(key_reset,env_params)
+    #     print("Time for reset: \n",time.time()-start)
+    #     excuted_list = []
+    #     for i in range(1,10000):
+    #         print("---"*20)
+    #         print("window_index ",state.window_index)
+    #         key_policy, _ = jax.random.split(key_policy,2)
+    #         def bestPrice(state, env_params):
+    #             quants = jnp.array([min(remaining Q, size at best price), 0, 0, 0])
+    #             return jnp.array(quants)                
+    #         random_action = bestPrice(state, env_params)
+    #         print(f"Sampled {i}th actions are: ",random_action)
+    #         start=time.time()
+    #         obs,state,reward,done,info=env.step(key_step, state,random_action, env_params)
+    #         print(f"Time for {i} step: \n",time.time()-start)
+    #         print("excuted ",info["quant_executed"])
+    #         excuted_list.append(info["quant_executed"])
+    #         if done:
+    #             break
+    #     return info['window_index'], info['average_price'], excuted_list
     def get_advantage(rngInitNum):
         window_index1,ppo,executed_list1=get_ppo_average_price(rngInitNum)
         window_index2,twap,executed_list2=get_twap_average_price(rngInitNum)
