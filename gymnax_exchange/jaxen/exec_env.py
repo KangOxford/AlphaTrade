@@ -79,15 +79,6 @@ class EnvParams:
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
-    
-# from functools import partial
-# @partial(jax.jit,static_argnums=(1,2))
-# def get_twap_quant_arr(task, max_size, array_size):
-#     base_allocation = task // array_size
-#     remaining_tasks = task % array_size
-#     array = jnp.full(array_size, base_allocation,dtype=jnp.int32)
-#     array = jnp.where(jnp.arange(array_size) < remaining_tasks, array + 1, array)
-#     return jnp.concatenate((array, jnp.zeros(max_size - array_size)))
 
 
 class ExecutionEnv(BaseLOBEnv):
@@ -95,8 +86,8 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        # self.task_size = 500 # num to sell or buy for the task
-        self.task_size = 200 # num to sell or buy for the task
+        self.task_size = 500 # num to sell or buy for the task
+        # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
         # self.debug : bool = False
