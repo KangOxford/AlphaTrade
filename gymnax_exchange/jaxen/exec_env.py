@@ -44,7 +44,7 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-
+from gymnax_exchange.test_scripts.comparison import twapV3
 import time 
 
 @struct.dataclass
@@ -102,11 +102,13 @@ class ExecutionEnv(BaseLOBEnv):
     
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
+        self, key: chex.PRNGKey, state: EnvState, delta: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
+        get_base_action = lambda state, params:twapV3(state, params)
+        action = get_base_action(state, params) + delta
         def truncate_action(action, remainQuant):
             action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
             scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
@@ -311,7 +313,7 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
