@@ -250,7 +250,7 @@ class BaseLOBEnv(environment.Environment):
             obs_sell, obs_buy = get_obs(state)
             return state, obs_sell, obs_buy
 
-        state_obs = [get_state_obs(Cubes_withOB[i][0], Cubes_withOB[i][1], max_steps_in_episode_arr[i]) for i in range(len(max_steps_in_episode_arr))]
+        state_obs = [get_state_obs(Cubes_withOB[i][0], Cubes_withOB[i][1], 26) for i in range(len(msgs))]
         
         def state2stateArray(state):
             state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
@@ -341,7 +341,7 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
 
         #Craft the first state
-        state = EnvState(*ordersides,time,time,0,idx_data_window,0,self.max_steps_in_episode_arr[idx_data_window])
+        state = EnvState(*ordersides,time,time,0,idx_data_window,0,26)
 
         return self.get_obs(state,params),state
 
