@@ -77,6 +77,10 @@ class BaseLOBEnv(environment.Environment):
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
                 return messageCSVs, orderbookCSVs
             messages, orderbooks = load_files()
+            
+            
+            message = messages[0]
+            orderbook = orderbooks[0]
 
             def preProcessingMassegeOB(message, orderbook):
                 def splitTimeStamp(m):
@@ -85,25 +89,28 @@ class BaseLOBEnv(environment.Environment):
                     m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
                     return m
                 message = splitTimeStamp(message)
+                
                 def filterValid(message):
                     message = message[message.type.isin([1,2,3,4])]
                     valid_index = message.index.to_numpy()
                     message.reset_index(inplace=True,drop=True)
                     return message, valid_index
                 message, valid_index = filterValid(message)
+                
                 def tuneDirection(message):
                     message.loc[message['type'] == 4, 'direction'] *= -1
                     return message
                 message = tuneDirection(message)
+                
                 def addTraderId(message):
                     import warnings
                     from pandas.errors import SettingWithCopyWarning
                     warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
                     message['trader_id'] = message['order_id']
                     return message
-
                 message = addTraderId(message)
-                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+                
+                orderbook = orderbook.iloc[0,:].reset_index(drop=True)
                 return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
@@ -187,15 +194,16 @@ class BaseLOBEnv(environment.Environment):
         Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         self.max_steps_in_episode_arr = max_steps_in_episode_arr
         # # ------------------------------- TESTING ------------------------------
-        # alphatradePath = '/homes/80/kang/AlphaTrade'
-        # messagePath = alphatradePath+"/data_small/Flow_10/"
-        # orderbookPath = alphatradePath+"/data_small/Book_10/"
-        # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
-        # Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
-        # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
-        # bks=[jnp.array(book) for cube, book in Cubes_withOB]
-        # message_data, book_data = msgs[0],bks[0]
-        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        alphatradePath = '/homes/80/kang/AlphaTrade'
+        messagePath = alphatradePath+"/data_small/Flow_10/"
+        orderbookPath = alphatradePath+"/data_small/Book_10/"
+        sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
+        
+        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
+        bks=[jnp.array(book) for cube, book in Cubes_withOB]
+        message_data, book_data = msgs[0],bks[0]
+        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # ------------------------------- TESTING ------------------------------
         # print(len(msgs))
         # for message_data in msgs:
