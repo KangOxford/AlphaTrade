@@ -44,7 +44,7 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.test_scripts.comparison import twapV3
+# from gymnax_exchange.test_scripts.comparison import twapV3
 import time 
 
 @struct.dataclass
@@ -86,9 +86,9 @@ class ExecutionEnv(BaseLOBEnv):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        self.task_size = 5000 # num to sell or buy for the task
+        # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
-        # self.task_size = 500 # num to sell or buy for the task
+        self.task_size = 500 # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
@@ -105,6 +105,22 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, state: EnvState, delta: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
+        def twapV3(state, env_params):
+            # ---------- ifMarketOrder ----------
+            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+            ifMarketOrder = (remainingTime <= marketOrderTime)
+            # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+            # ---------- ifMarketOrder ----------
+            # ---------- quants ----------
+            remainedQuant = state.task_to_execute - state.quant_executed
+            remainedStep = state.max_steps_in_episode - state.step_counter
+            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+            limit_quants = jax.random.permutation(key, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
+            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+            # ---------- quants ----------
+            return jnp.array(quants) 
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         get_base_action = lambda state, params:twapV3(state, params)
@@ -190,8 +206,8 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-        # idx_data_window = jnp.array(0,dtype=jnp.int32)
+        # idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        idx_data_window = jnp.array(0,dtype=jnp.int32)
         
         # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],self.max_steps_in_episode_arr.max().astype(jnp.int32) 
         # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],1000
@@ -313,7 +329,8 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):

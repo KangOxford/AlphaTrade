@@ -486,7 +486,7 @@ if __name__ == "__main__":
 
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeJAX",
+            project="AlphaTradeJAX_ParamSearch",
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
