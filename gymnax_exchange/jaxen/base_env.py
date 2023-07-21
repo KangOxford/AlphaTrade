@@ -66,8 +66,6 @@ class BaseLOBEnv(environment.Environment):
 
         # Load the image MNIST data at environment init
         def load_LOBSTER(sliceTimeWindow, messagePath, orderbookPath, start_time, end_time):
-            def preProcessingData_csv2pkl():
-                return 0
             def load_files():
                 from os import listdir; from os.path import isfile, join; import pandas as pd
                 readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
@@ -110,12 +108,6 @@ class BaseLOBEnv(environment.Environment):
                 indices = list(range(start_time, end_time, interval)) + [end_time]
                 return indices
             indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
-            
-            message = messages[0]
-            orderbook = orderbooks[0]
-            
-            
-            
             def sliceWithoutOverlap(message, orderbook):
                 # print("start")
                 def splitMessage(message, orderbook):
@@ -133,13 +125,7 @@ class BaseLOBEnv(environment.Environment):
                 sliced_parts, init_OB = splitMessage(message, orderbook)
                 return sliced_parts, init_OB
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
-            
-            # slicedCubes_withOB = slicedCubes_withOB_list[0]
-            # slicedCubes = slicedCubes_withOB[0]
-            # len(slicedCubes_withOB)
-            
             max_len_in_all_cubes = max([np.array([slicedCube.shape[0] for slicedCube in slicedCubes]).max() for slicedCubes, OB in slicedCubes_withOB_list])
-                
             Cubes_withOB = []
             for slicedCubes, OB in slicedCubes_withOB_list:
                 cubes = []
@@ -152,69 +138,25 @@ class BaseLOBEnv(environment.Environment):
                     cubes.append(cube)
                 cubes = np.array(cubes)
                 Cubes_withOB.append((cubes,OB))
-            # a,b = Cubes_withOB[0]  
-                
-                
-                
-            # # sliced = sliced_parts[0]
-            # def sliced2cude(sliced):
-            #     # cube.shape
-            #     # target_shape = max_len_in_sliced_parts
-            #     def padding(cube, target_shape):
-            #         # Calculate the amount of padding required
-            #         padded_cube = np.pad(cube, pad_width=[(0,target_shape - cube.shape[0]),(0,0)], mode='constant', constant_values=0)
-            #         return padded_cube
-            #     cube = padding(cube, max_len_in_all_cubes)
-            #     return cube
-            # # def initialOrderbook():
-            # slicedCubes = [sliced2cude(sliced) for sliced in max_len_in_all_cubes]
-            # # [sliced.shape for sliced in slicedCubes]
-            # # Cube: dynamic_horizon * stepLines * 8
-            # slicedCubes_withOB = zip(slicedCubes, init_OBs)
-            # slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
-            # # i = 6 ; message,orderbook = messages[i],orderbooks[i]
-            # # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
-            # def nestlist2flattenlist(nested_list):
-            #     import itertools
-            #     flattened_list = list(itertools.chain.from_iterable(nested_list))
-            #     return flattened_list
-            # Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
-            # max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
-            # def Cubes_withOB_padding(Cubes_withOB):
-            #     max_m = max(m.shape[0] for m, o in Cubes_withOB)
-            #     new_Cubes_withOB = []
-            #     for cube, OB in Cubes_withOB:
-            #         def padding(cube, target_shape):
-            #             pad_width = np.zeros((100, 8))
-            #             # Calculate the amount of padding required
-            #             padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-            #             padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-            #             return padded_cube
-            #         cube = padding(cube, max_m)
-            #         new_Cubes_withOB.append((cube, OB))
-            #     return new_Cubes_withOB
-            # Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
             return Cubes_withOB
 
         Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
-        # # ------------------------------- TESTING ------------------------------
-        alphatradePath = '/homes/80/kang/AlphaTrade'
-        messagePath = alphatradePath+"/data/Flow_10/"
-        orderbookPath = alphatradePath+"/data/Book_10/"
-        # messagePath = alphatradePath+"/data_small/Flow_10/"
-        # orderbookPath = alphatradePath+"/data_small/Book_10/"
-        sliceTimeWindow, messagePath, orderbookPath, start_time, end_time=900,messagePath,orderbookPath,34200,57600
+        # # # ------------------------------- TESTING ------------------------------
+        # alphatradePath = '/homes/80/kang/AlphaTrade'
+        # messagePath = alphatradePath+"/data/Flow_10/"
+        # orderbookPath = alphatradePath+"/data/Book_10/"
+        # # messagePath = alphatradePath+"/data_small/Flow_10/"
+        # # orderbookPath = alphatradePath+"/data_small/Book_10/"
+        # sliceTimeWindow, messagePath, orderbookPath, start_time, end_time=900,messagePath,orderbookPath,34200,57600
         
-        Cubes_withOB = load_LOBSTER(sliceTimeWindow,messagePath,orderbookPath,34200,57600)
-        msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
-        bks=[jnp.array(book) for cube, book in Cubes_withOB]
-        message_data, book_data = msgs[0],bks[0]
-        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
-        # # ------------------------------- TESTING ------------------------------
-        # print(len(msgs))
-        # for message_data in msgs:
-        #     print(message_data.shape)
-            
+        # Cubes_withOB = load_LOBSTER(sliceTimeWindow,messagePath,orderbookPath,34200,57600)
+        # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
+        # bks=[jnp.array(book) for cube, book in Cubes_withOB]
+        # message_data, book_data = msgs[0],bks[0]
+        # message_data.shape
+        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        # # # ------------------------------- TESTING ------------------------------
+
             
             
         #List of message cubes 
