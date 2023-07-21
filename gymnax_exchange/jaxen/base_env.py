@@ -103,7 +103,7 @@ class BaseLOBEnv(environment.Environment):
                     return message
 
                 message = addTraderId(message)
-                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+                orderbook = orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
                 return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
