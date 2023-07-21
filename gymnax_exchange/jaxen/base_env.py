@@ -199,92 +199,92 @@ class BaseLOBEnv(environment.Environment):
         nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # ------------------------------- TESTING ------------------------------
 
-        # # ------------------------------- STATS ------------------------------  
-        msg = msgs[0]
-        tvs_lst = []
-        for index,msg in enumerate(msgs):
-            pass
-            print(f">>> {index}")
-            tradingVolume = lambda step:step[step[:,0]==4][:,2].sum()
-            tvs = [tradingVolume(step) for step in msg]
-            tvs_lst.append(tvs)
-        tvs_arr = jnp.asarray(tvs_lst)
-        tvs_arr.shape
-        tvsa_sum = tvs_arr.sum(axis=1)
-        step_mean = [row[:max_steps_in_episode_arr[index]].mean().round().astype(jnp.int32) for index,row in enumerate(tvs_arr)]
-        step_mean = jnp.asarray(step_mean)
-        ps_lst = []
-        for index,msg in enumerate(msgs):
-            # pass
-            print(f">>> {index}")
-            # step = msg[0]
-            # step[step[:,0]==4]
-            def vwapPirce(step):
-                executed = step[step[:,0]==4]
-                return (((executed[:,2]*(executed[:,3]//100)).sum() / executed[:,2].sum())*100).astype(jnp.int32)
-            ps = [vwapPirce(step) for step in msg]
-            ps_lst.append(ps)
-        ps_arr = jnp.asarray(ps_lst)
-        ps_arr.shape
-        def subsample_evenly(input_list, num_samples=16):
-            step_size = len(input_list) / num_samples
-            subsamples = []
+        # # # ------------------------------- STATS ------------------------------  
+        # msg = msgs[0]
+        # tvs_lst = []
+        # for index,msg in enumerate(msgs):
+        #     pass
+        #     print(f">>> {index}")
+        #     tradingVolume = lambda step:step[step[:,0]==4][:,2].sum()
+        #     tvs = [tradingVolume(step) for step in msg]
+        #     tvs_lst.append(tvs)
+        # tvs_arr = jnp.asarray(tvs_lst)
+        # tvs_arr.shape
+        # tvsa_sum = tvs_arr.sum(axis=1)
+        # step_mean = [row[:max_steps_in_episode_arr[index]].mean().round().astype(jnp.int32) for index,row in enumerate(tvs_arr)]
+        # step_mean = jnp.asarray(step_mean)
+        # ps_lst = []
+        # for index,msg in enumerate(msgs):
+        #     # pass
+        #     print(f">>> {index}")
+        #     # step = msg[0]
+        #     # step[step[:,0]==4]
+        #     def vwapPirce(step):
+        #         executed = step[step[:,0]==4]
+        #         return (((executed[:,2]*(executed[:,3]//100)).sum() / executed[:,2].sum())*100).astype(jnp.int32)
+        #     ps = [vwapPirce(step) for step in msg]
+        #     ps_lst.append(ps)
+        # ps_arr = jnp.asarray(ps_lst)
+        # ps_arr.shape
+        # def subsample_evenly(input_list, num_samples=16):
+        #     step_size = len(input_list) / num_samples
+        #     subsamples = []
 
-            for i in range(num_samples):
-                index = int(round(i * step_size))
-                subsamples.append(input_list[index])
+        #     for i in range(num_samples):
+        #         index = int(round(i * step_size))
+        #         subsamples.append(input_list[index])
 
-            return subsamples
-        def forward_fill_jax(arr):
-            last_valid = None
-            for i in range(arr.shape[0]):
-                if arr[i] != 0:
-                    last_valid = arr[i]
-                else:
-                    if last_valid is not None:
-                        arr = arr.at[i].set(last_valid)
-            return arr
-        def back_fill_jax(arr):
-            farr = jnp.flip(arr)
-            result = forward_fill_jax(farr)
-            fresult = jnp.flip(result)
-            return fresult
-        def mean_fill_jax(newRow):
-            ffilled_row = forward_fill_jax(newRow)
-            bfilled_row = back_fill_jax(newRow)
-            mfilled_row = jnp.round((ffilled_row+bfilled_row)/2).astype(jnp.int32)
-            return mfilled_row
-        prices_list = []
-        for index,row in enumerate(ps_arr):
-            newRow = row[:max_steps_in_episode_arr[index]]
-            mfilled_row = mean_fill_jax(newRow)
-            result =  jnp.asarray(subsample_evenly(mfilled_row, num_samples=16))
-            prices_list.append(result)
-        prices_arr = jnp.asarray(prices_list)
-        prices_arr.shape
-        p = prices_arr[prices_arr[:,0]>=30000000]
-        p_ = p[:,:-1]
-        p_head = p[:,1:]
-        pReturnInBP = (p_head-p_)/p_*10000
+        #     return subsamples
+        # def forward_fill_jax(arr):
+        #     last_valid = None
+        #     for i in range(arr.shape[0]):
+        #         if arr[i] != 0:
+        #             last_valid = arr[i]
+        #         else:
+        #             if last_valid is not None:
+        #                 arr = arr.at[i].set(last_valid)
+        #     return arr
+        # def back_fill_jax(arr):
+        #     farr = jnp.flip(arr)
+        #     result = forward_fill_jax(farr)
+        #     fresult = jnp.flip(result)
+        #     return fresult
+        # def mean_fill_jax(newRow):
+        #     ffilled_row = forward_fill_jax(newRow)
+        #     bfilled_row = back_fill_jax(newRow)
+        #     mfilled_row = jnp.round((ffilled_row+bfilled_row)/2).astype(jnp.int32)
+        #     return mfilled_row
+        # prices_list = []
+        # for index,row in enumerate(ps_arr):
+        #     newRow = row[:max_steps_in_episode_arr[index]]
+        #     mfilled_row = mean_fill_jax(newRow)
+        #     result =  jnp.asarray(subsample_evenly(mfilled_row, num_samples=16))
+        #     prices_list.append(result)
+        # prices_arr = jnp.asarray(prices_list)
+        # prices_arr.shape
+        # p = prices_arr[prices_arr[:,0]>=30000000]
+        # p_ = p[:,:-1]
+        # p_head = p[:,1:]
+        # pReturnInBP = (p_head-p_)/p_*10000
         
-        m=pReturnInBP.mean(axis = 0)
-        # m=p.mean(axis = 0).round().astype(jnp.int32)
-        # s=p.std(axis = 0).round().astype(jnp.int32)
-        s=pReturnInBP.std(axis = 0)
-        m
-        s
+        # m=pReturnInBP.mean(axis = 0)
+        # # m=p.mean(axis = 0).round().astype(jnp.int32)
+        # # s=p.std(axis = 0).round().astype(jnp.int32)
+        # s=pReturnInBP.std(axis = 0)
+        # m
+        # s
         
-        m_Minus_s = m-s
-        m
-        m_Plus_s = m +s
-        m_Plus_s = 2*m - m_Minus_s 
+        # m_Minus_s = m-s
+        # m
+        # m_Plus_s = m +s
+        # m_Plus_s = 2*m - m_Minus_s 
         
-        tvsa_sum = tvs_arr.sum(axis=1)
-        tvsa_sum.shape
-        step_mean = [row[:max_steps_in_episode_arr[index]].mean().round().astype(jnp.int32) for index,row in enumerate(tvs_arr)]
-        step_mean = jnp.asarray(step_mean)
-        # assert step_mean.shape[0] == tvs_arr.shape[0]
-        # # ------------------------------- STATS ------------------------------            
+        # tvsa_sum = tvs_arr.sum(axis=1)
+        # tvsa_sum.shape
+        # step_mean = [row[:max_steps_in_episode_arr[index]].mean().round().astype(jnp.int32) for index,row in enumerate(tvs_arr)]
+        # step_mean = jnp.asarray(step_mean)
+        # # assert step_mean.shape[0] == tvs_arr.shape[0]
+        # # # ------------------------------- STATS ------------------------------            
             
             
         #List of message cubes 

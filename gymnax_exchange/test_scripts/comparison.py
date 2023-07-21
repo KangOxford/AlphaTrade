@@ -17,7 +17,8 @@ config.update("jax_disable_jit", False)
 from gymnax_exchange.jaxen.exec_env import *
 import json
 # ============== testing scripts ===============
-paramPath = "/homes/80/kang/AlphaTrade/params_file_fancy-universe-74_07-18_14-52"
+# paramPath = "/homes/80/kang/AlphaTrade/params_file_fancy-universe-74_07-18_14-52"
+paramPath = "/homes/80/kang/AlphaTrade/params_file_fast-river-77_07-18_16-42"
 
 if __name__ == "__main__":
     try:
@@ -252,8 +253,9 @@ if __name__ == "__main__":
         result_tuple = get_advantage(rngInitNum) 
         # result_list.append(result_tuple[0]) # window index
         print(f"window_index {result_tuple[0]:<4} , advantageTWAP {result_tuple[1]:^20} , advantageRANDOM {result_tuple[2]:^20} , advantageRUSH {result_tuple[3]:^20} , ppoAP {result_tuple[4]:<20} , twapAP {result_tuple[5]:<20} , randomAP {result_tuple[6]:<20} , rushAP {result_tuple[7]:<20} , ppoExecuted { [int(x) for x in result_tuple[8]]} , twapExecuted { [int(x) for x in result_tuple[9]]} , randomExecuted { [int(x) for x in result_tuple[10]]} , rushExecuted { [int(x) for x in result_tuple[11]]}",\
-            file=open('comparison_'+ paramPath.split("_")[-3] +'_02.txt','a'))
-        assert env.task_size == 500
+            file=open('comparison_'+ paramPath.split("_")[-3] +'_01.txt','a'))
+        assert env.task_size == 1000
+        # assert env.task_size == 500 
         assert env.task == "sell"
         
         
