@@ -1,0 +1,14 @@
+diff --git a/gymnax_exchange/jaxrl/ppoRnnExecCont.py b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+index 6f399d4..8b5a5f0 100644
+--- a/gymnax_exchange/jaxrl/ppoRnnExecCont.py
++++ b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+@@ -429,7 +429,8 @@ if __name__ == "__main__":
+         "LR": 2.5e-4,
+         "NUM_ENVS": 1000,
+         "NUM_STEPS": 10,
+-        "TOTAL_TIMESTEPS": 1e7,
++        #"TOTAL_TIMESTEPS": 1e7,
++        "TOTAL_TIMESTEPS": 5e5,
+         "UPDATE_EPOCHS": 4,
+         "NUM_MINIBATCHES": 4,
+         "GAMMA": 0.99,

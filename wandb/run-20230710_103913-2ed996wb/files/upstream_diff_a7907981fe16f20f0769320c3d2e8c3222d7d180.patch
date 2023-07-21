@@ -1,0 +1,15 @@
+diff --git a/gymnax_exchange/jaxrl/ppoRnnExecCont.py b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+index 2aa26e1..21cec64 100644
+--- a/gymnax_exchange/jaxrl/ppoRnnExecCont.py
++++ b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+@@ -21,8 +21,8 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+ 
+ #Code snippet to disable all jitting.
+ from jax import config
+-# config.update("jax_disable_jit", False)
+-config.update("jax_disable_jit", True)
++config.update("jax_disable_jit", False)
++#config.update("jax_disable_jit", True)
+ 
+ config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+ 

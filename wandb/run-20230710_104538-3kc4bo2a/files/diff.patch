@@ -1,0 +1,31 @@
+diff --git a/gymnax_exchange/jaxrl/ppoRnnExecCont.py b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+index 21cec64..20fd84c 100644
+--- a/gymnax_exchange/jaxrl/ppoRnnExecCont.py
++++ b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+@@ -196,6 +196,7 @@ def make_train(config):
+ 
+             # COLLECT TRAJECTORIES
+             def _env_step(runner_state, unused):
++                jax.debug.print('Step')
+                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
+                 rng, _rng = jax.random.split(rng)
+ 
+@@ -437,13 +438,13 @@ if __name__ == "__main__":
+ 
+     ppo_config = {
+         "LR": 2.5e-4,
+-        "NUM_ENVS": 1,
+-        # "NUM_ENVS": 1000,
+-        "NUM_STEPS": 10,
++        #"NUM_ENVS": 1,
++        "NUM_ENVS": 1000,
++        "NUM_STEPS": 50,
+         "TOTAL_TIMESTEPS": 1e7,
+         "UPDATE_EPOCHS": 4,
+-        "NUM_MINIBATCHES": 1,
+-        # "NUM_MINIBATCHES": 4,
++        #"NUM_MINIBATCHES": 1,
++        "NUM_MINIBATCHES": 4,
+         "GAMMA": 0.99,
+         "GAE_LAMBDA": 0.95,
+         "CLIP_EPS": 0.2,

@@ -1,0 +1,56 @@
+diff --git a/gym_exchange/__init__.py b/gym_exchange/__init__.py
+index 3169668..358cecf 100644
+--- a/gym_exchange/__init__.py
++++ b/gym_exchange/__init__.py
+@@ -11,7 +11,7 @@ def get_symbol_date(AlphaTradeRoot):
+             date = filename.split("_")[1]
+             # Process the file here
+             break
+-    symbol, date = "AMZN", "2021-04-01"
++    symbol, date = "TSLA", "2015-01-02"
+     return symbol, date
+ 
+ class Config:
+diff --git a/train/sb3/train_v6.py b/train/sb3/train_v6.py
+index 0ac131f..ebd9ccc 100644
+--- a/train/sb3/train_v6.py
++++ b/train/sb3/train_v6.py
+@@ -90,7 +90,7 @@ def main():
+ 
+     config = {
+         "policy_type": "MlpLstmPolicy",
+-        "total_timesteps": int(500000),
++        "total_timesteps": int(50000),
+         # "ent_coef" : 1,
+         # ent_coef = 0.95,
+         "ent_coef" : 0.5,
+@@ -107,7 +107,7 @@ def main():
+     }
+ 
+     run = wandb.init(
+-        project="Execution-2FreeDegrees",
++        project="TestingCPU",
+         config=config,
+         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+         save_code=True,  # optional
+@@ -142,7 +142,7 @@ def main():
+         tensorboard_log=f"{path}train/output/runs/{run.id}")
+ 
+     model.learn(
+-       tb_log_name="RNN_PPO_Wandb",
++        tb_log_name="RNN_PPO_Wandb",
+         total_timesteps=config["total_timesteps"],
+         # callback=WandbCallback(
+         #     gradient_save_freq=100,
+@@ -150,10 +150,9 @@ def main():
+         #     verbose=1,
+         # ),
+         log_interval=1,
+-
+     )
+     end = time.time()
+-    print(f"*** mian starts at {start}, and ends at {end}, takes {end-start}.")
++    print(f"*** main starts at {start}, and ends at {end}, takes {end-start}.")
+     run.finish()
+ 
+ if __name__ == "__main__":

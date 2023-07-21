@@ -1,0 +1,116 @@
+diff --git a/gym_exchange/orderbook/test/genOrders.py b/gym_exchange/orderbook/test/genOrders.py
+index 8bebca2..097a3a2 100755
+--- a/gym_exchange/orderbook/test/genOrders.py
++++ b/gym_exchange/orderbook/test/genOrders.py
+@@ -3,36 +3,65 @@ from __future__ import print_function
+ from random import *
+ import sys
+ sys.path.append('..')
+-from gym_trading.envs.orderbook import OrderBook
++#from gym_trading.envs.orderbook import OrderBook
+ 
+ 
+-def generate_new_buy(trade_id):
++def generate_new_buy(trade_id,order_id,timestamp):
+     return {'type' : 'limit', 
+            'side' : 'bid', 
+            'quantity' : randint(1,1000),
+            'price' : randint(900,1050),
+-           'trade_id' : trade_id}
++           'trade_id' : trade_id,
++           'order_id' : order_id,
++          'timestamp': timestamp}
+            
+-def generate_cross_buy(trade_id):
++def generate_cross_buy(trade_id,order_id,timestamp):
+     return {'type' : 'limit', 
+             'side' : 'bid', 
+-            'quantity' : randint(1,1000), 
++            'quantity' : randint(1,10000), 
+             'price' : randint(1055,1200),
+-            'trade_id' : trade_id}
++           'trade_id' : trade_id,
++           'order_id' : order_id,
++          'timestamp': timestamp}
+ 
+-def generate_new_sell(trade_id):
++def generate_new_sell(trade_id,order_id,timestamp):
+     return {'type' : 'limit', 
+             'side' : 'ask', 
+             'quantity' : randint(1,1000), 
+             'price' : randint(1055,1200),
+-            'trade_id' : trade_id}
++           'trade_id' : trade_id,
++           'order_id' : order_id,
++          'timestamp': timestamp}
+             
+-def generate_cross_sell(trade_id):
++def generate_cross_sell(trade_id,order_id,timestamp):
+     return {'type' : 'limit', 
+             'side' : 'ask', 
+             'quantity' : randint(1,1000),
+             'price' : randint(900,1050),
+-            'trade_id' : trade_id}
++           'trade_id' : trade_id,
++           'order_id' : order_id,
++          'timestamp': timestamp}
++
++def generate_market_sell(trade_id,order_id,timestamp):
++    return {'type' : 'market', 
++            'side' : 'ask', 
++            'quantity' : randint(1,100),
++            'price' : randint(900,1050),
++           'trade_id' : trade_id,
++           'order_id' : order_id,
++          'timestamp': timestamp}
++
++def generate_market_buy(trade_id,order_id,timestamp):
++    return {'type' : 'market', 
++            'side' : 'bid', 
++            'quantity' : randint(1,100), 
++            'price' : randint(1055,1200),
++           'trade_id' : trade_id,
++           'order_id' : order_id,
++          'timestamp': timestamp}
++
++"""
++
+ 
+ def treat_trades(trades, side):
+     if not trades:
+@@ -126,7 +155,7 @@ def testCases(trade_id, action, side, verbose = False):
+ 
+ buys = {}
+ sells = {}
+-order_book = OrderBook()
++#order_book = OrderBook()
+ 
+ # nb buys and sells to prefill orderbook
+ prefill(10)
+@@ -141,8 +170,9 @@ prefill(10)
+ for trade_id in xrange(10, 100):
+     testCases(trade_id, choice('C'), choice('BS'), False)
+ 
+-print(order_book)
++#print(order_book)
+ 
+ # quit()
+ 
+ 
++"""
+\ No newline at end of file
+diff --git a/gymnax_exchange/test_scripts/testing_exec_env.py b/gymnax_exchange/test_scripts/testing_exec_env.py
+index e8d4243..fdf9a07 100644
+--- a/gymnax_exchange/test_scripts/testing_exec_env.py
++++ b/gymnax_exchange/test_scripts/testing_exec_env.py
+@@ -37,8 +37,8 @@ if __name__ == "__main__":
+         ATFolder = '/homes/80/kang/AlphaTrade'
+     print("AlphaTrade folder:",ATFolder)
+ 
+-    enable_vmap=False 
+-    enable_simple=True
++    enable_vmap=True 
++    enable_simple=False
+ 
+     rng = jax.random.PRNGKey(0)
+     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)

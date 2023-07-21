@@ -1,0 +1,25 @@
+diff --git a/gymnax_exchange/jaxrl/ppoRnnExecCont.py b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+index 18b110a..a98caab 100644
+--- a/gymnax_exchange/jaxrl/ppoRnnExecCont.py
++++ b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+@@ -220,6 +220,7 @@ def make_train(config):
+             runner_state, traj_batch = jax.lax.scan(
+                 _env_step, runner_state, None, config["NUM_STEPS"]
+             )
++            jax.debug.breakpoint()
+ 
+             # CALCULATE ADVANTAGE
+             train_state, env_state, last_obs, last_done, hstate, rng = runner_state
+@@ -370,10 +371,11 @@ def make_train(config):
+                     return_values = info["returned_episode_returns"][
+                         info["returned_episode"]
+                     ]
++                    
+                     timesteps = (
+                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
+                     )
+-                    
++                    jax.debug.breakpoint()
+                     revenues = info["total_revenue"][info["returned_episode"]]
+                     quant_executed = info["quant_executed"][info["returned_episode"]]
+ 

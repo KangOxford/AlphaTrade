@@ -1,0 +1,146 @@
+{
+    "os": "Linux-5.4.0-153-generic-x86_64-with-glibc2.31",
+    "python": "3.10.11",
+    "heartbeatAt": "2023-07-08T11:11:21.105443",
+    "startedAt": "2023-07-08T11:11:20.515044",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "../AlphaTrade/"
+    ],
+    "state": "running",
+    "program": "/users/sasrey/AlphaTrade/gymnax_exchange/jaxrl/ppoRnnExecCont.py",
+    "git": {
+        "remote": "https://github.com/KangOxford/AlphaTrade.git",
+        "commit": "63749de9016a87d1b42b45b6cea888f547c363c7"
+    },
+    "email": "saschayvesfrey@gmail.com",
+    "root": "/auto/users/sasrey/AlphaTrade",
+    "host": "clpc355.cs.ox.ac.uk",
+    "username": "sasrey",
+    "executable": "/users/sasrey/miniconda3/envs/alphatrade/bin/python",
+    "cpu_count": 10,
+    "cpu_count_logical": 20,
+    "cpu_freq": {
+        "current": 4.077749999999999,
+        "min": 800.0,
+        "max": 5300.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 4.034,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 2.966,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.806,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.28,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.761,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.297,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.587,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.894,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.62,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.629,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.495,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.043,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.388,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.833,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.827,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.372,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.338,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.832,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.733,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.82,
+            "min": 800.0,
+            "max": 5300.0
+        }
+    ],
+    "disk": {
+        "total": 31.200942993164062,
+        "used": 23.435298919677734
+    },
+    "gpu": "NVIDIA GeForce RTX 2080 Ti",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 2080 Ti",
+            "memory_total": 11811160064
+        }
+    ],
+    "memory": {
+        "total": 62.6969108581543
+    }
+}

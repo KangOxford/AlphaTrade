@@ -1,0 +1,34 @@
+diff --git a/gymnax_exchange/jaxen/exec_env.py b/gymnax_exchange/jaxen/exec_env.py
+index 4da5413..fcd4310 100644
+--- a/gymnax_exchange/jaxen/exec_env.py
++++ b/gymnax_exchange/jaxen/exec_env.py
+@@ -135,6 +135,9 @@ class ExecutionEnv(BaseLOBEnv):
+         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
+         state = EnvState(asks,bids,trades,bestasks[-self.stepLines:],bestbids[-self.stepLines:],state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,state.step_counter+1,state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue)
+         done = self.is_terminal(state,params)
++        
++        jax.debug.print('Action: {}',action)
++        jax.debug.print('Reward: {}',reward)
+         return self.get_obs(state,params),state,reward,done,{"window_index":state.window_index,"total_revenue":state.total_revenue,"quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute}
+ 
+ 
+@@ -234,7 +237,6 @@ class ExecutionEnv(BaseLOBEnv):
+         shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
+         # ========= self.get_obs(state,params) =============
+         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance))
+-        # jax.debug.breakpoint()
+         return obs
+ 
+     @property
+diff --git a/gymnax_exchange/jaxrl/ppoRnnExecCont.py b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+index 304ee3a..cb3c1db 100644
+--- a/gymnax_exchange/jaxrl/ppoRnnExecCont.py
++++ b/gymnax_exchange/jaxrl/ppoRnnExecCont.py
+@@ -187,7 +187,6 @@ def make_train(config):
+ 
+             # COLLECT TRAJECTORIES
+             def _env_step(runner_state, unused):
+-                jax.debug.print('Step')
+                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
+                 rng, _rng = jax.random.split(rng)
+ 

@@ -1,0 +1,1 @@
+{"global_step": 2796, "episodic_return": -55.5, "episodic_revenue": 4363224, "quant_executed": 200, "_timestamp": 1689366124.0966525, "_runtime": 748.9780375957489, "_step": 15, "_wandb": {"runtime": 48354}}
