@@ -216,10 +216,10 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        jax.debug.print("(state.time) {}", (state.time))
-        jax.debug.print("(state.time-state.init_time) {}", (state.time-state.init_time))
-        jax.debug.print("(state.time-state.init_time)[0] {}", (state.time-state.init_time)[0])
-        jax.debug.print("params.episode_time {}", params.episode_time)
+        # jax.debug.print("(state.time) {}", (state.time))
+        # jax.debug.print("(state.time-state.init_time) {}", (state.time-state.init_time))
+        # jax.debug.print("(state.time-state.init_time)[0] {}", (state.time-state.init_time)[0])
+        # jax.debug.print("params.episode_time {}", params.episode_time)
         
         return (state.step_counter>=26) | ((state.time-state.init_time)[0]>=params.episode_time) | (state.task_to_execute-state.quant_executed<=0)
     
@@ -375,7 +375,8 @@ if __name__ == "__main__":
         # ---------- acion from random sampling ----------
         # key_policy, _ =  jax.random.split(key_policy, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action = jnp.array([200,200,200,200]) # 5000/26
+        test_action = jnp.array([300,300,300,300]) # 5000/26
+        # test_action = jnp.array([200,200,200,200]) # 5000/26
         # test_action = jnp.array([193,193,193,193]) # 5000/26
         # test_action = jnp.array([20,20,20,20]) # 500/26
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
@@ -387,7 +388,9 @@ if __name__ == "__main__":
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         print(f"Time for {i} step: \n",time.time()-start)
         if done:
-            print("==="*20)
+            print("==="*40)
+            key_reset, _ = jax.random.split(key_reset)
+            obs,state=env.reset(key_reset,env_params)
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
         
