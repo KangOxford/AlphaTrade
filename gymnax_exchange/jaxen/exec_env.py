@@ -254,7 +254,7 @@ class ExecutionEnv(BaseLOBEnv):
             quant = state.task_to_execute - state.quant_executed
             price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             #FIXME not very clean way to implement, but works:
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int64) 
+            quants = jnp.asarray((quant,0,0,0),jnp.int64) 
             prices = jnp.asarray((price, price , price, price),jnp.int64)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
@@ -267,6 +267,7 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        jax.debug.print("Actual Quants {}", quants)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
