@@ -119,7 +119,7 @@ if __name__ == "__main__":
         vmap_step = jax.jit(jax.vmap(env.step, in_axes=(0, 0, 0, None)))
         vmap_act_sample=jax.jit(jax.vmap(env.action_space().sample, in_axes=(0)))
 
-        num_envs = 1000
+        num_envs = 10000
         vmap_keys = jax.random.split(rng, num_envs)
 
         test_actions=vmap_act_sample(vmap_keys)
