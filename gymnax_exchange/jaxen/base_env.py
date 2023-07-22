@@ -34,8 +34,7 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    # max_steps_in_episode: int = 100
+    episode_time: int =  23400 #60seconds times 30 minutes = 1800seconds
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
     
@@ -46,7 +45,7 @@ class EnvParams:
 class BaseLOBEnv(environment.Environment):
     def __init__(self,alphatradePath):
         super().__init__()
-        self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
+        self.sliceTimeWindow = 900 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         # self.messagePath = alphatradePath+"/data_small/Flow_10/"
         # self.orderbookPath = alphatradePath+"/data_small/Book_10/"
@@ -61,7 +60,6 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id=-9000+1
         self.tick_size=100
-
 
 
         # Load the image MNIST data at environment init
@@ -125,6 +123,14 @@ class BaseLOBEnv(environment.Environment):
                 sliced_parts, init_OB = splitMessage(message, orderbook)
                 return sliced_parts, init_OB
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+            
+            shapes_list = []
+            for slicedCubes, OB in slicedCubes_withOB_list:
+                shapes = [cubes.shape[0] for cubes in slicedCubes]
+                shapes_list.append(shapes)
+            import jax.numpy as jnp
+            shapes_matrix = jnp.asarray(shapes_list,dtype=jnp.int64)
+            
             max_len_in_all_cubes = max([np.array([slicedCube.shape[0] for slicedCube in slicedCubes]).max() for slicedCubes, OB in slicedCubes_withOB_list])
             Cubes_withOB = []
             for slicedCubes, OB in slicedCubes_withOB_list:
@@ -132,15 +138,16 @@ class BaseLOBEnv(environment.Environment):
                 for cube in slicedCubes:
                     def padding(cube, target_shape):
                         # Calculate the amount of padding required
+                        # padded_cube = np.pad(cube, pad_width=[(target_shape - cube.shape[0],0),(0,0)], mode='constant', constant_values=0)
                         padded_cube = np.pad(cube, pad_width=[(0,target_shape - cube.shape[0]),(0,0)], mode='constant', constant_values=0)
                         return padded_cube
                     cube = padding(cube, max_len_in_all_cubes)
                     cubes.append(cube)
                 cubes = np.array(cubes)
                 Cubes_withOB.append((cubes,OB))
-            return Cubes_withOB
+            return Cubes_withOB, shapes_matrix
 
-        Cubes_withOB = load_LOBSTER(self.sliceTimeWindow,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        Cubes_withOB, self.shapes_matrix = load_LOBSTER(self.sliceTimeWindow,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         # # # ------------------------------- TESTING ------------------------------
         # alphatradePath = '/homes/80/kang/AlphaTrade'
         # messagePath = alphatradePath+"/data/Flow_10/"
@@ -149,11 +156,12 @@ class BaseLOBEnv(environment.Environment):
         # # orderbookPath = alphatradePath+"/data_small/Book_10/"
         # sliceTimeWindow, messagePath, orderbookPath, start_time, end_time=900,messagePath,orderbookPath,34200,57600
         
-        # Cubes_withOB = load_LOBSTER(sliceTimeWindow,messagePath,orderbookPath,34200,57600)
+        # Cubes_withOB, shapes_matrix = load_LOBSTER(sliceTimeWindow,messagePath,orderbookPath,start_time,end_time)
         # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
         # bks=[jnp.array(book) for cube, book in Cubes_withOB]
         # message_data, book_data = msgs[0],bks[0]
-        # message_data.shape
+        # a = [message_data.shape for message_data in msgs]
+        # len(a)
         # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # # ------------------------------- TESTING ------------------------------
 
