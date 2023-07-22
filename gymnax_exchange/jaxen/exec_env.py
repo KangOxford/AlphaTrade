@@ -189,7 +189,7 @@ class ExecutionEnv(BaseLOBEnv):
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         done = self.is_terminal(state,params)
         currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
-        benchmarkPrice = (state.init_price+currentBestPirce)//2
+        benchmarkPrice = (state.init_price+currentBestPirce)//2//self.tick_size
         benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
