@@ -12,6 +12,7 @@ import numpy as np
 #     pass
 from gym_exchange import Config
 import sys; sys.path.append('/Users/kang/AlphaTrade/')
+sys.path.append('/users/sasrey/AlphaTrade/')
 from gym_exchange.environment.basic_env.basic_env import BasicEnv
 from gym_exchange.environment.base_env.base_env import BaseEnv
 from gym_exchange.environment.timewindow_env.timewindow_env import TimewindowEnv
@@ -52,20 +53,27 @@ if __name__ == "__main__":
     sum_reward = []
     # state, reward, done, info = env.step([0,1,0])# for testing
     # state, reward, done, info = env.step([1,1,0])# for testing
-    startTime = time.time()
-    for i in range(len(arr)):
-        print("-"*20 + f'=> {i} <=' +'-'*20) #$
-        encoded_action = arr[i]
-        # if i == 320:
-        #     breakpoint()
-        state, reward, done, info = env.step(encoded_action)
-        # print(f"reward: {reward}") #$
-        # print(f"info: {info}") #$
-        sum_reward += [reward]
-        # env.render()
-        if done:
-            env.reset()
-            break #$
+    n_trials=100
+    rolling=0
+    iters=0
+    for i in range(n_trials):
+        startTime = time.time()
+        for i in range(len(arr)):
+            #print("-"*20 + f'=> {i} <=' +'-'*20) #$
+            encoded_action = arr[i]
+            # if i == 320:
+            #     breakpoint()
+            state, reward, done, info = env.step(encoded_action)
+            # print(f"reward: {reward}") #$
+            # print(f"info: {info}") #$
+            sum_reward += [reward]
+            # env.render()
+            if done:
+                endTime=time.time()
+                rolling=rolling+(endTime-startTime)
+                iters=iters+i
+                env.reset()
+                break #$
     # print(f"sum_reward:{sum(sum_reward)}")
-    print(f"time: {time.time() - startTime} for {i+1} steps, with average {(time.time() - startTime)/(i+1)}")
+    print(f"time: {rolling} for {iters} steps, with average {(time.time() - startTime)/(i+1)}")
     print(f"sum_reward:{np.sum(sum_reward)}, mean_reward:{np.mean(sum_reward)}, std_reward:{np.std(sum_reward)}")

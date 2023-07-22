@@ -43,9 +43,9 @@ class Config:
     # exchange_data_source = "encoder"
 
     AlphaTradeRoot=os.path.join(os.path.dirname(__file__),'../')
-    # symbol, date = get_symbol_date(AlphaTradeRoot)
+    symbol, date = get_symbol_date(AlphaTradeRoot)
     # symbol = "TSLA";date = "2015-01-02"
-    symbol = "AMZN";date = "2021-04-01"
+    #symbol = "AMZN";date = "2021-04-01"
 
 
 
@@ -65,7 +65,7 @@ class Config:
     '''num2liquidate = 2000 # 10 min, 200 # 1 min, 100 # 1/2 min'''
 
     # --------------- 04 Action ---------------
-    quantity_size_one_side = 30
+    quantity_size_one_side = 5
     # quantity_size_one_side = 3
     timeout = 100
     # timeout = 50
