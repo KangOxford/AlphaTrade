@@ -93,10 +93,10 @@ class BaseEnv(InterfaceEnv):
         # if self.cur_step == 156:
         #     print()#$
         # print("wrapped_order_flow:",wrapped_order_flow) #$
-        start = time.time()
+        # start = time.time()
         self.exchange.step(wrapped_order_flow)
-        end = time.time()
-        print(f"======> delta {end-start}")
+        # end = time.time()
+        # print(f"======> delta {end-start}")
         # ···················· 03.01.02.01 ····················
         auto_cancel = order_flows[1]  # order_flows consists of order_flow, auto_cancel
         # print(auto_cancel) #$
