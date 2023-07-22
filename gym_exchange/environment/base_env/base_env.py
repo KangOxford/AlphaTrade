@@ -18,6 +18,8 @@ from gym_exchange.exchange.basic_exc.autocancel_exchange import Exchange
 from gym_exchange.environment.base_env.utils import broadcast_lists
 
 
+import time
+
 # *************************** 2 *************************** #
 class BaseEnv(InterfaceEnv):
     # ========================== 01 ==========================
