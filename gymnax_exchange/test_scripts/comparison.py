@@ -18,6 +18,7 @@ from gymnax_exchange.jaxen.exec_env import *
 import json
 # ============== testing scripts ===============
 
+paramsFile = '/homes/80/kang/AlphaTrade/params_file_dutiful-thunder-5_07-21_18-48'
 
 def twapV3(state, env_params):
     # ---------- ifMarketOrder ----------
@@ -43,12 +44,14 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = '/homes/80/kang/AlphaTrade/testing'
+        # ATFolder = '/homes/80/kang/AlphaTrade/testing'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
+        ATFolder = '/homes/80/kang/AlphaTrade/testing_oneDay'
         
     env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
+    assert env.task_size == 500
     
     def get_ppo_average_price(rngInitNum):
         rng = jax.random.PRNGKey(rngInitNum)
@@ -77,7 +80,8 @@ if __name__ == "__main__":
         import flax
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-        with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
+        with open(paramsFile, 'rb') as f:
+        # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
             restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
             print(f"pramas restored")
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
@@ -253,7 +257,7 @@ if __name__ == "__main__":
         result_tuple = get_advantage(rngInitNum) 
         # result_list.append(result_tuple[0]) # window index
         print(f"window_index {result_tuple[0]:<4} , advantageTWAP {result_tuple[1]:^20} , advantageRANDOM {result_tuple[2]:^20} , advantageRUSH {result_tuple[3]:^20} , ppoAP {result_tuple[4]:<20} , twapAP {result_tuple[5]:<20} , randomAP {result_tuple[6]:<20} , rushAP {result_tuple[7]:<20} , ppoExecuted { [int(x) for x in result_tuple[8]]} , twapExecuted { [int(x) for x in result_tuple[9]]} , randomExecuted { [int(x) for x in result_tuple[10]]} , rushExecuted { [int(x) for x in result_tuple[11]]}",\
-            file=open('comparison6.txt','a'))
+            file=open('comparison'+ paramsFile.split('_')[-3] +'.txt','a'))
         
         
         
