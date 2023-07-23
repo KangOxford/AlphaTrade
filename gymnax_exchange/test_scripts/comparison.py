@@ -20,22 +20,22 @@ import json
 
 paramsFile = '/homes/80/kang/AlphaTrade/params_file_dutiful-thunder-5_07-21_18-48'
 
-def twapV3(state, env_params):
-    # ---------- ifMarketOrder ----------
-    remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-    marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-    ifMarketOrder = (remainingTime <= marketOrderTime)
-    print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
-    # ---------- ifMarketOrder ----------
-    # ---------- quants ----------
-    remainedQuant = state.task_to_execute - state.quant_executed
-    remainedStep = state.max_steps_in_episode - state.step_counter
-    stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-    limit_quants = jax.random.permutation(key_policy, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
-    market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
-    quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-    # ---------- quants ----------
-    return jnp.array(quants) 
+# def twapV3(state, env_params):
+#     # ---------- ifMarketOrder ----------
+#     remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+#     marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+#     ifMarketOrder = (remainingTime <= marketOrderTime)
+#     # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+#     # ---------- ifMarketOrder ----------
+#     # ---------- quants ----------
+#     remainedQuant = state.task_to_execute - state.quant_executed
+#     remainedStep = state.max_steps_in_episode - state.step_counter
+#     stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+#     limit_quants = jax.random.permutation(key_policy, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
+#     market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+#     quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+#     # ---------- quants ----------
+#     return jnp.array(quants) 
 
 if __name__ == "__main__":
     try:
@@ -147,7 +147,22 @@ if __name__ == "__main__":
                 quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                 # ---------- quants ----------
                 return jnp.array(quants)
-            
+            def twapV3(state, env_params):
+                # ---------- ifMarketOrder ----------
+                remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+                marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                ifMarketOrder = (remainingTime <= marketOrderTime)
+                # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+                # ---------- ifMarketOrder ----------
+                # ---------- quants ----------
+                remainedQuant = state.task_to_execute - state.quant_executed
+                remainedStep = state.max_steps_in_episode - state.step_counter
+                stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+                limit_quants = jax.random.permutation(key_policy, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
+                market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+                quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+                # ---------- quants ----------
+                return jnp.array(quants) 
                
             twap_action = twapV3(state, env_params)
             print(f"Sampled {i}th actions are: ",twap_action)
