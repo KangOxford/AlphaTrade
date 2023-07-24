@@ -118,7 +118,7 @@ if __name__ == "__main__":
         excuted_list.append(info["quant_executed"])
         if done:
             erlist.append((i, er))
-            print(f"global step {i:<10} , episodic return {er:^20} , ",\
+            print(f"windowIndex {:<10} , global step {i:<10} , episodic return {er:^20} , ",\
                 file=open('twap_'+ timestamp +"_OneDay_train_"+'.txt','a'))
             network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
             init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
