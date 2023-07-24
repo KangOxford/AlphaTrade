@@ -52,6 +52,7 @@ if __name__ == "__main__":
     env_params=env.default_params
     print(env_params.message_data.shape, env_params.book_data.shape)
     assert env.task_size == 500
+    import time; timestamp = str(int(time.time()))
     
     def get_ppo_average_price(rngInitNum):
         rng = jax.random.PRNGKey(rngInitNum)
@@ -80,6 +81,8 @@ if __name__ == "__main__":
         import flax
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
+        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+        init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
         
         # ===================================================
         # CHOICE ONE
@@ -100,8 +103,6 @@ if __name__ == "__main__":
         # ===================================================
         
         
-        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-        init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
         init_done = jnp.array([False]*ppo_config["NUM_ENVS"])
         ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
         assert len(ac_in[0].shape) == 3
@@ -288,7 +289,7 @@ if __name__ == "__main__":
         result_tuple = get_advantage(rngInitNum) 
         # result_list.append(result_tuple[0]) # window index
         print(f"window_index {result_tuple[0]:<4} , advantageTWAP {result_tuple[1]:^20} , advantageRANDOM {result_tuple[2]:^20} , advantageRUSH {result_tuple[3]:^20} , ppoAP {result_tuple[4]:<20} , twapAP {result_tuple[5]:<20} , randomAP {result_tuple[6]:<20} , rushAP {result_tuple[7]:<20} , ppoExecuted { [int(x) for x in result_tuple[8]]} , twapExecuted { [int(x) for x in result_tuple[9]]} , randomExecuted { [int(x) for x in result_tuple[10]]} , rushExecuted { [int(x) for x in result_tuple[11]]}",\
-            file=open('comparison'+ paramsFile.split('_')[-3] +"_OneMonth_"+'.txt','a'))
+            file=open('comparison'+ paramsFile.split('_')[-3] +"_OneMonth_"+timestamp+'.txt','a'))
         
         
         
