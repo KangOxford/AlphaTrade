@@ -22,110 +22,82 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         # ATFolder = '/home/duser/AlphaTrade'
-        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
+        ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         
-    ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 1,
-            "NUM_STEPS": 1,
-            "TOTAL_TIMESTEPS": 5e5,
-            "UPDATE_EPOCHS": 1,
-            "NUM_MINIBATCHES": 1,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'buy'
-        }       
-
-    env=ExecutionEnv(ATFolder,ppo_config['TASKSIDE'])
+    env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
-    # print(env_params.message_data.shape, env_params.book_data.shape)
-
-    # rng = jax.random.PRNGKey(3) #1
-    # rng = jax.random.PRNGKey(30) #12
-    # rng = jax.random.PRNGKey(300) #7
-    rng = jax.random.PRNGKey(3000) #11
+    print(env_params.message_data.shape, env_params.book_data.shape)
+    assert env.task_size == 500    
+    
+    import time
+    timestamp = str(int(time.time()))
+        
+    rngInitNum = 0    
+    rng = jax.random.PRNGKey(rngInitNum)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print(state.window_index)
     print("Time for reset: \n",time.time()-start)
-    # print(env_params.message_data.shape, env_params.book_data.shape)
-    
-    action_arr = jnp.array(
-        [[0, 0, 0, 0],
-        [10, 0, 0, 0],
-        [0, 1, 1, 0],
-        [15, 0, 0, 0],
-        [0, 2, 0, 3],
-        [1, 0, 0, 0],
-        [0, 2, 0, 0],
-        [6, 5, 6, 0],
-        [0, 9, 0, 1],
-        [3, 5, 5, 0],
-        [5, 0, 2, 0],
-        [2, 0, 4, 0],
-        [0, 0, 0, 2],
-        [3, 4, 0, 1],
-        [0, 0, 12, 0],
-        [0, 0, 1, 6],
-        [0, 5, 0, 8],
-        [0, 3, 0, 0],
-        [3, 2, 0, 0],
-        [0, 0, 0, 0],
-        [6, 0, 0, 0],
-        [4, 0, 0, 11],
-        [19, 0, 10, 1],
-        [1, 3, 8, 0],
-        [0, 5, 3, 7],
-        [3, 0, 1, 0],
-        [4, 0, 7, 0],
-        [0, 3, 0, 0],
-        [0, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 5, 3],
-        [13, 0, 4, 4],
-        [0, 0, 2, 0],
-        [4, 12, 0, 7],
-        [1, 4, 0, 0],
-        [7, 9, 1, 0],
-        [5, 0, 0, 0],
-        [1, 0, 10, 9],
-        [0, 4, 5, 0],
-        [0, 8, 0, 12],
-        [0, 0, 0, 4],
-        [13, 0, 0, 2],
-        [10, 4, 0, 2],
-        [0, 4, 2, 4],
-        [0, 3, 0, 1],
-        [1, 3, 0, 0]]
-    );assert state.window_index == 11
-    
-    action_arr.shape
-
-
-    
-    i = 0
-    for i in range(0,10000):
+    print(env_params.message_data.shape, env_params.book_data.shape)
+    erlist = []
+    excuted_list = []
+    er = 0
+    for i in range(1,int(1e7)):
         # ==================== ACTION ====================
-        action = action_arr[i,:]
-        # ==================== ACTION ====================    
-        print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")
+        # ---------- acion from given strategy  ----------
+        print("---"*20)
+        print("window_index ",state.window_index)
+        key_policy, _ = jax.random.split(key_policy,2)
+        def twap(state, env_params):
+            # ---------- ifMarketOrder ----------
+            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+            ifMarketOrder = (remainingTime <= marketOrderTime)
+            print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+            # ---------- ifMarketOrder ----------
+            # ---------- quants ----------
+            remainedQuant = state.task_to_execute - state.quant_executed
+            remainedStep = state.max_steps_in_episode - state.step_counter
+            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+            limit_quants_agressive = jnp.append(jax.random.permutation(key_policy, jnp.array([stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4]), independent=True),max(stepQuant - 3*stepQuant//4,stepQuant//4))
+            limit_quants_passive = jnp.append(jax.random.permutation(key_policy, jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4]), independent=True),remainedQuant//4)
+            limit_quants = jnp.where(limit_quants_agressive.sum() <= remainedQuant,limit_quants_agressive,limit_quants_passive)
+            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+            # ---------- quants ----------
+            return jnp.array(quants)
+        def twapV3(state, env_params):
+            # ---------- ifMarketOrder ----------
+            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+            ifMarketOrder = (remainingTime <= marketOrderTime)
+            # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+            # ---------- ifMarketOrder ----------
+            # ---------- quants ----------
+            remainedQuant = state.task_to_execute - state.quant_executed
+            remainedStep = state.max_steps_in_episode - state.step_counter
+            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+            limit_quants = jax.random.permutation(key_policy, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
+            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+            # ---------- quants ----------
+            return jnp.array(quants) 
+            
+        twap_action = twapV3(state, env_params)
+        print(f"Sampled {i}th actions are: ",twap_action)
         start=time.time()
-        obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+        obs,state,reward,done,info=env.step(key_step, state,twap_action, env_params)
+        er+=reward
         print(f"Time for {i} step: \n",time.time()-start)
-        # done, state.quant_executed
-        print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
-        if done or i>=action_arr.shape[0]:
-            break
-    # print(info)
+        print("excuted ",info["quant_executed"])
+        excuted_list.append(info["quant_executed"])
+        if done:
+            erlist.append((i, er))
+            print(f"global step {i:<10} , episodic return {er:^20} , ",\
+                file=open('twap_'+ timestamp +"_OneDay_train_"+'.txt','a'))
+            key_reset, _ = jax.random.split(key_reset)
+            obs,state=env.reset(key_reset,env_params)
+            er =0

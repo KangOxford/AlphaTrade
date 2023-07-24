@@ -187,16 +187,16 @@ class BaseLOBEnv(environment.Environment):
         Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
         self.max_steps_in_episode_arr = max_steps_in_episode_arr
         # # ------------------------------- TESTING ------------------------------
-        # alphatradePath = '/homes/80/kang/AlphaTrade/training_oneDay'
-        alphatradePath = '/homes/80/kang/AlphaTrade/testing_oneDay'
-        messagePath = alphatradePath+"/data/Flow_10/"
-        orderbookPath = alphatradePath+"/data/Book_10/"
-        sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
-        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
-        msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
-        bks=[jnp.array(book) for cube, book in Cubes_withOB]
-        message_data, book_data = msgs[0],bks[0]
-        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
+        # # alphatradePath = '/homes/80/kang/AlphaTrade/training_oneDay'
+        # alphatradePath = '/homes/80/kang/AlphaTrade/testing_oneDay'
+        # messagePath = alphatradePath+"/data/Flow_10/"
+        # orderbookPath = alphatradePath+"/data/Book_10/"
+        # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
+        # Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
+        # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
+        # bks=[jnp.array(book) for cube, book in Cubes_withOB]
+        # message_data, book_data = msgs[0],bks[0]
+        # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # ------------------------------- TESTING ------------------------------
 
         # # # ------------------------------- STATS ------------------------------  
