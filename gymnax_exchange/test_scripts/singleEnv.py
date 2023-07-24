@@ -78,7 +78,7 @@ if __name__ == "__main__":
             ),
             jnp.zeros((1, ppo_config["NUM_ENVS"])),
         )
-    _rng,_= jax.random.split(2)
+    _rng,_= jax.random.split(_rng, 2)
     network_params = network.init(_rng, init_hstate, init_x)
     
     
@@ -100,16 +100,6 @@ if __name__ == "__main__":
     excuted_list = []
     er = 0
     for i in range(1,10000):
-        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-        init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
-        init_x = (
-                jnp.zeros(
-                    (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
-                ),
-                jnp.zeros((1, ppo_config["NUM_ENVS"])),
-            )
-        _rng,_= jax.random.split(2)
-        network_params = network.init(_rng, init_hstate, init_x)
         # ==================== ACTION ====================
         # ---------- acion from trained network ----------
         ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
@@ -130,7 +120,17 @@ if __name__ == "__main__":
             erlist.append((i, er))
             print(f"global step {i:<10} , episodic return {er:^20} , ",\
                 file=open('twap_'+ timestamp +"_OneDay_train_"+'.txt','a'))
-            key_reset, _ = jax.random.split(key_reset)
+            network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+            init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
+            init_x = (
+                    jnp.zeros(
+                        (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
+                    ),
+                    jnp.zeros((1, ppo_config["NUM_ENVS"])),
+                )
+            _rng,_= jax.random.split(_rng,2)
+            network_params = network.init(_rng, init_hstate, init_x)
+            key_reset, _ = jax.random.split(key_reset,2)
             obs,state=env.reset(key_reset,env_params)
             er =0
             
