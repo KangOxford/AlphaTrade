@@ -86,19 +86,18 @@ if __name__ == "__main__":
         
         # ===================================================
         # CHOICE ONE
-        # with open(paramsFile, 'rb') as f:
-        # # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
-        #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-        #     print(f"pramas restored")
+        with open(paramsFile, 'rb') as f:
+            restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+            print(f"pramas restored")
         # ---------------------------------------------------
-        init_x = (
-            jnp.zeros(
-                (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
-            ),
-            jnp.zeros((1, ppo_config["NUM_ENVS"])),
-        )
-        network_params = network.init(key_policy, init_hstate, init_x)
-        restored_params = network_params
+        # init_x = (
+        #     jnp.zeros(
+        #         (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
+        #     ),
+        #     jnp.zeros((1, ppo_config["NUM_ENVS"])),
+        # )
+        # network_params = network.init(key_policy, init_hstate, init_x)
+        # restored_params = network_params
         # CHOICE OTWO
         # ===================================================
         
