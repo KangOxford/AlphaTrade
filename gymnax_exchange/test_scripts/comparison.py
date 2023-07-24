@@ -61,7 +61,7 @@ if __name__ == "__main__":
                 "LR": 2.5e-4,
                 "NUM_ENVS": 1,
                 "NUM_STEPS": 1,
-                "TOTAL_TIMESTEPS": 5e5,
+                "TOTAL_TIMESTEPS": 1e7,
                 "UPDATE_EPOCHS": 1,
                 "NUM_MINIBATCHES": 1,
                 "GAMMA": 0.99,
@@ -80,10 +80,26 @@ if __name__ == "__main__":
         import flax
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
         from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-        with open(paramsFile, 'rb') as f:
-        # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
-            restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-            print(f"pramas restored")
+        
+        # ===================================================
+        # CHOICE ONE
+        # with open(paramsFile, 'rb') as f:
+        # # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
+        #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        #     print(f"pramas restored")
+        # ---------------------------------------------------
+        init_x = (
+            jnp.zeros(
+                (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
+            ),
+            jnp.zeros((1, ppo_config["NUM_ENVS"])),
+        )
+        network_params = network.init(key_policy, init_hstate, init_x)
+        restored_params = network_params
+        # CHOICE OTWO
+        # ===================================================
+        
+        
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
         init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
         init_done = jnp.array([False]*ppo_config["NUM_ENVS"])
