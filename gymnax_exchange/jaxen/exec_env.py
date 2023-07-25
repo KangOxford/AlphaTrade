@@ -82,13 +82,14 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,debug=False):
+    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
+        self.Lambda = Lambda
         # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
-        self.task_size = 500 # num to sell or buy for the task
+        self.task_size = task_size # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
@@ -102,29 +103,11 @@ class ExecutionEnv(BaseLOBEnv):
     
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, delta: Dict, params: EnvParams
+        self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        def twapV3(state, env_params):
-            # ---------- ifMarketOrder ----------
-            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-            ifMarketOrder = (remainingTime <= marketOrderTime)
-            # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
-            # ---------- ifMarketOrder ----------
-            # ---------- quants ----------
-            remainedQuant = state.task_to_execute - state.quant_executed
-            remainedStep = state.max_steps_in_episode - state.step_counter
-            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-            limit_quants = jax.random.permutation(key, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
-            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
-            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-            # ---------- quants ----------
-            return jnp.array(quants) 
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
-        get_base_action = lambda state, params:twapV3(state, params)
-        action = get_base_action(state, params) + delta
         def truncate_action(action, remainQuant):
             action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
             scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
@@ -161,7 +144,8 @@ class ExecutionEnv(BaseLOBEnv):
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
+        Lambda = self.Lambda 
+        # Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
         # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
@@ -330,7 +314,7 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
         # return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.

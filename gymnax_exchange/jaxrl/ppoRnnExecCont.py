@@ -127,7 +127,7 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["DEBUG"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -481,7 +481,9 @@ if __name__ == "__main__":
         "DEBUG": True,
         "NORMALIZE_ENV": True,
         "ATFOLDER": ATFolder,
-        "TASKSIDE":'sell'
+        "TASKSIDE":'sell',
+        "LAMBDA":0.0,
+        "TASK_SIZE":500,
     }
 
     if wandbOn:
