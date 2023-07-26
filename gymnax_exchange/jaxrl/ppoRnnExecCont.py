@@ -456,8 +456,8 @@ if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1] 
     except:
-        ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        # ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+        ATFolder = '/homes/80/kang/AlphaTrade'
         # ATFolder = '/home/duser/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
