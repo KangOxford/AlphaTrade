@@ -175,6 +175,12 @@ class ExecutionEnv(BaseLOBEnv):
         currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
         benchmarkPrice = (state.init_price+currentBestPirce)//2
         benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
+        def normalizeReward(reward):
+            mean_, std_ = -23328.602208327717, 58565.76675200597 # oneWindow
+            mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
+            mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
+            return (reward-mean_)/std_
+        reward = normalizeReward(reward)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
