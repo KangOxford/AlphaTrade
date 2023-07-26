@@ -196,8 +196,8 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
-        # idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-        idx_data_window = jnp.array(0,dtype=jnp.int32)
+        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        # idx_data_window = jnp.array(0,dtype=jnp.int32)
         # jax.debug.print("window_size {}",self.max_steps_in_episode_arr[0])
         
         # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],self.max_steps_in_episode_arr.max().astype(jnp.int32) 
