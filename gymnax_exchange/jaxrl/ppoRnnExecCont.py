@@ -23,6 +23,9 @@ from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction,
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
+import optax._src.linear_algebra as linAlg
+
+
 #Code snippet to disable all jitting.
 
 from jax import config
@@ -38,10 +41,10 @@ wandbOn = True
 if wandbOn:
     import wandb
 
-# def save_checkpoint(params, filename):
-#     with open(filename, 'wb') as f:
-#         f.write(flax.serialization.to_bytes(params))
-#         print(f"Checkpoint saved to {filename}")
+def save_checkpoint(params, filename):
+    with open(filename, 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"Checkpoint saved to {filename}")
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -122,6 +125,7 @@ class Transition(NamedTuple):
     log_prob: jnp.ndarray
     obs: jnp.ndarray
     info: jnp.ndarray
+
 
 
 def make_train(config):
@@ -318,8 +322,9 @@ def make_train(config):
                     total_loss, grads = grad_fn(
                         train_state.params, init_hstate, traj_batch, advantages, targets
                     )
+                    grad_norm=linAlg.global_norm(grads)
                     train_state = train_state.apply_gradients(grads=grads)
-                    return train_state, total_loss
+                    return train_state, (total_loss,grad_norm)
 
                 (
                     train_state,
@@ -376,13 +381,14 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
+            grad_norm=jnp.mean(loss_info[1])
             train_state = update_state[0]
-            metric = (traj_batch.info,train_state.params)
+            metric = (traj_batch.info,train_state.params,grad_norm)
             rng = update_state[-1]
             if config.get("DEBUG"):
 
                 def callback(metric):
-                    info,trainstate=metric
+                    info,trainstate,grad_norm=metric
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
@@ -425,12 +431,14 @@ def make_train(config):
                                     "current_step":current_step[t],
                                     "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
                                     "advatange_in_bp":advatange_in_bp[t],
+                                    "grad_norm":grad_norm,
                                 }
                             )        
                         else:
                             print(
                                 f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
-                            )     
+                            )
+                            print(grad_norm)     
                             # print("==="*20)      
                             # print(info["current_step"])  
                             # print(info["total_revenue"])  
@@ -493,7 +501,7 @@ if __name__ == "__main__":
         "CLIP_EPS": 0.2,
         "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
-        "MAX_GRAD_NORM": 0.5,
+        "MAX_GRAD_NORM": 2.0,
         "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
         "DEBUG": True,
