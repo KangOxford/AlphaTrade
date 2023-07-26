@@ -7,6 +7,7 @@ import flax.linen as nn
 import numpy as np
 import optax
 import time
+import flax
 from flax.linen.initializers import constant, orthogonal
 from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
@@ -376,11 +377,12 @@ def make_train(config):
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
             train_state = update_state[0]
-            metric = traj_batch.info
+            metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
             if config.get("DEBUG"):
 
-                def callback(info):
+                def callback(metric):
+                    info,trainstate=metric
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
@@ -405,7 +407,11 @@ def make_train(config):
                     # print(info["average_price"])   
                     # print(info["returned_episode_returns"])
                     '''
-                    
+                    if len(timesteps) >0:
+                        if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
+                            checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
+                            save_checkpoint(trainstate, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
+
                     # '''
                     for t in range(len(timesteps)):  
                         if wandbOn:
@@ -437,7 +443,7 @@ def make_train(config):
                 jax.debug.callback(callback, metric)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
-            return runner_state, metric
+            return runner_state, traj_batch.info
 
         rng, _rng = jax.random.split(rng)
         runner_state = (
@@ -454,9 +460,7 @@ def make_train(config):
         
         
         
-        # if (global_step + 1) % int(1e5) == 0:  # +1 since global_step is 0-indexed
-        #     checkpoint_filename = f"checkpoint_{global_step+1}.ckpt"
-        #     save_checkpoint(runner_state[0].params, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
+
 
         
         
