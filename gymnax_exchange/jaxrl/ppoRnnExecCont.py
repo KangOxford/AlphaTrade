@@ -37,10 +37,10 @@ wandbOn = True
 if wandbOn:
     import wandb
 
-def save_checkpoint(params, filename):
-    with open(filename, 'wb') as f:
-        f.write(flax.serialization.to_bytes(params))
-        print(f"Checkpoint saved to {filename}")
+# def save_checkpoint(params, filename):
+#     with open(filename, 'wb') as f:
+#         f.write(flax.serialization.to_bytes(params))
+#         print(f"Checkpoint saved to {filename}")
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -454,9 +454,9 @@ def make_train(config):
         
         
         
-        if (global_step + 1) % int(1e5) == 0:  # +1 since global_step is 0-indexed
-            checkpoint_filename = f"checkpoint_{global_step+1}.ckpt"
-            save_checkpoint(runner_state[0].params, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
+        # if (global_step + 1) % int(1e5) == 0:  # +1 since global_step is 0-indexed
+        #     checkpoint_filename = f"checkpoint_{global_step+1}.ckpt"
+        #     save_checkpoint(runner_state[0].params, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
 
         
         
@@ -474,7 +474,8 @@ if __name__ == "__main__":
     print("AlphaTrade folder:",ATFolder)
 
     ppo_config = {
-        "LR": 2.5e-4,
+        # "LR": 2.5e-4,
+        "LR": 2.5e-6,
         # "NUM_ENVS": 1,
         # "NUM_STEPS": 1,
         # "NUM_MINIBATCHES": 1,
