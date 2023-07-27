@@ -47,7 +47,7 @@ if __name__ == "__main__":
         n_steps=50
         # n_steps=500
         # n_steps=globalSteps/num_envs
-        num_envs = 8
+        num_envs = 1
         vmap_keys = jax.random.split(rng, num_envs)
         
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
 
         def step_wrap_vmap(runner_state, unused):
-            jax.debug.print('step')
+            # jax.debug.print('step')
             env_state, obsv, done, rng, cum_reward = runner_state
             rng, _rng = jax.random.split(rng)
             vmap_keys = jax.random.split(_rng, num_envs)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
             cum_reward += reward
             reset_reward = jnp.where(done, 0.0, cum_reward)  # Reset cum_reward to 0 if done is True
             runner_state = (env_state, obsv, done, rng, reset_reward)
-            jax.debug.print("---done {}", done)
+            jax.debug.print("reward {}", reward)
             return runner_state, (cum_reward, done)
         
         initial_cum_reward = jnp.zeros((num_envs,))
