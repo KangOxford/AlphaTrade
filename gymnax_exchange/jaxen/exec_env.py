@@ -350,9 +350,9 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
         # return spaces.Box(-2,2,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
         # return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
