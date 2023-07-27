@@ -76,8 +76,10 @@ if __name__ == "__main__":
         n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, vmap_act_sample(vmap_keys), env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
 
-        def step_wrap_vmap(runner_state, unused):
-            jax.debug.print('@step')
+        # def step_wrap_vmap(runner_state, unused):
+        #     jax.debug.print('@step')
+        def step_wrap_vmap(runner_state, i):
+            jax.debug.print('step {}',i)
             env_state, obsv, done, rng, cum_reward = runner_state
             rng, _rng = jax.random.split(rng)
             vmap_keys = jax.random.split(_rng, num_envs)
@@ -95,9 +97,17 @@ if __name__ == "__main__":
         initial_dones = jnp.zeros((num_envs,), dtype=jnp.bool_)
         r_state = (n_state, n_obs, initial_dones, rng, initial_cum_reward)
 
+        # def scan_func_vmap(r_state, n_steps):
+        #     r_state, (cum_rewards, dones) = jax.lax.scan(step_wrap_vmap, r_state, None, n_steps)
+        #     return r_state, (cum_rewards, dones)
+        
         def scan_func_vmap(r_state, n_steps):
-            r_state, (cum_rewards, dones) = jax.lax.scan(step_wrap_vmap, r_state, None, n_steps)
+            # Generating a sequence of iteration numbers
+            iterations = jnp.arange(n_steps)
+            r_state, (cum_rewards, dones) = jax.lax.scan(step_wrap_vmap, r_state, iterations)
             return r_state, (cum_rewards, dones)
+
+
 
         start = time.time()
         r_state, (cum_rewards, dones) = jax.jit(scan_func_vmap, static_argnums=(1,))(r_state, n_steps)
