@@ -193,17 +193,17 @@ class ExecutionEnv(BaseLOBEnv):
             state.max_steps_in_episode)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         done = self.is_terminal(state,params)
-        currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
-        benchmarkPrice = (state.init_price+currentBestPirce)//2
-        benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
+        # currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
+        # benchmarkPrice = (state.init_price+currentBestPirce)//2
+        # benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
             'done':done,\
-            "benchmarkTotalRevenue":benchmarkRevenue,\
-            "advatange_in_bp":(state.total_revenue-benchmarkRevenue)/benchmarkRevenue*10000,\
+            # "benchmarkTotalRevenue":benchmarkRevenue,\
+            # "advatange_in_bp":(state.total_revenue-benchmarkRevenue)/benchmarkRevenue*10000,\
             }
 
 

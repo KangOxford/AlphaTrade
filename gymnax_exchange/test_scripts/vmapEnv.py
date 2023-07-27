@@ -37,47 +37,90 @@ if __name__ == "__main__":
     
     
     enable_vmap=True
-    if enable_vmap:
-        # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+    # if enable_vmap:
+    #     # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
-        # print(test_actions)
+    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+    #     # print(test_actions)
+
+    #     num_envs = 10
+    #     rng, resetKey, actionKey, stepKey = jax.random.split(rng, 4)
+
+
+    #     start=time.time()
+    #     resetKeys =jax.random.split(resetKey, num_envs)
+    #     actionKeys =jax.random.split(actionKey, num_envs)
+    #     stepKeys =jax.random.split(stepKey, num_envs)
+    #     obs, state = vmap_reset(resetKeys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+    #     total_steps = 1000*10
+    #     for i in range(total_steps//num_envs):
+    #         start=time.time()
+    #         actionKeys = jax.random.split(actionKeys[0], num_envs)
+    #         stepKeys = jax.random.split(stepKeys[0], num_envs)
+    #         test_actions=vmap_act_sample(actionKeys)
+    #         n_obs, n_state, n_reward, n_done, n_info = vmap_step(stepKeys, state, test_actions, env_params)
+    #         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    #         print(f"\n-------- {i} --------")
+    #         print(test_actions)
+    #         print(n_done)
+    #         print("stepKeys",stepKeys)
+    #         print("current_step",n_info["current_step"])
+    #         print("window_index",n_info["window_index"])
+    #         if any(n_done):
+    #             break
+    #         # if done:
+    #         #     vmap_keys = jax.random.split(vmap_keys, num_envs)
+    #         #     start=time.time()
+    #         #     obs, state = vmap_reset(vmap_keys, env_params)
+    #         #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+                
+    if enable_vmap:
+        vmap_reset = jax.jit(jax.vmap(env.reset, in_axes=(0, None)))
+        vmap_step = jax.jit(jax.vmap(env.step, in_axes=(0, 0, 0, None)))
+        vmap_act_sample=jax.jit(jax.vmap(env.action_space().sample, in_axes=(0)))
 
         num_envs = 10
-        rng, resetKey, actionKey, stepKey = jax.random.split(rng, 4)
+        vmap_keys = jax.random.split(rng, num_envs)
 
+        test_actions=vmap_act_sample(vmap_keys)
+        print(test_actions)
 
         start=time.time()
-        resetKeys =jax.random.split(resetKey, num_envs)
-        actionKeys =jax.random.split(actionKey, num_envs)
-        stepKeys =jax.random.split(stepKey, num_envs)
-        obs, state = vmap_reset(resetKeys, env_params)
+        obs, state = vmap_reset(vmap_keys, env_params)
         print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
-        total_steps = 1000*10
-        for i in range(total_steps//num_envs):
-            start=time.time()
-            actionKeys = jax.random.split(actionKeys[0], num_envs)
-            stepKeys = jax.random.split(stepKeys[0], num_envs)
-            test_actions=vmap_act_sample(actionKeys)
-            n_obs, n_state, n_reward, n_done, n_info = vmap_step(stepKeys, state, test_actions, env_params)
-            print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
-            print(f"\n-------- {i} --------")
-            print(test_actions)
-            print(n_done)
-            print("stepKeys",stepKeys)
-            print("current_step",n_info["current_step"])
-            print("window_index",n_info["window_index"])
-            if any(n_done):
-                break
-            # if done:
-            #     vmap_keys = jax.random.split(vmap_keys, num_envs)
-            #     start=time.time()
-            #     obs, state = vmap_reset(vmap_keys, env_params)
-            #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
-                
-                
+
+        start=time.time()
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+
+        def step_wrap_vmap(runner_state,unused):
+            jax.debug.print('step')
+            env_state, obsv, done, rng=runner_state
+            rng,_rng=jax.random.split(rng)
+            vmap_keys = jax.random.split(_rng, num_envs)
+            test_actions=vmap_act_sample(vmap_keys).astype(jnp.float32)
+            obsv,env_state,reward,done,info=vmap_step(vmap_keys, env_state, test_actions, env_params)
+            runner_state = (env_state, obsv, done, rng)
+            jax.debug.print("---done {}",done)
+            return runner_state,None
+    
+        r_state=(n_state, n_obs, done, rng)
+
+
+        n_steps=500
+        # n_steps=globalSteps/num_envs
+
+
+        def scan_func_vmap(r_state,n_steps):
+            r_state,_=jax.lax.scan(step_wrap_vmap,r_state,None,n_steps)
+            return r_state
+
+        start=time.time()
+        r_state=jax.jit(scan_func_vmap,static_argnums=(1,))(r_state,n_steps)
+        print("Time for vmap step with,",num_envs, " environments and",n_steps," steps: \n",time.time()-start)                
                 
                 
                 
