@@ -318,8 +318,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-2,2,(610,),dtype=jnp.float32) 
-        # space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
+        # space = spaces.Box(-2,2,(610,),dtype=jnp.float32) 
+        space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
         # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
         #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
