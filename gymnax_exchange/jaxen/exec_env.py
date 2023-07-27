@@ -197,6 +197,11 @@ class ExecutionEnv(BaseLOBEnv):
             # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
             mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
             return (reward-mean_)/std_/100
+        def normalizeRewardV2(reward):
+            # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
+            # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
+            normalizeFactor = 2332800 # oneMonth
+            return reward/normalizeFactor
         reward = normalizeReward(reward)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
