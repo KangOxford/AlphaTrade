@@ -47,7 +47,7 @@ if __name__ == "__main__":
         n_steps=50
         # n_steps=500
         # n_steps=globalSteps/num_envs
-        num_envs = 10
+        num_envs = 8
         vmap_keys = jax.random.split(rng, num_envs)
         
 
@@ -70,12 +70,11 @@ if __name__ == "__main__":
             test_actions = vmap_act_sample(vmap_keys).astype(jnp.float32)
             obsv, env_state, reward, done, info = vmap_step(vmap_keys, env_state, test_actions, env_params)
             cum_reward += reward
-            runner_state = (env_state, obsv, done, rng, cum_reward)
+            reset_reward = jnp.where(done, 0.0, cum_reward)  # Reset cum_reward to 0 if done is True
+            runner_state = (env_state, obsv, done, rng, reset_reward)
             jax.debug.print("---done {}", done)
             return runner_state, (cum_reward, done)
-
-
-    
+        
         initial_cum_reward = jnp.zeros((num_envs,))
         initial_dones = jnp.zeros((num_envs,), dtype=jnp.bool_)
         r_state = (n_state, n_obs, initial_dones, rng, initial_cum_reward)
@@ -93,7 +92,7 @@ if __name__ == "__main__":
         print("Time for vmap step with,", num_envs, " environments and", n_steps, " steps: \n", time.time() - start)
 
         adjusted_rewards = cum_rewards * dones.astype(jnp.float32)
-
+        adjusted_rewards
                 
     # enable_vmap=True
     # if enable_vmap:
