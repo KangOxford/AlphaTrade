@@ -145,8 +145,6 @@ class ExecutionEnv(BaseLOBEnv):
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         Lambda = self.Lambda 
-        # Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
-        # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
@@ -171,6 +169,7 @@ class ExecutionEnv(BaseLOBEnv):
             state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
             state.max_steps_in_episode)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
+        jax.debug.breakpoint()
         done = self.is_terminal(state,params)
         def normalizeReward(reward):
             # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
@@ -183,6 +182,7 @@ class ExecutionEnv(BaseLOBEnv):
             normalizeFactor = 2332800 # oneMonth
             return reward/normalizeFactor
         reward = normalizeReward(reward)
+        
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
@@ -300,11 +300,15 @@ class ExecutionEnv(BaseLOBEnv):
         shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
         # ========= self.get_obs(state,params) =============
         # jax.debug.breakpoint()
+        # [item for item in map(type,[best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,shallowImbalance])]
+        
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),\
             jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
         # jax.debug.breakpoint()
-        # def obsNorm(obs):
-        #     obs[:300]/3.5e7
+        def obsNorm(obs):
+            pass
+            # obs[:300] = obs[:300]/3.5e7
+            # obs.at[:300].set(obs[:300] / 3.5e7)
         return obs
 
 
@@ -318,8 +322,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        # space = spaces.Box(-2,2,(610,),dtype=jnp.float32) 
-        space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
+        space = spaces.Box(-2,2,(610,),dtype=jnp.float32) 
+        # space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
         # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
         #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
