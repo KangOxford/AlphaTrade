@@ -37,6 +37,9 @@ if __name__ == "__main__":
         
     rngInitNum = 0    
     rng = jax.random.PRNGKey(rngInitNum)
+    
+    
+    
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
