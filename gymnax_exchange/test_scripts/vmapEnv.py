@@ -42,50 +42,62 @@ if __name__ == "__main__":
         vmap_reset = jax.jit(jax.vmap(env.reset, in_axes=(0, None)))
         vmap_step = jax.jit(jax.vmap(env.step, in_axes=(0, 0, 0, None)))
         vmap_act_sample=jax.jit(jax.vmap(env.action_space().sample, in_axes=(0)))
+        def twapV3(action_key, state, env_params):
+            # ---------- ifMarketOrder ----------
+            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+            ifMarketOrder = (remainingTime <= marketOrderTime)
+            # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+            # ---------- ifMarketOrder ----------
+            # ---------- quants ----------
+            remainedQuant = state.task_to_execute - state.quant_executed
+            remainedStep = state.max_steps_in_episode - state.step_counter
+            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+            limit_quants = jax.random.permutation(action_key, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
+            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+            # ---------- quants ----------
+            return jnp.array(quants)
+        vmap_act_twapV3 = jax.jit(jax.vmap(twapV3,in_axes=(0, 0, None)))
 
-
-        n_steps=50
-        # n_steps=500
-        # n_steps=globalSteps/num_envs
-        num_envs = 1
+        globalSteps = int(1e7)
+        num_envs = 1000
+        # globalSteps = 4*500
+        # num_envs = 4
+        n_steps=globalSteps//num_envs
+        print(n_steps)
         vmap_keys = jax.random.split(rng, num_envs)
-        
-
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
 
         start=time.time()
         obs, state = vmap_reset(vmap_keys, env_params)
         print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
 
         start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, vmap_act_sample(vmap_keys), env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
 
         def step_wrap_vmap(runner_state, unused):
-            # jax.debug.print('step')
+            jax.debug.print('@step')
             env_state, obsv, done, rng, cum_reward = runner_state
             rng, _rng = jax.random.split(rng)
             vmap_keys = jax.random.split(_rng, num_envs)
-            test_actions = vmap_act_sample(vmap_keys).astype(jnp.float32)
+
+            test_actions = vmap_act_twapV3(vmap_keys,env_state,env_params)
+            # test_actions = vmap_act_sample(vmap_keys).astype(jnp.float32)
             obsv, env_state, reward, done, info = vmap_step(vmap_keys, env_state, test_actions, env_params)
             cum_reward += reward
             reset_reward = jnp.where(done, 0.0, cum_reward)  # Reset cum_reward to 0 if done is True
             runner_state = (env_state, obsv, done, rng, reset_reward)
-            jax.debug.print("reward {}", reward)
+            # jax.debug.print("reward {}", reward)
             return runner_state, (cum_reward, done)
         
         initial_cum_reward = jnp.zeros((num_envs,))
         initial_dones = jnp.zeros((num_envs,), dtype=jnp.bool_)
         r_state = (n_state, n_obs, initial_dones, rng, initial_cum_reward)
 
-
-
         def scan_func_vmap(r_state, n_steps):
             r_state, (cum_rewards, dones) = jax.lax.scan(step_wrap_vmap, r_state, None, n_steps)
             return r_state, (cum_rewards, dones)
-
-
 
         start = time.time()
         r_state, (cum_rewards, dones) = jax.jit(scan_func_vmap, static_argnums=(1,))(r_state, n_steps)
@@ -93,6 +105,8 @@ if __name__ == "__main__":
 
         adjusted_rewards = cum_rewards * dones.astype(jnp.float32)
         adjusted_rewards
+        # for i in range(adjusted_rewards.shape[0]):
+        #     print(adjusted_rewards[i,:])
                 
     # enable_vmap=True
     # if enable_vmap:
@@ -200,3 +214,5 @@ if __name__ == "__main__":
     #         key_reset, _ = jax.random.split(key_reset)
     #         obs,state=env.reset(key_reset,env_params)
     #         er =0
+    
+    
