@@ -84,7 +84,8 @@ class EnvParams:
 class ExecutionEnv(BaseLOBEnv):
     def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0):
         super().__init__(alphatradePath)
-        self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
+        self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
+        # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.Lambda = Lambda
         # self.task_size = 5000 # num to sell or buy for the task
@@ -117,8 +118,8 @@ class ExecutionEnv(BaseLOBEnv):
             remainedQuant = state.task_to_execute - state.quant_executed
             remainedStep = state.max_steps_in_episode - state.step_counter
             stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-            limit_quants = jax.random.permutation(key, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
-            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
+            limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True)
+            market_quants = jnp.array([stepQuant,stepQuant])
             quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
             # ---------- quants ----------
             return jnp.array(quants) 
@@ -263,8 +264,8 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
-        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
+        # A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
+        # M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
         PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
         # --------------- 02 info for deciding prices ---------------
@@ -273,21 +274,21 @@ class ExecutionEnv(BaseLOBEnv):
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState,  A: float):
+        def market_order_logic(state: EnvState):
             quant = state.task_to_execute - state.quant_executed
-            price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
+            # price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             #FIXME not very clean way to implement, but works:
-            quants = jnp.asarray((quant//4,quant//4,quant//4,quant-3*quant//4),jnp.int32) 
-            prices = jnp.asarray((price, price , price, price),jnp.int32)
+            quants = jnp.asarray((quant - quant//2, quant//2),jnp.int32) 
+            prices = jnp.asarray((P, P),jnp.int32)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
             return quants, prices
-        def normal_order_logic(state: EnvState, action: jnp.ndarray, A: float, M: float, P: float, PP: float):
+        def normal_order_logic(state: EnvState, action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((A, M, P, PP), jnp.int32)
+            prices = jnp.asarray((P, PP), jnp.int32)
             return quants, prices
-        market_quants, market_prices = market_order_logic(state, A)
-        normal_quants, normal_prices = normal_order_logic(state, action, A, M, P, PP)
+        market_quants, market_prices = market_order_logic(state)
+        normal_quants, normal_prices = normal_order_logic(state, action)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
