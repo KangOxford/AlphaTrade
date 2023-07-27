@@ -104,6 +104,7 @@ class ExecutionEnv(BaseLOBEnv):
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, delta: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        '''
         #Obtain the messages for the step from the message data
         def twapV3(state, env_params):
             # ---------- ifMarketOrder ----------
@@ -125,6 +126,10 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         get_base_action = lambda state, params:twapV3(state, params)
         action = get_base_action(state, params) + delta
+        '''
+        data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        action = delta
+        
         def truncate_action(action, remainQuant):
             action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
             scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
@@ -188,17 +193,17 @@ class ExecutionEnv(BaseLOBEnv):
             state.max_steps_in_episode)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         done = self.is_terminal(state,params)
-        currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
-        benchmarkPrice = (state.init_price+currentBestPirce)//2
-        benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
+        # currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
+        # benchmarkPrice = (state.init_price+currentBestPirce)//2
+        # benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
             'done':done,\
-            "benchmarkTotalRevenue":benchmarkRevenue,\
-            "advatange_in_bp":(state.total_revenue-benchmarkRevenue)/benchmarkRevenue*10000,\
+            # "benchmarkTotalRevenue":benchmarkRevenue,\
+            # "advatange_in_bp":(state.total_revenue-benchmarkRevenue)/benchmarkRevenue*10000,\
             }
 
 
@@ -313,30 +318,23 @@ class ExecutionEnv(BaseLOBEnv):
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),\
             jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
         # jax.debug.breakpoint()
+        # def obsNorm(obs):
+        #     obs[:300]/3.5e7
         return obs
-
-    @property
-    def name(self) -> str:
-        """Environment name."""
-        return "alphatradeExec-v0"
-
-    @property
-    def num_actions(self) -> int:
-        """Number of actions possible in environment."""
-        return self.n_actions
 
 
     def action_space(
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
+        space = spaces.Box(-2,2,(610,),dtype=jnp.float32) 
+        # space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
         # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
         #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
@@ -353,6 +351,16 @@ class ExecutionEnv(BaseLOBEnv):
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )
+
+    @property
+    def name(self) -> str:
+        """Environment name."""
+        return "alphatradeExec-v0"
+
+    @property
+    def num_actions(self) -> int:
+        """Number of actions possible in environment."""
+        return self.n_actions
 
 # ============================================================================= #
 # ============================================================================= #
