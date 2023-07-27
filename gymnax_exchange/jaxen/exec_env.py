@@ -169,7 +169,7 @@ class ExecutionEnv(BaseLOBEnv):
             state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
             state.max_steps_in_episode)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
         def normalizeReward(reward):
             # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
@@ -313,7 +313,6 @@ class ExecutionEnv(BaseLOBEnv):
                 obs[501:502]/1000000000, # timeOfDay
                 obs[502:503]/10,# deltaT
                 obs[503:504]/1000000000,# deltaT
-                obs[503:504]/1000000000,# deltaT
                 obs[504:505]/3.5e7,# initPrice  TODO CHANGE THIS
                 obs[505:506]/100000,# priceDrift
                 obs[506:507]/500, # taskSize TODO CHANGE THIS
@@ -322,7 +321,9 @@ class ExecutionEnv(BaseLOBEnv):
                 obs[608:609]/300, # step_counter TODO CHANGE THIS
                 obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
             ))
-        return obsNorm(obs)
+        obsNorm_=obsNorm(obs)
+        # jax.debug.breakpoint()
+        return obsNorm_
 
 
     def action_space(
@@ -335,7 +336,7 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-2,2,(610,),dtype=jnp.float32) 
+        space = spaces.Box(-10,10,(610,),dtype=jnp.float32) 
         # space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
         # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
         #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)

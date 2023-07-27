@@ -400,8 +400,8 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
-                    benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
-                    advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
+                    # benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
+                    # advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -429,8 +429,8 @@ def make_train(config):
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
                                     "current_step":current_step[t],
-                                    "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
-                                    "advatange_in_bp":advatange_in_bp[t],
+                                    # "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
+                                    # "advatange_in_bp":advatange_in_bp[t],
                                     "grad_norm":grad_norm,
                                 }
                             )        
@@ -514,7 +514,7 @@ if __name__ == "__main__":
 
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeJAX_ParamSearch_Base",
+            project="AlphaTradeJAX_ParamSearch",
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
