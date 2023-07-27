@@ -304,24 +304,25 @@ class ExecutionEnv(BaseLOBEnv):
         
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),\
             jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         def obsNorm(obs):
-            obs[:400]/3.5e7 # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
-            obs[400:500]/100000 # spreads
-            obs[500:501]/100000 # timeOfDay
-            obs[501:502]/1000000000 # timeOfDay
-            obs[502:503]/10# deltaT
-            obs[503:504]/1000000000# deltaT
-            obs[503:504]/1000000000# deltaT
-            obs[504:505]/3.5e7# initPrice  TODO CHANGE THIS
-            obs[505:506]/100000# priceDrift
-            obs[506:507]/500 # taskSize TODO CHANGE THIS
-            obs[507:508]/500 # executed_quant TODO CHANGE THIS
-            obs[508:608]/100 # shallowImbalance 
-            obs[608:609]/300 # step_counter TODO CHANGE THIS
-            obs[609:610]/300 # max_steps_in_episode TODO CHANGE THIS
-            # obs.at[:300].set(obs[:300] / 3.5e7)
-        return obs
+            return jnp.concatenate((
+                obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
+                obs[400:500]/100000, # spreads
+                obs[500:501]/100000, # timeOfDay
+                obs[501:502]/1000000000, # timeOfDay
+                obs[502:503]/10,# deltaT
+                obs[503:504]/1000000000,# deltaT
+                obs[503:504]/1000000000,# deltaT
+                obs[504:505]/3.5e7,# initPrice  TODO CHANGE THIS
+                obs[505:506]/100000,# priceDrift
+                obs[506:507]/500, # taskSize TODO CHANGE THIS
+                obs[507:508]/500, # executed_quant TODO CHANGE THIS
+                obs[508:608]/100, # shallowImbalance 
+                obs[608:609]/300, # step_counter TODO CHANGE THIS
+                obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
+            ))
+        return obsNorm(obs)
 
 
     def action_space(
