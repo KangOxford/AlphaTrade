@@ -264,7 +264,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-        # A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
+        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
         # M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
         P = best_ask if self.task=='sell' else best_bid
         PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
@@ -279,7 +279,7 @@ class ExecutionEnv(BaseLOBEnv):
             # price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             #FIXME not very clean way to implement, but works:
             quants = jnp.asarray((quant - quant//2, quant//2),jnp.int32) 
-            prices = jnp.asarray((P, P),jnp.int32)
+            prices = jnp.asarray((A, A),jnp.int32)
             # (self.tick_size * 100) : one dollar
             # (self.tick_size * 100) * 100: choose your own number here(the second 100)
             return quants, prices
