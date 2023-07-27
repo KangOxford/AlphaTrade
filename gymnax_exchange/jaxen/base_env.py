@@ -385,7 +385,6 @@ class BaseLOBEnv(environment.Environment):
                     obs[501:502]/1000000000, # timeOfDay
                     obs[502:503]/10,# deltaT
                     obs[503:504]/1000000000,# deltaT
-                    obs[503:504]/1000000000,# deltaT
                     obs[504:505]/3.5e7,# initPrice  TODO CHANGE THIS
                     obs[505:506]/100000,# priceDrift
                     obs[506:507]/500, # taskSize TODO CHANGE THIS
