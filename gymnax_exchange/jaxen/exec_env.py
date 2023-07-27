@@ -82,13 +82,14 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,debug=False):
+    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0):
         super().__init__(alphatradePath)
         self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
+        self.Lambda = Lambda
         # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
-        self.task_size = 500 # num to sell or buy for the task
+        self.task_size = task_size # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
@@ -166,7 +167,8 @@ class ExecutionEnv(BaseLOBEnv):
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
+        Lambda = self.Lambda 
+        # Lambda = 0.0 # FIXME shoud be moved to EnvState or EnvParams
         # Lambda = 0.5 # FIXME shoud be moved to EnvState or EnvParams
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
@@ -193,17 +195,23 @@ class ExecutionEnv(BaseLOBEnv):
             state.max_steps_in_episode)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         done = self.is_terminal(state,params)
-        # currentBestPirce = (bestbids[0,0]//self.tick_size + bestasks[0,0]//self.tick_size)//2
-        # benchmarkPrice = (state.init_price+currentBestPirce)//2
-        # benchmarkRevenue = benchmarkPrice*state.task_to_execute # initBestPrice
+        def normalizeReward(reward):
+            # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
+            # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
+            mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
+            return (reward-mean_)/std_/100
+        def normalizeRewardV2(reward):
+            # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
+            # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
+            normalizeFactor = 2332800 # oneMonth
+            return reward/normalizeFactor
+        reward = normalizeReward(reward)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,\
-            # "benchmarkTotalRevenue":benchmarkRevenue,\
-            # "advatange_in_bp":(state.total_revenue-benchmarkRevenue)/benchmarkRevenue*10000,\
+            'done':done,
             }
 
 

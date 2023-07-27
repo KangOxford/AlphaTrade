@@ -32,12 +32,13 @@ if __name__ == "__main__":
     print(env_params.message_data.shape, env_params.book_data.shape)
     assert env.task_size == 500    
     
+    # -----------------------------------        
     import time
     timestamp = str(int(time.time()))
-        
-    rngInitNum = 0    
+    rngInitNum = 1    
     rng = jax.random.PRNGKey(rngInitNum)
     
+
     
     
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -48,62 +49,38 @@ if __name__ == "__main__":
     erlist = []
     excuted_list = []
     er = 0
-    for i in range(1,int(1e7)):
+    for i in range(1,10000):
         # ==================== ACTION ====================
-        # ---------- acion from given strategy  ----------
-        print("---"*20)
-        print("window_index ",state.window_index)
-        key_policy, _ = jax.random.split(key_policy,2)
-        def twap(state, env_params):
-            # ---------- ifMarketOrder ----------
-            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-            ifMarketOrder = (remainingTime <= marketOrderTime)
-            print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
-            # ---------- ifMarketOrder ----------
-            # ---------- quants ----------
-            remainedQuant = state.task_to_execute - state.quant_executed
-            remainedStep = state.max_steps_in_episode - state.step_counter
-            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-            limit_quants_agressive = jnp.append(jax.random.permutation(key_policy, jnp.array([stepQuant - 3*stepQuant//4,stepQuant//4, stepQuant//4]), independent=True),max(stepQuant - 3*stepQuant//4,stepQuant//4))
-            limit_quants_passive = jnp.append(jax.random.permutation(key_policy, jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4]), independent=True),remainedQuant//4)
-            limit_quants = jnp.where(limit_quants_agressive.sum() <= remainedQuant,limit_quants_agressive,limit_quants_passive)
-            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
-            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-            # ---------- quants ----------
-            return jnp.array(quants)
-        def twapV3(state, env_params):
-            # ---------- ifMarketOrder ----------
-            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-            ifMarketOrder = (remainingTime <= marketOrderTime)
-            # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
-            # ---------- ifMarketOrder ----------
-            # ---------- quants ----------
-            remainedQuant = state.task_to_execute - state.quant_executed
-            remainedStep = state.max_steps_in_episode - state.step_counter
-            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-            limit_quants = jax.random.permutation(key_policy, jnp.array([stepQuant//2,stepQuant-stepQuant//2,stepQuant//2,stepQuant-stepQuant//2]), independent=True)
-            market_quants = jnp.array([remainedQuant - 3*remainedQuant//4,remainedQuant//4, remainedQuant//4, remainedQuant//4])
-            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-            # ---------- quants ----------
-            return jnp.array(quants) 
-            
-        twap_action = twapV3(state, env_params)
-        print(f"Sampled {i}th actions are: ",twap_action)
+        # ---------- acion from trained network ----------
+        ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
+        assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
+        assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
+        hstate, pi, value = network.apply(network_params, hstate, ac_in) 
+        action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
+        # ---------- acion from trained network ----------
+        # ==================== ACTION ====================    
+        print(f"Sampled {i}th actions are: ",action)
         start=time.time()
-        obs,state,reward,done,info=env.step(key_step, state,twap_action, env_params)
+        obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         er+=reward
         print(f"Time for {i} step: \n",time.time()-start)
         print("excuted ",info["quant_executed"])
         excuted_list.append(info["quant_executed"])
         if done:
             erlist.append((i, er))
-            print(f"global step {i:<10} , episodic return {er:^20} , ",\
+            # print(f"windowIndex {:<10} , global step {i:<10} , episodic return {er:^20} , ",\
+            print(f" global step {i:<10} , episodic return {er:^20} , ",\
                 file=open('twap_'+ timestamp +"_OneDay_train_"+'.txt','a'))
-            key_reset, _ = jax.random.split(key_reset)
+            network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+            init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
+            init_x = (
+                    jnp.zeros(
+                        (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
+                    ),
+                    jnp.zeros((1, ppo_config["NUM_ENVS"])),
+                )
+            _rng,_= jax.random.split(_rng,2)
+            network_params = network.init(_rng, init_hstate, init_x)
+            key_reset, _ = jax.random.split(key_reset,2)
             obs,state=env.reset(key_reset,env_params)
             er =0
-
-    
-    
