@@ -38,60 +38,10 @@ if __name__ == "__main__":
     rngInitNum = 1    
     rng = jax.random.PRNGKey(rngInitNum)
     
-    rng, key_reset, key_policy, key_step, _rng = jax.random.split(rng, 5)
-    obs,state=env.reset(key_reset,env_params)
-    ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 1,
-            "NUM_STEPS": 1,
-            "TOTAL_TIMESTEPS": 1e7,
-            "UPDATE_EPOCHS": 1,
-            "NUM_MINIBATCHES": 1,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'sell'
-        }
-    import flax
-    from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-    from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-    # with open(paramsFile, 'rb') as f:
-    # # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
-    #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-    #     print(f"pramas restored")
-        
-    # initail_random_params = ???? # TODO
-    
-    network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-    init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
-    init_x = (
-            jnp.zeros(
-                (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
-            ),
-            jnp.zeros((1, ppo_config["NUM_ENVS"])),
-        )
-    _rng,_= jax.random.split(_rng, 2)
-    network_params = network.init(_rng, init_hstate, init_x)
+
     
     
-    initail_random_params=network_params
-    init_done = jnp.array([False]*ppo_config["NUM_ENVS"])
-    ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
-    assert len(ac_in[0].shape) == 3
-    hstate, pi, value = network.apply(initail_random_params, init_hstate, ac_in)
-    print("Network Carry Initialized")
-    action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None) # CAUTION about the [0,0,:], only works for num_env=1
-    print(f"-------------\nPPO 0th actions are: {action} with sum {action.sum()}")
-    obs,state,reward,done,info=env.step(key_step, state, action, env_params)
-    print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
     print("Time for reset: \n",time.time()-start)
@@ -134,4 +84,3 @@ if __name__ == "__main__":
             key_reset, _ = jax.random.split(key_reset,2)
             obs,state=env.reset(key_reset,env_params)
             er =0
-            
