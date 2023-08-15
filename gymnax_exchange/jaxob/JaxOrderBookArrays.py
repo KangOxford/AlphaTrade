@@ -10,7 +10,7 @@ from functools import partial, partialmethod
 
 #INITID=-9000
 #MAXPRICE=999999999
-
+#TODO: Get rid of these magic numbers by allowing a config dict to be passed through as a static arg 
 
 ############### ADD AND REMOVE ###############
 

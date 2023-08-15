@@ -2,8 +2,7 @@ from functools import partial, partialmethod
 from typing import OrderedDict
 from jax import numpy as jnp
 import jax
-import gymnax_exchange.jaxes.jaxob_new.JaxOrderBookArrays as job
-
+import gymnax_exchange.jaxob.JaxOrderBookArrays as job
 import time
 import timeit
 

@@ -1,7 +1,7 @@
 ## Sequence:
 
-jaxob => jaxes => jaxen
+jaxob => jaxen ==> jaxrl
 
 which means:
 
-order_book => exchaneg => environment
+order_book => environment => RL training loop
