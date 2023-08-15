@@ -27,12 +27,12 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
 
 
 
 
-wandbOn = True
+wandbOn = False
 # wandbOn = False
 if wandbOn:
     import wandb
