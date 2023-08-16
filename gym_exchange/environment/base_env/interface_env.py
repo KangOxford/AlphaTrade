@@ -17,11 +17,11 @@ class SpaceParams(object):
 
         # quantity_size_one_side = Config.num2liquidate//Config.max_horizon +1
         # quantity_size_one_side = 8
-        quantity_size_negative_side = Config.quantity_size_negative_side
-        quantity_size_positive_side = Config.quantity_size_positive_side
+        #quantity_size_negative_side = Config.quantity_size_negative_side
+        #quantity_size_positive_side = Config.quantity_size_positive_side
         # quantity_size_one_side = 3
         # quantity_size_one_side = 1
-        quantity_size = quantity_size_positive_side + quantity_size_negative_side + 1
+        #quantity_size = quantity_size_positive_side + quantity_size_negative_side + 1
 
         price_delta_size_one_side = 1
         price_delta_size = 2 * price_delta_size_one_side

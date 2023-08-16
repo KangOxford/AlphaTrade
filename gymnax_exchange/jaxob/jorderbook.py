@@ -1,3 +1,4 @@
+from functools import partial
 import importlib
 from os import remove
 from readline import remove_history_item
@@ -9,14 +10,20 @@ from jax import numpy as jnp
 from jax import lax
 import jax
 
+from gymnax_exchange.jaxob.JaxOrderbook import INITID
+
 
 
 class OrderBook(object):
-    def __init__(self, price_levels=200,orderQueueLen=200):
+    def __init__(self, price_levels=200, orderQueueLen=200, orderbook_array=None):
         self.price_levels=price_levels
+        self.orderQueueLen=orderQueueLen
         orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
-        self.orderbook_array=jnp.ones(orderbookDimension)*-1
-        self.orderbook_array=self.orderbook_array.astype(int)
+        if orderbook_array is None:
+            self.orderbook_array=jnp.ones(orderbookDimension)*-1
+            self.orderbook_array=self.orderbook_array.astype(int)
+        else:
+            self.orderbook_array = orderbook_array
 
     def process_order(self,quote:Dict,from_data=False,verbose=False):
         '''Wrapper function for the object class that takes a Dict Object as the quote,
@@ -37,6 +44,10 @@ class OrderBook(object):
                 
         order_array=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
         self.orderbook_array,trades=job.processOrder_jitted(self.orderbook_array,order_array)
+        return trades
+
+    def process_order_jnp(self, order_array):
+        self.orderbook_array, trades = job.processOrder_jitted(self.orderbook_array, order_array)
         return trades
 
     def process_order_comp(self,quote:Dict,from_data=False,verbose=False):
@@ -66,11 +77,56 @@ class OrderBook(object):
         self.orderbook_array,trades=lax.scan(job.processOrder_jitted,self.orderbook_array,msgs)
         return trades
 
-    def get_volume_at_price(self, side, price):
-        bidAsk=int((side+1)/2)#buy is 1, sell is 0 # side: buy is 1, sell is -1
-        idx=jnp.where((self.orderbook_array[bidAsk,:,:,1]==price),size=1,fill_value=-1)
-        volume=self.orderbook_array[bidAsk][idx][0,0]
-        return volume
+    def process_orders_array_l2(self,msgs):
+        self.orderbook_array, (l2_states, trades) = lax.scan(
+            job.processOrderL2,
+            self.orderbook_array,msgs)
+        return l2_states, trades
+
+    # def get_volume_at_price(self, side, price):
+    #     bidAsk=int((side+1)/2)#buy is 1, sell is 0 # side: buy is 1, sell is -1
+    #     idx=jnp.where((self.orderbook_array[bidAsk,:,:,1]==price),size=1,fill_value=-1)
+    #     volume=self.orderbook_array[bidAsk][idx][0,0]
+    #     return volume
+    
+    def get_volume_at_price(
+            self,
+            side: int,
+            price: int,
+        ) -> jax.Array:
+        return job.get_volume_at_price(self.orderbook_array, side, price)
+
+    def get_init_volume_at_price(
+            self,
+            side: int,
+            price: int,
+        ) -> jax.Array:
+        return job.get_init_volume_at_price(self.orderbook_array, side, price)
+
+    def get_order_by_id(
+            self,
+            order_id: int,
+        ) -> jax.Array:
+        """ Returns all order fields for the first order matching the given order_id.
+            CAVE: if the same ID is used multiple times, will only return the first 
+            (e.g. for INITID)
+        """
+        return job.get_order_by_id(self.orderbook_array, order_id)
+    
+    def get_order_by_id_and_price(
+            self,
+            order_id: int,
+            price: int,
+        ) -> jax.Array:
+        """ Returns all order fields for the first order matching the given order_id at the given price.
+            CAVE: if the same ID is used multiple times at the given price level, will only return the first 
+        """
+        return job.get_order_by_id_and_price(self.orderbook_array, order_id, price)
+
+    def get_order_ids(self):
+        """ Returns a list of all order ids in the orderbook
+        """
+        return job.get_order_ids(self.orderbook_array, self.price_levels, self.orderQueueLen)
     
     def update_time(self):
         '''Not really functional, don't see the point, but copied from the CPU version.'''
@@ -101,3 +157,9 @@ class OrderBook(object):
         prices=jnp.squeeze(self.orderbook_array[:,:,0,1])
         volumes=jnp.squeeze(jnp.sum(self.orderbook_array[:,:,:,0].at[self.orderbook_array[:,:,:,0]==-1].set(0),axis=2))
         return jnp.concatenate([prices,volumes]).flatten()[index+levels]
+
+jax.tree_util.register_pytree_node(
+    OrderBook,
+    lambda book: ((book.price_levels, book.orderQueueLen, book.orderbook_array), None),
+    lambda aux, children: OrderBook(*children),
+)
