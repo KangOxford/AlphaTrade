@@ -3,6 +3,7 @@ import sys
 import jax
 from jax import lax
 import collections
+from functools import partial
 
 from numpy import float32, int32
 
@@ -322,6 +323,117 @@ def processOrder(orderbook,order,tradesLen=5):
     orderbook,trades=lax.switch((order[0]-1).astype(int),[processLMTOrder,cancelOrder,delOrder_2arg,processMKTOrder,doNothing,doNothing,doNothing],order,orderbook,trades)
     return orderbook,trades
 
+@jax.jit
+def get_L2_state(orderbook_array):
+    price_levels = orderbook_array.shape[1]
+    levels = jnp.resize(
+        jnp.array([0, price_levels * 2, price_levels, price_levels * 3]),
+        (1, 4 * price_levels)
+    ).squeeze()
+    index = jnp.resize(
+        jnp.arange(0, price_levels, 1), (4, price_levels)
+    ).transpose().reshape(1, 4*price_levels).squeeze()
+    prices = jnp.squeeze(orderbook_array[:,:,0,1])
+    volumes = jnp.squeeze(
+        jnp.sum(
+            jnp.where(
+                orderbook_array[..., 0] > 0,
+                orderbook_array[..., 0],
+                0
+            ),
+            # orderbook_array[:,:,:,0].at[orderbook_array[:,:,:,0] == -1].set(0),
+            axis=2)
+    )
+    return jnp.concatenate([prices, volumes]).flatten()[index + levels]
+
+@partial(jax.jit, static_argnums=(2,))
+def processOrderL2(orderbook, order, tradesLen=5):
+    orderbook, trades = processOrder(orderbook, order, tradesLen)
+    l2_state = get_L2_state(orderbook)
+    return orderbook, (l2_state, trades)
+
+@jax.jit
+def get_volume_at_price(
+        orderbook_array: jax.Array,
+        side: int,
+        price: int,
+    ) -> jax.Array:
+    total_volume = jnp.where(
+        (orderbook_array[side,:,:,1] == price),
+        orderbook_array[side,:,:,0],
+        0
+    ).sum()
+    return total_volume
+
+@jax.jit
+def get_init_volume_at_price(
+        orderbook_array: jax.Array,
+        side: int,
+        price: int,
+    ) -> jax.Array:
+    init_volume = jnp.where(
+        ((orderbook_array[side,:,:,1] == price) &
+         (orderbook_array[side,:,:,3] == INITID)),
+        orderbook_array[side,:,:,0],
+        0
+    ).sum()
+    return init_volume
+
+@jax.jit
+def get_order_by_id(
+        orderbook_array: jax.Array,
+        order_id: int,
+    ) -> jax.Array:
+    """ Returns all order fields for the first order matching the given order_id.
+        CAVE: if the same ID is used multiple times, will only return the first 
+        (e.g. for INITID)
+    """
+    idx = jnp.where( 
+        orderbook_array[..., 3] == order_id,
+        size=1,
+        fill_value=-1,
+    )
+    # return vector of -1 if not found
+    return lax.cond(
+        idx == -1,
+        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+        lambda i: orderbook_array[i][0],
+        idx)
+
+@jax.jit
+def get_order_by_id_and_price(
+        orderbook_array: jax.Array,
+        order_id: int,
+        price: int,
+    ) -> jax.Array:
+    """ Returns all order fields for the first order matching the given order_id at the given price.
+        CAVE: if the same ID is used multiple times at the given price level, will only return the first 
+    """
+    idx = jnp.where(
+        ((orderbook_array[..., 3] == order_id) &
+            (orderbook_array[..., 1] == price)),
+        size=1,
+        fill_value=-1,
+    )
+    # return vector of -1 if not found
+    return lax.cond(
+        idx == -1,
+        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+        lambda i: orderbook_array[i][0],
+        idx)
+
+@partial(jax.jit, static_argnums=(1,2))
+def get_order_ids(
+        orderbook_array: jax.Array,
+        price_levels: int,
+        orderQueueLen: int,
+    ) -> jax.Array:
+    """ Returns a list of all order ids in the orderbook
+    """
+    return jnp.unique(
+        orderbook_array[..., 3],
+        size = 2 * price_levels * orderQueueLen,
+        fill_value = 1)
 
 i32_orderbook = jax.ShapeDtypeStruct((2,100,100,ORDERSIZE), jnp.dtype('int32'))
 i32_order = jax.ShapeDtypeStruct((8,), jnp.dtype('int32'))
