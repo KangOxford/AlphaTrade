@@ -167,7 +167,8 @@ class ExecutionEnv(BaseLOBEnv):
         Lambda = self.Lambda 
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         rewardValue = advantage + Lambda * drift
-        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        reward = jnp.sign(agentTrades[0,0]) * rewardValue / vwap # if no value agentTrades then the reward is set to be zero
+        # reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get reward and revenue END ==========
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         def bestPircesImpute(bestprices,lastBestPrice):

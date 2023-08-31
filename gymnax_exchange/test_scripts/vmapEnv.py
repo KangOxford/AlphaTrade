@@ -115,6 +115,36 @@ if __name__ == "__main__":
 
         adjusted_rewards = cum_rewards * dones.astype(jnp.float32)
         adjusted_rewards
+        adjusted_rewards.shape
+        
+        
+        
+        # Assuming adjusted_rewards is a jnp.array
+        non_zero_mask = adjusted_rewards != 0
+        # Sum of non-zero elements for each row
+        non_zero_sums = jnp.sum(adjusted_rewards * non_zero_mask, axis=1)
+        # Count of non-zero elements for each row
+        non_zero_counts = jnp.sum(non_zero_mask, axis=1)
+        # Avoid division by zero by replacing zero counts with 1
+        non_zero_counts = jnp.where(non_zero_counts == 0, 1, non_zero_counts)
+        # Mean of non-zero elements for each row
+        non_zero_means = non_zero_sums / non_zero_counts
+        non_zero_means
+        non_zero_means.shape
+        
+        
+        # Assuming `sample_array` is your input jnp.array
+        non_zero_indices = jnp.nonzero(non_zero_means)[0]
+        non_zero_values = non_zero_means[non_zero_indices]
+        index_value_pairs = list(zip(non_zero_indices, non_zero_values))
+        import pandas as pd
+        df = pd.DataFrame(index_value_pairs)
+        df.to_csv("twap.csv")
+
+        
+        
+        
+        
         # for i in range(adjusted_rewards.shape[0]):
         #     print(adjusted_rewards[i,:])
                 
