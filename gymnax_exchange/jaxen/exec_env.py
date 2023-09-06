@@ -347,7 +347,8 @@ class ExecutionEnv(BaseLOBEnv):
         return obsNorm_
 
 
-    def action_space(
+    def act_space(
+    # def action_space(
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
@@ -357,7 +358,8 @@ class ExecutionEnv(BaseLOBEnv):
         # return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
-    def observation_space(self, params: EnvParams):
+    def obs_space(self, params: EnvParams):
+    # def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         space = spaces.Box(-10,10,(610,),dtype=jnp.float32) 
         # space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
