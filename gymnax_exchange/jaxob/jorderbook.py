@@ -136,7 +136,6 @@ class OrderBook(object):
         '''Not really sure what to do with this'''
         return 0
 
-    @partial(jax.jit, static_argnums=(0,))
     def get_L2_state(self):
         # levels=jnp.resize(jnp.array([0,self.price_levels*2,self.price_levels,self.price_levels*3]),(1,4*self.price_levels)).squeeze()
         # index=jnp.resize(jnp.arange(0,self.price_levels,1),(4,self.price_levels)).transpose().reshape(1,4*self.price_levels).squeeze()
