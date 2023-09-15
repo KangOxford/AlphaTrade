@@ -1,1 +1,1 @@
-![Untitled drawio2](https://github.com/KangOxford/AlphaTrade/assets/37290277/4586e03f-2b08-4fab-81e3-b2eb948b007d)
+![Untitled drawio3](https://github.com/KangOxford/AlphaTrade/assets/37290277/bc2e02dc-7673-4448-a69d-40bcc587bd70)
