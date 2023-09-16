@@ -79,9 +79,6 @@ class OrderBook():
         return ordersides
 
 
-    def get_L2_state_experimental(self,N):
-        return job.get_L2_state(N,self.asks,self.bids)
-
     def get_L2_state(self,N):
         bid_prices=jnp.sort(self.bids[:,0])
         ask_prices=jnp.sort(self.asks[:,0])

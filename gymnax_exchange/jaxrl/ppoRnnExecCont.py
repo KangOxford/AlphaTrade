@@ -32,7 +32,7 @@ config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks 
 
 
 
-wandbOn = False
+wandbOn = True
 # wandbOn = False
 if wandbOn:
     import wandb

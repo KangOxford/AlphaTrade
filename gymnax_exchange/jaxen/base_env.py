@@ -64,7 +64,7 @@ class BaseLOBEnv(environment.Environment):
 
 
 
-        # Load the image MNIST data at environment init
+        # Load the data from LOBSTER
         def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
             def preProcessingData_csv2pkl():
                 return 0
@@ -91,10 +91,15 @@ class BaseLOBEnv(environment.Environment):
                     message.reset_index(inplace=True,drop=True)
                     return message, valid_index
                 message, valid_index = filterValid(message)
-                def tuneDirection(message):
+                def adjustExecutions(message):
                     message.loc[message['type'] == 4, 'direction'] *= -1
+                    message.loc[message['type'] == 4, 'type'] = 1
                     return message
-                message = tuneDirection(message)
+                message = adjustExecutions(message)
+                def removeDeletes(message):
+                    message.loc[message['type'] == 3, 'type'] = 2
+                    return message
+                message = removeDeletes(message)
                 def addTraderId(message):
                     import warnings
                     from pandas.errors import SettingWithCopyWarning
@@ -185,6 +190,7 @@ class BaseLOBEnv(environment.Environment):
             return Cubes_withOB, max_steps_in_episode_arr
 
         Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+
         self.max_steps_in_episode_arr = max_steps_in_episode_arr
         # # ------------------------------- TESTING ------------------------------
         # alphatradePath = '/homes/80/kang/AlphaTrade'
@@ -209,7 +215,7 @@ class BaseLOBEnv(environment.Environment):
 
         self.messages=jnp.array(msgs)   #4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         self.books=jnp.array(bks)       #2D Array: (n_windows x [4*n_depth])
-
+      
         self.n_windows=len(self.books)
         # jax.debug.breakpoint()
         

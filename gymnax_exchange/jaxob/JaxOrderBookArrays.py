@@ -168,9 +168,8 @@ def cond_type_side(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
-    #jax.debug.print("Askside after is \n {}",ask)
+    index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
     return (ask,bid,trade),0
 
 @jax.jit
@@ -187,8 +186,8 @@ def cond_type_side_save_states(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
+    index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),(ask,bid,trade)
 
@@ -206,8 +205,8 @@ def cond_type_side_save_bidask(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)*2+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,ask_cancel,ask_mkt,bid_lim,bid_cancel,bid_cancel,bid_mkt),msg,askside,bidside,trades)
+    index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
+    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
     #jax.debug.print("Askside after is \n {}",ask)
     # jax.debug.breakpoint()
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
@@ -358,7 +357,7 @@ def get_data_messages(messageData,idx_window,step_counter):
 
 
 @partial(jax.jit)
-def get_best_bid(asks, bids):
+def get_best_ask(asks, bids):
     L2_state = get_L2_state(1, asks, bids)
     return L2_state[0]
 
