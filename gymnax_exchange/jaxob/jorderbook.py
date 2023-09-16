@@ -24,17 +24,21 @@ class OrderBook(object):
          ensures the order is conserved and turns the values into a jnp array which is passed to the JNP ProcessOrder function'''
         #Type, Side,quant,price
         inttype=5
+        intside=-1
+        if quote['side']=='bid':
+            intside=1 
+
         if quote['type']=='limit':
             inttype=1
         elif quote['type']=='cancel':
             inttype=2
         elif quote['type']=='delete':
-            inttype=3
+            inttype=2
         elif quote['type']=='market':
-            inttype=4
-        intside=-1
-        if quote['side']=='bid':
-            intside=1      
+            inttype=1
+            intside=intside*-1
+
+             
         msg=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
         bidside=self.bids
         askside=self.asks
