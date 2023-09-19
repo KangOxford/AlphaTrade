@@ -1,3 +1,44 @@
+# from jax import config
+# config.update("jax_enable_x64",True)
+
+import jax
+import jax.numpy as jnp
+import flax.linen as nn
+import numpy as np
+import optax
+import time
+import flax
+from flax.linen.initializers import constant, orthogonal
+from typing import Sequence, NamedTuple, Any, Dict
+from flax.training.train_state import TrainState
+import distrax
+import gymnax
+import functools
+from gymnax.environments import spaces
+import sys
+import chex
+sys.path.append('../purejaxrl')
+sys.path.append('../AlphaTrade')
+from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+
+
+import optax._src.linear_algebra as linAlg
+
+
+#Code snippet to disable all jitting.
+
+from jax import config
+config.update("jax_disable_jit", False) 
+# config.update("jax_disable_jit", True)
+config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+
+
+
+
+
+
+
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -11,6 +52,8 @@ import gymnax
 from wrappers import FlattenObservationWrapper, LogWrapper
 from gymnax.environments import spaces
 from s5 import init_S5SSM, make_DPLR_HiPPO, StackedEncoderModel
+
+
 
 d_model = 256
 ssm_size = 256
@@ -351,25 +394,124 @@ def make_train(config):
     return train
 
 
+
+    
+
 if __name__ == "__main__":
-    config = {
-        "LR": 2.5e-4,
-        "NUM_ENVS": 4,
-        "NUM_STEPS": 128,
-        "TOTAL_TIMESTEPS": 5e5,
-        "UPDATE_EPOCHS": 4,
+    try:
+        ATFolder = sys.argv[1] 
+    except:
+        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/home/duser/AlphaTrade'
+    print("AlphaTrade folder:",ATFolder)
+    
+    # config = {
+    #     "LR": 2.5e-4,
+    #     "NUM_ENVS": 4,
+    #     "NUM_STEPS": 128,
+    #     "TOTAL_TIMESTEPS": 5e5,
+    #     "UPDATE_EPOCHS": 4,
+    #     "NUM_MINIBATCHES": 4,
+    #     "GAMMA": 0.99,
+    #     "GAE_LAMBDA": 0.95,
+    #     "CLIP_EPS": 0.2,
+    #     "ENT_COEF": 0.01,
+    #     "VF_COEF": 0.5,
+    #     "MAX_GRAD_NORM": 0.5,
+    #     "ENV_NAME": "CartPole-v1",
+    #     "ANNEAL_LR": True,
+    #     "DEBUG": True,
+    # }
+
+    ppo_config = {
+        # "LR": 2.5e-4,
+        "LR": 2.5e-6,
+        # "NUM_ENVS": 1,
+        # "NUM_STEPS": 1,
+        # "NUM_MINIBATCHES": 1,
+        "NUM_ENVS": 1000,
+        "NUM_STEPS": 10,
         "NUM_MINIBATCHES": 4,
+        "TOTAL_TIMESTEPS": 1e7,
+        "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
         "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
-        "MAX_GRAD_NORM": 0.5,
-        "ENV_NAME": "CartPole-v1",
+        "MAX_GRAD_NORM": 2.0,
+        "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
         "DEBUG": True,
+        "NORMALIZE_ENV": True,
+        "ATFOLDER": ATFolder,
+        "TASKSIDE":'sell',
+        "LAMBDA":0.0,
+        "TASK_SIZE":500,
     }
 
-    rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(config))
+    if wandbOn:
+        run = wandb.init(
+            project="AlphaTradeJAX_ParamSearch_Small",
+            config=ppo_config,
+            # sync_tensorboard=True,  # auto-upload  tensorboard metrics
+            save_code=True,  # optional
+        )
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results would be saved to {params_file_name}")
+    else:
+        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results would be saved to {params_file_name}")
+        
+
+    
+    # +++++ Single GPU +++++
+    rng = jax.random.PRNGKey(0)
+    # rng = jax.random.PRNGKey(30)
+    train_jit = jax.jit(make_train(ppo_config))
+    start=time.time()
     out = train_jit(rng)
+    print("Time: ", time.time()-start)
+    # +++++ Single GPU +++++
+
+    # # +++++ Multiple GPUs +++++
+    # num_devices = 4
+    # rng = jax.random.PRNGKey(30)
+    # rngs = jax.random.split(rng, num_devices)
+    # train_fn = lambda rng: make_train(ppo_config)(rng)
+    # start=time.time()
+    # out = jax.pmap(train_fn)(rngs)
+    # print("Time: ", time.time()-start)
+    # # +++++ Multiple GPUs +++++
+    
+    
+
+    # '''
+    # # ---------- Save Output ----------
+    import flax
+
+    train_state = out['runner_state'][0] # runner_state.train_state
+    params = train_state.params
+    
+
+
+    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+
+    # Save the params to a file using flax.serialization.to_bytes
+    with open(params_file_name, 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"pramas saved")
+
+    # Load the params from the file using flax.serialization.from_bytes
+    with open(params_file_name, 'rb') as f:
+        restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        print(f"pramas restored")
+        
+    # jax.debug.breakpoint()
+    # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
+    # print(">>>")
+    # '''
+
+    if wandbOn:
+        run.finish()
