@@ -13,26 +13,20 @@ from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
 import distrax
 import gymnax
-import functools
-from gymnax.environments import spaces
 import sys
 import chex
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
-from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-
-
-import optax._src.linear_algebra as linAlg
-
-
 #Code snippet to disable all jitting.
-
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
-
+wandbOn = True
+# wandbOn = False
+if wandbOn:
+    import wandb
 
 
 
@@ -49,9 +43,9 @@ from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
 import distrax
 import gymnax
-from wrappers import FlattenObservationWrapper, LogWrapper
 from gymnax.environments import spaces
-from s5 import init_S5SSM, make_DPLR_HiPPO, StackedEncoderModel
+from purejaxrl.experimental.s5.wrappers import FlattenObservationWrapper, LogWrapper
+from purejaxrl.experimental.s5.s5 import init_S5SSM, make_DPLR_HiPPO, StackedEncoderModel
 
 
 
