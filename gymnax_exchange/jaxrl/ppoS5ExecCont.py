@@ -1,53 +1,43 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
 
+import sys
+import time
+
+import chex
+import flax
+import flax.linen as nn
+import gymnax
 import jax
 import jax.numpy as jnp
-import flax.linen as nn
 import numpy as np
 import optax
-import time
-import flax
 from flax.linen.initializers import constant, orthogonal
-from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
+from typing import Any, Dict, NamedTuple, Sequence
 import distrax
-import gymnax
-import sys
-import chex
+from gymnax.environments import spaces
+
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 #Code snippet to disable all jitting.
 from jax import config
+
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
 
 
-
-
-
-
-import jax
-import jax.numpy as jnp
-import flax.linen as nn
-import numpy as np
-import optax
-from flax.linen.initializers import constant, orthogonal
-from typing import Sequence, NamedTuple, Any, Dict
-from flax.training.train_state import TrainState
-import distrax
-import gymnax
-from gymnax.environments import spaces
-from purejaxrl.experimental.s5.wrappers import FlattenObservationWrapper, LogWrapper
-from purejaxrl.experimental.s5.s5 import init_S5SSM, make_DPLR_HiPPO, StackedEncoderModel
-
-
+from purejaxrl.experimental.s5.s5 import (StackedEncoderModel, init_S5SSM,
+                                          make_DPLR_HiPPO)
+from purejaxrl.experimental.s5.wrappers import (FlattenObservationWrapper,
+                                                LogWrapper)
 
 d_model = 256
 ssm_size = 256
@@ -126,7 +116,13 @@ class ActorCriticS5(nn.Module):
         actor_mean = nn.leaky_relu(actor_mean)
         actor_mean = self.action_decoder(actor_mean)
 
-        pi = distrax.Categorical(logits=actor_mean)
+
+        #pi = distrax.Categorical(logits=actor_mean)
+        #Old version^^
+
+        actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
+        #New version ^^
 
         critic = self.value_body_0(embedding)
         critic = nn.leaky_relu(critic)
@@ -491,7 +487,6 @@ if __name__ == "__main__":
 
 
     import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
