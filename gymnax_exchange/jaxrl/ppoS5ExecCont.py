@@ -32,10 +32,17 @@ wandbOn = True
 # wandbOn = False
 if wandbOn:
     import wandb
-
+    
 
 from purejaxrl.experimental.s5.s5 import StackedEncoderModel, init_S5SSM, make_DPLR_HiPPO
 from purejaxrl.experimental.s5.wrappers import FlattenObservationWrapper, LogWrapper
+
+
+def save_checkpoint(params, filename):
+    with open(filename, 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"Checkpoint saved to {filename}")
+
 
 d_model = 256
 ssm_size = 256
@@ -375,11 +382,77 @@ def make_train(config):
             metric = traj_batch.info
             rng = update_state[-1]
             if config.get("DEBUG"):
+                
+                # old version
                 def callback(info):
                     return_values = info["returned_episode_returns"][info["returned_episode"]]
                     timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     for t in range(len(timesteps)):
                         print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
+                        
+
+                # new version
+                def callback(metric):
+                    info,trainstate,grad_norm=metric
+                    return_values = info["returned_episode_returns"][
+                        info["returned_episode"]
+                    ]
+                    timesteps = (
+                        info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
+                    )
+                    
+                    revenues = info["total_revenue"][info["returned_episode"]]
+                    quant_executed = info["quant_executed"][info["returned_episode"]]
+                    average_price = info["average_price"][info["returned_episode"]]
+                    current_step = info["current_step"][info["returned_episode"]]
+                    # benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
+                    # advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
+                    
+                    '''
+                    print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
+                    if info['done']: print("==="*10 + str(info["window_index"]) +"==="*10 + '\n')      
+                    # if info['done']: print("==="*10 + "==="*10 + '\n')      
+                    # if info['done']: print("==="*10 + str(info["window_index"])[0,0] + "==="*10 + '\n')      
+                    # print(info["total_revenue"])  
+                    # print(info["quant_executed"])   
+                    # print(info["average_price"])   
+                    # print(info["returned_episode_returns"])
+                    '''
+                    if len(timesteps) >0:
+                        if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
+                            checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
+                            save_checkpoint(trainstate, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
+
+                    # '''
+                    for t in range(len(timesteps)):  
+                        if wandbOn:
+                            wandb.log(
+                                {
+                                    "global_step": timesteps[t],
+                                    "episodic_return": return_values[t],
+                                    "episodic_revenue": revenues[t],
+                                    "quant_executed":quant_executed[t],
+                                    "average_price":average_price[t],
+                                    "current_step":current_step[t],
+                                    # "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
+                                    # "advatange_in_bp":advatange_in_bp[t],
+                                    "grad_norm":grad_norm,
+                                }
+                            )        
+                        else:
+                            print(
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                            )
+                            print(grad_norm)     
+                            # print("==="*20)      
+                            # print(info["current_step"])  
+                            # print(info["total_revenue"])  
+                            # print(info["quant_executed"])   
+                            # print(info["average_price"])   
+                            # print(info["returned_episode_returns"])
+                    # '''
+                # new version
+                
                 jax.debug.callback(callback, metric)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
