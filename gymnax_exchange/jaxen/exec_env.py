@@ -148,6 +148,7 @@ class ExecutionEnv(BaseLOBEnv):
         asks,bids,trades,bestasks,bestbids=job.scan_through_entire_array_save_bidask(total_messages,(state.ask_raw_orders,state.bid_raw_orders,trades_reinit),self.stepLines) 
         # jax.debug.print("bestasks {}", bestbids)
         # jax.debug.breakpoint()
+        
         # ========== get reward and revenue ==========
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
@@ -170,6 +171,7 @@ class ExecutionEnv(BaseLOBEnv):
         reward = jnp.sign(agentTrades[0,0]) * rewardValue / vwap # if no value agentTrades then the reward is set to be zero
         # reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ========== get reward and revenue END ==========
+        
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         def bestPircesImpute(bestprices,lastBestPrice):
             def replace_values(prev, curr):
@@ -193,15 +195,15 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
         def normalizeReward(reward):
-            # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
+            mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
             # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
-            mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
+            # mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
             return (reward-mean_)/std_/100
-        def normalizeRewardV2(reward):
-            # mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
-            # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
-            normalizeFactor = 2332800 # oneMonth
-            return reward/normalizeFactor
+        # def normalizeRewardV2(reward):
+        #     mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
+        #     # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
+        #     normalizeFactor = 2332800 # oneMonth
+        #     return reward/normalizeFactor
         reward = normalizeReward(reward)
         
         return self.get_obs(state,params),state,reward,done,\
