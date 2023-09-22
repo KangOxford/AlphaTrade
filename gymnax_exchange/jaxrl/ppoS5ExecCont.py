@@ -461,8 +461,10 @@ if __name__ == "__main__":
     print("AlphaTrade folder:",ATFolder)
 
     ppo_config = {
-        # "LR": 2.5e-4,
-        "LR": 2.5e-6,
+        "LR": 2.5e-4,
+        "ENT_COEF": 0.1,
+        
+        # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
         # "NUM_STEPS": 1,
         # "NUM_MINIBATCHES": 1,
@@ -474,7 +476,7 @@ if __name__ == "__main__":
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
+        # "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
         "ANNEAL_LR": True,
