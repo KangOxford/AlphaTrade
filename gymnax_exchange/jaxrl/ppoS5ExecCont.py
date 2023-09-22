@@ -464,6 +464,7 @@ if __name__ == "__main__":
         "LR": 5e-4,
         "ENT_COEF": 0.2,
         "NUM_ENVS": 2000,
+        "TOTAL_TIMESTEPS": 1e7,
         
         # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
@@ -472,7 +473,7 @@ if __name__ == "__main__":
         # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
         "NUM_MINIBATCHES": 4,
-        "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 1e7,
         "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
