@@ -396,10 +396,11 @@ def make_train(config):
                     return_values = info["returned_episode_returns"][info["returned_episode"]]
                     timesteps = (info["timestep"][info["returned_episode"]] * config["NUM_ENVS"])
                     
-                    # revenues = info["total_revenue"][info["returned_episode"]]
-                    # quant_executed = info["quant_executed"][info["returned_episode"]]
-                    # average_price = info["average_price"][info["returned_episode"]]
-                    # current_step = info["current_step"][info["returned_episode"]]
+                    revenues = info["total_revenue"][info["returned_episode"]]
+                    quant_executed = info["quant_executed"][info["returned_episode"]]
+                    average_price = info["average_price"][info["returned_episode"]]
+                    current_step = info["current_step"][info["returned_episode"]]
+                    
                     # if len(timesteps) >0:
                     #     if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
                     #         checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
@@ -411,10 +412,10 @@ def make_train(config):
                                 {
                                     "global_step": timesteps[t],
                                     "episodic_return": return_values[t],
-                                    # "episodic_revenue": revenues[t],
-                                    # "quant_executed":quant_executed[t],
-                                    # "average_price":average_price[t],
-                                    # "current_step":current_step[t],
+                                    "episodic_revenue": revenues[t],
+                                    "quant_executed":quant_executed[t],
+                                    "average_price":average_price[t],
+                                    "current_step":current_step[t],
                                     # "grad_norm":grad_norm,
                                 }
                             )        
