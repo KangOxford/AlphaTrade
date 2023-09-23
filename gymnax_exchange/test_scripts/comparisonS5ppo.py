@@ -60,37 +60,29 @@ if __name__ == "__main__":
         rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
         obs,state=env.reset(key_reset,env_params)
         ppo_config = {
-            "LR": 2.5e-4,
-            "ENT_COEF": 0.1,
-            "NUM_ENVS": 2000,
-            "TOTAL_TIMESTEPS": 1e8,
-            
-            # "LR": 2.5e-6,
-            # "NUM_ENVS": 1,
-            # "NUM_STEPS": 1,
-            # "NUM_MINIBATCHES": 1,
-            # "NUM_ENVS": 1000,
-            "NUM_STEPS": 10,
-            "NUM_MINIBATCHES": 4,
-            # "TOTAL_TIMESTEPS": 1e7,
-            "UPDATE_EPOCHS": 4,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            # "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 2.0,
-            "ANNEAL_LR": True,
-            "NORMALIZE_ENV": True,
-            
-            "ENV_NAME": "alphatradeExec-v0",
-            "ENV_LENGTH": "oneWindow",
-            "DEBUG": True,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'sell',
-            "LAMBDA":0.0,
-            "TASK_SIZE":500,
-        }
+                "LR": 2.5e-4,
+                "NUM_ENVS": 1, # CAUTION !!!
+                "NUM_STEPS": 1,
+                "TOTAL_TIMESTEPS": 1e8,
+                "UPDATE_EPOCHS": 1,
+                "NUM_MINIBATCHES": 1,
+                "GAMMA": 0.99,
+                "GAE_LAMBDA": 0.95,
+                "CLIP_EPS": 0.2,
+                "ENT_COEF": 0.01,
+                "VF_COEF": 0.5,
+                "MAX_GRAD_NORM": 0.5,
+                "ANNEAL_LR": True,
+                "DEBUG": True,
+                
+                "ENV_NAME": "alphatradeExec-v0",
+                "NORMALIZE_ENV": False,
+                "ENV_LENGTH": "oneWindow",
+                "ATFOLDER": ATFolder,
+                "TASKSIDE":'sell',
+                "LAMBDA":0.0,
+                "TASK_SIZE":500,
+            }
         import flax
         from gymnax_exchange.jaxrl.ppoS5ExecCont import ActorCriticS5
         from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n_layers
