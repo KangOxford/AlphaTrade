@@ -45,9 +45,9 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = '/homes/80/kang/AlphaTrade/testing'
+        # ATFolder = '/homes/80/kang/AlphaTrade/testing'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
-        # ATFolder = '/homes/80/kang/AlphaTrade/testing_oneDay'
+        ATFolder = '/homes/80/kang/AlphaTrade/testing_oneDay'
         
     env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
@@ -95,7 +95,6 @@ if __name__ == "__main__":
         from gymnax_exchange.jaxrl.ppoS5ExecCont import ActorCriticS5
         from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n_layers
         network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
-        # init_hstate = StackedEncoderModel.initialize_carry(ppo_config["NUM_ENVS"], 128)
         init_hstate = StackedEncoderModel.initialize_carry(ppo_config["NUM_ENVS"], ssm_size, n_layers)
             
         # ===================================================
@@ -145,6 +144,7 @@ if __name__ == "__main__":
             if done:
                 break
         return info['window_index'],info['average_price'], excuted_list
+    
     def get_twap_average_price(rngInitNum):
         rng = jax.random.PRNGKey(rngInitNum)
         rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
