@@ -280,8 +280,8 @@ if __name__ == "__main__":
     #             break
     #     return info['window_index'], info['average_price'], excuted_list
     def get_advantage(rngInitNum):
-        window_index1,ppo,executed_list1=get_ppo_average_price(rngInitNum)
         window_index2,twap,executed_list2=get_twap_average_price(rngInitNum)
+        window_index1,ppo,executed_list1=get_ppo_average_price(rngInitNum)
         window_index3,random,executed_list3=get_random_average_price(rngInitNum)
         window_index4,rush,executed_list4=get_hush_average_price(rngInitNum)
         assert window_index1 == window_index2
