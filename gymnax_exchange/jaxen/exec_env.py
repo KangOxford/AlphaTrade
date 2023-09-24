@@ -84,7 +84,8 @@ class EnvParams:
 class ExecutionEnv(BaseLOBEnv):
     def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0):
         super().__init__(alphatradePath)
-        self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
+        self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
+        # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.Lambda = Lambda
@@ -291,7 +292,7 @@ class ExecutionEnv(BaseLOBEnv):
             return quants, prices
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((P, PP), jnp.int32)
+            prices = jnp.asarray((A, P), jnp.int32)
             return quants, prices
         market_quants, market_prices = market_order_logic(state)
         normal_quants, normal_prices = normal_order_logic(state, action)

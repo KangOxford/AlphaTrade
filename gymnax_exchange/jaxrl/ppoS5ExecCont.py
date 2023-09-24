@@ -463,8 +463,10 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
-        "NUM_ENVS": 2000,
+        "NUM_ENVS": 1000,
         "TOTAL_TIMESTEPS": 1e8,
+        "NUM_MINIBATCHES": 2,
+        "UPDATE_EPOCHS": 2,
         
         # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
@@ -472,9 +474,9 @@ if __name__ == "__main__":
         # "NUM_MINIBATCHES": 1,
         # "NUM_ENVS": 1000,
         "NUM_STEPS": 10,
-        "NUM_MINIBATCHES": 4,
+        # "NUM_MINIBATCHES": 4,
         # "TOTAL_TIMESTEPS": 1e7,
-        "UPDATE_EPOCHS": 4,
+        # "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
         "CLIP_EPS": 0.2,
