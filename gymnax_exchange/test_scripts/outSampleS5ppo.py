@@ -64,7 +64,8 @@ if __name__ == "__main__":
     import flax
     from gymnax_exchange.jaxrl.ppoS5ExecCont import ActorCriticS5
     from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n_layers
-    with open('/homes/80/kang/AlphaTrade/params_file_smooth-paper-19_09-23_04-30', 'rb') as f:
+    with open('/homes/80/kang/AlphaTrade/params_file_denim-bush-21_09-24_03-18', 'rb') as f:
+    # with open('/homes/80/kang/AlphaTrade/params_file_smooth-paper-19_09-23_04-30', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_firm-fire-68_07-17_09-53', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
