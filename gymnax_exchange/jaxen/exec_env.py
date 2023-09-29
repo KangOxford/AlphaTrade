@@ -214,7 +214,9 @@ class ExecutionEnv(BaseLOBEnv):
         # #     normalizeFactor = 12033.709377975247 # oneWindow
         # #     return reward/normalizeFactor
         # reward = normalizeRewardV1(reward)
-        reward = revenue
+        
+        # reward = jnp.sign(agentTrades[0,0]) * revenue
+        reward = jnp.sign(agentTrades[0,0]) * advantage
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
