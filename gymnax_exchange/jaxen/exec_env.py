@@ -108,7 +108,7 @@ class ExecutionEnv(BaseLOBEnv):
         self, key: chex.PRNGKey, state: EnvState, delta: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        '''
+        # '''
         def twapV3(state, env_params):
             # ---------- ifMarketOrder ----------
             remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -127,8 +127,8 @@ class ExecutionEnv(BaseLOBEnv):
             return jnp.array(quants) 
         get_base_action = lambda state, params:twapV3(state, params)
         action = get_base_action(state, params) + delta
-        '''
-        action = delta
+        # '''
+        # action = delta
         
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
@@ -214,6 +214,7 @@ class ExecutionEnv(BaseLOBEnv):
         # #     normalizeFactor = 12033.709377975247 # oneWindow
         # #     return reward/normalizeFactor
         # reward = normalizeRewardV1(reward)
+        reward = revenue
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
@@ -368,8 +369,8 @@ class ExecutionEnv(BaseLOBEnv):
         """Action space of the environment."""
         # return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
         # return spaces.Box(-2,2,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
-        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
