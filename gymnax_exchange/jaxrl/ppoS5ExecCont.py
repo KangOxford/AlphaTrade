@@ -399,7 +399,7 @@ def make_train(config):
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
-                    splippage = info["splippage"][info["returned_episode"]]
+                    slippage = info["slippage"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
                     
                     # if len(timesteps) >0:
@@ -416,7 +416,7 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
-                                    "splippage":splippage[t],
+                                    "slippage":slippage[t],
                                     "current_step":current_step[t],
                                     # "grad_norm":grad_norm,
                                 }

@@ -202,28 +202,26 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
         
-        '''
-        def normalizeReward(reward):
-            mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
+
+        def normalizeRewardV1(reward):
+            mean_, std_ = 12033.709377975247, 12613.952695243072 # oneWindow 
             # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
             # mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
-            return (reward-mean_)/std_/100
+            return (reward-mean_)/std_
+
         # def normalizeRewardV2(reward):
-        #     mean_, std_ = -11040.822073519472, 329.3141493139218 # oneWindow 
-        #     # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
-        #     normalizeFactor = 2332800 # oneMonth
+        #     normalizeFactor = 12033.709377975247 # oneWindow
         #     return reward/normalizeFactor
-        reward = normalizeReward(reward)
-        '''
+        reward = normalizeRewardV1(reward)
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,
-            'slippage':slippage,
+            'done':done,'slippage':slippage,
             }
+        # TODO episodic slippage
 
 
     def reset_env(
