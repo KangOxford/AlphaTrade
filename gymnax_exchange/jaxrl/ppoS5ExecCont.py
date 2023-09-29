@@ -469,7 +469,7 @@ if __name__ == "__main__":
         "TOTAL_TIMESTEPS": 3e7,
         "NUM_MINIBATCHES": 10,
         "UPDATE_EPOCHS": 10,
-        "NUM_STEPS": 1,
+        "NUM_STEPS": 10,
         
         # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
