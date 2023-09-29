@@ -464,7 +464,7 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
         "NUM_ENVS": 1000,
-        "TOTAL_TIMESTEPS": 1e8,
+        "TOTAL_TIMESTEPS": 3e7,
         "NUM_MINIBATCHES": 2,
         "UPDATE_EPOCHS": 2,
         
@@ -510,24 +510,24 @@ if __name__ == "__main__":
         
 
     
-    # +++++ Single GPU +++++
-    rng = jax.random.PRNGKey(0)
-    # rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(ppo_config))
-    start=time.time()
-    out = train_jit(rng)
-    print("Time: ", time.time()-start)
-    # +++++ Single GPU +++++
-
-    # # +++++ Multiple GPUs +++++
-    # num_devices = 4
-    # rng = jax.random.PRNGKey(30)
-    # rngs = jax.random.split(rng, num_devices)
-    # train_fn = lambda rng: make_train(ppo_config)(rng)
+    # # +++++ Single GPU +++++
+    # rng = jax.random.PRNGKey(0)
+    # # rng = jax.random.PRNGKey(30)
+    # train_jit = jax.jit(make_train(ppo_config))
     # start=time.time()
-    # out = jax.pmap(train_fn)(rngs)
+    # out = train_jit(rng)
     # print("Time: ", time.time()-start)
-    # # +++++ Multiple GPUs +++++
+    # # +++++ Single GPU +++++
+
+    # +++++ Multiple GPUs +++++
+    num_devices = 2
+    rng = jax.random.PRNGKey(30)
+    rngs = jax.random.split(rng, num_devices)
+    train_fn = lambda rng: make_train(ppo_config)(rng)
+    start=time.time()
+    out = jax.pmap(train_fn)(rngs)
+    print("Time: ", time.time()-start)
+    # +++++ Multiple GPUs +++++
     
     
 
