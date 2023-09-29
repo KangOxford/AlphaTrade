@@ -139,7 +139,7 @@ class ExecutionEnv(BaseLOBEnv):
             return scaledAction
         action = truncate_action(action, state.task_to_execute-state.quant_executed)
         action_msgs = self.getActionMsgs(action, state, params)
-        jax.debug.print("action_msgs {}",action_msgs)
+        # jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
