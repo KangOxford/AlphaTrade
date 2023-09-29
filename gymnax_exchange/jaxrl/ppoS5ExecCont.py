@@ -399,6 +399,7 @@ def make_train(config):
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
+                    splippage = info["splippage"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
                     
                     # if len(timesteps) >0:
@@ -415,6 +416,7 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
+                                    "splippage":splippage[t],
                                     "current_step":current_step[t],
                                     # "grad_norm":grad_norm,
                                 }
@@ -465,13 +467,13 @@ if __name__ == "__main__":
         "ENT_COEF": 0.1,
         "NUM_ENVS": 1000,
         "TOTAL_TIMESTEPS": 3e7,
-        "NUM_MINIBATCHES": 1,
-        "UPDATE_EPOCHS": 1,
+        "NUM_MINIBATCHES": 10,
+        "UPDATE_EPOCHS": 10,
         "NUM_STEPS": 1,
         
         # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
-       x # "NUM_STEPS": 1,
+        # "NUM_STEPS": 1,
         # "NUM_MINIBATCHES": 1,
         # "NUM_ENVS": 1000,
         # "NUM_STEPS": 10,
