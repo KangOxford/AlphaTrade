@@ -400,6 +400,7 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     slippage = info["slippage"][info["returned_episode"]]
+                    priceDrift = info["priceDrift"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
                     
                     # if len(timesteps) >0:
@@ -417,6 +418,7 @@ def make_train(config):
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
                                     "slippage":slippage[t],
+                                    "priceDrift":priceDrift[t],
                                     "current_step":current_step[t],
                                     # "grad_norm":grad_norm,
                                 }
@@ -494,7 +496,7 @@ if __name__ == "__main__":
         "DEBUG": True,
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
-        "LAMBDA":0.0,
+        "LAMBDA":1.0,
         "TASK_SIZE":500,
     }
 

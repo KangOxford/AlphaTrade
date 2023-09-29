@@ -176,7 +176,8 @@ class ExecutionEnv(BaseLOBEnv):
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- used for slippage ----------
         agentPrice = revenue/agentQuant
-        slippage = vwap - agentPrice
+        slippage = agentPrice - vwap
+        priceDrift = (vwap - state.init_price//self.tick_size)
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -203,23 +204,23 @@ class ExecutionEnv(BaseLOBEnv):
         done = self.is_terminal(state,params)
         
 
-        def normalizeRewardV1(reward):
-            mean_, std_ = 12033.709377975247, 12613.952695243072 # oneWindow 
-            # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
-            # mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
-            return (reward-mean_)/std_
+        # def normalizeRewardV1(reward):
+        #     mean_, std_ = 12033.709377975247, 12613.952695243072 # oneWindow 
+        #     # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
+        #     # mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
+        #     return (reward-mean_)/std_
 
-        # def normalizeRewardV2(reward):
-        #     normalizeFactor = 12033.709377975247 # oneWindow
-        #     return reward/normalizeFactor
-        reward = normalizeRewardV1(reward)
+        # # def normalizeRewardV2(reward):
+        # #     normalizeFactor = 12033.709377975247 # oneWindow
+        # #     return reward/normalizeFactor
+        # reward = normalizeRewardV1(reward)
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,'slippage':slippage,
+            'done':done,'slippage':slippage,"priceDrift":priceDrift,
             }
         # TODO episodic slippage
 
