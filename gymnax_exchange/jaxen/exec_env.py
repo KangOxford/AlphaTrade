@@ -177,7 +177,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ---------- used for slippage ----------
         agentPrice = revenue/agentQuant
         slippage = agentPrice - vwap
-        priceDrift = (vwap - state.init_price//self.tick_size)
+        price_drift = (vwap - state.init_price//self.tick_size)
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -223,7 +223,7 @@ class ExecutionEnv(BaseLOBEnv):
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,'slippage':slippage,"priceDrift":priceDrift,
+            'done':done,'slippage':slippage,"price_drift":price_drift,
             }
         # TODO episodic slippage
 
