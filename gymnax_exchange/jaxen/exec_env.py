@@ -220,7 +220,7 @@ class ExecutionEnv(BaseLOBEnv):
         # reward = jnp.sign(agentTrades[0,0]) * advantage
         
         # encourage exploration
-        GAMMA_ = 0.01
+        GAMMA_ = 0.5
         step_reward = GAMMA_ * (state.step_counter) * (state.step_counter)
         reward += step_reward
         
@@ -230,7 +230,7 @@ class ExecutionEnv(BaseLOBEnv):
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,"step_reward":step_reward,\
             'done':done,'slippage':slippage,"price_drift":price_drift,\
-            "drift_reward":drift_reward,
+            "drift_reward":drift_reward,"advantage_reward":advantage,\
             }
         # TODO episodic slippage
 
@@ -378,8 +378,8 @@ class ExecutionEnv(BaseLOBEnv):
         """Action space of the environment."""
         # return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
         # return spaces.Box(-2,2,(self.n_actions,),dtype=jnp.int32)
-        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):

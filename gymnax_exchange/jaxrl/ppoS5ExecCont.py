@@ -404,6 +404,7 @@ def make_train(config):
                     current_step = info["current_step"][info["returned_episode"]]
                     step_reward = info["step_reward"][info["returned_episode"]]
                     drift_reward = info["drift_reward"][info["returned_episode"]]
+                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     # if len(timesteps) >0:
                     #     if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
@@ -424,6 +425,7 @@ def make_train(config):
                                     "current_step":current_step[t],
                                     "step_reward":step_reward[t],
                                     "drift_reward":drift_reward[t],
+                                    "advantage_reward":advantage_reward[t],
                                     # "grad_norm":grad_norm,
                                 }
                             ) 
@@ -476,11 +478,12 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
-        "NUM_ENVS": 500,
+        "NUM_ENVS": 1000,
         "TOTAL_TIMESTEPS": 3e7,
         "NUM_MINIBATCHES": 4,
-        "UPDATE_EPOCHS": 4,
+        "UPDATE_EPOCHS": 10,
         "NUM_STEPS": 4,
+        "CLIP_EPS": 0.2,
         
         # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
@@ -493,7 +496,7 @@ if __name__ == "__main__":
         # "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
+        # "CLIP_EPS": 0.2,
         # "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
