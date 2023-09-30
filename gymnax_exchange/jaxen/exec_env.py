@@ -223,6 +223,7 @@ class ExecutionEnv(BaseLOBEnv):
         # encourage exploration
         step_reward = self.Gamma * state.step_counter * state.step_counter
         reward += jnp.sign(agentTrades[0,0]) * step_reward
+        reward /= 10000
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
