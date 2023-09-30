@@ -447,7 +447,6 @@ if __name__ == "__main__":
         # print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
         test_action=env.action_space().sample(key_policy)
-        print(type(test_action))
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
