@@ -403,6 +403,7 @@ def make_train(config):
                     price_drift = info["price_drift"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
                     step_reward = info["step_reward"][info["returned_episode"]]
+                    drift_reward = info["drift_reward"][info["returned_episode"]]
                     
                     # if len(timesteps) >0:
                     #     if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
@@ -422,6 +423,7 @@ def make_train(config):
                                     "price_drift":price_drift[t],
                                     "current_step":current_step[t],
                                     "step_reward":step_reward[t],
+                                    "drift_reward":drift_reward[t],
                                     # "grad_norm":grad_norm,
                                 }
                             ) 
