@@ -219,8 +219,8 @@ class ExecutionEnv(BaseLOBEnv):
         # reward = jnp.sign(agentTrades[0,0]) * advantage
         
         # encourage exploration
-        GAMMA_ = 0.1
-        step_reward = GAMMA_ * (state.step_counter - 455)
+        GAMMA_ = 0.01
+        step_reward = GAMMA_ * (state.step_counter) * (state.step_counter)
         reward += step_reward
         
         return self.get_obs(state,params),state,reward,done,\

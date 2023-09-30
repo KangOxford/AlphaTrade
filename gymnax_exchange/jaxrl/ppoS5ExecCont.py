@@ -474,11 +474,11 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 500,
         "TOTAL_TIMESTEPS": 3e7,
-        "NUM_MINIBATCHES": 10,
-        "UPDATE_EPOCHS": 10,
-        "NUM_STEPS": 10,
+        "NUM_MINIBATCHES": 4,
+        "UPDATE_EPOCHS": 4,
+        "NUM_STEPS": 2,
         
         # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
