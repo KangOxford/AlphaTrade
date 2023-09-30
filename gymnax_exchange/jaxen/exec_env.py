@@ -180,6 +180,9 @@ class ExecutionEnv(BaseLOBEnv):
         slippage = agentPrice - vwap
         price_drift = (vwap - state.init_price//self.tick_size)
         drift_reward =  Lambda * drift
+        # ---------- used for slippage ----------
+        average_price = 313041.469/self.tick_size 
+        reward = jnp.sign(agentTrades[0,0]) *(revenue - average_price*agentQuant)
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
