@@ -483,8 +483,8 @@ if __name__ == "__main__":
         "NUM_ENVS": 1000,
         "TOTAL_TIMESTEPS": 3e7,
         "NUM_MINIBATCHES": 2,
-        "UPDATE_EPOCHS": 2,
-        "NUM_STEPS": 2,
+        "UPDATE_EPOCHS": 5,
+        "NUM_STEPS": 5,
         "CLIP_EPS": 0.2,
         
         # "LR": 2.5e-6,

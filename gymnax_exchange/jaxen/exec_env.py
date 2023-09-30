@@ -386,9 +386,6 @@ class ExecutionEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         space = spaces.Box(-10,10,(610,),dtype=jnp.float32) 
-        # space = spaces.Box(-10000,99999999,(610,),dtype=jnp.int32) 
-        # space = spaces.Box(-10000,99999999,(608,),dtype=jnp.int32) 
-        #space = spaces.Box(-10000,99999999,(510,),dtype=jnp.int32)
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
@@ -450,6 +447,7 @@ if __name__ == "__main__":
         # print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
         test_action=env.action_space().sample(key_policy)
+        print(type(test_action))
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
