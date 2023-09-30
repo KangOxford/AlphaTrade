@@ -82,13 +82,14 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0):
+    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.Lambda = Lambda
+        self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
         self.task_size = task_size # num to sell or buy for the task
@@ -220,9 +221,8 @@ class ExecutionEnv(BaseLOBEnv):
         # reward = jnp.sign(agentTrades[0,0]) * advantage
         
         # encourage exploration
-        GAMMA_ = 0.5
-        step_reward = GAMMA_ * (state.step_counter) * (state.step_counter)
-        reward += step_reward
+        step_reward = self.Gamma * state.step_counter * state.step_counter
+        reward += jnp.sign(agentTrades[0,0]) * step_reward
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\

@@ -163,7 +163,7 @@ def make_train(config):
     # # old version
     
     # new version
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -509,6 +509,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
         "LAMBDA":0.1,
+        "GAMMA":1.0,
         "TASK_SIZE":500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file",
     }
