@@ -28,6 +28,8 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+
+import datetime
 wandbOn = True
 # wandbOn = False
 if wandbOn:
@@ -509,9 +511,9 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
         "LAMBDA":0.1,
-        "GAMMA":1.0,
+        "GAMMA":-0.01,
         "TASK_SIZE":500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file",
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     }
 
     if wandbOn:
@@ -528,25 +530,32 @@ if __name__ == "__main__":
         print(f"Results would be saved to {params_file_name}")
         
 
-    
-    # # +++++ Single GPU +++++
-    # rng = jax.random.PRNGKey(0)
-    # # rng = jax.random.PRNGKey(30)
-    # train_jit = jax.jit(make_train(ppo_config))
-    # start=time.time()
-    # out = train_jit(rng)
-    # print("Time: ", time.time()-start)
-    # # +++++ Single GPU +++++
 
-    # +++++ Multiple GPUs +++++
-    num_devices = 2
-    rng = jax.random.PRNGKey(30)
-    rngs = jax.random.split(rng, num_devices)
-    train_fn = lambda rng: make_train(ppo_config)(rng)
-    start=time.time()
-    out = jax.pmap(train_fn)(rngs)
-    print("Time: ", time.time()-start)
-    # +++++ Multiple GPUs +++++
+
+    device = jax.devices()[0]
+    rng = jax.device_put(jax.random.PRNGKey(0), device)
+    train_jit = jax.jit(make_train(ppo_config), device=device)
+    out = train_jit(rng)
+
+    # if jax.device_count() == 1:
+    #     # +++++ Single GPU +++++
+    #     rng = jax.random.PRNGKey(0)
+    #     # rng = jax.random.PRNGKey(30)
+    #     train_jit = jax.jit(make_train(ppo_config))
+    #     start=time.time()
+    #     out = train_jit(rng)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Single GPU +++++
+    # else:
+    #     # +++++ Multiple GPUs +++++
+    #     num_devices = int(jax.device_count())
+    #     rng = jax.random.PRNGKey(30)
+    #     rngs = jax.random.split(rng, num_devices)
+    #     train_fn = lambda rng: make_train(ppo_config)(rng)
+    #     start=time.time()
+    #     out = jax.pmap(train_fn)(rngs)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Multiple GPUs +++++
     
     
 
