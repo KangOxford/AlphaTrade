@@ -394,7 +394,7 @@ def make_train(config):
                 # new version
                 def callback(info):
                     return_values = info["returned_episode_returns"][info["returned_episode"]]
-                    timesteps = (info["timestep"][info["returned_episode"]] * config["NUM_ENVS"])
+                    timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
