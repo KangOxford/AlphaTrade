@@ -216,13 +216,18 @@ class ExecutionEnv(BaseLOBEnv):
         # reward = normalizeRewardV1(reward)
         
         # reward = jnp.sign(agentTrades[0,0]) * revenue
-        reward = jnp.sign(agentTrades[0,0]) * advantage
+        # reward = jnp.sign(agentTrades[0,0]) * advantage
+        
+        # encourage exploration
+        GAMMA_ = 0.1
+        step_reward = GAMMA_ * (state.step_counter - 455)
+        reward += step_reward
         
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
-            "current_step":state.step_counter,\
+            "current_step":state.step_counter,"step_reward":step_reward,\
             'done':done,'slippage':slippage,"price_drift":price_drift,
             }
         # TODO episodic slippage

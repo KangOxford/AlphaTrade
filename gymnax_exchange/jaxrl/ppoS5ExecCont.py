@@ -402,6 +402,7 @@ def make_train(config):
                     slippage = info["slippage"][info["returned_episode"]]
                     price_drift = info["price_drift"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
+                    step_reward = info["step_reward"][info["returned_episode"]]
                     
                     # if len(timesteps) >0:
                     #     if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
@@ -420,9 +421,15 @@ def make_train(config):
                                     "slippage":slippage[t],
                                     "price_drift":price_drift[t],
                                     "current_step":current_step[t],
+                                    "step_reward":step_reward[t],
                                     # "grad_norm":grad_norm,
                                 }
-                            )        
+                            ) 
+                            
+                            print(
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}",\
+                                file=open(config['RESULTS_FILE'],'a')
+                            )       
                         else:
                             print(
                                 f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
@@ -496,8 +503,9 @@ if __name__ == "__main__":
         "DEBUG": True,
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
-        "LAMBDA":1.0,
+        "LAMBDA":0.1,
         "TASK_SIZE":500,
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file",
     }
 
     if wandbOn:
