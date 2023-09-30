@@ -482,7 +482,7 @@ if __name__ == "__main__":
         "TOTAL_TIMESTEPS": 3e7,
         "NUM_MINIBATCHES": 4,
         "UPDATE_EPOCHS": 10,
-        "NUM_STEPS": 4,
+        "NUM_STEPS": 10,
         "CLIP_EPS": 0.2,
         
         # "LR": 2.5e-6,
