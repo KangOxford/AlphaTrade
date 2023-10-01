@@ -118,20 +118,30 @@ class ActorCriticS5(nn.Module):
         embedding = nn.leaky_relu(embedding)
 
         hidden, embedding = self.s5(hidden, embedding, dones)
+        
+        '''
+        actor_mean = self.action_body_0(embedding)
+        actor_mean = nn.leaky_relu(actor_mean)
+        actor_mean = self.action_body_1(actor_mean)
+        actor_mean = nn.leaky_relu(actor_mean)
+        actor_mean = self.action_decoder(actor_mean)
+        pi = distrax.Categorical(logits=actor_mean)
+        #Old version ^^
+        # actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(self.actor_logtstd))
+        #New version ^^
+        '''
+        
 
         actor_mean = self.action_body_0(embedding)
         actor_mean = nn.leaky_relu(actor_mean)
         actor_mean = self.action_body_1(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
         actor_mean = self.action_decoder(actor_mean)
-
-
         pi = distrax.Categorical(logits=actor_mean)
-        #Old version ^^
-        # actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-        # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(self.actor_logtstd))
-        #New version ^^
+        
 
+        
         critic = self.value_body_0(embedding)
         critic = nn.leaky_relu(critic)
         critic = self.value_body_1(critic)
