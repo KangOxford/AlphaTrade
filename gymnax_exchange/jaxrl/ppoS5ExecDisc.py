@@ -126,10 +126,10 @@ class ActorCriticS5(nn.Module):
         actor_mean = self.action_decoder(actor_mean)
 
 
-        #pi = distrax.Categorical(logits=actor_mean)
+        pi = distrax.Categorical(logits=actor_mean)
         #Old version ^^
         # actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-        pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(self.actor_logtstd))
+        # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(self.actor_logtstd))
         #New version ^^
 
         critic = self.value_body_0(embedding)
@@ -186,8 +186,8 @@ def make_train(config):
     def train(rng):
         # INIT NETWORK
         
-        # old version 
         # network = ActorCriticS5(env.action_space(env_params).n, config=config)
+        # old version 
         network = ActorCriticS5(env.action_space(env_params).shape[0], config=config)
         # new version
         

@@ -127,7 +127,7 @@ class ExecutionEnv(BaseLOBEnv):
             # ---------- quants ----------
             return jnp.array(quants) 
         get_base_action = lambda state, params:twapV3(state, params)
-        action = get_base_action(state, params) + delta
+        action_ = get_base_action(state, params) + delta
         # '''
         # action = delta
         
@@ -138,7 +138,8 @@ class ExecutionEnv(BaseLOBEnv):
             action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
             scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
             return scaledAction
-        action = truncate_action(action, state.task_to_execute-state.quant_executed)
+        action = truncate_action(action_, state.task_to_execute-state.quant_executed)
+        jax.debug.print("base_action {}, delata {}, action {}; truncate_action {}",get_base_action(state, params), delta,action_,action)
         action_msgs = self.getActionMsgs(action, state, params)
         # jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
@@ -225,7 +226,14 @@ class ExecutionEnv(BaseLOBEnv):
         
         # encourage exploration
         # step_reward = self.Gamma * state.step_counter * state.step_counter
-        step_reward = self.Gamma * 3000
+        
+        a = 4972.974985421869
+        c = -447.00359014030346
+        def f(step_counter):
+            # Calculate f(x) = a * log(1 * step_counter + 1) + c
+            return a * jnp.log(step_counter + 1) + c
+
+        step_reward = self.Gamma * f(state.step_counter)
         reward += jnp.sign(agentTrades[0,0]) * step_reward
         reward /= 10000
         
