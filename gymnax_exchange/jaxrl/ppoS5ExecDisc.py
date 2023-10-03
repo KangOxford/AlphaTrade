@@ -86,16 +86,17 @@ ssm_init_fn = init_S5SSM(H=d_model,
                             bidirectional=bidirectional)
 
 class ActorCriticS5(nn.Module):
-    action_dim: Sequence[int]
+    action_dim: Sequence[int] = (11, 11)  # Two dimensions, each with 11 choices
     config: Dict
 
     def setup(self):
-        self.encoder_0 = nn.Dense(128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))
-        self.encoder_1 = nn.Dense(256, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))
-    
+        self.encoder_0 = nn.Dense(128, kernel_init=orthogonal(1.41421356237), bias_init=constant(0.0))
+        self.encoder_1 = nn.Dense(256, kernel_init=orthogonal(1.41421356237), bias_init=constant(0.0))
+
         self.action_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.action_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
-        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+        self.action_decoder_0 = nn.Dense(11, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+        self.action_decoder_1 = nn.Dense(11, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
 
         self.value_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.value_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
@@ -103,13 +104,11 @@ class ActorCriticS5(nn.Module):
 
         self.s5 = StackedEncoderModel(
             ssm=ssm_init_fn,
-            d_model=d_model,
-            n_layers=n_layers,
+            d_model=128,
+            n_layers=6,
             activation="half_glu1",
         )
-        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-
-
+    
     def __call__(self, hidden, x):
         obs, dones = x
         embedding = self.encoder_0(obs)
@@ -118,37 +117,25 @@ class ActorCriticS5(nn.Module):
         embedding = nn.leaky_relu(embedding)
 
         hidden, embedding = self.s5(hidden, embedding, dones)
-        
-        '''
-        actor_mean = self.action_body_0(embedding)
-        actor_mean = nn.leaky_relu(actor_mean)
-        actor_mean = self.action_body_1(actor_mean)
-        actor_mean = nn.leaky_relu(actor_mean)
-        actor_mean = self.action_decoder(actor_mean)
-        pi = distrax.Categorical(logits=actor_mean)
-        #Old version ^^
-        # actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-        # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(self.actor_logtstd))
-        #New version ^^
-        '''
-        
 
         actor_mean = self.action_body_0(embedding)
         actor_mean = nn.leaky_relu(actor_mean)
         actor_mean = self.action_body_1(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
-        actor_mean = self.action_decoder(actor_mean)
-        pi = distrax.Categorical(logits=actor_mean)
-        
 
-        
+        actor_logits_0 = self.action_decoder_0(actor_mean)
+        actor_logits_1 = self.action_decoder_1(actor_mean)
+
+        pi_0 = distrax.Categorical(logits=actor_logits_0)
+        pi_1 = distrax.Categorical(logits=actor_logits_1)
+
         critic = self.value_body_0(embedding)
         critic = nn.leaky_relu(critic)
         critic = self.value_body_1(critic)
         critic = nn.leaky_relu(critic)
         critic = self.value_decoder(critic)
 
-        return hidden, pi, jnp.squeeze(critic, axis=-1)
+        return hidden, (pi_0, pi_1), jnp.squeeze(critic, axis=-1)
 
 class Transition(NamedTuple):
     done: jnp.ndarray
@@ -239,16 +226,38 @@ def make_train(config):
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
                 rng, _rng = jax.random.split(rng)
 
+                # # SELECT ACTION
+                # ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+                # hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+                # action = jnp.clip(pi.sample(seed=_rng), -5, 5)
+                # log_prob = pi.log_prob(action)
+                # value, action, log_prob = (
+                #     value.squeeze(0),
+                #     action.squeeze(0),
+                #     log_prob.squeeze(0),
+                # )
+                
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
-                hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                action = jnp.clip(pi.sample(seed=_rng), -5, 5)
-                log_prob = pi.log_prob(action)
+                hstate, (pi_0, pi_1), value = network.apply(train_state.params, hstate, ac_in)
+                # Sampling from both distributions and converting index to action
+                action_0 = pi_0.sample(seed=_rng) - 5  # Convert index to action for dimension 0
+                action_1 = pi_1.sample(seed=_rng) - 5  # Convert index to action for dimension 1
+                # Combine actions
+                action = jnp.stack([action_0, action_1], axis=1)  # Assume axis=1 is the correct axis for your setup
+                # Compute log probabilities for both actions
+                log_prob_0 = pi_0.log_prob(action_0 + 5)  # Convert action back to index for log_prob
+                log_prob_1 = pi_1.log_prob(action_1 + 5)
+                # Combine log probabilities
+                log_prob = log_prob_0 + log_prob_1
                 value, action, log_prob = (
                     value.squeeze(0),
                     action.squeeze(0),
                     log_prob.squeeze(0),
                 )
+                
+                
+                
 
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
@@ -596,6 +605,4 @@ if __name__ == "__main__":
 
     if wandbOn:
         run.finish()
-        
-        
         
