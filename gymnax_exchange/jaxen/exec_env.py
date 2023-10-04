@@ -185,9 +185,6 @@ class ExecutionEnv(BaseLOBEnv):
         slippage = agentPrice - vwap
         price_drift = (vwap - state.init_price//self.tick_size)
         drift_reward =  Lambda * drift
-        # ---------- used for slippage ----------
-        average_price = 313041.469/self.tick_size 
-        reward = jnp.sign(agentTrades[0,0]) *(revenue - average_price*agentQuant)
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -242,8 +239,13 @@ class ExecutionEnv(BaseLOBEnv):
         reward /= 10000
         
         
-        reward = slippage*new_execution # TODO
-        jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ reward_value {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,rewardValue,new_execution*slippage)
+        # reward = slippage*new_execution # TODO
+        # reward = rewardValue # TODO
+        # ---------- used for slippage ----------
+        abs_average_price = 313041.469/self.tick_size 
+        reward = jnp.sign(agentTrades[0,0]) *(revenue - abs_average_price*agentQuant) # TODO
+        # ---------- used for slippage ----------
+        jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\

@@ -30,8 +30,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-# wandbOn = True
-wandbOn = False
+wandbOn = True
+# wandbOn = False
 if wandbOn:
     import wandb
     
