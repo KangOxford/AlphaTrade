@@ -232,8 +232,12 @@ def make_train(config):
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                action = jnp.clip(pi.sample(seed=_rng), -5, 5)
+                # sampled = pi.sample(seed=_rng)
+                # action = jnp.clip(sampled, -5, 5)
+                action = pi.sample(seed=_rng)
+                # jax.debug.print("sampled \n {}", sampled)
                 log_prob = pi.log_prob(action)
+                # jax.debug.print("log_prob \n {}", log_prob)
                 value, action, log_prob = (
                     value.squeeze(0),
                     action.squeeze(0),

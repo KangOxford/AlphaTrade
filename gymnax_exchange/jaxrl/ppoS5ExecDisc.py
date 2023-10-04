@@ -84,10 +84,10 @@ ssm_init_fn = init_S5SSM(H=d_model,
                             conj_sym=conj_sym,
                             clip_eigs=clip_eigs,
                             bidirectional=bidirectional)
-
+from dataclasses import field
 class ActorCriticS5(nn.Module):
     action_dim: Sequence[int] = (11, 11)  # Two dimensions, each with 11 choices
-    config: Dict
+    config: Dict = field(default_factory=dict)  # Use default_factory for mutable types
 
     def setup(self):
         self.encoder_0 = nn.Dense(128, kernel_init=orthogonal(1.41421356237), bias_init=constant(0.0))
@@ -116,7 +116,11 @@ class ActorCriticS5(nn.Module):
         embedding = self.encoder_1(embedding)
         embedding = nn.leaky_relu(embedding)
 
+        # jax.debug.print("+++hidden{} embedding{} dones{}",type(hidden), type(embedding), type(dones))
+        jax.debug.print("+++hidden{} embedding{}",hidden, embedding)
         hidden, embedding = self.s5(hidden, embedding, dones)
+        jax.debug.print("---hidden{} embedding{}",hidden, embedding)
+        # jax.debug.print("---hidden{} embedding{} ",type(hidden), type(embedding))
 
         actor_mean = self.action_body_0(embedding)
         actor_mean = nn.leaky_relu(actor_mean)
@@ -299,10 +303,13 @@ def make_train(config):
 
                     def _loss_fn(params, init_hstate, traj_batch, gae, targets):
                         # RERUN NETWORK
-                        _, pi, value = network.apply(
+                        _, (pi1, pi2), value = network.apply(
                             params, init_hstate, (traj_batch.obs, traj_batch.done)
                         )
-                        log_prob = pi.log_prob(traj_batch.action)
+                        
+                        log_prob1 = pi1.log_prob(traj_batch.action1)  # Assuming traj_batch.action1 is for pi1
+                        log_prob2 = pi2.log_prob(traj_batch.action2)  # Assuming traj_batch.action2 is for pi2
+
 
                         # CALCULATE VALUE LOSS
                         value_pred_clipped = traj_batch.value + (
@@ -314,28 +321,36 @@ def make_train(config):
                             0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
                         )
 
-                        # CALCULATE ACTOR LOSS
-                        ratio = jnp.exp(log_prob - traj_batch.log_prob)
-                        gae = (gae - gae.mean()) / (gae.std() + 1e-8)
-                        loss_actor1 = ratio * gae
-                        loss_actor2 = (
-                            jnp.clip(
-                                ratio,
-                                1.0 - config["CLIP_EPS"],
-                                1.0 + config["CLIP_EPS"],
-                            )
-                            * gae
-                        )
-                        loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
-                        loss_actor = loss_actor.mean()
-                        entropy = pi.entropy().mean()
+                        # CALCULATE ACTOR LOSS FOR PI1
+                        ratio1 = jnp.exp(log_prob1 - traj_batch.log_prob1)  # Assuming traj_batch.log_prob1 is for pi1
+                        gae1 = (gae - gae.mean()) / (gae.std() + 1e-8)
+                        loss_actor1_1 = ratio1 * gae1
+                        loss_actor1_2 = jnp.clip(ratio1, 1.0 - config["CLIP_EPS"], 1.0 + config["CLIP_EPS"]) * gae1
+                        loss_actor1 = -jnp.minimum(loss_actor1_1, loss_actor1_2)
+                        loss_actor1 = loss_actor1.mean()
+                        entropy1 = pi1.entropy().mean()
 
+                        # CALCULATE ACTOR LOSS FOR PI2
+                        ratio2 = jnp.exp(log_prob2 - traj_batch.log_prob2)  # Assuming traj_batch.log_prob2 is for pi2
+                        gae2 = (gae - gae.mean()) / (gae.std() + 1e-8)
+                        loss_actor2_1 = ratio2 * gae2
+                        loss_actor2_2 = jnp.clip(ratio2, 1.0 - config["CLIP_EPS"], 1.0 + config["CLIP_EPS"]) * gae2
+                        loss_actor2 = -jnp.minimum(loss_actor2_1, loss_actor2_2)
+                        loss_actor2 = loss_actor2.mean()
+                        entropy2 = pi2.entropy().mean()
+
+                        # COMBINE THE ACTOR LOSSES AND ENTROPIES
+                        loss_actor_combined = loss_actor1 + loss_actor2
+                        entropy_combined = entropy1 + entropy2
+
+                        # CALCULATE TOTAL LOSS
                         total_loss = (
-                            loss_actor
+                            loss_actor_combined
                             + config["VF_COEF"] * value_loss
-                            - config["ENT_COEF"] * entropy
+                            - config["ENT_COEF"] * entropy_combined
                         )
-                        return total_loss, (value_loss, loss_actor, entropy)
+
+                        return total_loss, (value_loss, loss_actor_combined, entropy_combined)
 
                     grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
                     total_loss, grads = grad_fn(

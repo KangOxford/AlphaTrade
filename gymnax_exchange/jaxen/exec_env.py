@@ -110,6 +110,10 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
+        def action_space_clipping(action):
+            return jnp.round(action).astype(jnp.int32).clip(-5,5) # clippedAction 
+        delta = action_space_clipping(delta)    
+          
         def twapV3(state, env_params):
             # ---------- ifMarketOrder ----------
             remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
