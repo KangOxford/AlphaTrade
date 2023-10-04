@@ -514,8 +514,10 @@ if __name__ == "__main__":
         "DEBUG": True,
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
-        "LAMBDA":0.1,
-        "GAMMA":10.0,
+        # "LAMBDA":0.1,
+        # "GAMMA":10.0,
+        "LAMBDA":0.0,
+        "GAMMA":0.0,
         "TASK_SIZE":500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     }

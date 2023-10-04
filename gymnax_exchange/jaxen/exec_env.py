@@ -143,7 +143,7 @@ class ExecutionEnv(BaseLOBEnv):
             scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
             return scaledAction
         action = truncate_action(action_, state.task_to_execute-state.quant_executed)
-        jax.debug.print("base_action {}, delata {}, action {}; truncate_action {}",get_base_action(state, params), delta,action_,action)
+        # jax.debug.print("base_action {}, delata {}, action {}; truncated_action {}",get_base_action(state, params), delta,action_,action)
         action_msgs = self.getActionMsgs(action, state, params)
         # jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
@@ -241,6 +241,9 @@ class ExecutionEnv(BaseLOBEnv):
         reward += jnp.sign(agentTrades[0,0]) * step_reward
         reward /= 10000
         
+        
+        reward = slippage*new_execution # TODO
+        jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ reward_value {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,rewardValue,new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
