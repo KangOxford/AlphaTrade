@@ -245,7 +245,7 @@ class ExecutionEnv(BaseLOBEnv):
         abs_average_price = 313041.469
         reward = jnp.sign(agentTrades[0,0]) *(revenue - abs_average_price*agentQuant) # TODO
         # ---------- used for slippage ----------
-        jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
+        # jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
