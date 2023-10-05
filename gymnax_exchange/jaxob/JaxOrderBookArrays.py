@@ -21,13 +21,15 @@ import jax
 from functools import partial, partialmethod
 import chex
 
-#INITID=-9000
+INITID = -9000
 #MAXPRICE=999999999
 #TODO: Get rid of these magic numbers by allowing a config dict to be passed through as a static arg 
 
+MAX_INT = 2_147_483_647  # max 32 bit int
+
 ############### ADD AND REMOVE ###############
 @jax.jit
-def add_order(orderside: chex.Array ,msg: dict) -> chex.Array :
+def add_order(orderside: chex.Array, msg: dict) -> chex.Array :
     """Low level function that will add an order (Dict)
       to the orderbook (Array) and return the updated"""
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
@@ -39,14 +41,31 @@ def __removeZeroNegQuant(orderside):
     return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype(jnp.int32),y=orderside)
 
 
-@jax.jit
-def cancel_order(orderside,msg):
-    # jax.debug.breakpoint()
-    condition=((orderside[:,2]==msg['orderid']) | ((orderside[:,0]==msg['price']) & (orderside[:,2]<=-9000)))
-    idx=jnp.where(condition,size=1,fill_value=-1)[0]
-    orderside=orderside.at[idx,1].set(orderside[idx,1]-msg['quantity'])
-    return __removeZeroNegQuant(orderside)
+# @jax.jit
+# def cancel_order(orderside,msg):
+#     # jax.debug.breakpoint()
+#     condition=((orderside[:,2]==msg['orderid']) | ((orderside[:,0]==msg['price']) & (orderside[:,2]<=-9000)))
+#     idx=jnp.where(condition,size=1,fill_value=-1)[0]
+#     orderside=orderside.at[idx,1].set(orderside[idx,1]-msg['quantity'])
+#     return __removeZeroNegQuant(orderside)
 
+@jax.jit
+def cancel_order(orderside, msg):
+    def get_init_id_match(orderside, msg):
+        init_id_match = ((orderside[:, 0] == msg['price']) & (orderside[:, 2] <= INITID))
+        idx = jnp.where(init_id_match, size=1, fill_value=-1)[0][0]
+        return idx
+
+    # jax.debug.breakpoint()
+    # TODO: also check for price here?
+    oid_match = (orderside[:, 2] == msg['orderid'])
+    idx = jnp.where(oid_match, size=1, fill_value=-1)[0][0]
+    jax.debug.print('idx {}', idx)
+    idx = jax.lax.cond(idx == -1, get_init_id_match, lambda a, b: idx, orderside, msg)
+    jax.debug.print('idx 2 {}', idx)
+    orderside = orderside.at[idx, 1].set(orderside[idx, 1] - msg['quantity'])
+    jax.debug.print('match {}', orderside[idx])
+    return __removeZeroNegQuant(orderside)
 
 ############### MATCHING FUNCTIONS ###############
 
@@ -168,9 +187,19 @@ def cond_type_side(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
-    return (ask,bid,trade),0
+    # index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
+    s = msg["side"]
+    t = msg["type"]
+    index = (((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0 + \
+            (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 + \
+            (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 + \
+            (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
+    # jax.debug.print("msg[side] {}", msg["side"])
+    # jax.debug.print("msg[type] {}", msg["type"])
+    # jax.debug.print("index is {}", index)
+    # ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
+    ask, bid, trade = jax.lax.switch(index, (ask_lim, bid_lim, ask_cancel, bid_cancel), msg, askside, bidside, trades)
+    return (ask, bid, trade), 0
 
 @jax.jit
 def cond_type_side_save_states(ordersides,data):
@@ -186,8 +215,15 @@ def cond_type_side_save_states(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
+    # index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
+    s = msg["side"]
+    t = msg["type"]
+    index = (((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0 + \
+            (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 + \
+            (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 + \
+            (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
+    # ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
+    ask, bid, trade = jax.lax.switch(index, (ask_lim, bid_lim, ask_cancel, bid_cancel), msg, askside, bidside, trades)
     #jax.debug.print("Askside after is \n {}",ask)
     return (ask,bid,trade),(ask,bid,trade)
 
@@ -205,8 +241,15 @@ def cond_type_side_save_bidask(ordersides,data):
     'traderid':data[4],
     'time':data[6],
     'time_ns':data[7]}
-    index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
-    ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
+    # index=((msg["side"]+1)+msg["type"]).astype(jnp.int32)
+    s = msg["side"]
+    t = msg["type"]
+    index = (((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0 + \
+            (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 + \
+            (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 + \
+            (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
+    # ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
+    ask, bid, trade = jax.lax.switch(index, (ask_lim, bid_lim, ask_cancel, bid_cancel), msg, askside, bidside, trades)
     #jax.debug.print("Askside after is \n {}",ask)
     # jax.debug.breakpoint()
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
@@ -287,17 +330,17 @@ def get_totquant_at_price(orderside,price):
 
 get_totquant_at_prices=jax.vmap(get_totquant_at_price,(None,0),0)
 
-@partial(jax.jit,static_argnums=0)
-def get_L2_state(N,asks,bids):
-    bid_prices=-jnp.unique(-bids[:,0],size=N,fill_value=1)
-    ask_prices=jnp.unique(jnp.where(asks[:,0]==-1,999999999,asks[:,0]),size=N,fill_value=999999999)
-    ask_prices=jnp.where(ask_prices==999999999,-1,ask_prices)
+# @partial(jax.jit,static_argnums=0)
+# def get_L2_state(N,asks,bids):
+#     bid_prices=-jnp.unique(-bids[:,0],size=N,fill_value=1)
+#     ask_prices=jnp.unique(jnp.where(asks[:,0]==-1,999999999,asks[:,0]),size=N,fill_value=999999999)
+#     ask_prices=jnp.where(ask_prices==999999999,-1,ask_prices)
 
-    bid_quants=get_totquant_at_prices(bids,bid_prices)
-    ask_quants=get_totquant_at_prices(asks,ask_prices)
-    bid_quants=jnp.where(bid_quants<0,0,bid_quants)
-    ask_quants=jnp.where(ask_quants<0,0,ask_quants)
-    return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
+#     bid_quants=get_totquant_at_prices(bids,bid_prices)
+#     ask_quants=get_totquant_at_prices(asks,ask_prices)
+#     bid_quants=jnp.where(bid_quants<0,0,bid_quants)
+#     ask_quants=jnp.where(ask_quants<0,0,ask_quants)
+#     return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
 
 def get_best_bid_and_ask(asks,bids):
     best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
@@ -356,12 +399,120 @@ def get_data_messages(messageData,idx_window,step_counter):
 # ===================================== #
 
 
-@partial(jax.jit)
-def get_best_ask(asks, bids):
-    L2_state = get_L2_state(1, asks, bids)
-    return L2_state[0]
+@jax.jit
+def get_best_ask(asks):
+    '''  Return the best / lowest ask price. If there is no ask, return -1. '''
+    min = jnp.min(jnp.where(asks[:, 0] == -1, MAX_INT, asks[:, 0]))
+    return jnp.where(min == MAX_INT, -1, min)
 
-@partial(jax.jit)
-def get_best_bid(asks, bids):
-    L2_state = get_L2_state(1, asks, bids)
-    return L2_state[1]
+@jax.jit
+def get_best_bid(bids):
+    ''' Return the best / highest bid price. If there is no bid, return -1. '''
+    return jnp.max(bids[:, 0])
+
+@jax.jit
+def get_volume_at_price(side_array, price):
+    volume = jnp.sum(jnp.where(side_array[:,0] == price, side_array[:,1], 0))
+    return volume
+
+@jax.jit
+def get_init_volume_at_price(
+        side_array: jax.Array,
+        price: int
+    ) -> jax.Array:
+    ''' Returns the size of initial volume (order with INITID) at given price. '''
+    volume = jnp.sum(
+        jnp.where(
+            (side_array[:, 0] == price) & (side_array[:, 2] <= INITID), 
+            side_array[:, 1], 
+            0
+        )
+    )
+    return volume
+
+@jax.jit
+def get_order_by_id(
+        side_array: jax.Array,
+        order_id: int,
+    ) -> jax.Array:
+    """ Returns all order fields for the first order matching the given order_id.
+        CAVE: if the same ID is used multiple times, will only return the first 
+        (e.g. for INITID)
+    """
+    idx = jnp.where( 
+        side_array[..., 2] == order_id,
+        size=1,
+        fill_value=-1,
+    )
+    # return vector of -1 if not found
+    return jax.lax.cond(
+        idx == -1,
+        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+        lambda i: side_array[i][0],
+        idx
+    )
+
+@jax.jit
+def get_order_by_id_and_price(
+        side_array: jax.Array,
+        order_id: int,
+        price: int,
+    ) -> jax.Array:
+    """ Returns all order fields for the first order matching the given order_id at the given price.
+        CAVE: if the same ID is used multiple times at the given price level, will only return the first 
+    """
+    idx = jnp.where(
+        ((side_array[..., 2] == order_id) &
+         (side_array[..., 0] == price)),
+        size=1,
+        fill_value=-1,
+    )
+    # return vector of -1 if not found
+    return jax.lax.cond(
+        idx == -1,
+        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+        lambda i: side_array[i][0],
+        idx
+    )
+
+@jax.jit
+def get_order_ids(
+        orderbook_array: jax.Array,
+    ) -> jax.Array:
+    """ Returns a list of all order ids in the orderbook
+    """
+    return jnp.unique(orderbook_array[:, 2], size=orderbook_array.shape[0], fill_value=1)
+
+@partial(jax.jit, static_argnums=0)
+def get_next_executable_order(side, side_array):
+    if side == 0:
+        idx = __get_top_bid_order_idx(side_array)
+    elif side == 1:
+        idx = __get_top_ask_order_idx(side_array)
+    else:
+        raise ValueError("Side must be 0 (bid) or 1 (ask).")
+    return side_array[idx].squeeze()
+
+@partial(jax.jit, static_argnums=2)
+def get_L2_state(asks, bids, n_levels):
+    # unique sorts ascending --> negative values to get descending
+    bid_prices = -1 * jnp.unique(-1 * bids[:, 0], size=n_levels, fill_value=1)
+    # replace -1 with max 32 bit int in sorting asks before sorting
+    ask_prices = jnp.unique(
+        jnp.where(asks[:, 0] == -1, MAX_INT, asks[:, 0]),
+        size=n_levels,
+        fill_value=-1
+    )
+    # replace max 32 bit int with -1 after sorting
+    ask_prices = jnp.where(ask_prices == MAX_INT, -1, ask_prices)
+
+    bids = jnp.stack((bid_prices, get_totquant_at_prices(bids, bid_prices)))
+    asks = jnp.stack((ask_prices, get_totquant_at_prices(asks, ask_prices)))
+    # set negative volumes to 0
+    bids = bids.at[1].set(jnp.where(bids[1] < 0, 0, bids[1]))
+    asks = asks.at[1].set(jnp.where(asks[1] < 0, 0, asks[1]))
+    # combine asks and bids in joint representation
+    l2_state = jnp.hstack((asks.T, bids.T)).flatten()
+    return l2_state
+
+vmap_get_L2_state = jax.vmap(get_L2_state, (0, 0, None), 0)
