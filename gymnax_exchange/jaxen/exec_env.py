@@ -25,6 +25,7 @@ from jax import config
 config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 
+import random
 # ============== testing scripts ===============
 
 
@@ -110,40 +111,46 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
-        def action_space_clipping(action):
-            return jnp.round(action).astype(jnp.int32).clip(-5,5) # clippedAction 
-        delta = action_space_clipping(delta)    
-          
-        def twapV3(state, env_params):
-            # ---------- ifMarketOrder ----------
-            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-            marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-            ifMarketOrder = (remainingTime <= marketOrderTime)
-            # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
-            # ---------- ifMarketOrder ----------
-            # ---------- quants ----------
-            remainedQuant = state.task_to_execute - state.quant_executed
-            remainedStep = state.max_steps_in_episode - state.step_counter
-            stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-            limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True)
-            market_quants = jnp.array([stepQuant,stepQuant])
-            quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-            # ---------- quants ----------
-            return jnp.array(quants) 
-        get_base_action = lambda state, params:twapV3(state, params)
-        action_ = get_base_action(state, params) + delta
-        # '''
-        # action = delta
+        def reshape_action(action, state, params):
+            def action_space_clipping(action):
+                return jnp.round(action).astype(jnp.int32).clip(-5,5) # clippedAction 
+            
+            def twapV3(state, env_params):
+                # ---------- ifMarketOrder ----------
+                remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+                marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                ifMarketOrder = (remainingTime <= marketOrderTime)
+                # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
+                # ---------- ifMarketOrder ----------
+                # ---------- quants ----------
+                remainedQuant = state.task_to_execute - state.quant_executed
+                remainedStep = state.max_steps_in_episode - state.step_counter
+                stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True)
+                market_quants = jnp.array([stepQuant,stepQuant])
+                quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+                # ---------- quants ----------
+                return jnp.array(quants) 
+            get_base_action = lambda state, params:twapV3(state, params)
+            def truncate_action(action, remainQuant):
+                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
+                scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
+                return scaledAction
+            
+            delta_ = action_space_clipping(delta)    
+            base_ = get_base_action(state, params)
+            # base_ = 11 # CAUTION NOT RIGHT TODO 
+            action_ = base_ + delta_
+            # action = delta
+            action = truncate_action(action_, state.task_to_execute-state.quant_executed)
+            jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+            return action
+        action = reshape_action(delta, state, params)
+        
         
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
-        def truncate_action(action, remainQuant):
-            action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
-            scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
-            return scaledAction
-        action = truncate_action(action_, state.task_to_execute-state.quant_executed)
-        # jax.debug.print("base_action {}, delata {}, action {}; truncated_action {}",get_base_action(state, params), delta,action_,action)
         action_msgs = self.getActionMsgs(action, state, params)
         # jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
@@ -467,15 +474,16 @@ if __name__ == "__main__":
         # ---------- acion from random sampling ----------
         # print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
-        test_action=env.action_space().sample(key_policy)
+        # test_action=env.action_space().sample(key_policy)
+        test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
-        print(f"Sampled {i}th actions are: ",test_action)
+        # print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-        for key, value in info.items():
-            print(key, value)
+        # for key, value in info.items():
+        #     print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
-        print(f"Time for {i} step: \n",time.time()-start)
+        # print(f"Time for {i} step: \n",time.time()-start)
         if done:
             print("==="*20)
         # ---------- acion from random sampling ----------
