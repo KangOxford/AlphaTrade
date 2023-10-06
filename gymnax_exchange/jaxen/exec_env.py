@@ -143,7 +143,7 @@ class ExecutionEnv(BaseLOBEnv):
             action_ = base_ + delta_
             # action = delta
             action = truncate_action(action_, state.task_to_execute-state.quant_executed)
-            jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+            # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
             return action
         action = reshape_action(delta, state, params)
         

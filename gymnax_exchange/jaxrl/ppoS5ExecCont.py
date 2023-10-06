@@ -30,8 +30,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
     
@@ -384,8 +384,10 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
+            # grad_norm=jnp.mean(loss_info[1])
             train_state = update_state[0]
-            metric = traj_batch.info
+            # metric = (traj_batch.info,train_state.params,grad_norm)
+            metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
             if config.get("DEBUG"):
                 
@@ -398,10 +400,21 @@ def make_train(config):
                         
 
                 # new version
-                def callback(info):
+                def callback(metric):
+                    
+                    info,trainstate_params=metric
+                    # info,trainstate,grad_norm=metric
+                    
                     return_values = info["returned_episode_returns"][info["returned_episode"]]
                     timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     
+                    # if any(timesteps % int(1e5) == 0) and len(timesteps) >0:  # +1 since global_step is 0-indexed
+                    if any(timesteps % int(1e3) == 0) and len(timesteps) >0:  # +1 since global_step is 0-indexed
+                        jax.debug.print("checkpoint saving")
+                        checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
+                        save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
+                        jax.debug.print("checkpoint saved")
+                        
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
@@ -411,11 +424,6 @@ def make_train(config):
                     step_reward = info["step_reward"][info["returned_episode"]]
                     drift_reward = info["drift_reward"][info["returned_episode"]]
                     advantage_reward = info["advantage_reward"][info["returned_episode"]]
-                    
-                    # if len(timesteps) >0:
-                    #     if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
-                    #         checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
-                    #         save_checkpoint(trainstate, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
                     
                     for t in range(len(timesteps)):  
                         if wandbOn:
@@ -436,10 +444,10 @@ def make_train(config):
                                 }
                             ) 
                             
-                            print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}",\
-                                file=open(config['RESULTS_FILE'],'a')
-                            )       
+                            # print(
+                            #     f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}",\
+                            #     file=open(config['RESULTS_FILE'],'a')
+                            # )       
                         else:
                             print(
                                 f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
@@ -488,7 +496,7 @@ if __name__ == "__main__":
         "TOTAL_TIMESTEPS": 5e7,
         "NUM_MINIBATCHES": 2,
         "UPDATE_EPOCHS": 5,
-        "NUM_STEPS": 910,
+        "NUM_STEPS": 455,
         "CLIP_EPS": 0.2,
         
         # "LR": 2.5e-6,
@@ -511,6 +519,7 @@ if __name__ == "__main__":
         
         "ENV_NAME": "alphatradeExec-v0",
         "ENV_LENGTH": "oneWindow",
+        # "ENV_LENGTH": "allWindows",
         "DEBUG": True,
         "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
