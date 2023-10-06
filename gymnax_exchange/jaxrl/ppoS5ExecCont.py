@@ -1,6 +1,7 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
 
+import os
 import sys
 import time
 
@@ -408,12 +409,51 @@ def make_train(config):
                     return_values = info["returned_episode_returns"][info["returned_episode"]]
                     timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     
-                    # if any(timesteps % int(1e5) == 0) and len(timesteps) >0:  # +1 since global_step is 0-indexed
-                    if any(timesteps % int(1e3) == 0) and len(timesteps) >0:  # +1 since global_step is 0-indexed
-                        jax.debug.print("checkpoint saving")
-                        checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
-                        save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
-                        jax.debug.print("checkpoint saved")
+                    def evaluation():
+                        if not os.path.exists(config['CHECKPOINT_DIR']): os.makedirs(config['CHECKPOINT_DIR'])
+                        # Inside your loop or function where you save the checkpoint
+                        if any(timesteps % int(1e3) == 0) and len(timesteps) > 0:  # +1 since global_step is 0-indexed
+                            start = time.time()
+                            jax.debug.print(">>> checkpoint saving {}",round(timesteps[0], -3))
+                            # Save the checkpoint to the specific directory
+                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -5)}.ckpt")
+                            save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
+                            jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
+                            jax.debug.print("+++ time taken        {}",time.time()-start)
+                            
+                            rng = jax.random.PRNGKey(0)
+                            rng, key_reset, key_step = jax.random.split(rng, 3)
+                            obs,state=env.reset(key_reset,env_params)
+                            network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
+                            init_hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
+                            init_done = jnp.array([False]*1)
+                            ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
+                            assert len(ac_in[0].shape) == 3
+                            hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
+                            action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
+                            obs,state,reward,done,info=env.step(key_step, state, action, env_params)
+                            excuted_list = []
+                            for i in range(1,10000):
+                                # ==================== ACTION ====================
+                                # ---------- acion from trained network ----------
+                                ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
+                                assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
+                                assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
+                                hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
+                                action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
+                                # ---------- acion from trained network ----------
+                                # ==================== ACTION ====================    
+                                print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")
+                                start=time.time()
+                                obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+                                print(f"Time for {i} step: \n",time.time()-start)
+                                print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
+                                excuted_list.append(info["quant_executed"])
+                                if done:
+                                    break
+                            print("==="*10+"\n"+info['window_index'],info['average_price'], excuted_list+"\n"+"==="*10)         
+                            
+                    evaluation()
                         
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
@@ -443,14 +483,13 @@ def make_train(config):
                                     # "grad_norm":grad_norm,
                                 }
                             ) 
-                            
                             # print(
-                            #     f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}",\
+                            #     f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<20} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}",\
                             #     file=open(config['RESULTS_FILE'],'a')
                             # )       
                         else:
                             print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                                f"global step={timesteps[t]:<8} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}"
                             )
                             # print(grad_norm)     
                 # new version
@@ -529,6 +568,7 @@ if __name__ == "__main__":
         "GAMMA":0.0,
         "TASK_SIZE":500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     }
 
     if wandbOn:
