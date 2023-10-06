@@ -60,11 +60,8 @@ def cancel_order(orderside, msg):
     # TODO: also check for price here?
     oid_match = (orderside[:, 2] == msg['orderid'])
     idx = jnp.where(oid_match, size=1, fill_value=-1)[0][0]
-    jax.debug.print('idx {}', idx)
     idx = jax.lax.cond(idx == -1, get_init_id_match, lambda a, b: idx, orderside, msg)
-    jax.debug.print('idx 2 {}', idx)
     orderside = orderside.at[idx, 1].set(orderside[idx, 1] - msg['quantity'])
-    jax.debug.print('match {}', orderside[idx])
     return __removeZeroNegQuant(orderside)
 
 ############### MATCHING FUNCTIONS ###############

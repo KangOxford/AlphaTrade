@@ -101,6 +101,9 @@ class OrderBook(object):
         '''This is slightly annoying to implement - Not sure what index the worst price will be at'''
         return NotImplementedError
 
+    def get_best_bid_and_ask_inclQuants(self):
+        return job.get_best_bid_and_ask_inclQuants(self.asks, self.bids)
+
     def tape_dump(self, filename, filemode, tapemode):
         '''Not really sure what to do with this'''
         return 0
