@@ -419,40 +419,7 @@ def make_train(config):
                             checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -5)}.ckpt")
                             save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
                             jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
-                            jax.debug.print("+++ time taken        {}",time.time()-start)
-                            
-                            rng = jax.random.PRNGKey(0)
-                            rng, key_reset, key_step = jax.random.split(rng, 3)
-                            obs,state=env.reset(key_reset,env_params)
-                            network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
-                            init_hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
-                            init_done = jnp.array([False]*1)
-                            ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
-                            assert len(ac_in[0].shape) == 3
-                            hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
-                            action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
-                            obs,state,reward,done,info=env.step(key_step, state, action, env_params)
-                            excuted_list = []
-                            for i in range(1,10000):
-                                # ==================== ACTION ====================
-                                # ---------- acion from trained network ----------
-                                ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
-                                assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
-                                assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
-                                hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
-                                action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
-                                # ---------- acion from trained network ----------
-                                # ==================== ACTION ====================    
-                                print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")
-                                start=time.time()
-                                obs,state,reward,done,info=env.step(key_step, state,action, env_params)
-                                print(f"Time for {i} step: \n",time.time()-start)
-                                print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
-                                excuted_list.append(info["quant_executed"])
-                                if done:
-                                    break
-                            print("==="*10+"\n"+info['window_index'],info['average_price'], excuted_list+"\n"+"==="*10)         
-                            
+                            jax.debug.print("+++ time taken        {}",time.time()-start)        
                     evaluation()
                         
                     revenues = info["total_revenue"][info["returned_episode"]]
@@ -520,13 +487,13 @@ def make_train(config):
     
 
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1] 
-    except:
-        ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        # ATFolder = '/homes/80/kang/AlphaTrade'
-        # ATFolder = '/home/duser/AlphaTrade'
-    print("AlphaTrade folder:",ATFolder)
+    # try:
+    #     ATFolder = sys.argv[1] 
+    # except:
+    #     ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+    #     # ATFolder = '/homes/80/kang/AlphaTrade'
+    #     # ATFolder = '/home/duser/AlphaTrade'
+    # print("AlphaTrade folder:",ATFolder)
 
     ppo_config = {
         "LR": 2.5e-4,
@@ -560,7 +527,8 @@ if __name__ == "__main__":
         "ENV_LENGTH": "oneWindow",
         # "ENV_LENGTH": "allWindows",
         "DEBUG": True,
-        "ATFOLDER": ATFolder,
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        # "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
         # "LAMBDA":0.1,
         # "GAMMA":10.0,
