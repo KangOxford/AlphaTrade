@@ -55,7 +55,7 @@ ppo_config = {
     "GAMMA":0.0,
     "TASK_SIZE":500,
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
 }
 
 env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"])
@@ -65,13 +65,14 @@ assert env.task_size == 500
 import time; timestamp = str(int(time.time()))
 
 dir = ppo_config['CHECKPOINT_DIR']
-onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-for paramsFile in onlyfiles:
-    with open(paramsFile, 'rb') as f:
+
+idx = 0
+while True:
+    onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
+    paramsFile = onlyfiles[idx]
+    with open(dir+paramsFile, 'rb') as f:
         trainstate_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
-
-
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_step = jax.random.split(rng, 3)
     obs,state=env.reset(key_reset,env_params)
@@ -94,7 +95,7 @@ for paramsFile in onlyfiles:
         action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
         # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
-        print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")
+        print(f"-------------\nPPO {i}th delta are: {action} with sum {action.sum()}")
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         print(f"Time for {i} step: \n",time.time()-start)
@@ -102,4 +103,7 @@ for paramsFile in onlyfiles:
         excuted_list.append(info["quant_executed"])
         if done:
             break
-    print("==="*10+"\n"+info['window_index'],info['average_price'], excuted_list+"\n"+"==="*10)  
+    print("==="*10+"\n")
+    print(info['window_index'],info['average_price'], jnp.asarray(excuted_list))
+    print("==="*10+"\n")
+    idx += 1
