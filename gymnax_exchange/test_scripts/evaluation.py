@@ -76,10 +76,11 @@ os.makedirs(csv_dir, exist_ok=True)
     
 def evaluate_savefile(paramsFile):
     with open(csv_dir+paramsFile.split(".")[0]+'.csv', 'w', newline='') as csvfile:
+        print(paramsFile)
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
         row_title = [
-            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
         ]
         csvwriter.writerow(row_title)
         csvfile.flush() 
@@ -99,10 +100,11 @@ def evaluate_savefile(paramsFile):
             assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
             assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
             hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
-            action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
+            raw_action = pi.sample(seed=rng)
+            action = raw_action.round().astype(jnp.int32)[0,0,:].clip( 0, None)
             obs,state,reward,done,info=env.step(key_step, state,action, env_params)
             row_data = [
-                paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],
+                paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0],raw_action[1],
                 info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
                 info['drift_reward'], info['step_reward'], info['quant_executed'], 
                 info['task_to_execute'], info['total_revenue']
@@ -112,10 +114,18 @@ def evaluate_savefile(paramsFile):
             if done:
                 break
             
+import re
 import argparse
 
 def main(idx):
-    onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
+    def extract_number_from_filename(filename):
+        match = re.search(r'_(\d+)', filename)
+        if match:
+            return int(match.group(1))
+        return 0  # default if no number is found
+
+    onlyfiles = [f for f in listdir(dir) if isfile(join(dir, f))]
+    onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
     paramsFile = onlyfiles[idx]
     evaluate_savefile(paramsFile)
 
@@ -126,3 +136,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args.idx)
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
+    # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py -1
