@@ -93,33 +93,14 @@ def evaluate_savefile(paramsFile):
         network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
         hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
         done = False
-        # done = jnp.array([False]*1)
-        # ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
-        # assert len(ac_in[0].shape) == 3
-        # hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
-        
-        # action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
-        # obs,state,reward,done,info=env.step(key_step, state, action, env_params)
-        # # excuted_list = []
-        
         for i in range(1,10000):
             print(i)
-            # ==================== ACTION ====================
-            # ---------- acion from trained network ----------
             ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
             assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
             assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
             hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
             action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
-            # ---------- acion from trained network ----------
-            # ==================== ACTION ====================    
-            # print(f"-------------\nPPO {i}th delta are: {action} with sum {action.sum()}")
-            # start=time.time()
             obs,state,reward,done,info=env.step(key_step, state,action, env_params)
-            # print(f"Time for {i} step: \n",time.time()-start)
-            # print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
-            # excuted_list.append(info["quant_executed"])
-            # # Write the data
             row_data = [
                 paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],
                 info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
@@ -144,3 +125,4 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     main(args.idx)
+    # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
