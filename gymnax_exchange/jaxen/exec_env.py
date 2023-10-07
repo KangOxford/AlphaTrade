@@ -452,7 +452,8 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
+        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
         
     rng = jax.random.PRNGKey(0)

@@ -180,7 +180,7 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            # [print(Cubes_withOB[0][0][i,:,3],file=open("/homes/80/kang/AlphaTrade/results_file_numpy3",'a')) for i in range(Cubes_withOB[0][0].shape[0])]
+            # [print(Cubes_withOB[0][0][i,:,3],file=open("/homes/80/kang/AlphaTrade/results_file_numpy4",'a')) for i in range(Cubes_withOB[0][0].shape[0])]
             # jax.debug.breakpoint()
             return Cubes_withOB, max_steps_in_episode_arr
 

@@ -49,7 +49,8 @@ ppo_config = {
     "ENV_LENGTH": "oneWindow",
     # "ENV_LENGTH": "allWindows",
     "DEBUG": True,
-    "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+    # "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "TASKSIDE":'sell',
     # "LAMBDA":0.1,
     # "GAMMA":10.0,
@@ -101,7 +102,40 @@ def evaluate_savefile(paramsFile):
             assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
             hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
             raw_action = pi.sample(seed=rng)
-            action = raw_action.round().astype(jnp.int32)[0,0,:].clip( 0, None)
+            # action = raw_action.round().astype(jnp.int32)[0,0,:].clip(0, None)
+            action = raw_action[0,0,:]
+            obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+            row_data = [
+                paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
+                info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
+                info['drift_reward'], info['step_reward'], info['quant_executed'], 
+                info['task_to_execute'], info['total_revenue']
+            ]
+            csvwriter.writerow(row_data)
+            csvfile.flush() 
+            if done:
+                break
+            
+def twap_evaluation(paramsFile):
+    with open(csv_dir+paramsFile.split(".")[0]+'_twap.csv', 'w', newline='') as csvfile:
+        print(paramsFile)
+        csvwriter = csv.writer(csvfile)
+        # Add a header row if needed
+        row_title = [
+            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+        ]
+        csvwriter.writerow(row_title)
+        csvfile.flush() 
+    
+        rng = jax.random.PRNGKey(0)
+        rng, key_reset, key_step = jax.random.split(rng, 3)
+        obs,state=env.reset(key_reset,env_params)
+        done = False
+        for i in range(1,10000):
+            print(i)
+            raw_action = jnp.array([0, 0])
+            # action = raw_action.round().astype(jnp.int32)[0,0,:].clip(0, None)
+            action = raw_action
             obs,state,reward,done,info=env.step(key_step, state,action, env_params)
             row_data = [
                 paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0],raw_action[1],
@@ -113,11 +147,11 @@ def evaluate_savefile(paramsFile):
             csvfile.flush() 
             if done:
                 break
-            
+    
 import re
 import argparse
 
-def main(idx):
+def main(idx=-1):
     def extract_number_from_filename(filename):
         match = re.search(r'_(\d+)', filename)
         if match:
@@ -128,12 +162,25 @@ def main(idx):
     onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
     paramsFile = onlyfiles[idx]
     evaluate_savefile(paramsFile)
+    
+def main2(idx=-1):
+    def extract_number_from_filename(filename):
+        match = re.search(r'_(\d+)', filename)
+        if match:
+            return int(match.group(1))
+        return 0  # default if no number is found
+
+    onlyfiles = [f for f in listdir(dir) if isfile(join(dir, f))]
+    onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
+    paramsFile = onlyfiles[idx]
+    twap_evaluation(paramsFile)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify index of the file to evaluate.')
     parser.add_argument('idx', metavar='idx', type=int, help='Index of the file to evaluate.')
     
     args = parser.parse_args()
-    main(args.idx)
+    # main(args.idx)
+    main2(args.idx)
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py -1
