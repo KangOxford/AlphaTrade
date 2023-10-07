@@ -131,13 +131,16 @@ def evaluate_savefile(paramsFile):
             if done:
                 break
             
-def main():
-    idx = 0
-    while True:
-        onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-        paramsFile = onlyfiles[idx]
-        evaluate_savefile(paramsFile)
-        idx += 1
-        
-if __name__=="__main__":
-    main()
+import argparse
+
+def main(idx):
+    onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
+    paramsFile = onlyfiles[idx]
+    evaluate_savefile(paramsFile)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Specify index of the file to evaluate.')
+    parser.add_argument('idx', metavar='idx', type=int, help='Index of the file to evaluate.')
+    
+    args = parser.parse_args()
+    main(args.idx)
