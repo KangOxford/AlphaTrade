@@ -17,12 +17,6 @@ from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n
 from purejaxrl.experimental.s5.s5 import StackedEncoderModel, init_S5SSM, make_DPLR_HiPPO
 from gymnax_exchange.jaxen.exec_env import *
 
-
-from multiprocessing import Pool
-# Initialize JAX backend to possibly prevent CUDA errors
-_ = jax.random.normal(jax.random.PRNGKey(0), (1,))
-
-
 ppo_config = {
     "LR": 2.5e-4,
     "ENT_COEF": 0.1,
@@ -78,11 +72,8 @@ csv_dir = ppo_config["CHECKPOINT_CSV_DIR"]
 # Automatically create the directory if it doesn't exist
 os.makedirs(csv_dir, exist_ok=True)
 
-# idx = 0
-# while True:
-#     onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-#     paramsFile = onlyfiles[idx]
 
+    
 def evaluate_savefile(paramsFile):
     with open(csv_dir+paramsFile.split(".")[0]+'.csv', 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
@@ -139,26 +130,14 @@ def evaluate_savefile(paramsFile):
             csvfile.flush() 
             if done:
                 break
-
-
-    # evaluate_savefile(paramsFile)
-    # idx += 1
-    
+            
 def main():
-    from multiprocessing import Pool
     idx = 0
     while True:
         onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-
-        # Gather the next 4 parameter files
-        next_files = onlyfiles[idx: idx + 1]
-
-        # Use Pool to run 4 evaluate_savefile functions concurrently
-        with Pool(1) as pool:
-            pool.map(evaluate_savefile, next_files)
-
+        paramsFile = onlyfiles[idx]
+        evaluate_savefile(paramsFile)
         idx += 1
-
-if __name__ == '__main__':
+        
+if __name__=="__main__":
     main()
-
