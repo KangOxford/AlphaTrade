@@ -82,7 +82,7 @@ while True:
             csvwriter = csv.writer(csvfile)
             # Add a header row if needed
             row_title = [
-                'checkpiont_name','window_index', 'current_step' , 'average_price', 'done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+                'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
             ]
             csvwriter.writerow(row_title)
             csvfile.flush() 
@@ -94,14 +94,17 @@ while True:
             rng, key_reset, key_step = jax.random.split(rng, 3)
             obs,state=env.reset(key_reset,env_params)
             network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
-            init_hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
-            init_done = jnp.array([False]*1)
-            ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
-            assert len(ac_in[0].shape) == 3
-            hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
-            action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
-            obs,state,reward,done,info=env.step(key_step, state, action, env_params)
-            # excuted_list = []
+            hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
+            done = False
+            # done = jnp.array([False]*1)
+            # ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
+            # assert len(ac_in[0].shape) == 3
+            # hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
+            
+            # action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
+            # obs,state,reward,done,info=env.step(key_step, state, action, env_params)
+            # # excuted_list = []
+            
             for i in range(1,10000):
                 print(i)
                 # ==================== ACTION ====================
@@ -121,7 +124,7 @@ while True:
                 # excuted_list.append(info["quant_executed"])
                 # # Write the data
                 row_data = [
-                    paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], 
+                    paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],
                     info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
                     info['drift_reward'], info['step_reward'], info['quant_executed'], 
                     info['task_to_execute'], info['total_revenue']
