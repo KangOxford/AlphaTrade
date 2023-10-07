@@ -31,8 +31,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-# wandbOn = True
-wandbOn = False
+wandbOn = True
+# wandbOn = False
 if wandbOn:
     import wandb
     
@@ -416,7 +416,7 @@ def make_train(config):
                             start = time.time()
                             jax.debug.print(">>> checkpoint saving {}",round(timesteps[0], -3))
                             # Save the checkpoint to the specific directory
-                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -5)}.ckpt")
+                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -3)}.ckpt")
                             save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
                             jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
                             jax.debug.print("+++ time taken        {}",time.time()-start)        
@@ -450,10 +450,10 @@ def make_train(config):
                                     # "grad_norm":grad_norm,
                                 }
                             ) 
-                            # print(
-                            #     f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<20} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}",\
-                            #     file=open(config['RESULTS_FILE'],'a')
-                            # )       
+                            print(
+                                f"global step={timesteps[t]:<8} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}",\
+                                file=open(config['RESULTS_FILE'],'a')
+                            )                                 
                         else:
                             print(
                                 f"global step={timesteps[t]:<8} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}"
@@ -499,7 +499,7 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
         "NUM_ENVS": 200,
-        "TOTAL_TIMESTEPS": 5e7,
+        "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
         "UPDATE_EPOCHS": 5,
         "NUM_STEPS": 455,
