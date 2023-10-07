@@ -1,5 +1,7 @@
+import os
 import sys
 import time
+import csv
 import datetime
 from os import listdir
 from os.path import isfile,join
@@ -56,6 +58,7 @@ ppo_config = {
     "TASK_SIZE":500,
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
+    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/csv/",
 }
 
 env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"])
@@ -65,45 +68,67 @@ assert env.task_size == 500
 import time; timestamp = str(int(time.time()))
 
 dir = ppo_config['CHECKPOINT_DIR']
+csv_dir = ppo_config["CHECKPOINT_CSV_DIR"]
+# Automatically create the directory if it doesn't exist
+os.makedirs(csv_dir, exist_ok=True)
 
 idx = 0
 while True:
     onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
     paramsFile = onlyfiles[idx]
-    with open(dir+paramsFile, 'rb') as f:
-        trainstate_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-        print(f"pramas restored")
-    rng = jax.random.PRNGKey(0)
-    rng, key_reset, key_step = jax.random.split(rng, 3)
-    obs,state=env.reset(key_reset,env_params)
-    network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
-    init_hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
-    init_done = jnp.array([False]*1)
-    ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
-    assert len(ac_in[0].shape) == 3
-    hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
-    action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
-    obs,state,reward,done,info=env.step(key_step, state, action, env_params)
-    excuted_list = []
-    for i in range(1,10000):
-        # ==================== ACTION ====================
-        # ---------- acion from trained network ----------
-        ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
-        assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
-        assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
-        hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
-        action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
-        # ---------- acion from trained network ----------
-        # ==================== ACTION ====================    
-        print(f"-------------\nPPO {i}th delta are: {action} with sum {action.sum()}")
-        start=time.time()
-        obs,state,reward,done,info=env.step(key_step, state,action, env_params)
-        print(f"Time for {i} step: \n",time.time()-start)
-        print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
-        excuted_list.append(info["quant_executed"])
-        if done:
-            break
-    print("==="*10+"\n")
-    print(info['window_index'],info['average_price'], jnp.asarray(excuted_list))
-    print("==="*10+"\n")
+    
+    def evaluate_savefile(paramsFile):
+        with open(csv_dir+paramsFile.split(".")[0]+'.csv', 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            # Add a header row if needed
+            row_title = [
+                'checkpiont_name','window_index', 'current_step' , 'average_price', 'done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+            ]
+            csvwriter.writerow(row_title)
+            csvfile.flush() 
+        
+            with open(dir+paramsFile, 'rb') as f:
+                trainstate_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+                print(f"pramas restored")
+            rng = jax.random.PRNGKey(0)
+            rng, key_reset, key_step = jax.random.split(rng, 3)
+            obs,state=env.reset(key_reset,env_params)
+            network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
+            init_hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
+            init_done = jnp.array([False]*1)
+            ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
+            assert len(ac_in[0].shape) == 3
+            hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
+            action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
+            obs,state,reward,done,info=env.step(key_step, state, action, env_params)
+            # excuted_list = []
+            for i in range(1,10000):
+                print(i)
+                # ==================== ACTION ====================
+                # ---------- acion from trained network ----------
+                ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
+                assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
+                assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
+                hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
+                action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
+                # ---------- acion from trained network ----------
+                # ==================== ACTION ====================    
+                # print(f"-------------\nPPO {i}th delta are: {action} with sum {action.sum()}")
+                # start=time.time()
+                obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+                # print(f"Time for {i} step: \n",time.time()-start)
+                # print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
+                # excuted_list.append(info["quant_executed"])
+                # # Write the data
+                row_data = [
+                    paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], 
+                    info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
+                    info['drift_reward'], info['step_reward'], info['quant_executed'], 
+                    info['task_to_execute'], info['total_revenue']
+                ]
+                csvwriter.writerow(row_data)
+                csvfile.flush() 
+                if done:
+                    break
+    evaluate_savefile(paramsFile)
     idx += 1
