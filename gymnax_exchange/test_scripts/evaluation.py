@@ -132,15 +132,16 @@ def evaluate_savefile(paramsFile, dir, env_params, ppo_config, csv_dir, env, ssm
     rows = compute_rows(paramsFile, dir, env_params, ppo_config, env, ssm_size, n_layers)
     write_to_csv(rows, csv_dir, paramsFile)
 
-# Main call
-# evaluate_savefile(paramsFile, dir, env_params, ppo_config, csv_dir, env, ssm_size, n_layers)
-
-# idx += 1
 import concurrent
 from concurrent.futures import ProcessPoolExecutor
-# idx = 0
 onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-with ProcessPoolExecutor() as executor:
-    futures = [executor.submit(evaluate_savefile, onlyfiles[i], dir, env_params, ppo_config, csv_dir, env, ssm_size, n_layers) for i in range(len(onlyfiles))]
+# Limit the number of workers to 4
+with ProcessPoolExecutor(max_workers=4) as executor:
+    futures = []
+    for i in range(len(onlyfiles)):
+        future = executor.submit(evaluate_savefile, onlyfiles[i], dir, env_params, ppo_config, csv_dir, env, ssm_size, n_layers)
+        futures.append(future)
+        print(f"Task submitted for file: {onlyfiles[i]}")  # Print message when task is submitted
+
     for future in concurrent.futures.as_completed(futures):
-        print(f"Completed {future.result()}")
+        print(f"Completed {future.result()}")  # Print message when task is completed
