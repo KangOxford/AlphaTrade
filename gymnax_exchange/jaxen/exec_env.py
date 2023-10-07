@@ -83,12 +83,13 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
+    def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
+        self.window_index =window_index
         self.Lambda = Lambda
         self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
@@ -270,7 +271,7 @@ class ExecutionEnv(BaseLOBEnv):
         """Reset environment state by sampling initial position in OB."""
         # all windows can be reached
         # idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-        idx_data_window = jnp.array(0,dtype=jnp.int32)
+        idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
         # one window can be reached
         
         # jax.debug.print("window_size {}",self.max_steps_in_episode_arr[0])
@@ -459,7 +460,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env=ExecutionEnv(ATFolder,"sell")
+    env=ExecutionEnv(ATFolder,"sell",1)
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 

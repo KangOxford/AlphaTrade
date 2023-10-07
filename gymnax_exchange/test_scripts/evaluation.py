@@ -58,25 +58,22 @@ ppo_config = {
     "GAMMA":0.0,
     "TASK_SIZE":500,
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
-    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/csv/",
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
+    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/csv/",
+    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
+    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/csv/",
 }
-
-env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"])
-env_params=env.default_params
-print(env_params.message_data.shape, env_params.book_data.shape)
-assert env.task_size == 500
-import time; timestamp = str(int(time.time()))
 
 dir = ppo_config['CHECKPOINT_DIR']
 csv_dir = ppo_config["CHECKPOINT_CSV_DIR"]
-# Automatically create the directory if it doesn't exist
-os.makedirs(csv_dir, exist_ok=True)
-
-
     
-def evaluate_savefile(paramsFile):
-    with open(csv_dir+paramsFile.split(".")[0]+'.csv', 'w', newline='') as csvfile:
+def evaluate_savefile(paramsFile,window_idx):
+    env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx)
+    env_params=env.default_params
+    assert env.task_size == 500
+    # Automatically create the directory if it doesn't exist
+    os.makedirs(csv_dir, exist_ok=True)
+    with open(csv_dir+paramsFile.split(".")[0]+f'_wdw_idx_{window_idx}.csv', 'w', newline='') as csvfile:
         print(paramsFile)
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
@@ -152,16 +149,20 @@ import re
 import argparse
 
 def main(idx=-1):
-    def extract_number_from_filename(filename):
-        match = re.search(r'_(\d+)', filename)
-        if match:
-            return int(match.group(1))
-        return 0  # default if no number is found
+    for window_idx in range(13):
+        start=time.time()
+        print(f">>> window_idx: {window_idx}")
+        def extract_number_from_filename(filename):
+            match = re.search(r'_(\d+)', filename)
+            if match:
+                return int(match.group(1))
+            return 0  # default if no number is found
 
-    onlyfiles = [f for f in listdir(dir) if isfile(join(dir, f))]
-    onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
-    paramsFile = onlyfiles[idx]
-    evaluate_savefile(paramsFile)
+        onlyfiles = [f for f in listdir(dir) if isfile(join(dir, f))]
+        onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
+        paramsFile = onlyfiles[idx]
+        evaluate_savefile(paramsFile,window_idx)
+        print(f"Time for evaluation: \n",time.time()-start)
     
 def main2(idx=-1):
     def extract_number_from_filename(filename):
@@ -180,7 +181,7 @@ if __name__ == "__main__":
     parser.add_argument('idx', metavar='idx', type=int, help='Index of the file to evaluate.')
     
     args = parser.parse_args()
-    # main(args.idx)
-    main2(args.idx)
+    main(args.idx)
+    # main2(args.idx)
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py -1
