@@ -17,6 +17,12 @@ from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n
 from purejaxrl.experimental.s5.s5 import StackedEncoderModel, init_S5SSM, make_DPLR_HiPPO
 from gymnax_exchange.jaxen.exec_env import *
 
+
+from multiprocessing import Pool
+# Initialize JAX backend to possibly prevent CUDA errors
+_ = jax.random.normal(jax.random.PRNGKey(0), (1,))
+
+
 ppo_config = {
     "LR": 2.5e-4,
     "ENT_COEF": 0.1,
@@ -74,74 +80,85 @@ os.makedirs(csv_dir, exist_ok=True)
 
 # idx = 0
 # while True:
-    # onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-    # paramsFile = onlyfiles[idx]
+#     onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
+#     paramsFile = onlyfiles[idx]
+
+def evaluate_savefile(paramsFile):
+    with open(csv_dir+paramsFile.split(".")[0]+'.csv', 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        # Add a header row if needed
+        row_title = [
+            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+        ]
+        csvwriter.writerow(row_title)
+        csvfile.flush() 
     
-
-
-# Main function to evaluate and save file
-def evaluate_savefile(paramsFile, dir, env_params, ppo_config, csv_dir, env, ssm_size, n_layers):
-    # The computation part
-    print(f"Task started for file: {paramsFile}")
-    def compute_rows(paramsFile, dir, env_params, ppo_config, env, ssm_size, n_layers):
-        rows = []
-        with open(dir + paramsFile, 'rb') as f:
+        with open(dir+paramsFile, 'rb') as f:
             trainstate_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-            print("params restored")
-        
+            print(f"pramas restored")
         rng = jax.random.PRNGKey(0)
         rng, key_reset, key_step = jax.random.split(rng, 3)
-
-        obs, state = env.reset(key_reset, env_params)
+        obs,state=env.reset(key_reset,env_params)
         network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
         hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
-
         done = False
-        for i in range(1, 10000):
-            jax.debug.print(">>> {}",i)
-            ac_in = (obs[np.newaxis, np.newaxis, :], jnp.array([done])[np.newaxis, :])
-            hstate, pi, value = network.apply(trainstate_params, hstate, ac_in)
-            action = pi.sample(seed=rng).round().astype(jnp.int32)[0, 0, :].clip(0, None)
-            obs, state, reward, done, info = env.step(key_step, state, action, env_params)
-
+        # done = jnp.array([False]*1)
+        # ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
+        # assert len(ac_in[0].shape) == 3
+        # hstate, pi, value = network.apply(trainstate_params, init_hstate, ac_in)
+        
+        # action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip(0, None) # CAUTION about the [0,0,:], only works for num_env=1
+        # obs,state,reward,done,info=env.step(key_step, state, action, env_params)
+        # # excuted_list = []
+        
+        for i in range(1,10000):
+            print(i)
+            # ==================== ACTION ====================
+            # ---------- acion from trained network ----------
+            ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
+            assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
+            assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
+            hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
+            action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
+            # ---------- acion from trained network ----------
+            # ==================== ACTION ====================    
+            # print(f"-------------\nPPO {i}th delta are: {action} with sum {action.sum()}")
+            # start=time.time()
+            obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+            # print(f"Time for {i} step: \n",time.time()-start)
+            # print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
+            # excuted_list.append(info["quant_executed"])
+            # # Write the data
             row_data = [
                 paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],
-                reward, info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
+                info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
                 info['drift_reward'], info['step_reward'], info['quant_executed'], 
                 info['task_to_execute'], info['total_revenue']
             ]
-            rows.append(row_data)
-
+            csvwriter.writerow(row_data)
+            csvfile.flush() 
             if done:
                 break
-        return rows
 
-    # The file writing part
-    def write_to_csv(rows, csv_dir, paramsFile):
-        with open(csv_dir + paramsFile.split(".")[0] + '.csv', 'w', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile)
-            row_title = [
-                'checkpoint_name', 'window_index', 'current_step', 'average_price', 
-                'delta_sum', 'delta_aggressive', 'delta_passive', 'reward', 'done', 
-                'slippage', 'price_drift', 'advantage_reward', 'drift_reward',
-                'step_reward', 'quant_executed', 'task_to_execute', 'total_revenue'
-            ]
-            csvwriter.writerow(row_title)
-            for row in rows:
-                csvwriter.writerow(row)
-    rows = compute_rows(paramsFile, dir, env_params, ppo_config, env, ssm_size, n_layers)
-    write_to_csv(rows, csv_dir, paramsFile)
 
-import concurrent
-from concurrent.futures import ProcessPoolExecutor
-onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
-# Limit the number of workers to 4
-with ProcessPoolExecutor(max_workers=4) as executor:
-    futures = []
-    for i in range(len(onlyfiles)):
-        future = executor.submit(evaluate_savefile, onlyfiles[i], dir, env_params, ppo_config, csv_dir, env, ssm_size, n_layers)
-        futures.append(future)
-        print(f"Task submitted for file: {onlyfiles[i]}")  # Print message when task is submitted
+    # evaluate_savefile(paramsFile)
+    # idx += 1
+    
+def main():
+    from multiprocessing import Pool
+    idx = 0
+    while True:
+        onlyfiles = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
 
-    for future in concurrent.futures.as_completed(futures):
-        print(f"Completed {future.result()}")  # Print message when task is completed
+        # Gather the next 4 parameter files
+        next_files = onlyfiles[idx: idx + 1]
+
+        # Use Pool to run 4 evaluate_savefile functions concurrently
+        with Pool(1) as pool:
+            pool.map(evaluate_savefile, next_files)
+
+        idx += 1
+
+if __name__ == '__main__':
+    main()
+
