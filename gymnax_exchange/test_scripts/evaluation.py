@@ -60,6 +60,10 @@ ppo_config = {
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
     "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/csv/",
+    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
+    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/ckpt/csv/",
+    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
+    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/csv/",
 }
@@ -113,8 +117,13 @@ def evaluate_savefile(paramsFile,window_idx):
             if done:
                 break
             
-def twap_evaluation(paramsFile):
-    with open(csv_dir+paramsFile.split(".")[0]+'_twap.csv', 'w', newline='') as csvfile:
+def twap_evaluation(paramsFile,window_idx):
+    env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx)
+    env_params=env.default_params
+    assert env.task_size == 500
+    # Automatically create the directory if it doesn't exist
+    os.makedirs(csv_dir, exist_ok=True)    
+    with open(csv_dir+paramsFile.split(".")[0]+f'_twap_{window_idx}.csv', 'w', newline='') as csvfile:
         print(paramsFile)
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
@@ -149,6 +158,7 @@ import re
 import argparse
 
 def main(idx=-1):
+    start_time =time.time()
     for window_idx in range(13):
         start=time.time()
         print(f">>> window_idx: {window_idx}")
@@ -163,18 +173,23 @@ def main(idx=-1):
         paramsFile = onlyfiles[idx]
         evaluate_savefile(paramsFile,window_idx)
         print(f"Time for evaluation: \n",time.time()-start)
+    print(f"Total time for evaluation: \n",time.time()-start_time)
     
 def main2(idx=-1):
-    def extract_number_from_filename(filename):
-        match = re.search(r'_(\d+)', filename)
-        if match:
-            return int(match.group(1))
-        return 0  # default if no number is found
+    for window_idx in range(13):
+        start=time.time()
+        print(f">>> window_idx: {window_idx}")        
+        def extract_number_from_filename(filename):
+            match = re.search(r'_(\d+)', filename)
+            if match:
+                return int(match.group(1))
+            return 0  # default if no number is found
 
-    onlyfiles = [f for f in listdir(dir) if isfile(join(dir, f))]
-    onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
-    paramsFile = onlyfiles[idx]
-    twap_evaluation(paramsFile)
+        onlyfiles = [f for f in listdir(dir) if isfile(join(dir, f))]
+        onlyfiles = sorted(onlyfiles, key=extract_number_from_filename)
+        paramsFile = onlyfiles[idx]
+        twap_evaluation(paramsFile,window_idx)
+        print(f"Time for evaluation: \n",time.time()-start)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify index of the file to evaluate.')
