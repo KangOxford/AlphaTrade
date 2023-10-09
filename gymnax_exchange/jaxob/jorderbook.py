@@ -80,10 +80,12 @@ class OrderBook(object):
         return volume
 
     def get_best_price(self, side):
+        # sell / asks
         if side == 0:
-            return self.get_best_bid()
-        elif side == 1:
             return self.get_best_ask()
+        # buy / bids
+        elif side == 1:
+            return self.get_best_bid()
         else:
             raise ValueError('Side must be 0 or 1')
     

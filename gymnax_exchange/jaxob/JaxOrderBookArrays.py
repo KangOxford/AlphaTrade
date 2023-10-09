@@ -67,16 +67,23 @@ def cancel_order(orderside, msg):
 ############### MATCHING FUNCTIONS ###############
 
 @jax.jit
+def match_bid_order(data_tuple):
+    return __get_top_bid_order_idx(data_tuple[1]), *match_order(data_tuple)
+
+@jax.jit
+def match_ask_order(data_tuple):
+    return __get_top_ask_order_idx(data_tuple[1]), *match_order(data_tuple)
+
+@jax.jit
 def match_order(data_tuple):
-    orderside,qtm,price,top_order_idx,trade,agrOID,time,time_ns=data_tuple
+    top_order_idx, orderside, qtm, price, trade, agrOID, time, time_ns = data_tuple
     newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm) #Could theoretically be removed as an operation because the removeZeroQuand func also removes negatives. 
     qtm=qtm-orderside[top_order_idx,1]
     qtm=qtm.astype(jnp.int32)
     emptyidx=jnp.where(trade==-1,size=1,fill_value=-1)[0]
     trade=trade.at[emptyidx,:].set(jnp.array([orderside[top_order_idx,0],orderside[top_order_idx,1]-newquant,orderside[top_order_idx,2],[agrOID],[time],[time_ns]]).transpose())
     orderside=__removeZeroNegQuant(orderside.at[top_order_idx,1].set(newquant))
-    top_order_idx=__get_top_bid_order_idx(orderside)
-    return (orderside.astype(jnp.int32),jnp.squeeze(qtm),price,top_order_idx,trade,agrOID,time,time_ns)
+    return (orderside.astype(jnp.int32), jnp.squeeze(qtm), price, trade, agrOID, time, time_ns)
 
 @jax.jit
 def __get_top_bid_order_idx(orderside):
@@ -100,26 +107,26 @@ def __get_top_ask_order_idx(orderside):
 
 @jax.jit
 def __check_before_matching_bid(data_tuple):
-    orderside,qtm,price,top_order_idx,trade,_,_,_=data_tuple
+    top_order_idx,orderside,qtm,price,trade,_,_,_=data_tuple
     returnarray=(orderside[top_order_idx,0]>=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
 
 @jax.jit
 def _match_against_bid_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
     top_order_idx=__get_top_bid_order_idx(orderside)
-    orderside,qtm,price,top_order_idx,trade,_,_,_=jax.lax.while_loop(__check_before_matching_bid,match_order,(orderside,qtm,price,top_order_idx,trade,agrOID,time,time_ns))
+    top_order_idx,orderside,qtm,price,trade,_,_,_=jax.lax.while_loop(__check_before_matching_bid,match_bid_order,(top_order_idx,orderside,qtm,price,trade,agrOID,time,time_ns))
     return (orderside,qtm,price,trade)
 
 @jax.jit
 def __check_before_matching_ask(data_tuple):
-    orderside,qtm,price,top_order_idx,trade,_,_,_=data_tuple
+    top_order_idx,orderside,qtm,price,trade,_,_,_=data_tuple
     returnarray=(orderside[top_order_idx,0]<=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
 
 @jax.jit
 def _match_against_ask_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
     top_order_idx=__get_top_ask_order_idx(orderside)
-    orderside,qtm,price,top_order_idx,trade,_,_,_=jax.lax.while_loop(__check_before_matching_ask,match_order,(orderside,qtm,price,top_order_idx,trade,agrOID,time,time_ns))
+    top_order_idx,orderside,qtm,price,trade,_,_,_=jax.lax.while_loop(__check_before_matching_ask,match_ask_order,(top_order_idx,orderside,qtm,price,trade,agrOID,time,time_ns))
     return (orderside,qtm,price,trade)
 
 ########Type Functions#############
@@ -482,10 +489,12 @@ def get_order_ids(
 
 @partial(jax.jit, static_argnums=0)
 def get_next_executable_order(side, side_array):
+    # best sell order / ask
     if side == 0:
-        idx = __get_top_bid_order_idx(side_array)
-    elif side == 1:
         idx = __get_top_ask_order_idx(side_array)
+    # best buy order / bid
+    elif side == 1:
+        idx = __get_top_bid_order_idx(side_array)
     else:
         raise ValueError("Side must be 0 (bid) or 1 (ask).")
     return side_array[idx].squeeze()
