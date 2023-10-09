@@ -524,8 +524,8 @@ if __name__ == "__main__":
         "NORMALIZE_ENV": True,
         
         "ENV_NAME": "alphatradeExec-v0",
-        "ENV_LENGTH": "oneWindow",
-        # "ENV_LENGTH": "allWindows",
+        # "ENV_LENGTH": "oneWindow",
+        "ENV_LENGTH": "allWindows",
         "DEBUG": True,
         "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
         # "ATFOLDER": ATFolder,

@@ -79,6 +79,19 @@ class EnvParams:
     # messages_per_step: int=1 # TODO never used, should be removed?
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
+    avg_twap_list=jnp.array([318333.84,
+                            319739.2,
+                            320392.47,
+                            320783.53,
+                            321604.3,
+                            322044.22,
+                            321712.6,
+                            321988.72,
+                            322234.62,
+                            322504.12,
+                            322551.6,
+                            322405.7,
+                            322402.56])
     
 
 
@@ -99,19 +112,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
         # self.debug : bool = False
-        self.avg_twap_list=[318333.84,
-                            319739.2,
-                            320392.47,
-                            320783.53,
-                            321604.3,
-                            322044.22,
-                            321712.6,
-                            321988.72,
-                            322234.62,
-                            322504.12,
-                            322551.6,
-                            322405.7,
-                            322402.56]
+
 
     @property
     def default_params(self) -> EnvParams:
@@ -263,8 +264,9 @@ class ExecutionEnv(BaseLOBEnv):
         # reward = slippage*new_execution # TODO
         # reward = rewardValue # TODO
         # ---------- used for slippage ----------
-        abs_average_price = self.avg_twap_list[state.window_index]
-        reward = jnp.sign(agentTrades[0,0]) *(revenue - abs_average_price*agentQuant) # TODO
+        abs_average_price = params.avg_twap_list[state.window_index]
+        reward = jnp.sign(agentTrades[0,0])*(revenue - abs_average_price*agentQuant)*10000/abs_average_price # TODO
+        '''total revenue: advatange of twap in bp'''
         # ---------- used for slippage ----------
         # jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
@@ -283,8 +285,8 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
         # all windows can be reached
-        # idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
-        idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
+        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
         # one window can be reached
         
         # jax.debug.print("window_size {}",self.max_steps_in_episode_arr[0])
