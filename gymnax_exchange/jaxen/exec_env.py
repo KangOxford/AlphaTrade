@@ -99,6 +99,19 @@ class ExecutionEnv(BaseLOBEnv):
         self.n_fragment_max=2
         self.n_ticks_in_book=20 
         # self.debug : bool = False
+        self.avg_twap_list=[318333.84,
+                            319739.2,
+                            320392.47,
+                            320783.53,
+                            321604.3,
+                            322044.22,
+                            321712.6,
+                            321988.72,
+                            322234.62,
+                            322504.12,
+                            322551.6,
+                            322405.7,
+                            322402.56]
 
     @property
     def default_params(self) -> EnvParams:
@@ -250,8 +263,8 @@ class ExecutionEnv(BaseLOBEnv):
         # reward = slippage*new_execution # TODO
         # reward = rewardValue # TODO
         # ---------- used for slippage ----------
-        # abs_average_price = 313041.469
-        # reward = jnp.sign(agentTrades[0,0]) *(revenue - abs_average_price*agentQuant) # TODO
+        abs_average_price = self.avg_twap_list[state.window_index]
+        reward = jnp.sign(agentTrades[0,0]) *(revenue - abs_average_price*agentQuant) # TODO
         # ---------- used for slippage ----------
         # jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
