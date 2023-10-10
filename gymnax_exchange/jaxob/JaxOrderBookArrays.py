@@ -15,7 +15,7 @@ match_order : remove quantity from a single standing order and generate trades.
 
 
 from textwrap import fill
-from typing import OrderedDict
+from typing import Optional, OrderedDict
 from jax import numpy as jnp
 import jax
 from functools import partial, partialmethod
@@ -178,8 +178,8 @@ def ask_mkt(msg,askside,bidside,trades):
 ############### MAIN BRANCHING FUNCS ###############
 
 @jax.jit
-def cond_type_side(ordersides,data):
-    askside,bidside,trades=ordersides
+def cond_type_side(book_state, data):
+    askside,bidside,trades=book_state
     #jax.debug.breakpoint()
     #jax.debug.print("Askside before is \n {}",askside)
     msg={
@@ -367,24 +367,47 @@ def get_best_bid_and_ask_inclQuants(asks,bids):
 def init_orderside(nOrders=100):
     return (jnp.ones((nOrders,6))*-1).astype(jnp.int32)
 
-
-#TODO: Actually complete this function to not only return dummy vars
-def get_initial_orders(bookData,idx_window,time):
-    orderbookLevels=10
-    initid=-9000
-    data=jnp.array(bookData[idx_window]).reshape(int(10*2),2)
-    newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
+@jax.jit
+def init_msgs_from_l2(
+    book_l2: jnp.ndarray,
+    time: Optional[jax.Array] = None,
+) -> jax.Array:
+    """  """
+    orderbookLevels = book_l2.shape[0] // 4  # price/quantity for bid/ask
+    data = book_l2.reshape(orderbookLevels * 2, 2)
+    newarr = jnp.zeros((orderbookLevels * 2, 8), dtype=jnp.int32)
+    if time is None:
+        time = jnp.array([34200, 0])
     initOB = newarr \
-        .at[:,3].set(data[:,0]) \
-        .at[:,2].set(data[:,1]) \
-        .at[:,0].set(1) \
-        .at[0:orderbookLevels*4:2,1].set(-1) \
-        .at[1:orderbookLevels*4:2,1].set(1) \
-        .at[:,4].set(initid) \
-        .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
-        .at[:,6].set(time[0]) \
-        .at[:,7].set(time[1])
+        .at[:, 3].set(data[:,0]) \
+        .at[:, 2].set(data[:,1]) \
+        .at[:, 0].set(1) \
+        .at[0:orderbookLevels*4:2, 1].set(-1) \
+        .at[1:orderbookLevels*4:2, 1].set(1) \
+        .at[:, 4].set(INITID) \
+        .at[:, 5].set(INITID - jnp.arange(0, orderbookLevels*2)) \
+        .at[:, 6].set(time[0]) \
+        .at[:, 7].set(time[1])
     return initOB
+
+
+# #TODO: Actually complete this function to not only return dummy vars
+# def get_initial_orders(bookData,idx_window,time):
+#     orderbookLevels=10
+#     initid=-9000
+#     data=jnp.array(bookData[idx_window]).reshape(int(10*2),2)
+#     newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
+#     initOB = newarr \
+#         .at[:,3].set(data[:,0]) \
+#         .at[:,2].set(data[:,1]) \
+#         .at[:,0].set(1) \
+#         .at[0:orderbookLevels*4:2,1].set(-1) \
+#         .at[1:orderbookLevels*4:2,1].set(1) \
+#         .at[:,4].set(initid) \
+#         .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
+#         .at[:,6].set(time[0]) \
+#         .at[:,7].set(time[1])
+#     return initOB
 
 def get_initial_time(messageData,idx_window):
     return messageData[idx_window,0,0,-2:]
