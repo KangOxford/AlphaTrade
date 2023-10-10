@@ -107,43 +107,41 @@ class OrderBook():
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
         return LobState(*job.scan_through_entire_array(msgs, tuple(state)))
 
-    @jax.jit
+    @partial(jax.jit, static_argnums=(3,))
     def process_orders_array_l2(
             self: 'OrderBook',
             state: LobState,
             msgs: jax.Array,
             n_levels: int
         ) -> Tuple[LobState, jax.Array]:
-        all_asks, all_bids, trades = job.scan_through_entire_array_save_states(msgs, state, msgs.shape[0])
+        all_asks, all_bids, trades = job.scan_through_entire_array_save_states(msgs, tuple(state), msgs.shape[0])
         state = LobState(all_asks[-1], all_bids[-1], trades)
         # calculate l2 states
         l2_states = job.vmap_get_L2_state(all_asks, all_bids, n_levels)
         return state, l2_states
 
-    @partial(jax.jit, static_argnums=(2,))
+    @partial(jax.jit, static_argnums=(2,4))
     def get_volume_at_price(
             self: 'OrderBook',
             state: LobState,
             side: int,
-            price: int
+            price: int,
+            init_only: bool = False
         ) -> int:
+
         if side == 0:
-            side_array = state.bids
-        elif side == 1:
             side_array = state.asks
+        elif side == 1:
+            side_array = state.bids
         else:
             raise ValueError('Side must be 0 or 1')
 
-        volume = jnp.sum(
-            jnp.where(
-                side_array[:,0] == price,
-                side_array[:,1],
-                0
-            )
-        )
-        return volume
+        if init_only:
+            return job.get_init_volume_at_price(side_array, price)
+        else:
+            return job.get_volume_at_price(side_array, price)
 
-    @partial(jax.jit, static_argnums=(1,))
+    @partial(jax.jit, static_argnums=(2,))
     def get_best_price(
             self: 'OrderBook',
             state: LobState,
@@ -186,6 +184,48 @@ class OrderBook():
             n_levels: int
         ) -> jax.Array:
         return job.get_L2_state(state.asks, state.bids, n_levels)
+    
+    @partial(jax.jit, static_argnums=(2,))
+    def get_side_ids(
+            self: 'OrderBook',
+            state: LobState,
+            side: int
+        ) -> jax.Array:
+        if side == 0:
+            return job.get_order_ids(state.asks)
+        elif side == 1:
+            return job.get_order_ids(state.bids)
+        else:
+            raise ValueError('Side must be 0 or 1')
+
+    @partial(jax.jit, static_argnums=(2,))
+    def get_order(
+            self: 'OrderBook',
+            state: LobState,
+            side: int,
+            order_id: int,
+            price: Optional[int] = None,
+        ) -> jax.Array:
+        ''' '''
+        side_array = state.asks if side == 0 else state.bids
+        if price is not None:
+            return job.get_order_by_id_and_price(side_array, order_id, price)
+        else:
+            return job.get_order_by_id(side_array, order_id)
+        
+    @partial(jax.jit, static_argnums=(2,))
+    def get_next_executable_order(
+            self: 'OrderBook',
+            state: LobState,
+            side: int
+        ):
+        if side == 0:
+            side_array = state.asks
+        elif side == 1:
+            side_array = state.bids
+        else:
+            raise ValueError('Side must be 0 or 1')
+        return job.get_next_executable_order(side, side_array)
     
     #Flatten and Unflatten functions so that methods can be appropriately jitted. 
     def _tree_flatten(self: 'OrderBook'):
