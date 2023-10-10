@@ -96,13 +96,14 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
+    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
+    # def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        self.window_index =window_index
+        # self.window_index =window_index
         self.Lambda = Lambda
         self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
@@ -267,7 +268,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ---------- used for slippage ----------
         # abs_average_price = params.avg_twap_list[state.window_index]
         # reward = jnp.sign(agentTrades[0,0])*(revenue - abs_average_price*agentQuant)*10000/abs_average_price # TODO
-        '''total revenue: advatange of twap in bp'''
+        # '''total revenue: advatange of twap in bp'''
         # ---------- used for slippage ----------
         # jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
