@@ -259,13 +259,14 @@ class ExecutionEnv(BaseLOBEnv):
         step_reward = self.Gamma * f(state.step_counter)
         reward += jnp.sign(agentTrades[0,0]) * step_reward
         reward /= 10000
+        # reward /= params.avg_twap_list[state.window_index]
         
         
         # reward = slippage*new_execution # TODO
         # reward = rewardValue # TODO
         # ---------- used for slippage ----------
-        abs_average_price = params.avg_twap_list[state.window_index]
-        reward = jnp.sign(agentTrades[0,0])*(revenue - abs_average_price*agentQuant)*10000/abs_average_price # TODO
+        # abs_average_price = params.avg_twap_list[state.window_index]
+        # reward = jnp.sign(agentTrades[0,0])*(revenue - abs_average_price*agentQuant)*10000/abs_average_price # TODO
         '''total revenue: advatange of twap in bp'''
         # ---------- used for slippage ----------
         # jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
