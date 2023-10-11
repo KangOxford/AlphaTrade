@@ -259,8 +259,8 @@ class ExecutionEnv(BaseLOBEnv):
 
         step_reward = self.Gamma * f(state.step_counter)
         reward += jnp.sign(agentTrades[0,0]) * step_reward
-        reward /= 10000
-        # reward /= params.avg_twap_list[state.window_index]
+        # reward /= 10000
+        reward /= params.avg_twap_list[state.window_index]
         
         
         # reward = slippage*new_execution # TODO
