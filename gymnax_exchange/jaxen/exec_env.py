@@ -129,7 +129,8 @@ class ExecutionEnv(BaseLOBEnv):
         # '''
         def reshape_action(action, state, params):
             def action_space_clipping(action):
-                return jnp.round(action).astype(jnp.int32).clip(-5,5) # clippedAction 
+                return jnp.round(action).astype(jnp.int32).clip(0,100) # clippedAction 
+                # return jnp.round(action).astype(jnp.int32).clip(-5,5) # clippedAction 
             
             def twapV3(state, env_params):
                 # ---------- ifMarketOrder ----------
@@ -232,37 +233,10 @@ class ExecutionEnv(BaseLOBEnv):
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
-        
+        reward /= 10000
+        # reward /= params.avg_twap_list[state.window_index]
 
-        # def normalizeRewardV1(reward):
-        #     mean_, std_ = 12033.709377975247, 12613.952695243072 # oneWindow 
-        #     # mean_, std_ = -6188.344531461889,	7239.338146213883 # oneDay
-        #     # mean_, std_ = -23328.602208327717, 58565.76675200597 # oneMonth
-        #     return (reward-mean_)/std_
 
-        # # def normalizeRewardV2(reward):
-        # #     normalizeFactor = 12033.709377975247 # oneWindow
-        # #     return reward/normalizeFactor
-        # reward = normalizeRewardV1(reward)
-        
-        # reward = jnp.sign(agentTrades[0,0]) * revenue
-        # reward = jnp.sign(agentTrades[0,0]) * advantage
-        
-        # encourage exploration
-        # step_reward = self.Gamma * state.step_counter * state.step_counter
-        
-        a = 4972.974985421869
-        c = -447.00359014030346
-        def f(step_counter):
-            # Calculate f(x) = a * log(1 * step_counter + 1) + c
-            return a * jnp.log(step_counter + 1) + c
-
-        step_reward = self.Gamma * f(state.step_counter)
-        reward += jnp.sign(agentTrades[0,0]) * step_reward
-        # reward /= 10000
-        reward /= params.avg_twap_list[state.window_index]
-        
-        
         # reward = slippage*new_execution # TODO
         # reward = rewardValue # TODO
         # ---------- used for slippage ----------
@@ -275,7 +249,7 @@ class ExecutionEnv(BaseLOBEnv):
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
-            "current_step":state.step_counter,"step_reward":step_reward,\
+            "current_step":state.step_counter,\
             'done':done,'slippage':slippage,"price_drift":price_drift,\
             "drift_reward":drift_reward,"advantage_reward":advantage,\
             }
@@ -425,8 +399,8 @@ class ExecutionEnv(BaseLOBEnv):
         """Action space of the environment."""
         # return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
         # return spaces.Box(-2,2,(self.n_actions,),dtype=jnp.int32)
-        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
