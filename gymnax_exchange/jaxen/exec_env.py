@@ -96,14 +96,14 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
-    # def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
+    # def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
+    def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
-        # self.window_index =window_index
+        self.window_index =window_index
         self.Lambda = Lambda
         self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
@@ -261,7 +261,8 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
         # all windows can be reached
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        
+        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()) if self.window_index == -1 else jnp.array(self.window_index,dtype=jnp.int32)
         # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
         # one window can be reached
         

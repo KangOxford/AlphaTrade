@@ -166,8 +166,8 @@ def make_train(config):
     # # old version
     
     # new version
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
-    # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
+    # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -525,8 +525,10 @@ if __name__ == "__main__":
         "NORMALIZE_ENV": True,
         
         "ENV_NAME": "alphatradeExec-v0",
-        "ENV_LENGTH": "oneWindow",
-        # "ENV_LENGTH": "allWindows",
+        # "ENV_LENGTH": "oneWindow",
+        # # "ENV_LENGTH": "allWindows",
+        "WINDOW_INDEX": "0",
+        # "WINDOW_INDEX": "-1",
         "DEBUG": True,
         "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
         # "ATFOLDER": ATFolder,
@@ -543,7 +545,7 @@ if __name__ == "__main__":
 
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeJAX_ParamSearch_Small",
+            project="AlphaTradeJAX_Train",
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
