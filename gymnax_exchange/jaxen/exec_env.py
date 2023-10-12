@@ -79,19 +79,19 @@ class EnvParams:
     # messages_per_step: int=1 # TODO never used, should be removed?
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
-    avg_twap_list=jnp.array([318333.84,
-                            319739.2,
-                            320392.47,
-                            320783.53,
-                            321604.3,
-                            322044.22,
-                            321712.6,
-                            321988.72,
-                            322234.62,
-                            322504.12,
-                            322551.6,
-                            322405.7,
-                            322402.56])
+    avg_twap_list=jnp.array([312747.47,
+                            312674.06,
+                            313180.38,
+                            312813.25,
+                            312763.78,
+                            313094.1,
+                            313663.97,
+                            313376.72,
+                            313533.25,
+                            313578.9,
+                            314559.1,
+                            315201.1,
+                            315190.2])
     
 
 

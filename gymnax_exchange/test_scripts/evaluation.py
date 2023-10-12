@@ -49,8 +49,8 @@ ppo_config = {
     "ENV_LENGTH": "oneWindow",
     # "ENV_LENGTH": "allWindows",
     "DEBUG": True,
-    # "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
-    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
+    "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+    # "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "TASKSIDE":'sell',
     # "LAMBDA":0.1,
     # "GAMMA":10.0,
@@ -109,7 +109,7 @@ def evaluate_savefile(paramsFile,window_idx):
             row_data = [
                 paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
                 info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
-                info['drift_reward'], info['step_reward'], info['quant_executed'], 
+                info['drift_reward'], info['quant_executed'], 
                 info['task_to_execute'], info['total_revenue']
             ]
             csvwriter.writerow(row_data)
@@ -146,7 +146,7 @@ def twap_evaluation(paramsFile,window_idx):
             row_data = [
                 paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0],raw_action[1],
                 info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
-                info['drift_reward'], info['step_reward'], info['quant_executed'], 
+                info['drift_reward'], info['quant_executed'], 
                 info['task_to_execute'], info['total_revenue']
             ]
             csvwriter.writerow(row_data)
@@ -173,9 +173,10 @@ def main(idx=-1):
         paramsFile = onlyfiles[idx]
         evaluate_savefile(paramsFile,window_idx)
         print(f"Time for evaluation: \n",time.time()-start)
-    print(f"Total time for evaluation: \n",time.time()-start_time)
+    print(f"Total time for evaluation ppo : \n",time.time()-start_time)
     
 def main2(idx=-1):
+    start_time =time.time()
     for window_idx in range(13):
         start=time.time()
         print(f">>> window_idx: {window_idx}")        
@@ -190,13 +191,14 @@ def main2(idx=-1):
         paramsFile = onlyfiles[idx]
         twap_evaluation(paramsFile,window_idx)
         print(f"Time for evaluation: \n",time.time()-start)
-
+    print(f"Total time for evaluation twap: \n",time.time()-start_time)
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify index of the file to evaluate.')
     parser.add_argument('idx', metavar='idx', type=int, help='Index of the file to evaluate.')
     
     args = parser.parse_args()
-    main(args.idx)
-    # main2(args.idx)
+    # main(args.idx)
+    main2(args.idx)
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py -1
