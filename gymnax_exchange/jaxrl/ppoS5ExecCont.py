@@ -429,7 +429,7 @@ def make_train(config):
                     slippage = info["slippage"][info["returned_episode"]]
                     price_drift = info["price_drift"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
-                    step_reward = info["step_reward"][info["returned_episode"]]
+                    # step_reward = info["step_reward"][info["returned_episode"]]
                     drift_reward = info["drift_reward"][info["returned_episode"]]
                     advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
@@ -445,7 +445,7 @@ def make_train(config):
                                     "slippage":slippage[t],
                                     "price_drift":price_drift[t],
                                     "current_step":current_step[t],
-                                    "step_reward":step_reward[t],
+                                    # "step_reward":step_reward[t],
                                     "drift_reward":drift_reward[t],
                                     "advantage_reward":advantage_reward[t],
                                     # "grad_norm":grad_norm,
@@ -559,31 +559,32 @@ if __name__ == "__main__":
 
 
 
+    device = jax.devices()[1]
     # device = jax.devices()[-1]
-    # # device = jax.devices()[0]
-    # rng = jax.device_put(jax.random.PRNGKey(0), device)
-    # train_jit = jax.jit(make_train(ppo_config), device=device)
-    # out = train_jit(rng)
+    # device = jax.devices()[0]
+    rng = jax.device_put(jax.random.PRNGKey(0), device)
+    train_jit = jax.jit(make_train(ppo_config), device=device)
+    out = train_jit(rng)
 
-    if jax.device_count() == 1:
-        # +++++ Single GPU +++++
-        rng = jax.random.PRNGKey(0)
-        # rng = jax.random.PRNGKey(30)
-        train_jit = jax.jit(make_train(ppo_config))
-        start=time.time()
-        out = train_jit(rng)
-        print("Time: ", time.time()-start)
-        # +++++ Single GPU +++++
-    else:
-        # +++++ Multiple GPUs +++++
-        num_devices = int(jax.device_count())
-        rng = jax.random.PRNGKey(30)
-        rngs = jax.random.split(rng, num_devices)
-        train_fn = lambda rng: make_train(ppo_config)(rng)
-        start=time.time()
-        out = jax.pmap(train_fn)(rngs)
-        print("Time: ", time.time()-start)
-        # +++++ Multiple GPUs +++++
+    # if jax.device_count() == 1:
+    #     # +++++ Single GPU +++++
+    #     rng = jax.random.PRNGKey(0)
+    #     # rng = jax.random.PRNGKey(30)
+    #     train_jit = jax.jit(make_train(ppo_config))
+    #     start=time.time()
+    #     out = train_jit(rng)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Single GPU +++++
+    # else:
+    #     # +++++ Multiple GPUs +++++
+    #     num_devices = int(jax.device_count())
+    #     rng = jax.random.PRNGKey(30)
+    #     rngs = jax.random.split(rng, num_devices)
+    #     train_fn = lambda rng: make_train(ppo_config)(rng)
+    #     start=time.time()
+    #     out = jax.pmap(train_fn)(rngs)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Multiple GPUs +++++
     
     
 
