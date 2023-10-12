@@ -133,16 +133,12 @@ class ExecutionEnv(BaseLOBEnv):
                 scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
                 return scaledAction
             action = truncate_action(action, state.task_to_execute-state.quant_executed)
-            # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
-            # jax.debug.breakpoint()
             jax.debug.print("action before clip {}",action)
             action = action.clip(-1*state.quant_executed,None).astype(jnp.int32)
-            # action = action.clip(jnp.minimum(0,-1*state.quant_executed),None)
             condition = action.sum() < -1 * state.quant_executed
             new_action = jnp.ceil(action * state.quant_executed / jnp.abs(action.sum())).astype(jnp.int32)
             action = jnp.where(condition, new_action, action)
             jax.debug.print("quant for clip {}",-1*state.quant_executed)
-            # jax.debug.print("quant for clip {}",jnp.minimum(0,-1*state.quant_executed))
             jax.debug.print("action after clip {}",action)
             return action
         action = reshape_action(delta, state)
@@ -210,12 +206,20 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
-        # jax.debug.breakpoint()
-        new_submitted = jnp.where((action_msgs[:,2]<0), action_msgs[:,2], 0).sum()
-        jax.debug.print("action {}, new_submitted {}",action_msgs[:,2],new_submitted)
-        # new_submitted = action_msgs quant and choose the negative
+        # a=jnp.where((action_msgs[:,2]<0), action_msgs, 0)
+        
+        new_submitted = jnp.where((action_msgs[:, 2] < 0)[:, jnp.newaxis], action_msgs, 0)
+        new_submitted_cost = (new_submitted[:,3]//self.tick_size*new_submitted[:,2]).sum()
+        new_submitted_quant = new_submitted[:,2].sum() # CAUTION it should be negative
+        # new_submitted_quant = jnp.where((action_msgs[:,2]<0), action_msgs[:,2], 0).sum()
+        # new_submitted_cost = TODO
+        # revenue = TODO determine the side 
+        revenue += new_submitted_cost # CAUTION, the cost should be negative
+        
+        jax.debug.print("action {}, new_submitted_quant {}",action_msgs[:,2],new_submitted_quant)
+        # new_submitted_quant = action_msgs quant and choose the negative
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
-            state.init_price,state.task_to_execute,state.quant_executed+new_execution+new_submitted,state.total_revenue+revenue,state.step_counter+1,\
+            state.init_price,state.task_to_execute,state.quant_executed+new_execution+new_submitted_quant,state.total_revenue+revenue,state.step_counter+1,\
             state.max_steps_in_episode)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
@@ -469,6 +473,7 @@ if __name__ == "__main__":
         print("quant_executed",info['quant_executed'])
         print("current_step",info['current_step'])
         print("current_executed",info['current_executed'])
+        print("total_revenue",info['total_revenue'])
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
