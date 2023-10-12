@@ -136,8 +136,13 @@ class ExecutionEnv(BaseLOBEnv):
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
             # jax.debug.breakpoint()
             jax.debug.print("action before clip {}",action)
-            action = action.clip(-1*state.quant_executed,None)
+            action = action.clip(-1*state.quant_executed,None).astype(jnp.int32)
+            # action = action.clip(jnp.minimum(0,-1*state.quant_executed),None)
+            condition = action.sum() < -1 * state.quant_executed
+            new_action = jnp.ceil(action * state.quant_executed / jnp.abs(action.sum())).astype(jnp.int32)
+            action = jnp.where(condition, new_action, action)
             jax.debug.print("quant for clip {}",-1*state.quant_executed)
+            # jax.debug.print("quant for clip {}",jnp.minimum(0,-1*state.quant_executed))
             jax.debug.print("action after clip {}",action)
             return action
         action = reshape_action(delta, state)
@@ -278,7 +283,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<=0)
+        return (state.time-state.init_time)[0]>params.episode_time
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         # ============================== Get Action_msgs ==============================
@@ -307,7 +312,8 @@ class ExecutionEnv(BaseLOBEnv):
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
         def market_order_logic(state: EnvState):
-            quant = state.task_to_execute - state.quant_executed
+            # quant = state.task_to_execute - state.quant_executed
+            quant =  -1*state.quant_executed
             # price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             #FIXME not very clean way to implement, but works:
             quants = jnp.asarray((quant - quant//2, quant//2),jnp.int32) 
