@@ -70,6 +70,31 @@ ppo_config = {
 
 dir = ppo_config['CHECKPOINT_DIR']
 csv_dir = ppo_config["CHECKPOINT_CSV_DIR"]
+
+
+def make_evaluation(network_config):    
+    network,trainstate_params,checkpoint,env,env_params,key_step = network_config
+    def step(rng, obs, done, hstate,state):
+        rng, _rng = jax.random.split(rng)
+        ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
+        assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
+        assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
+        hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
+        raw_action = pi.sample(seed=rng)
+        # action = raw_action.round().astype(jnp.int32)[0,0,:].clip(0, None)
+        action = raw_action[0,0,:]
+        obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+        row_data = [
+            checkpoint, info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
+            info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
+            info['drift_reward'], info['quant_executed'], 
+            info['task_to_execute'], info['total_revenue']
+        ]
+        return row_data
+    return step
+
+
+    
     
 def evaluate_savefile(paramsFile,window_idx):
     env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx)
@@ -96,22 +121,20 @@ def evaluate_savefile(paramsFile,window_idx):
         network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
         hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
         done = False
+        
+        checkpoint = int(paramsFile.split("_")[1].split(".")[0])
+        network_config = (network,trainstate_params,checkpoint,env,env_params,key_step)
+        device = jax.devices()[-1]
+        evaluate_jit = jax.jit(make_evaluation(network_config), device=device)    
+        
         for i in range(1,10000):
             print(i)
-            ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
-            assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
-            assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
-            hstate, pi, value = network.apply(trainstate_params, hstate, ac_in) 
-            raw_action = pi.sample(seed=rng)
-            # action = raw_action.round().astype(jnp.int32)[0,0,:].clip(0, None)
-            action = raw_action[0,0,:]
-            obs,state,reward,done,info=env.step(key_step, state,action, env_params)
-            row_data = [
-                paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
-                info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
-                info['drift_reward'], info['quant_executed'], 
-                info['task_to_execute'], info['total_revenue']
-            ]
+
+            rng = jax.device_put(jax.random.PRNGKey(0), device)
+            # start = time.time()
+            row_data = evaluate_jit(rng,obs,done,hstate,state)
+            # print(f"time taken: {time.time()-start}")
+            
             csvwriter.writerow(row_data)
             csvfile.flush() 
             if done:
@@ -195,10 +218,10 @@ def main2(idx=-1):
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify index of the file to evaluate.')
-    parser.add_argument('idx', metavar='idx', type=int, help='Index of the file to evaluate.')
+    parser.add_argument('--idx', metavar='idx', type=int, default=-1, help='Index of the file to evaluate.')
     
     args = parser.parse_args()
-    # main(args.idx)
-    main2(args.idx)
+    main(args.idx)
+    # main2(args.idx)
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py -1

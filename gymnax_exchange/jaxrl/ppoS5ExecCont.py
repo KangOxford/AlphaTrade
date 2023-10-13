@@ -559,8 +559,8 @@ if __name__ == "__main__":
 
 
 
-    device = jax.devices()[1]
-    # device = jax.devices()[-1]
+    # device = jax.devices()[1]
+    device = jax.devices()[-1]
     # device = jax.devices()[0]
     rng = jax.device_put(jax.random.PRNGKey(0), device)
     train_jit = jax.jit(make_train(ppo_config), device=device)
