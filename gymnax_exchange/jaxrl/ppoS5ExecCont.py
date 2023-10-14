@@ -167,7 +167,7 @@ def make_train(config):
     
     # new version
     # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["TASK_SIZE"],config["LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -499,7 +499,7 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
-        "NUM_ENVS": 200,
+        "NUM_ENVS": 1000,
         "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
         "UPDATE_EPOCHS": 5,
@@ -525,8 +525,6 @@ if __name__ == "__main__":
         "NORMALIZE_ENV": True,
         
         "ENV_NAME": "alphatradeExec-v0",
-        # "ENV_LENGTH": "oneWindow",
-        # # "ENV_LENGTH": "allWindows",
         "WINDOW_INDEX": "0",
         # "WINDOW_INDEX": "-1",
         "DEBUG": True,
@@ -534,10 +532,7 @@ if __name__ == "__main__":
         # "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
         # "WINDOW_INDEX":1,
-        # "LAMBDA":0.1,
-        # "GAMMA":10.0,
-        "LAMBDA":0.0,
-        "GAMMA":0.0,
+        "LAMBDA":1,
         "TASK_SIZE":500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
         "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
@@ -559,32 +554,32 @@ if __name__ == "__main__":
 
 
 
-    device = jax.devices()[1]
-    # device = jax.devices()[-1]
-    # device = jax.devices()[0]
-    rng = jax.device_put(jax.random.PRNGKey(0), device)
-    train_jit = jax.jit(make_train(ppo_config), device=device)
-    out = train_jit(rng)
+    # device = jax.devices()[1]
+    # # device = jax.devices()[-1]
+    # # device = jax.devices()[0]
+    # rng = jax.device_put(jax.random.PRNGKey(0), device)
+    # train_jit = jax.jit(make_train(ppo_config), device=device)
+    # out = train_jit(rng)
 
-    # if jax.device_count() == 1:
-    #     # +++++ Single GPU +++++
-    #     rng = jax.random.PRNGKey(0)
-    #     # rng = jax.random.PRNGKey(30)
-    #     train_jit = jax.jit(make_train(ppo_config))
-    #     start=time.time()
-    #     out = train_jit(rng)
-    #     print("Time: ", time.time()-start)
-    #     # +++++ Single GPU +++++
-    # else:
-    #     # +++++ Multiple GPUs +++++
-    #     num_devices = int(jax.device_count())
-    #     rng = jax.random.PRNGKey(30)
-    #     rngs = jax.random.split(rng, num_devices)
-    #     train_fn = lambda rng: make_train(ppo_config)(rng)
-    #     start=time.time()
-    #     out = jax.pmap(train_fn)(rngs)
-    #     print("Time: ", time.time()-start)
-    #     # +++++ Multiple GPUs +++++
+    if jax.device_count() == 1:
+        # +++++ Single GPU +++++
+        rng = jax.random.PRNGKey(0)
+        # rng = jax.random.PRNGKey(30)
+        train_jit = jax.jit(make_train(ppo_config))
+        start=time.time()
+        out = train_jit(rng)
+        print("Time: ", time.time()-start)
+        # +++++ Single GPU +++++
+    else:
+        # +++++ Multiple GPUs +++++
+        num_devices = int(jax.device_count())
+        rng = jax.random.PRNGKey(30)
+        rngs = jax.random.split(rng, num_devices)
+        train_fn = lambda rng: make_train(ppo_config)(rng)
+        start=time.time()
+        out = jax.pmap(train_fn)(rngs)
+        print("Time: ", time.time()-start)
+        # +++++ Multiple GPUs +++++
     
     
 

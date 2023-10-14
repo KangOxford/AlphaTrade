@@ -49,8 +49,8 @@ ppo_config = {
     "ENV_LENGTH": "oneWindow",
     # "ENV_LENGTH": "allWindows",
     "DEBUG": True,
-    "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
-    # "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
+    # "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "TASKSIDE":'sell',
     # "LAMBDA":0.1,
     # "GAMMA":10.0,
@@ -58,8 +58,8 @@ ppo_config = {
     "GAMMA":0.0,
     "TASK_SIZE":500,
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
-    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/csv/",
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/", # N.O. 3, pure quant
+    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/ckpt/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
@@ -75,7 +75,7 @@ csv_dir = ppo_config["CHECKPOINT_CSV_DIR"]
 def make_evaluation(network_config):    
     network,trainstate_params,checkpoint,env,env_params,key_step = network_config
     def step(rng, obs, done, hstate,state):
-        rng, _rng = jax.random.split(rng)
+        
         ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
         assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
         assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
@@ -90,7 +90,7 @@ def make_evaluation(network_config):
             info['drift_reward'], info['quant_executed'], 
             info['task_to_execute'], info['total_revenue']
         ]
-        return row_data
+        return row_data,(obs, done, hstate,state,reward,info)
     return step
 
 
@@ -127,12 +127,13 @@ def evaluate_savefile(paramsFile,window_idx):
         device = jax.devices()[-1]
         evaluate_jit = jax.jit(make_evaluation(network_config), device=device)    
         
+        rng = jax.device_put(jax.random.PRNGKey(0), device)
         for i in range(1,10000):
             print(i)
 
-            rng = jax.device_put(jax.random.PRNGKey(0), device)
             # start = time.time()
-            row_data = evaluate_jit(rng,obs,done,hstate,state)
+            rng, _rng = jax.random.split(rng)
+            row_data,(obs, done, hstate,state,reward,info) = evaluate_jit(rng, obs,done,hstate,state)
             # print(f"time taken: {time.time()-start}")
             
             csvwriter.writerow(row_data)
