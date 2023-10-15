@@ -17,50 +17,24 @@ from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n
 from purejaxrl.experimental.s5.s5 import StackedEncoderModel, init_S5SSM, make_DPLR_HiPPO
 from gymnax_exchange.jaxen.exec_env import *
 
-ppo_config = {
-    "LR": 2.5e-4,
-    "ENT_COEF": 0.1,
-    "NUM_ENVS": 200,
-    "TOTAL_TIMESTEPS": 5e7,
-    "NUM_MINIBATCHES": 2,
-    "UPDATE_EPOCHS": 5,
-    "NUM_STEPS": 455,
-    "CLIP_EPS": 0.2,
-    
-    # "LR": 2.5e-6,
-    # "NUM_ENVS": 1,
-    # "NUM_STEPS": 1,
-    # "NUM_MINIBATCHES": 1,
-    # "NUM_ENVS": 1000,
-    # "NUM_STEPS": 10,
-    # "NUM_MINIBATCHES": 4,
-    # "TOTAL_TIMESTEPS": 1e7,
-    # "UPDATE_EPOCHS": 4,
-    "GAMMA": 0.99,
-    "GAE_LAMBDA": 0.95,
-    # "CLIP_EPS": 0.2,
-    # "ENT_COEF": 0.01,
-    "VF_COEF": 0.5,
-    "MAX_GRAD_NORM": 2.0,
-    "ANNEAL_LR": True,
-    "NORMALIZE_ENV": True,
-    
+ppo_config = {    
     "ENV_NAME": "alphatradeExec-v0",
-    "ENV_LENGTH": "oneWindow",
-    # "ENV_LENGTH": "allWindows",
     "DEBUG": True,
-    # "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
-    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "TASKSIDE":'sell',
-    # "LAMBDA":0.1,
-    # "GAMMA":10.0,
-    "LAMBDA":0.0,
-    "GAMMA":0.0,
+
+    "REWARD_LAMBDA":0,
+    "ACTION_TYPE":"pure",
+    # "ACTION_TYPE":"delta",
     "TASK_SIZE":500,
+    
+    "WINDOW_INDEX": "-1",
+    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/", # N.O. 10, pure quant
-    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/csv/",
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/", # N.O. 11, pure quant
+    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/csv/",
+    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/", # N.O. 10, pure quant
+    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/", # N.O. 3, pure quant
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
@@ -100,7 +74,8 @@ def make_evaluation(network_config):
     
     
 def evaluate_savefile(paramsFile,window_idx):
-    env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx)
+    # env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx)
+    env= ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx,ppo_config["ACTION_TYPE"],ppo_config["TASK_SIZE"],ppo_config["REWARD_LAMBDA"])
     env_params=env.default_params
     assert env.task_size == 500
     # Automatically create the directory if it doesn't exist
@@ -110,7 +85,7 @@ def evaluate_savefile(paramsFile,window_idx):
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
         row_title = [
-            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','quant_executed', 'task_to_execute', 'total_revenue'
         ]
         csvwriter.writerow(row_title)
         csvfile.flush() 
