@@ -167,7 +167,7 @@ def make_train(config):
     
     # new version
     # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["LAMBDA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -533,7 +533,7 @@ if __name__ == "__main__":
         # "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
         # "WINDOW_INDEX":1,
-        "LAMBDA":0,
+        "REWARD_LAMBDA":0,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
         # "LAMBDA":1,

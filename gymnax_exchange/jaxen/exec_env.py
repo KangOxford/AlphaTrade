@@ -96,8 +96,7 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    # def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
-    def __init__(self,alphatradePath,task,window_index,action_type,task_size = 500, Lambda=0.0, Gamma=0.00):
+    def __init__(self,alphatradePath,task,window_index,action_type,task_size = 500, rewardLambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
@@ -105,7 +104,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.task = task
         self.window_index =window_index
         self.action_type = action_type
-        self.Lambda = Lambda
+        self.rewardLambda = rewardLambda
         self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
@@ -194,15 +193,15 @@ class ExecutionEnv(BaseLOBEnv):
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        Lambda = self.Lambda 
+        rewardLambda = self.rewardLambda 
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
-        rewardValue = advantage + Lambda * drift
+        rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- used for slippage ----------
         agentPrice = revenue/agentQuant
         slippage = agentPrice - vwap
         price_drift = (vwap - state.init_price//self.tick_size)
-        drift_reward =  Lambda * drift
+        drift_reward =  rewardLambda * drift
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
