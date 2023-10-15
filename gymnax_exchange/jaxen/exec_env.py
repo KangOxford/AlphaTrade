@@ -97,13 +97,14 @@ class EnvParams:
 
 class ExecutionEnv(BaseLOBEnv):
     # def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
-    def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
+    def __init__(self,alphatradePath,task,window_index,action_type,task_size = 500, Lambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.window_index =window_index
+        self.action_type = action_type
         self.Lambda = Lambda
         self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
@@ -128,10 +129,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Obtain the messages for the step from the message data
         # '''
         def reshape_action(action, state, params):
-            def action_space_clipping(action):
-                return jnp.round(action).astype(jnp.int32).clip(0,100) # clippedAction 
-                # return jnp.round(action).astype(jnp.int32).clip(-5,5) # clippedAction 
-            
+            action_space_clipping = lambda action: jnp.round(action).astype(jnp.int32).clip(-5,5) if self.action_type=='delta' else jnp.round(action).astype(jnp.int32).clip(0,100)# clippedAction 
             def twapV3(state, env_params):
                 # ---------- ifMarketOrder ----------
                 remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -154,11 +152,7 @@ class ExecutionEnv(BaseLOBEnv):
                 scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
                 return scaledAction
             
-            delta_ = action_space_clipping(delta)    
-            base_ = get_base_action(state, params)
-            # base_ = 11 # CAUTION NOT RIGHT TODO 
-            action_ = base_ + delta_
-            # action = delta
+            action_ = get_base_action(state, params)  + action_space_clipping(delta)  if self.action_type=='delta' else action_space_clipping(delta)
             action = truncate_action(action_, state.task_to_execute-state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
             return action
@@ -398,10 +392,7 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        # return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(-2,2,(self.n_actions,),dtype=jnp.int32)
-        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
-        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):

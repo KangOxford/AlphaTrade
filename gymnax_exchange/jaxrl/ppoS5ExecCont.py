@@ -167,7 +167,7 @@ def make_train(config):
     
     # new version
     # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["TASK_SIZE"],config["LAMBDA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
@@ -500,7 +500,8 @@ if __name__ == "__main__":
         "LR": 2.5e-4,
         "ENT_COEF": 0.1,
         "NUM_ENVS": 1000,
-        "TOTAL_TIMESTEPS": 3.5e7,
+        "TOTAL_TIMESTEPS": 1e8,
+        # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
         "UPDATE_EPOCHS": 5,
         "NUM_STEPS": 455,
@@ -533,6 +534,8 @@ if __name__ == "__main__":
         "TASKSIDE":'sell',
         # "WINDOW_INDEX":1,
         "LAMBDA":0,
+        "ACTION_TYPE":"pure",
+        # "ACTION_TYPE":"delta",
         # "LAMBDA":1,
         "TASK_SIZE":500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
