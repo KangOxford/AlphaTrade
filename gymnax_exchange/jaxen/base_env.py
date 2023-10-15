@@ -180,8 +180,15 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            # [print(Cubes_withOB[j][0][i,:,3],file=open(f"/homes/80/kang/AlphaTrade/results_file_numpy_{j}",'a')) for i in range(Cubes_withOB[0][0].shape[0]) for j in range(13)]
-            # jax.debug.breakpoint()
+            
+            # # breakpoint()
+            # for j in range(13):
+            #     data = Cubes_withOB[j][0][:,:,3]
+            #     dir = f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}.npy"
+            #     np.save(dir, data)
+            #     # breakpoint()
+            # # [print(Cubes_withOB[j][0][i,:,3],file=open(f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}",'a')) for i in range(Cubes_withOB[0][0].shape[0]) for j in range(13)]
+            
             return Cubes_withOB, max_steps_in_episode_arr
 
         Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)

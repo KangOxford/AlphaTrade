@@ -155,7 +155,7 @@ def twap_evaluation(paramsFile,window_idx):
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
         row_title = [
-            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','step_reward','quant_executed', 'task_to_execute', 'total_revenue'
+            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','quant_executed', 'task_to_execute', 'total_revenue'
         ]
         csvwriter.writerow(row_title)
         csvfile.flush() 
