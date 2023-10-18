@@ -422,15 +422,16 @@ def make_train(config):
                             jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
                             jax.debug.print("+++ time taken        {}",time.time()-start)        
                     evaluation()
-                        
+                    
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
-                    slippage = info["slippage"][info["returned_episode"]]
-                    price_drift = info["price_drift"][info["returned_episode"]]
+                    
+                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    
                     current_step = info["current_step"][info["returned_episode"]]
-                    # step_reward = info["step_reward"][info["returned_episode"]]
-                    drift_reward = info["drift_reward"][info["returned_episode"]]
                     advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     for t in range(len(timesteps)):  
@@ -442,11 +443,11 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
-                                    "slippage":slippage[t],
-                                    "price_drift":price_drift[t],
+                                    "slippage_rm":slippage_rm[t],
+                                    "price_drift_rm":price_drift_rm[t],
+                                    "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
                                     # "step_reward":step_reward[t],
-                                    "drift_reward":drift_reward[t],
                                     "advantage_reward":advantage_reward[t],
                                     # "grad_norm":grad_norm,
                                 }

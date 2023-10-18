@@ -65,6 +65,10 @@ class EnvState:
     total_revenue:int
     step_counter: int
     max_steps_in_episode: int
+    
+    slippage_rm: int
+    price_drift_rm: int
+    vwap_rm: int
 
 
 @struct.dataclass
@@ -191,17 +195,22 @@ class ExecutionEnv(BaseLOBEnv):
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
-        vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
+        vwapFunc = lambda executed: (executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
+        vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         rewardLambda = self.rewardLambda 
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
+        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
+        rollingMeanValueFunc = lambda average_price,new_price:((average_price*state.step_counter+new_price)/(state.step_counter+1)).astype(jnp.int32)
+        slippage_rm = rollingMeanValueFunc(state.slippage_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        price_drift_rm = rollingMeanValueFunc(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        vwap_rm = rollingMeanValueFunc(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
+        # ---------- compute the final reward ----------
         rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
-        # ---------- used for slippage ----------
-        agentPrice = revenue/agentQuant
-        slippage = agentPrice - vwap
-        price_drift = (vwap - state.init_price//self.tick_size)
-        drift_reward =  rewardLambda * drift
+        # ---------- noramlize the reward ----------
+        reward /= 10000
+        # reward /= params.avg_twap_list[state.window_index]
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -222,31 +231,19 @@ class ExecutionEnv(BaseLOBEnv):
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
             state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
-            state.max_steps_in_episode)
+            state.max_steps_in_episode,slippage_rm,price_drift_rm,vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
-        reward /= 10000
-        # reward /= params.avg_twap_list[state.window_index]
-
-
-        # reward = slippage*new_execution # TODO
-        # reward = rewardValue # TODO
-        # ---------- used for slippage ----------
-        # abs_average_price = params.avg_twap_list[state.window_index]
-        # reward = jnp.sign(agentTrades[0,0])*(revenue - abs_average_price*agentQuant)*10000/abs_average_price # TODO
-        # '''total revenue: advatange of twap in bp'''
-        # ---------- used for slippage ----------
-        # jax.debug.print(">>> base {}, delta {}, action {}; truncated {};\n+ reward {};executed {};slippage {};\n+ sign {}; executed*slippage {}",get_base_action(state, params), delta,action_,action,reward,new_execution,slippage,jnp.sign(agentTrades[0,0]),new_execution*slippage)
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,'slippage':slippage,"price_drift":price_drift,\
-            "drift_reward":drift_reward,"advantage_reward":advantage,\
+            'done':done,
+            'slippage_rm':state.slippage_rm,"price_drift_rm":state.price_drift_rm,"vwap_rm":state.vwap_rm,\
+            "advantage_reward":advantage,\
             }
-        # TODO episodic slippage
 
 
     def reset_env(
@@ -272,7 +269,8 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0)
+            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
@@ -438,11 +436,20 @@ if __name__ == "__main__":
         ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
+    config = {
+        "ATFOLDER": ATFolder,
+        "TASKSIDE": "sell",
+        "TASK_SIZE": 500,
+        "WINDOW_INDEX": 0,
+        "ACTION_TYPE": "pure",
+        "REWARD_LAMBDA": 0.0,
+    }
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env=ExecutionEnv(ATFolder,"sell",1)
+    # env=ExecutionEnv(ATFolder,"sell",1)
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
