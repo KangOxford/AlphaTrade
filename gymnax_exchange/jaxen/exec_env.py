@@ -201,10 +201,10 @@ class ExecutionEnv(BaseLOBEnv):
         rewardLambda = self.rewardLambda 
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
-        rollingMeanValueFunc = lambda average_price,new_price:((average_price*state.step_counter+new_price)/(state.step_counter+1)).astype(jnp.int32)
-        slippage_rm = rollingMeanValueFunc(state.slippage_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        price_drift_rm = rollingMeanValueFunc(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
-        vwap_rm = rollingMeanValueFunc(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
+        rollingMeanValueFunc_INT = lambda average_price,new_price:((average_price*state.step_counter+new_price)/(state.step_counter+1)).astype(jnp.int32)
+        slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        vwap_rm = rollingMeanValueFunc_INT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
         # ---------- compute the final reward ----------
         rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
