@@ -32,7 +32,7 @@ from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
-
+import datetime
 
 
 
@@ -135,9 +135,12 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"])
+
+    # new version
+    # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params = env.default_params
-    env = LogWrapper(env)
+    env = LogWrapper(env)    
     
     #FIXME : Uncomment normalisation.
     if config["NORMALIZE_ENV"]:
@@ -476,52 +479,70 @@ def make_train(config):
     return train
 
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1] 
-    except:
-        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        ATFolder = '/homes/80/kang/AlphaTrade'
-        # ATFolder = '/home/duser/AlphaTrade'
-    print("AlphaTrade folder:",ATFolder)
+    # try:
+    #     ATFolder = sys.argv[1] 
+    # except:
+    #     # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+    #     ATFolder = '/homes/80/kang/AlphaTrade'
+    #     # ATFolder = '/home/duser/AlphaTrade'
+    # print("AlphaTrade folder:",ATFolder)
+
+    timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
+        # "LR": 2.5e-3,
         # "LR": 2.5e-4,
-        "LR": 2.5e-6,
-        # "NUM_ENVS": 1,
-        # "NUM_STEPS": 1,
-        # "NUM_MINIBATCHES": 1,
+        "LR": 2.5e-5,
+        # "LR": 2.5e-6,
+        "ENT_COEF": 0.1,
+        # "ENT_COEF": 0.01,
         "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "NUM_MINIBATCHES": 4,
-        "TOTAL_TIMESTEPS": 1e7,
-        "UPDATE_EPOCHS": 4,
+        "TOTAL_TIMESTEPS": 1e8,
+        # "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 3.5e7,
+        "NUM_MINIBATCHES": 2,
+        # "NUM_MINIBATCHES": 4,
+        "UPDATE_EPOCHS": 5,
+        # "UPDATE_EPOCHS": 4,
+        "NUM_STEPS": 455,
+        # "NUM_STEPS": 10,
+        "CLIP_EPS": 0.2,
+        # "CLIP_EPS": 0.2,
+        
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
-        "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
-        "DEBUG": True,
         "NORMALIZE_ENV": True,
-        "ATFOLDER": ATFolder,
+        
+        "ACTOR_TYPE":"RNN",
+        
+        "ENV_NAME": "alphatradeExec-v0",
+        # "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": -1,
+        "DEBUG": True,
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
         "TASKSIDE":'sell',
-        "LAMBDA":0.0,
+        "REWARD_LAMBDA":1,
+        "ACTION_TYPE":"pure",
+        # "ACTION_TYPE":"delta",
         "TASK_SIZE":500,
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeJAX_ParamSearch_Small",
+            project="AlphaTradeJAX_Train",
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
         )
-        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
     else:
-        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
         
 

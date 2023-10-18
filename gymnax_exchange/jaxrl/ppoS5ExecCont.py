@@ -524,6 +524,8 @@ if __name__ == "__main__":
         "ANNEAL_LR": True,
         "NORMALIZE_ENV": True,
         
+        "ACTOR_TYPE":"S5",
+        
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1,
