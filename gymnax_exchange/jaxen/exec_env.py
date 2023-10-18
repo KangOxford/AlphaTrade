@@ -206,10 +206,10 @@ class ExecutionEnv(BaseLOBEnv):
 
         #TODO VWAP price (vwap) is only over all trades in between steps. 
         advantage = revenue - vwap_rm * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        rewardLambda = self.rewardLambda 
+        rewardLambda = self.rewardLambda
         drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
         # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
-        price_adv_rm = rollingMeanValueFunc_INT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        price_adv_rm = rollingMeanValueFunc_INT(state.price_adv_rm,revenue//agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
         slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
