@@ -48,8 +48,6 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        # self.messagePath = alphatradePath+"/data_small/Flow_10/"
-        # self.orderbookPath = alphatradePath+"/data_small/Book_10/"
         self.messagePath = alphatradePath+"/data/Flow_10/"
         self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
@@ -187,15 +185,25 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
+            
+            # # breakpoint()
+            # for j in range(13):
+            #     data = Cubes_withOB[j][0][:,:,3]
+            #     dir = f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}.npy"
+            #     np.save(dir, data)
+            #     # breakpoint()
+            # # [print(Cubes_withOB[j][0][i,:,3],file=open(f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}",'a')) for i in range(Cubes_withOB[0][0].shape[0]) for j in range(13)]
+            
             return Cubes_withOB, max_steps_in_episode_arr
 
         Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
 
         self.max_steps_in_episode_arr = max_steps_in_episode_arr
         # # ------------------------------- TESTING ------------------------------
-        # alphatradePath = '/homes/80/kang/AlphaTrade'
-        # messagePath = alphatradePath+"/data_small/Flow_10/"
-        # orderbookPath = alphatradePath+"/data_small/Book_10/"
+        # # alphatradePath = '/homes/80/kang/AlphaTrade/training_oneDay'
+        # alphatradePath = '/homes/80/kang/AlphaTrade/testing_oneDay'
+        # messagePath = alphatradePath+"/data/Flow_10/"
+        # orderbookPath = alphatradePath+"/data/Book_10/"
         # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time=1800,100,messagePath,orderbookPath,34200,57600
         # Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(1800,100,messagePath,orderbookPath,34200,57600)
         # msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
@@ -203,10 +211,101 @@ class BaseLOBEnv(environment.Environment):
         # message_data, book_data = msgs[0],bks[0]
         # nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size, n_ticks_in_book= 100, 100, 100,100, 20,200
         # # ------------------------------- TESTING ------------------------------
-        # print(len(msgs))
-        # for message_data in msgs:
-        #     print(message_data.shape)
-            
+
+        # # # ------------------------------- STATS ------------------------------  
+        # # msg = msgs[0]
+        # tvs_lst = []
+        # for index,msg in enumerate(msgs):
+        #     pass
+        #     print(f">>> {index}")
+        #     tradingVolume = lambda step:step[step[:,0]==4][:,2].sum()
+        #     tvs = [tradingVolume(step) for step in msg]
+        #     tvs_lst.append(tvs)
+        # tvs_arr = jnp.asarray(tvs_lst)
+        # tvs_arr.shape
+        # tvsa_sum = tvs_arr.sum(axis=1)
+        # step_mean = [row[:max_steps_in_episode_arr[index]].mean().round().astype(jnp.int32) for index,row in enumerate(tvs_arr)]
+        # step_mean = jnp.asarray(step_mean)
+        
+        
+        
+        # ps_lst = []
+        # for index,msg in enumerate(msgs):
+        #     # pass
+        #     print(f">>> {index}")
+        #     # step = msg[0]
+        #     # step[step[:,0]==4]
+        #     def vwapPirce(step):
+        #         executed = step[step[:,0]==4]
+        #         return (((executed[:,2]*(executed[:,3]//100)).sum() / executed[:,2].sum())*100).astype(jnp.int32)
+        #     ps = [vwapPirce(step) for step in msg]
+        #     ps_lst.append(ps)
+        # ps_arr = jnp.asarray(ps_lst)
+        # ps_arr.shape
+        # def subsample_evenly(input_list, num_samples=16):
+        #     step_size = len(input_list) / num_samples
+        #     subsamples = []
+
+        #     for i in range(num_samples):
+        #         index = int(round(i * step_size))
+        #         subsamples.append(input_list[index])
+
+        #     return subsamples
+        # def forward_fill_jax(arr):
+        #     last_valid = None
+        #     for i in range(arr.shape[0]):
+        #         if arr[i] != 0:
+        #             last_valid = arr[i]
+        #         else:
+        #             if last_valid is not None:
+        #                 arr = arr.at[i].set(last_valid)
+        #     return arr
+        # def back_fill_jax(arr):
+        #     farr = jnp.flip(arr)
+        #     result = forward_fill_jax(farr)
+        #     fresult = jnp.flip(result)
+        #     return fresult
+        # def mean_fill_jax(newRow):
+        #     ffilled_row = forward_fill_jax(newRow)
+        #     bfilled_row = back_fill_jax(newRow)
+        #     mfilled_row = jnp.round((ffilled_row+bfilled_row)/2).astype(jnp.int32)
+        #     return mfilled_row
+        
+        
+        # prices_list = []
+        # for index,row in enumerate(ps_arr):
+        #     newRow = row[:max_steps_in_episode_arr[index]]
+        #     mfilled_row = mean_fill_jax(newRow)
+        #     result =  jnp.asarray(subsample_evenly(mfilled_row, num_samples=16))
+        #     prices_list.append(result)
+        # prices_arr = jnp.asarray(prices_list)
+        # prices_arr.shape
+        # p = prices_arr[prices_arr[:,0]>=30000000]
+        # p_ = p[:,:-1]
+        # p_head = p[:,1:]
+        # pReturnInBP = (p_head-p_)/p_*10000
+        
+        # m=pReturnInBP.mean(axis = 0)
+        # # m=p.mean(axis = 0).round().astype(jnp.int32)
+        # # s=p.std(axis = 0).round().astype(jnp.int32)
+        # s=pReturnInBP.std(axis = 0)
+        # m
+        # s
+        
+        # m_Minus_s = m-s
+        # m
+        # m_Plus_s = m +s
+        # m_Plus_s = 2*m - m_Minus_s 
+        
+        # tvsa_sum = tvs_arr.sum(axis=1)
+        # tvsa_sum.shape
+        # step_mean = [row[:max_steps_in_episode_arr[index]].mean().round().astype(jnp.int32) for index,row in enumerate(tvs_arr)]
+        # step_mean = jnp.asarray(step_mean)
+        # # assert step_mean.shape[0] == tvs_arr.shape[0]
+        # # # ------------------------------- STATS ------------------------------            
+                    
+        
+
             
             
         #List of message cubes 
@@ -293,7 +392,23 @@ class BaseLOBEnv(environment.Environment):
             obs_sell = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
             obs_buy  = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_buy_task, spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
             # jax.debug.breakpoint()
-            return obs_sell, obs_buy
+            def obsNorm(obs):
+                return jnp.concatenate((
+                    obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
+                    obs[400:500]/100000, # spreads
+                    obs[500:501]/100000, # timeOfDay
+                    obs[501:502]/1000000000, # timeOfDay
+                    obs[502:503]/10,# deltaT
+                    obs[503:504]/1000000000,# deltaT
+                    obs[504:505]/3.5e7,# initPrice  TODO CHANGE THIS
+                    obs[505:506]/100000,# priceDrift
+                    obs[506:507]/500, # taskSize TODO CHANGE THIS
+                    obs[507:508]/500, # executed_quant TODO CHANGE THIS
+                    obs[508:608]/100, # shallowImbalance 
+                    obs[608:609]/300, # step_counter TODO CHANGE THIS
+                    obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
+                ))
+            return obsNorm(obs_sell), obsNorm(obs_buy)
         
         def get_state_obs(message_data, book_data,max_steps_in_episode):
             state = get_state(message_data, book_data,max_steps_in_episode)

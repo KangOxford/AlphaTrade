@@ -9,7 +9,7 @@ import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
 sys.path.append('/homes/80/kang/AlphaTrade')
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 import chex
 import timeit
 
@@ -43,7 +43,7 @@ from gymnax.environments import environment, spaces
 from typing import Tuple, Optional
 import chex
 from flax import struct
-from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 # from gymnax_exchange.test_scripts.comparison import twapV3
 import time 
@@ -96,15 +96,15 @@ class EnvParams:
 
 
 class ExecutionEnv(BaseLOBEnv):
-    def __init__(self,alphatradePath,task,window_index,action_type,task_size = 500, rewardLambda=0.0, Gamma=0.00):
+    # def __init__(self,alphatradePath,task,task_size = 500, Lambda=0.0, Gamma=0.00):
+    def __init__(self,alphatradePath,task,window_index,task_size = 500, Lambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
         self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.window_index =window_index
-        self.action_type = action_type
-        self.rewardLambda = rewardLambda
+        self.Lambda = Lambda
         self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
@@ -127,35 +127,21 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
-        def reshape_action(action, state, params):
-            action_space_clipping = lambda action: jnp.round(action).astype(jnp.int32).clip(-5,5) if self.action_type=='delta' else jnp.round(action).astype(jnp.int32).clip(0,100)# clippedAction 
-            def twapV3(state, env_params):
-                # ---------- ifMarketOrder ----------
-                remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-                marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-                ifMarketOrder = (remainingTime <= marketOrderTime)
-                # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
-                # ---------- ifMarketOrder ----------
-                # ---------- quants ----------
-                remainedQuant = state.task_to_execute - state.quant_executed
-                remainedStep = state.max_steps_in_episode - state.step_counter
-                stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True)
-                market_quants = jnp.array([stepQuant,stepQuant])
-                quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-                # ---------- quants ----------
-                return jnp.array(quants) 
-            get_base_action = lambda state, params:twapV3(state, params)
+        def reshape_action(action, state):
             def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
+                action = jnp.round(action).astype(jnp.int32).clip(-100,min(100,self.task_size))
                 scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
                 return scaledAction
-            
-            action_ = get_base_action(state, params)  + action_space_clipping(delta)  if self.action_type=='delta' else action_space_clipping(delta)
-            action = truncate_action(action_, state.task_to_execute-state.quant_executed)
-            # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+            action = truncate_action(action, state.task_to_execute-state.quant_executed)
+            jax.debug.print("action before clip {}",action)
+            action = action.clip(-1*state.quant_executed,None).astype(jnp.int32)
+            condition = action.sum() < -1 * state.quant_executed
+            new_action = jnp.ceil(action * state.quant_executed / jnp.abs(action.sum())).astype(jnp.int32)
+            action = jnp.where(condition, new_action, action)
+            jax.debug.print("quant for clip {}",-1*state.quant_executed)
+            jax.debug.print("action after clip {}",action)
             return action
-        action = reshape_action(delta, state, params)
+        action = reshape_action(delta, state)
         
         
         data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
@@ -180,7 +166,11 @@ class ExecutionEnv(BaseLOBEnv):
         # ========== get reward and revenue ==========
         executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        # revenue = TODO determine the side , we should not use "or" here, one side is for the inverse order
+        # check this by observe whether the revenue is monotonous increasing or not
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        # jax.debug.breakpoint()
+        
         def truncate_agent_trades(agentTrades, remainQuant):
             quantities = agentTrades[:, 1]
             cumsum_quantities = jnp.cumsum(quantities)
@@ -193,15 +183,15 @@ class ExecutionEnv(BaseLOBEnv):
         agentQuant = agentTrades[:,1].sum()
         vwap =(executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        rewardLambda = self.rewardLambda 
+        Lambda = self.Lambda 
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
-        rewardValue = advantage + rewardLambda * drift
+        rewardValue = advantage + Lambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- used for slippage ----------
         agentPrice = revenue/agentQuant
         slippage = agentPrice - vwap
         price_drift = (vwap - state.init_price//self.tick_size)
-        drift_reward =  rewardLambda * drift
+        drift_reward =  Lambda * drift
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -220,11 +210,16 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
+        
+        new_submitted = jnp.where((action_msgs[:, 2] < 0)[:, jnp.newaxis], action_msgs, 0)
+        new_submitted_cost = (new_submitted[:,3]//self.tick_size*new_submitted[:,2]).sum()
+        buy_side_quant = new_submitted[:,2].sum() # CAUTION it should be negative
+        revenue += new_submitted_cost # CAUTION, the cost should be negative
+        
+        jax.debug.print("action {}, buy_side_quant {}",action_msgs[:,2],buy_side_quant)
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
-            state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
+            state.init_price,state.task_to_execute,state.quant_executed+new_execution+buy_side_quant,state.total_revenue+revenue,state.step_counter+1,\
             state.max_steps_in_episode)
-            # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
-        # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
@@ -245,6 +240,7 @@ class ExecutionEnv(BaseLOBEnv):
             "current_step":state.step_counter,\
             'done':done,'slippage':slippage,"price_drift":price_drift,\
             "drift_reward":drift_reward,"advantage_reward":advantage,\
+            "current_executed":new_execution,
             }
         # TODO episodic slippage
 
@@ -288,13 +284,14 @@ class ExecutionEnv(BaseLOBEnv):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return ((state.time-state.init_time)[0]>params.episode_time) | (state.task_to_execute-state.quant_executed<=0)
+        return (state.time-state.init_time)[0]>params.episode_time
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
         types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        sides_=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        sides=jnp.sign(action)*sides_
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
@@ -316,7 +313,8 @@ class ExecutionEnv(BaseLOBEnv):
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
         def market_order_logic(state: EnvState):
-            quant = state.task_to_execute - state.quant_executed
+            # quant = state.task_to_execute - state.quant_executed
+            quant =  -1*state.quant_executed
             # price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
             #FIXME not very clean way to implement, but works:
             quants = jnp.asarray((quant - quant//2, quant//2),jnp.int32) 
@@ -391,7 +389,10 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-1,1,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-2,2,(self.n_actions,),dtype=jnp.int32)
+        # return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32)
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
@@ -450,35 +451,83 @@ if __name__ == "__main__":
     obs,state=env.reset(key_reset,env_params)
     print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
+    
+    print("Defualt side: sell(+); buy(-)")
    
-
+    '''
     # print(env_params.message_data.shape, env_params.book_data.shape)
     for i in range(1,100000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
-        # print("-"*20)
+        print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
-        # test_action=env.action_space().sample(key_policy)
-        test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
+        test_action=env.action_space().sample(key_policy)
+        # test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
-        # print(f"Sampled {i}th actions are: ",test_action)
+        print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
         # for key, value in info.items():
         #     print(key, value)
+        print("quant_executed",info['quant_executed'])
+        print("current_step",info['current_step'])
+        print("current_executed",info['current_executed'])
+        print("total_revenue",info['total_revenue'])
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
             print("==="*20)
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
+    '''
         
+        
+        
+
+    # print(env_params.message_data.shape, env_params.book_data.shape)
+    testAction=jnp.array([[ 0, 0],
+                          [10,10],
+                          [-10,-10],
+                          [10,10],
+                          [-10,-10],
+                          [10,10],
+                          [-10,-10],
+                          [10,10],
+                          [-10,-10],
+                          [10,10],
+                          [-10,-10],
+                          [10,10],
+                          [-10,-10],
+                          [10,10],
+                          [-10,-10],
+                          ])
+    for i in range(1,10):
+    # for i in range(1,100000):
+        # ==================== ACTION ====================
+        # ---------- acion from random sampling ----------
+        print("-"*20)
+        key_policy, _ =  jax.random.split(key_policy, 2)
+        test_action=testAction[i,:]
+        print(f"Sampled {i}th actions are: ",test_action)
+        start=time.time()
+        obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        # for key, value in info.items():
+        #     print(key, value)
+        print("quant_executed",info['quant_executed'])
+        print("current_step",info['current_step'])
+        print("current_executed",info['current_executed'])
+        print("total_revenue",info['total_revenue'])
+        # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
+        if done:
+            print("==="*20)
+        # ---------- acion from random sampling ----------
+        # ==================== ACTION ====================
         
         
 
     # # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
+    enable_vmap=False
     if enable_vmap:
         # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))

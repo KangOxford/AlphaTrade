@@ -1,6 +1,6 @@
 # ============== testing scripts ===============
-from jax import config
-config.update("jax_enable_x64",True)
+# from jax import config
+# config.update("jax_enable_x64",True)
 import jax
 import jax.numpy as jnp
 import sys
