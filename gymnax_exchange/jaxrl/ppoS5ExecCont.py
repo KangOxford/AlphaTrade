@@ -526,8 +526,8 @@ if __name__ == "__main__":
         "NORMALIZE_ENV": True,
         
         "ENV_NAME": "alphatradeExec-v0",
-        "WINDOW_INDEX": "0",
-        # "WINDOW_INDEX": "-1",
+        # "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": -1,
         "DEBUG": True,
         "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
         # "ATFOLDER": ATFolder,
