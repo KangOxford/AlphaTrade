@@ -496,31 +496,28 @@ if __name__ == "__main__":
     #     # ATFolder = '/homes/80/kang/AlphaTrade'
     #     # ATFolder = '/home/duser/AlphaTrade'
     # print("AlphaTrade folder:",ATFolder)
+    timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
         "LR": 2.5e-4,
+        # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
+        # "ENT_COEF": 0.01,
         "NUM_ENVS": 1000,
         "TOTAL_TIMESTEPS": 1e8,
+        # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
-        "UPDATE_EPOCHS": 5,
-        "NUM_STEPS": 455,
-        "CLIP_EPS": 0.2,
-        
-        # "LR": 2.5e-6,
-        # "NUM_ENVS": 1,
-        # "NUM_STEPS": 1,
-        # "NUM_MINIBATCHES": 1,
-        # "NUM_ENVS": 1000,
-        # "NUM_STEPS": 10,
         # "NUM_MINIBATCHES": 4,
-        # "TOTAL_TIMESTEPS": 1e7,
+        "UPDATE_EPOCHS": 5,
         # "UPDATE_EPOCHS": 4,
+        "NUM_STEPS": 455,
+        # "NUM_STEPS": 10,
+        "CLIP_EPS": 0.2,
+        # "CLIP_EPS": 0.2,
+        
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
-        # "CLIP_EPS": 0.2,
-        # "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
         "ANNEAL_LR": True,
@@ -531,16 +528,13 @@ if __name__ == "__main__":
         "WINDOW_INDEX": -1,
         "DEBUG": True,
         "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
-        # "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
-        # "WINDOW_INDEX":1,
-        "REWARD_LAMBDA":0,
+        "REWARD_LAMBDA":1,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
-        # "LAMBDA":1,
         "TASK_SIZE":500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
-        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
@@ -550,41 +544,41 @@ if __name__ == "__main__":
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
         )
-        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
     else:
-        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
         
 
 
 
+    device = jax.devices()[0]
     # device = jax.devices()[1]
-    # # device = jax.devices()[-1]
-    # # device = jax.devices()[0]
-    # rng = jax.device_put(jax.random.PRNGKey(0), device)
-    # train_jit = jax.jit(make_train(ppo_config), device=device)
-    # out = train_jit(rng)
+    # device = jax.devices()[-1]
+    rng = jax.device_put(jax.random.PRNGKey(0), device)
+    train_jit = jax.jit(make_train(ppo_config), device=device)
+    out = train_jit(rng)
 
-    if jax.device_count() == 1:
-        # +++++ Single GPU +++++
-        rng = jax.random.PRNGKey(0)
-        # rng = jax.random.PRNGKey(30)
-        train_jit = jax.jit(make_train(ppo_config))
-        start=time.time()
-        out = train_jit(rng)
-        print("Time: ", time.time()-start)
-        # +++++ Single GPU +++++
-    else:
-        # +++++ Multiple GPUs +++++
-        num_devices = int(jax.device_count())
-        rng = jax.random.PRNGKey(30)
-        rngs = jax.random.split(rng, num_devices)
-        train_fn = lambda rng: make_train(ppo_config)(rng)
-        start=time.time()
-        out = jax.pmap(train_fn)(rngs)
-        print("Time: ", time.time()-start)
-        # +++++ Multiple GPUs +++++
+    # if jax.device_count() == 1:
+    #     # +++++ Single GPU +++++
+    #     rng = jax.random.PRNGKey(0)
+    #     # rng = jax.random.PRNGKey(30)
+    #     train_jit = jax.jit(make_train(ppo_config))
+    #     start=time.time()
+    #     out = train_jit(rng)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Single GPU +++++
+    # else:
+    #     # +++++ Multiple GPUs +++++
+    #     num_devices = int(jax.device_count())
+    #     rng = jax.random.PRNGKey(30)
+    #     rngs = jax.random.split(rng, num_devices)
+    #     train_fn = lambda rng: make_train(ppo_config)(rng)
+    #     start=time.time()
+    #     out = jax.pmap(train_fn)(rngs)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Multiple GPUs +++++
     
     
 
@@ -597,7 +591,7 @@ if __name__ == "__main__":
     
 
 
-    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+    import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
