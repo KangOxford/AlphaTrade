@@ -7,7 +7,6 @@ import flax.linen as nn
 import numpy as np
 import optax
 import time
-import flax
 from flax.linen.initializers import constant, orthogonal
 from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
@@ -21,9 +20,6 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-
-
-import optax._src.linear_algebra as linAlg
 
 
 #Code snippet to disable all jitting.
@@ -41,10 +37,7 @@ wandbOn = True
 if wandbOn:
     import wandb
 
-def save_checkpoint(params, filename):
-    with open(filename, 'wb') as f:
-        f.write(flax.serialization.to_bytes(params))
-        print(f"Checkpoint saved to {filename}")
+
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -127,7 +120,6 @@ class Transition(NamedTuple):
     info: jnp.ndarray
 
 
-
 def make_train(config):
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -135,9 +127,7 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-
-    # new version
-    # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
+    
     env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)    
@@ -324,9 +314,8 @@ def make_train(config):
                     total_loss, grads = grad_fn(
                         train_state.params, init_hstate, traj_batch, advantages, targets
                     )
-                    grad_norm=linAlg.global_norm(grads)
                     train_state = train_state.apply_gradients(grads=grads)
-                    return train_state, (total_loss,grad_norm)
+                    return train_state, total_loss
 
                 (
                     train_state,
@@ -383,14 +372,12 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-            grad_norm=jnp.mean(loss_info[1])
             train_state = update_state[0]
-            metric = (traj_batch.info,train_state.params,grad_norm)
+            metric = traj_batch.info
             rng = update_state[-1]
             if config.get("DEBUG"):
 
-                def callback(metric):
-                    info,trainstate,grad_norm=metric
+                def callback(info):
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
@@ -402,8 +389,6 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
-                    # benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
-                    # advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -415,11 +400,7 @@ def make_train(config):
                     # print(info["average_price"])   
                     # print(info["returned_episode_returns"])
                     '''
-                    if len(timesteps) >0:
-                        if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
-                            checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
-                            save_checkpoint(trainstate, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
-
+                    
                     # '''
                     for t in range(len(timesteps)):  
                         if wandbOn:
@@ -431,16 +412,12 @@ def make_train(config):
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
                                     "current_step":current_step[t],
-                                    # "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
-                                    # "advatange_in_bp":advatange_in_bp[t],
-                                    "grad_norm":grad_norm,
                                 }
                             )        
                         else:
                             print(
                                 f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
-                            )
-                            print(grad_norm)     
+                            )     
                             # print("==="*20)      
                             # print(info["current_step"])  
                             # print(info["total_revenue"])  
@@ -453,7 +430,7 @@ def make_train(config):
                 jax.debug.callback(callback, metric)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
-            return runner_state, traj_batch.info
+            return runner_state, metric
 
         rng, _rng = jax.random.split(rng)
         runner_state = (
@@ -467,26 +444,11 @@ def make_train(config):
         runner_state, metric = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
-        
-        
-        
-
-
-        
-        
         return {"runner_state": runner_state, "metric": metric}
 
     return train
 
 if __name__ == "__main__":
-    # try:
-    #     ATFolder = sys.argv[1] 
-    # except:
-    #     # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-    #     ATFolder = '/homes/80/kang/AlphaTrade'
-    #     # ATFolder = '/home/duser/AlphaTrade'
-    # print("AlphaTrade folder:",ATFolder)
-
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
@@ -544,6 +506,7 @@ if __name__ == "__main__":
     else:
         import datetime;params_file_name = f'params_file_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
+        
         
 
     
