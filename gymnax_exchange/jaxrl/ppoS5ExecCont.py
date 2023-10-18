@@ -96,7 +96,7 @@ class ActorCriticS5(nn.Module):
     
         self.action_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.action_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
-        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5))
 
         self.value_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.value_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
@@ -108,7 +108,7 @@ class ActorCriticS5(nn.Module):
             n_layers=n_layers,
             activation="half_glu1",
         )
-        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
 
     def __call__(self, hidden, x):
@@ -205,12 +205,12 @@ def make_train(config):
         if config["ANNEAL_LR"]:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(learning_rate=linear_schedule, eps=1e-5),
+                optax.adam(learning_rate=linear_schedule,b1=0.9,b2=0.99, eps=1e-5),
             )
         else:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(config["LR"], eps=1e-5),
+                optax.adam(config["LR"],b1=0.9,b2=0.99, eps=1e-5),
             )
         train_state = TrainState.create(
             apply_fn=network.apply,
@@ -429,6 +429,7 @@ def make_train(config):
                     
                     slippage_rm = info["slippage_rm"][info["returned_episode"]]
                     price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
                     vwap_rm = info["vwap_rm"][info["returned_episode"]]
                     
                     current_step = info["current_step"][info["returned_episode"]]
@@ -444,6 +445,7 @@ def make_train(config):
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
                                     "slippage_rm":slippage_rm[t],
+                                    "price_adv_rm":price_adv_rm[t],
                                     "price_drift_rm":price_drift_rm[t],
                                     "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
@@ -504,7 +506,7 @@ if __name__ == "__main__":
         # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
         # "ENT_COEF": 0.01,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 500,
         "TOTAL_TIMESTEPS": 1e8,
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
@@ -522,7 +524,7 @@ if __name__ == "__main__":
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
         "ANNEAL_LR": True,
-        "NORMALIZE_ENV": True,
+        "NORMALIZE_ENV": False,
         
         "ACTOR_TYPE":"S5",
         
@@ -530,14 +532,14 @@ if __name__ == "__main__":
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1,
         "DEBUG": True,
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        "ATFOLDER": ".",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA":1,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE":500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
-        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
+        "RESULTS_FILE":"./results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"./checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
