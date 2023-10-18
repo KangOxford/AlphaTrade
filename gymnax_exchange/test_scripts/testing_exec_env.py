@@ -37,7 +37,7 @@ if __name__ == "__main__":
         ATFolder = '/homes/80/kang/AlphaTrade'
     print("AlphaTrade folder:",ATFolder)
 
-    enable_vmap=False 
+    enable_vmap=True 
     enable_simple=True
 
     rng = jax.random.PRNGKey(0)
@@ -48,6 +48,7 @@ if __name__ == "__main__":
     env = LogWrapper(env)
     print('Shape of message data and book data',env_params.message_data.shape, env_params.book_data.shape)
     
+    #print(env_params.message_data[0,89:95,:,0])
     
     if enable_simple:
 
@@ -118,7 +119,7 @@ if __name__ == "__main__":
         vmap_step = jax.jit(jax.vmap(env.step, in_axes=(0, 0, 0, None)))
         vmap_act_sample=jax.jit(jax.vmap(env.action_space().sample, in_axes=(0)))
 
-        num_envs = 1000
+        num_envs = 10000
         vmap_keys = jax.random.split(rng, num_envs)
 
         test_actions=vmap_act_sample(vmap_keys)

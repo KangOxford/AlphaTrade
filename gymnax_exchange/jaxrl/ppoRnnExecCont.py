@@ -31,7 +31,7 @@ import optax._src.linear_algebra as linAlg
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
 
 
 
@@ -205,7 +205,6 @@ def make_train(config):
 
             # COLLECT TRAJECTORIES
             def _env_step(runner_state, unused):
-                # jax.debug.print('Step')
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
                 rng, _rng = jax.random.split(rng)
 

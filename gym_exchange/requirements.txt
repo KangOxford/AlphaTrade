@@ -1,2 +1,0 @@
-sb3-contrib
-jaxlib==0.4.7

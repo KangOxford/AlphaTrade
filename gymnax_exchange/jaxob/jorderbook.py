@@ -1,103 +1,245 @@
+from functools import partial
 import importlib
 from os import remove
 from readline import remove_history_item
-from typing import Dict
+from typing import Dict, NamedTuple, Optional, Tuple
 from unicodedata import bidirectional
-import gymnax_exchange.jaxob.JaxOrderbook as job
-job=importlib.reload(job)
+import gymnax_exchange.jaxob.JaxOrderBookArrays as job
+job = importlib.reload(job)
+import jax
 from jax import numpy as jnp
 from jax import lax
-import jax
 
 
 
-class OrderBook(object):
-    def __init__(self, price_levels=200,orderQueueLen=200):
-        self.price_levels=price_levels
-        orderbookDimension=[2,price_levels,orderQueueLen,job.ORDERSIZE]
-        self.orderbook_array=jnp.ones(orderbookDimension)*-1
-        self.orderbook_array=self.orderbook_array.astype(int)
+class LobState(NamedTuple):
+    asks: jnp.ndarray
+    bids: jnp.ndarray
+    trades: jnp.ndarray
 
-    def process_order(self,quote:Dict,from_data=False,verbose=False):
+
+class OrderBook():
+    def __init__(
+            self: 'OrderBook',
+            nOrders: int = 100,
+            nTrades: int = 100
+        ) -> None:
+        self.nOrders = nOrders
+        self.nTrades = nTrades
+
+    @jax.jit
+    def init(self: 'OrderBook') -> LobState:
+        asks = (jnp.ones((self.nOrders, 6)) * -1).astype(jnp.int32)
+        bids = (jnp.ones((self.nOrders, 6)) * -1).astype(jnp.int32)
+        trades = (jnp.ones((self.nTrades, 6)) * -1).astype(jnp.int32)
+        return LobState(asks, bids, trades)
+
+    @jax.jit
+    def reset(
+            self: 'OrderBook',
+            l2_book: Optional[jnp.ndarray] = None,
+        ) -> LobState:
+        """"""
+        state = self.init()
+        if l2_book is not None:
+            msgs = job.init_msgs_from_l2(l2_book)
+            state = self.process_orders_array(state, msgs)
+        return state
+
+    @jax.jit
+    def process_order(
+            self: 'OrderBook',
+            state: LobState,
+            quote: Dict,
+            from_data: bool = False,
+            verbose: bool = False
+        ) -> LobState:
         '''Wrapper function for the object class that takes a Dict Object as the quote,
          ensures the order is conserved and turns the values into a jnp array which is passed to the JNP ProcessOrder function'''
         #Type, Side,quant,price
-        inttype=5
-        if quote['type']=='limit':
-            inttype=1
-        elif quote['type']=='cancel':
-            inttype=2
-        elif quote['type']=='delete':
-            inttype=3
-        elif quote['type']=='market':
-            inttype=4
-        intside=-1
-        if quote['side']=='bid':
-            intside=1
-                
-        order_array=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
-        self.orderbook_array,trades=job.processOrder_jitted(self.orderbook_array,order_array)
-        return trades
+        inttype = 5
+        intside = -1
+        if quote['side'] == 'bid':
+            intside = 1 
 
-    def process_order_comp(self,quote:Dict,from_data=False,verbose=False):
-        '''Wrapper function for the object class that takes a Dict Object as the quote,
-         ensures the order is conserved and turns the values into a jnp array which is passed to the JNP ProcessOrder function'''
-        #Type, Side,quant,price
-        inttype=5
-        if quote['type']=='limit':
-            inttype=1
-        elif quote['type']=='cancel':
-            inttype=2
-        elif quote['type']=='delete':
-            inttype=3
-        elif quote['type']=='market':
-            inttype=4
-        intside=-1
-        if quote['side']=='bid':
-            intside=1
-                
-        order_array=jnp.array([inttype,intside,quote['quantity'],quote['price'],quote['trade_id'],quote['order_id'],int(quote['timestamp'].split('.')[0]),int(quote['timestamp'].split('.')[1])])
-        self.orderbook_array,trades=job.processOrder_compiled(self.orderbook_array,order_array)
-        return trades
+        if quote['type'] == 'limit':
+            inttype = 1
+        elif quote['type'] == 'cancel':
+            inttype = 2
+        elif quote['type'] == 'delete':
+            inttype = 2
+        elif quote['type'] == 'market':
+            inttype = 1
+            intside = intside * -1
 
+        msg = jnp.array([
+            inttype,
+            intside,
+            quote['quantity'],
+            quote['price'],
+            quote['trade_id'],
+            quote['order_id'],
+            int(quote['timestamp'].split('.')[0]),
+            int(quote['timestamp'].split('.')[1])
+        ], dtype=jnp.int32)
 
-    def process_orders_array(self,msgs):
+        ordersides, _ = job.cond_type_side(state, msg)
+        return LobState(*ordersides)
+
+    @jax.jit
+    def process_order_array(
+            self: 'OrderBook',
+            state: LobState,
+            quote: jax.Array,
+            from_data: bool = False,
+            verbose: bool = False
+        ) -> LobState:
+        '''Same as process_order but quote is an array.'''
+        ordersides, _ = job.cond_type_side(state, quote)
+        return LobState(*ordersides)
+
+    @jax.jit
+    def process_orders_array(
+        self: 'OrderBook',
+        state: LobState,
+        msgs: jax.Array,
+    ) -> LobState:
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
-        self.orderbook_array,trades=lax.scan(job.processOrder_jitted,self.orderbook_array,msgs)
-        return trades
+        return LobState(*job.scan_through_entire_array(msgs, tuple(state)))
 
-    def get_volume_at_price(self, side, price):
-        bidAsk=int((side+1)/2)#buy is 1, sell is 0 # side: buy is 1, sell is -1
-        idx=jnp.where((self.orderbook_array[bidAsk,:,:,1]==price),size=1,fill_value=-1)
-        volume=self.orderbook_array[bidAsk][idx][0,0]
-        return volume
+    @partial(jax.jit, static_argnums=(3,))
+    def process_orders_array_l2(
+            self: 'OrderBook',
+            state: LobState,
+            msgs: jax.Array,
+            n_levels: int
+        ) -> Tuple[LobState, jax.Array]:
+        all_asks, all_bids, trades = job.scan_through_entire_array_save_states(msgs, tuple(state), msgs.shape[0])
+        state = LobState(all_asks[-1], all_bids[-1], trades)
+        # calculate l2 states
+        l2_states = job.vmap_get_L2_state(all_asks, all_bids, n_levels)
+        return state, l2_states
+
+    @partial(jax.jit, static_argnums=(2,4))
+    def get_volume_at_price(
+            self: 'OrderBook',
+            state: LobState,
+            side: int,
+            price: int,
+            init_only: bool = False
+        ) -> int:
+
+        if side == 0:
+            side_array = state.asks
+        elif side == 1:
+            side_array = state.bids
+        else:
+            raise ValueError('Side must be 0 or 1')
+
+        if init_only:
+            return job.get_init_volume_at_price(side_array, price)
+        else:
+            return job.get_volume_at_price(side_array, price)
+
+    @partial(jax.jit, static_argnums=(2,))
+    def get_best_price(
+            self: 'OrderBook',
+            state: LobState,
+            side: int
+        ) -> int:
+        # sell / asks
+        if side == 0:
+            return self.get_best_ask(state)
+        # buy / bids
+        elif side == 1:
+            return self.get_best_bid(state)
+        else:
+            raise ValueError('Side must be 0 or 1')
     
-    def update_time(self):
-        '''Not really functional, don't see the point, but copied from the CPU version.'''
-        self.time += 1
+    @jax.jit
+    def get_best_bid(
+            self: 'OrderBook',
+            state: LobState
+        ) -> int:
+        return job.get_best_bid(state.bids)
 
-    def get_best_bid(self):
-        return self.orderbook_array[1,0,0,1]
+    @jax.jit
+    def get_best_ask(
+            self: 'OrderBook',
+            state: LobState
+        ) -> int:
+        return job.get_best_ask(state.asks)
 
-    def get_worst_bid(self):
-        '''This is slightly annoying to implement - Not sure what index the worst price will be at'''
-        return NotImplementedError
+    @jax.jit
+    def get_best_bid_and_ask_inclQuants(
+            self: 'OrderBook',
+            state: LobState
+        ) -> Tuple[jax.Array, jax.Array]:
+        return job.get_best_bid_and_ask_inclQuants(state.asks, state.bids)
 
-    def get_best_ask(self):
-        return self.orderbook_array[0,0,0,1]
+    @partial(jax.jit, static_argnums=(2,))
+    def get_L2_state(
+            self: 'OrderBook',
+            state: LobState,
+            n_levels: int
+        ) -> jax.Array:
+        return job.get_L2_state(state.asks, state.bids, n_levels)
+    
+    @partial(jax.jit, static_argnums=(2,))
+    def get_side_ids(
+            self: 'OrderBook',
+            state: LobState,
+            side: int
+        ) -> jax.Array:
+        if side == 0:
+            return job.get_order_ids(state.asks)
+        elif side == 1:
+            return job.get_order_ids(state.bids)
+        else:
+            raise ValueError('Side must be 0 or 1')
 
-    def get_worst_ask(self):
-        '''This is slightly annoying to implement - Not sure what index the worst price will be at'''
-        return NotImplementedError
+    @partial(jax.jit, static_argnums=(2,))
+    def get_order(
+            self: 'OrderBook',
+            state: LobState,
+            side: int,
+            order_id: int,
+            price: Optional[int] = None,
+        ) -> jax.Array:
+        ''' '''
+        side_array = state.asks if side == 0 else state.bids
+        if price is not None:
+            return job.get_order_by_id_and_price(side_array, order_id, price)
+        else:
+            return job.get_order_by_id(side_array, order_id)
+        
+    @partial(jax.jit, static_argnums=(2,))
+    def get_next_executable_order(
+            self: 'OrderBook',
+            state: LobState,
+            side: int
+        ):
+        if side == 0:
+            side_array = state.asks
+        elif side == 1:
+            side_array = state.bids
+        else:
+            raise ValueError('Side must be 0 or 1')
+        return job.get_next_executable_order(side, side_array)
+    
+    #Flatten and Unflatten functions so that methods can be appropriately jitted. 
+    def _tree_flatten(self: 'OrderBook'):
+        children = ()  # arrays / dynamic values
+        aux_data = {'nOrders': self.nOrders, 'nTrades':self.nTrades}  # static values
+        return (children, aux_data)
 
-    def tape_dump(self, filename, filemode, tapemode):
-        '''Not really sure what to do with this'''
-        return 0
+    @classmethod
+    def _tree_unflatten(cls, aux_data, children):
+        return cls(*children, **aux_data)
 
 
-    def get_L2_state(self):
-        levels=jnp.resize(jnp.array([0,self.price_levels*2,self.price_levels,self.price_levels*3]),(1,4*self.price_levels)).squeeze()
-        index=jnp.resize(jnp.arange(0,self.price_levels,1),(4,self.price_levels)).transpose().reshape(1,4*self.price_levels).squeeze()
-        prices=jnp.squeeze(self.orderbook_array[:,:,0,1])
-        volumes=jnp.squeeze(jnp.sum(self.orderbook_array[:,:,:,0].at[self.orderbook_array[:,:,:,0]==-1].set(0),axis=2))
-        return jnp.concatenate([prices,volumes]).flatten()[index+levels]
+jax.tree_util.register_pytree_node(
+    OrderBook,
+    OrderBook._tree_flatten,
+    OrderBook._tree_unflatten
+)
