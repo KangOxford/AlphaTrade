@@ -67,6 +67,7 @@ class EnvState:
     max_steps_in_episode: int
     
     slippage_rm: int
+    price_adv_rm: int
     price_drift_rm: int
     vwap_rm: int
 
@@ -102,9 +103,9 @@ class EnvParams:
 class ExecutionEnv(BaseLOBEnv):
     def __init__(self,alphatradePath,task,window_index,action_type,task_size = 500, rewardLambda=0.0, Gamma=0.00):
         super().__init__(alphatradePath)
-        self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
+        #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
-        # self.n_actions = 4 # [A, M, P, PP] Agressive, MidPrice, Passive, Second Passive
+        self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         self.window_index =window_index
         self.action_type = action_type
@@ -115,7 +116,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.task_size = task_size # num to sell or buy for the task
         # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max=2
-        self.n_ticks_in_book=20 
+        self.n_ticks_in_book=2 #TODO: Used to be 20, too large for stocks with dense LOBs
         # self.debug : bool = False
 
 
@@ -131,8 +132,8 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
-        def reshape_action(action, state, params):
-            action_space_clipping = lambda action: jnp.round(action).astype(jnp.int32).clip(-5,5) if self.action_type=='delta' else jnp.round(action).astype(jnp.int32).clip(0,100)# clippedAction 
+        def reshape_action(action : Dict, state: EnvState, params : EnvParams):
+            action_space_clipping = lambda action,task_size: jnp.round((action-0.5)*task_size).astype(jnp.int32) if self.action_type=='delta' else jnp.round(action*task_size).astype(jnp.int32).clip(0,task_size)# clippedAction 
             def twapV3(state, env_params):
                 # ---------- ifMarketOrder ----------
                 remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -152,10 +153,10 @@ class ExecutionEnv(BaseLOBEnv):
             get_base_action = lambda state, params:twapV3(state, params)
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
-                scaledAction = jnp.where(action.sum() > remainQuant, jnp.round(action * remainQuant / action.sum()).astype(jnp.int32), action)
+                scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
                 return scaledAction
             
-            action_ = get_base_action(state, params)  + action_space_clipping(delta)  if self.action_type=='delta' else action_space_clipping(delta)
+            action_ = get_base_action(state, params)  + action_space_clipping(delta,state.task_to_execute)  if self.action_type=='delta' else action_space_clipping(delta,state.task_to_execute)
             action = truncate_action(action_, state.task_to_execute-state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
             return action
@@ -182,9 +183,12 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
         
         # ========== get reward and revenue ==========
-        executed = jnp.where((trades[:, 0] > 0)[:, jnp.newaxis], trades, 0)
+        #Gather the 'trades' that are nonempty, make the rest 0
+        executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
+        #Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        #TODO: Is this truncation still needed given the action quantities will always < remaining exec quant?
         def truncate_agent_trades(agentTrades, remainQuant):
             quantities = agentTrades[:, 1]
             cumsum_quantities = jnp.cumsum(quantities)
@@ -197,18 +201,20 @@ class ExecutionEnv(BaseLOBEnv):
         agentQuant = agentTrades[:,1].sum()
         vwapFunc = lambda executed: (executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
-        advantage = revenue - vwap * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        rewardLambda = self.rewardLambda 
-        drift = agentQuant * (vwap - state.init_price//self.tick_size)
-        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
         rollingMeanValueFunc_INT = lambda average_price,new_price:((average_price*state.step_counter+new_price)/(state.step_counter+1)).astype(jnp.int32)
-        slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         vwap_rm = rollingMeanValueFunc_INT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
+
+        #TODO VWAP price (vwap) is only over all trades in between steps. 
+        advantage = revenue - vwap_rm * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
+        rewardLambda = self.rewardLambda 
+        drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
+        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
+        price_adv_rm = rollingMeanValueFunc_INT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
+        price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
-        rewardValue = vwap_rm
-        # rewardValue = advantage + rewardLambda * drift
-        reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
+        rewardValue = advantage + rewardLambda * drift
+        reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- noramlize the reward ----------
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
@@ -232,7 +238,7 @@ class ExecutionEnv(BaseLOBEnv):
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
         state = EnvState(asks,bids,trades,bestasks,bestbids,state.init_time,time,state.customIDcounter+self.n_actions,state.window_index,\
             state.init_price,state.task_to_execute,state.quant_executed+new_execution,state.total_revenue+revenue,state.step_counter+1,\
-            state.max_steps_in_episode,slippage_rm,price_drift_rm,vwap_rm)
+            state.max_steps_in_episode,slippage_rm,price_adv_rm,price_drift_rm,vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
@@ -242,7 +248,8 @@ class ExecutionEnv(BaseLOBEnv):
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
             'done':done,
-            'slippage_rm':state.slippage_rm,"price_drift_rm":state.price_drift_rm,"vwap_rm":state.vwap_rm,\
+            'slippage_rm':state.slippage_rm,"price_adv_rm":state.price_adv_rm,
+            "price_drift_rm":state.price_drift_rm,"vwap_rm":state.vwap_rm,\
             "advantage_reward":advantage,\
             }
 
@@ -270,7 +277,7 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0,0)
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
         stateArray = params.stateArray_list[idx_data_window]
@@ -304,28 +311,25 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-        A = best_bid if self.task=='sell' else best_ask # aggressive would be at bids
-        # M = (best_bid + best_ask)//2//self.tick_size*self.tick_size 
-        P = best_ask if self.task=='sell' else best_bid
-        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book
+        FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
+        M = (best_bid + best_ask)//2//self.tick_size*self.tick_size # Mid price
+        NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
+        PP= best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
+        MKT = 0 if self.task=='sell' else job.MAX_INT
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
-        def market_order_logic(state: EnvState):
-            quant = state.task_to_execute - state.quant_executed
-            # price = A + (-1 if self.task == 'sell' else 1) * (self.tick_size * 100) * 100
-            #FIXME not very clean way to implement, but works:
-            quants = jnp.asarray((quant - quant//2, quant//2),jnp.int32) 
-            prices = jnp.asarray((A, A),jnp.int32)
-            # (self.tick_size * 100) : one dollar
-            # (self.tick_size * 100) * 100: choose your own number here(the second 100)
-            return quants, prices
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((A, P), jnp.int32)
+            prices = jnp.asarray((FT,M,NT,PP), jnp.int32)
+            return quants, prices
+        def market_order_logic(state: EnvState):
+            quant = state.task_to_execute - state.quant_executed
+            quants = jnp.asarray((quant,0,0,0),jnp.int32) 
+            prices = jnp.asarray((MKT, M,M,M),jnp.int32)
             return quants, prices
         market_quants, market_prices = market_order_logic(state)
         normal_quants, normal_prices = normal_order_logic(state, action)
