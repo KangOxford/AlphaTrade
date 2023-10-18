@@ -1,121 +1,145 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
 
+import os
+import sys
+import time
+
+import chex
+import flax
+import flax.linen as nn
+import gymnax
 import jax
 import jax.numpy as jnp
-import flax.linen as nn
 import numpy as np
 import optax
-import time
-import flax
 from flax.linen.initializers import constant, orthogonal
-from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
+from typing import Any, Dict, NamedTuple, Sequence
 import distrax
-import gymnax
-import functools
 from gymnax.environments import spaces
-import sys
-import chex
+
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
-from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
+#Code snippet to disable all jitting.
+from jax import config
+
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
-
-import optax._src.linear_algebra as linAlg
-
-
-#Code snippet to disable all jitting.
-
-from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
+config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
-
-
-
+import datetime
 wandbOn = True
 # wandbOn = False
 if wandbOn:
     import wandb
+    
+
+from purejaxrl.experimental.s5.s5 import StackedEncoderModel, init_S5SSM, make_DPLR_HiPPO
+from purejaxrl.experimental.s5.wrappers import FlattenObservationWrapper, LogWrapper
+
 
 def save_checkpoint(params, filename):
     with open(filename, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
         print(f"Checkpoint saved to {filename}")
 
-class ScannedRNN(nn.Module):
-    @functools.partial(
-        nn.scan,
-        variable_broadcast="params",
-        in_axes=0,
-        out_axes=0,
-        split_rngs={"params": False},
-    )
-    @nn.compact
-    def __call__(self, carry, x):
-        """Applies the module."""
-        rnn_state = carry
-        ins, resets = x
-        
-        rnn_state = jnp.where(
-            resets[:, np.newaxis],
-            self.initialize_carry(ins.shape[0], ins.shape[1]),
-            rnn_state,
-        )
-        new_rnn_state, y = nn.GRUCell()(rnn_state, ins)
-        return new_rnn_state, y
 
-    @staticmethod
-    def initialize_carry(batch_size, hidden_size):
-        # Use a dummy key since the default state init fn is just zeros.
-        return nn.GRUCell.initialize_carry(
-            jax.random.PRNGKey(0), (batch_size,), hidden_size
-        )
+d_model = 256
+ssm_size = 256
+C_init = "lecun_normal"
+discretization="zoh"
+dt_min=0.001
+dt_max=0.1
+n_layers = 4
+conj_sym=True
+clip_eigs=False
+bidirectional=False
+
+blocks = 1
+block_size = int(ssm_size / blocks)
+
+Lambda, _, B, V, B_orig = make_DPLR_HiPPO(ssm_size)
+
+block_size = block_size // 2
+ssm_size = ssm_size // 2
+
+Lambda = Lambda[:block_size]
+V = V[:, :block_size]
+
+Vinv = V.conj().T
 
 
-class ActorCriticRNN(nn.Module):
+ssm_init_fn = init_S5SSM(H=d_model,
+                            P=ssm_size,
+                            Lambda_re_init=Lambda.real,
+                            Lambda_im_init=Lambda.imag,
+                            V=V,
+                            Vinv=Vinv,
+                            C_init=C_init,
+                            discretization=discretization,
+                            dt_min=dt_min,
+                            dt_max=dt_max,
+                            conj_sym=conj_sym,
+                            clip_eigs=clip_eigs,
+                            bidirectional=bidirectional)
+
+class ActorCriticS5(nn.Module):
     action_dim: Sequence[int]
     config: Dict
 
-    @nn.compact
+    def setup(self):
+        self.encoder_0 = nn.Dense(128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))
+        self.encoder_1 = nn.Dense(256, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))
+    
+        self.action_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
+        self.action_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
+        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+
+        self.value_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
+        self.value_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
+        self.value_decoder = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))
+
+        self.s5 = StackedEncoderModel(
+            ssm=ssm_init_fn,
+            d_model=d_model,
+            n_layers=n_layers,
+            activation="half_glu1",
+        )
+        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+
+
     def __call__(self, hidden, x):
         obs, dones = x
-        embedding = nn.Dense(
-            128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
-        )(obs)
-        embedding = nn.relu(embedding)
+        embedding = self.encoder_0(obs)
+        embedding = nn.leaky_relu(embedding)
+        embedding = self.encoder_1(embedding)
+        embedding = nn.leaky_relu(embedding)
 
-        rnn_in = (embedding, dones)
-        hidden, embedding = ScannedRNN()(hidden, rnn_in)
+        hidden, embedding = self.s5(hidden, embedding, dones)
 
-        actor_mean = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
-            embedding
-        )
-        actor_mean = nn.relu(actor_mean)
-        actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
-        )(actor_mean)
+        actor_mean = self.action_body_0(embedding)
+        actor_mean = nn.leaky_relu(actor_mean)
+        actor_mean = self.action_body_1(actor_mean)
+        actor_mean = nn.leaky_relu(actor_mean)
+        actor_mean = self.action_decoder(actor_mean)
+
 
         #pi = distrax.Categorical(logits=actor_mean)
-        #Old version^^
-
-        actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-        pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
+        #Old version ^^
+        # actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(self.actor_logtstd))
         #New version ^^
 
-        critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
-            embedding
-        )
-        critic = nn.relu(critic)
-        critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
-            critic
-        )
+        critic = self.value_body_0(embedding)
+        critic = nn.leaky_relu(critic)
+        critic = self.value_body_1(critic)
+        critic = nn.leaky_relu(critic)
+        critic = self.value_decoder(critic)
 
         return hidden, pi, jnp.squeeze(critic, axis=-1)
-
 
 class Transition(NamedTuple):
     done: jnp.ndarray
@@ -127,7 +151,6 @@ class Transition(NamedTuple):
     info: jnp.ndarray
 
 
-
 def make_train(config):
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -135,15 +158,24 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"])
+
+    # # old version
+    # env, env_params = gymnax.make(config["ENV_NAME"])
+    # env = FlattenObservationWrapper(env)
+    # env = LogWrapper(env)
+    # # old version
+    
+    # new version
+    # env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"],config["GAMMA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)
     
-    #FIXME : Uncomment normalisation.
-    if config["NORMALIZE_ENV"]:
-        env = NormalizeVecObservation(env)
-        env = NormalizeVecReward(env, config["GAMMA"])
-    
+    # #FIXME : Uncomment normalisation.
+    # if config["NORMALIZE_ENV"]:
+    #     env = NormalizeVecObservation(env)
+    #     env = NormalizeVecReward(env, config["GAMMA"])
+    # new version
 
     def linear_schedule(count):
         frac = (
@@ -155,7 +187,12 @@ def make_train(config):
 
     def train(rng):
         # INIT NETWORK
-        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
+        
+        # old version 
+        # network = ActorCriticS5(env.action_space(env_params).n, config=config)
+        network = ActorCriticS5(env.action_space(env_params).shape[0], config=config)
+        # new version
+        
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -163,7 +200,7 @@ def make_train(config):
             ),
             jnp.zeros((1, config["NUM_ENVS"])),
         )
-        init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+        init_hstate = StackedEncoderModel.initialize_carry(config["NUM_ENVS"], ssm_size, n_layers)
         network_params = network.init(_rng, init_hstate, init_x)
         if config["ANNEAL_LR"]:
             tx = optax.chain(
@@ -180,29 +217,15 @@ def make_train(config):
             params=network_params,
             tx=tx,
         )
-        
-        # jax.debug.breakpoint()
+
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
-        init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+        init_hstate = StackedEncoderModel.initialize_carry(config["NUM_ENVS"], ssm_size, n_layers)
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
-
-            """
-            Pseudocode
-            if i%50 ==0:
-                envparam.message_data.reshuffled()
-                envparam.book_data.reshuffled()
-            
-            reshuffled():
-                0-30,30-60.... --> 5-35,35-65
-                                    ...or 40-70,70-100
-            
-            """
-
             # COLLECT TRAJECTORIES
             def _env_step(runner_state, unused):
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
@@ -211,10 +234,12 @@ def make_train(config):
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
-                # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
+                # sampled = pi.sample(seed=_rng)
+                # action = jnp.clip(sampled, -5, 5)
+                action = pi.sample(seed=_rng)
+                # jax.debug.print("sampled \n {}", sampled)
                 log_prob = pi.log_prob(action)
-
+                # jax.debug.print("log_prob \n {}", log_prob)
                 value, action, log_prob = (
                     value.squeeze(0),
                     action.squeeze(0),
@@ -224,14 +249,13 @@ def make_train(config):
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-
-                obsv_step, env_state_step, reward_step, done_step, info_step = jax.vmap(
+                obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0, None)
                 )(rng_step, env_state, action, env_params)
                 transition = Transition(
-                    done_step, action, value, reward_step, log_prob, last_obs, info_step
+                    last_done, action, value, reward, log_prob, last_obs, info
                 )
-                runner_state = (train_state, env_state_step, obsv_step, done_step, hstate, rng)
+                runner_state = (train_state, env_state, obsv, done, hstate, rng)
                 return runner_state, transition
 
             initial_hstate = runner_state[-2]
@@ -244,33 +268,16 @@ def make_train(config):
             ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
             _, _, last_val = network.apply(train_state.params, hstate, ac_in)
             last_val = last_val.squeeze(0)
-            last_val = jnp.where(last_done, jnp.zeros_like(last_val), last_val)
-
-            def _calculate_gae(traj_batch, last_val):
-                def _get_advantages(gae_and_next_value, transition):
-                    gae, next_value = gae_and_next_value
-                    done, value, reward = (
-                        transition.done,
-                        transition.value,
-                        transition.reward,
-                    )
-                    delta = reward + config["GAMMA"] * next_value * (1 - done) - value
-                    gae = (
-                        delta
-                        + config["GAMMA"] * config["GAE_LAMBDA"] * (1 - done) * gae
-                    )
-                    return (gae, value), gae
-
-                _, advantages = jax.lax.scan(
-                    _get_advantages,
-                    (jnp.zeros_like(last_val), last_val),
-                    traj_batch,
-                    reverse=True,
-                    unroll=16,
-                )
+            def _calculate_gae(traj_batch, last_val, last_done):
+                def _get_advantages(carry, transition):
+                    gae, next_value, next_done = carry
+                    done, value, reward = transition.done, transition.value, transition.reward 
+                    delta = reward + config["GAMMA"] * next_value * (1 - next_done) - value
+                    gae = delta + config["GAMMA"] * config["GAE_LAMBDA"] * (1 - next_done) * gae
+                    return (gae, value, done), gae
+                _, advantages = jax.lax.scan(_get_advantages, (jnp.zeros_like(last_val), last_val, last_done), traj_batch, reverse=True, unroll=16)
                 return advantages, advantages + traj_batch.value
-
-            advantages, targets = _calculate_gae(traj_batch, last_val)
+            advantages, targets = _calculate_gae(traj_batch, last_val, last_done)
 
             # UPDATE NETWORK
             def _update_epoch(update_state, unused):
@@ -280,7 +287,7 @@ def make_train(config):
                     def _loss_fn(params, init_hstate, traj_batch, gae, targets):
                         # RERUN NETWORK
                         _, pi, value = network.apply(
-                            params, init_hstate[0], (traj_batch.obs, traj_batch.done)
+                            params, init_hstate, (traj_batch.obs, traj_batch.done)
                         )
                         log_prob = pi.log_prob(traj_batch.action)
 
@@ -321,9 +328,8 @@ def make_train(config):
                     total_loss, grads = grad_fn(
                         train_state.params, init_hstate, traj_batch, advantages, targets
                     )
-                    grad_norm=linAlg.global_norm(grads)
                     train_state = train_state.apply_gradients(grads=grads)
-                    return train_state, (total_loss,grad_norm)
+                    return train_state, total_loss
 
                 (
                     train_state,
@@ -368,7 +374,7 @@ def make_train(config):
                 )
                 return update_state, total_loss
 
-            init_hstate = initial_hstate[None, :]  # TBH
+            init_hstate = initial_hstate # TBH
             update_state = (
                 train_state,
                 init_hstate,
@@ -380,44 +386,53 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-            grad_norm=jnp.mean(loss_info[1])
+            # grad_norm=jnp.mean(loss_info[1])
             train_state = update_state[0]
-            metric = (traj_batch.info,train_state.params,grad_norm)
+            # metric = (traj_batch.info,train_state.params,grad_norm)
+            metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
             if config.get("DEBUG"):
+                
+                # # old version
+                # def callback(info):
+                #     return_values = info["returned_episode_returns"][info["returned_episode"]]
+                #     timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
+                #     for t in range(len(timesteps)):
+                #         print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
+                        
 
+                # new version
                 def callback(metric):
-                    info,trainstate,grad_norm=metric
-                    return_values = info["returned_episode_returns"][
-                        info["returned_episode"]
-                    ]
-                    timesteps = (
-                        info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
-                    )
                     
+                    info,trainstate_params=metric
+                    # info,trainstate,grad_norm=metric
+                    
+                    return_values = info["returned_episode_returns"][info["returned_episode"]]
+                    timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
+                    
+                    def evaluation():
+                        if not os.path.exists(config['CHECKPOINT_DIR']): os.makedirs(config['CHECKPOINT_DIR'])
+                        # Inside your loop or function where you save the checkpoint
+                        if any(timesteps % int(1e3) == 0) and len(timesteps) > 0:  # +1 since global_step is 0-indexed
+                            start = time.time()
+                            jax.debug.print(">>> checkpoint saving {}",round(timesteps[0], -3))
+                            # Save the checkpoint to the specific directory
+                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -3)}.ckpt")
+                            save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
+                            jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
+                            jax.debug.print("+++ time taken        {}",time.time()-start)        
+                    evaluation()
+                        
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
+                    slippage = info["slippage"][info["returned_episode"]]
+                    price_drift = info["price_drift"][info["returned_episode"]]
                     current_step = info["current_step"][info["returned_episode"]]
-                    # benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
-                    # advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
+                    # step_reward = info["step_reward"][info["returned_episode"]]
+                    drift_reward = info["drift_reward"][info["returned_episode"]]
+                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
-                    '''
-                    print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
-                    if info['done']: print("==="*10 + str(info["window_index"]) +"==="*10 + '\n')      
-                    # if info['done']: print("==="*10 + "==="*10 + '\n')      
-                    # if info['done']: print("==="*10 + str(info["window_index"])[0,0] + "==="*10 + '\n')      
-                    # print(info["total_revenue"])  
-                    # print(info["quant_executed"])   
-                    # print(info["average_price"])   
-                    # print(info["returned_episode_returns"])
-                    '''
-                    if len(timesteps) >0:
-                        if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
-                            checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
-                            save_checkpoint(trainstate, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
-
-                    # '''
                     for t in range(len(timesteps)):  
                         if wandbOn:
                             wandb.log(
@@ -427,30 +442,30 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
+                                    "slippage":slippage[t],
+                                    "price_drift":price_drift[t],
                                     "current_step":current_step[t],
-                                    # "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
-                                    # "advatange_in_bp":advatange_in_bp[t],
-                                    "grad_norm":grad_norm,
+                                    # "step_reward":step_reward[t],
+                                    "drift_reward":drift_reward[t],
+                                    "advantage_reward":advantage_reward[t],
+                                    # "grad_norm":grad_norm,
                                 }
-                            )        
+                            ) 
+                            print(
+                                f"global step={timesteps[t]:<8} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}",\
+                                file=open(config['RESULTS_FILE'],'a')
+                            )                                 
                         else:
                             print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                                f"global step={timesteps[t]:<8} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<20}"
                             )
-                            print(grad_norm)     
-                            # print("==="*20)      
-                            # print(info["current_step"])  
-                            # print(info["total_revenue"])  
-                            # print(info["quant_executed"])   
-                            # print(info["average_price"])   
-                            # print(info["returned_episode_returns"])
-                    # '''
-
-
+                            # print(grad_norm)     
+                # new version
+                
                 jax.debug.callback(callback, metric)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
-            return runner_state, traj_batch.info
+            return runner_state, metric
 
         rng, _rng = jax.random.split(rng)
         runner_state = (
@@ -464,56 +479,72 @@ def make_train(config):
         runner_state, metric = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
-        
-        
-        
-
-
-        
-        
         return {"runner_state": runner_state, "metric": metric}
 
     return train
 
+
+
+    
+
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1] 
-    except:
-        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        ATFolder = '/homes/80/kang/AlphaTrade'
-        # ATFolder = '/home/duser/AlphaTrade'
-    print("AlphaTrade folder:",ATFolder)
+    # try:
+    #     ATFolder = sys.argv[1] 
+    # except:
+    #     ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+    #     # ATFolder = '/homes/80/kang/AlphaTrade'
+    #     # ATFolder = '/home/duser/AlphaTrade'
+    # print("AlphaTrade folder:",ATFolder)
 
     ppo_config = {
-        # "LR": 2.5e-4,
-        "LR": 2.5e-6,
+        "LR": 2.5e-4,
+        "ENT_COEF": 0.1,
+        "NUM_ENVS": 1000,
+        "TOTAL_TIMESTEPS": 1e8,
+        # "TOTAL_TIMESTEPS": 3.5e7,
+        "NUM_MINIBATCHES": 2,
+        "UPDATE_EPOCHS": 5,
+        "NUM_STEPS": 455,
+        "CLIP_EPS": 0.2,
+        
+        # "LR": 2.5e-6,
         # "NUM_ENVS": 1,
         # "NUM_STEPS": 1,
         # "NUM_MINIBATCHES": 1,
-        "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "NUM_MINIBATCHES": 4,
-        "TOTAL_TIMESTEPS": 1e7,
-        "UPDATE_EPOCHS": 4,
+        # "NUM_ENVS": 1000,
+        # "NUM_STEPS": 10,
+        # "NUM_MINIBATCHES": 4,
+        # "TOTAL_TIMESTEPS": 1e7,
+        # "UPDATE_EPOCHS": 4,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
+        # "CLIP_EPS": 0.2,
+        # "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
-        "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
-        "DEBUG": True,
         "NORMALIZE_ENV": True,
-        "ATFOLDER": ATFolder,
+        
+        "ENV_NAME": "alphatradeExec-v0",
+        # "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": -1,
+        "DEBUG": True,
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        # "ATFOLDER": ATFolder,
         "TASKSIDE":'sell',
-        "LAMBDA":0.0,
+        # "WINDOW_INDEX":1,
+        "REWARD_LAMBDA":0,
+        "ACTION_TYPE":"pure",
+        # "ACTION_TYPE":"delta",
+        # "LAMBDA":1,
         "TASK_SIZE":500,
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     }
 
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeJAX_ParamSearch_Small",
+            project="AlphaTradeJAX_Train",
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
@@ -525,25 +556,34 @@ if __name__ == "__main__":
         print(f"Results would be saved to {params_file_name}")
         
 
-    
-    # +++++ Single GPU +++++
-    rng = jax.random.PRNGKey(0)
-    # rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(ppo_config))
-    start=time.time()
-    out = train_jit(rng)
-    print("Time: ", time.time()-start)
-    # +++++ Single GPU +++++
 
-    # # +++++ Multiple GPUs +++++
-    # num_devices = 4
-    # rng = jax.random.PRNGKey(30)
-    # rngs = jax.random.split(rng, num_devices)
-    # train_fn = lambda rng: make_train(ppo_config)(rng)
-    # start=time.time()
-    # out = jax.pmap(train_fn)(rngs)
-    # print("Time: ", time.time()-start)
-    # # +++++ Multiple GPUs +++++
+
+    # device = jax.devices()[1]
+    # # device = jax.devices()[-1]
+    # # device = jax.devices()[0]
+    # rng = jax.device_put(jax.random.PRNGKey(0), device)
+    # train_jit = jax.jit(make_train(ppo_config), device=device)
+    # out = train_jit(rng)
+
+    if jax.device_count() == 1:
+        # +++++ Single GPU +++++
+        rng = jax.random.PRNGKey(0)
+        # rng = jax.random.PRNGKey(30)
+        train_jit = jax.jit(make_train(ppo_config))
+        start=time.time()
+        out = train_jit(rng)
+        print("Time: ", time.time()-start)
+        # +++++ Single GPU +++++
+    else:
+        # +++++ Multiple GPUs +++++
+        num_devices = int(jax.device_count())
+        rng = jax.random.PRNGKey(30)
+        rngs = jax.random.split(rng, num_devices)
+        train_fn = lambda rng: make_train(ppo_config)(rng)
+        start=time.time()
+        out = jax.pmap(train_fn)(rngs)
+        print("Time: ", time.time()-start)
+        # +++++ Multiple GPUs +++++
     
     
 
@@ -557,7 +597,6 @@ if __name__ == "__main__":
 
 
     import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
@@ -575,4 +614,6 @@ if __name__ == "__main__":
 
     if wandbOn:
         run.finish()
-
+        
+        
+        

@@ -62,17 +62,19 @@ if __name__ == "__main__":
             "TASKSIDE":'buy'
         }
     import flax
-    from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-    from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
-    with open('/homes/80/kang/AlphaTrade/params_file_smooth-paper-19_09-23_04-30', 'rb') as f:
+    from gymnax_exchange.jaxrl.ppoS5ExecCont import ActorCriticS5
+    from gymnax_exchange.jaxrl.ppoS5ExecCont import StackedEncoderModel, ssm_size, n_layers
+    with open('/homes/80/kang/AlphaTrade/params_file_denim-bush-21_09-24_03-18', 'rb') as f:
+    # with open('/homes/80/kang/AlphaTrade/params_file_smooth-paper-19_09-23_04-30', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_firm-fire-68_07-17_09-53', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-10_12-34-24', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_2023-07-08_15-22-20', 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         print(f"pramas restored")
-    network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
-    init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
+    network = ActorCriticS5(env.action_space(env_params).shape[0], config=ppo_config)
+    # init_hstate = StackedEncoderModel.initialize_carry(ppo_config["NUM_ENVS"], 128)
+    init_hstate = StackedEncoderModel.initialize_carry(ppo_config["NUM_ENVS"], ssm_size, n_layers)
     init_done = jnp.array([False]*ppo_config["NUM_ENVS"])
     ac_in = (obs[np.newaxis, np.newaxis, :], init_done[np.newaxis, :])
     assert len(ac_in[0].shape) == 3

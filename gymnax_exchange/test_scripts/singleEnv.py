@@ -22,110 +22,65 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         # ATFolder = '/home/duser/AlphaTrade'
-        ATFolder = '/homes/80/kang/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing'
         # ATFolder = '/homes/80/kang/AlphaTrade/testing_small'
+        ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         
-    ppo_config = {
-            "LR": 2.5e-4,
-            "NUM_ENVS": 1,
-            "NUM_STEPS": 1,
-            "TOTAL_TIMESTEPS": 5e5,
-            "UPDATE_EPOCHS": 1,
-            "NUM_MINIBATCHES": 1,
-            "GAMMA": 0.99,
-            "GAE_LAMBDA": 0.95,
-            "CLIP_EPS": 0.2,
-            "ENT_COEF": 0.01,
-            "VF_COEF": 0.5,
-            "MAX_GRAD_NORM": 0.5,
-            "ENV_NAME": "alphatradeExec-v0",
-            "ANNEAL_LR": True,
-            "DEBUG": True,
-            "NORMALIZE_ENV": False,
-            "ATFOLDER": ATFolder,
-            "TASKSIDE":'buy'
-        }       
-
-    env=ExecutionEnv(ATFolder,ppo_config['TASKSIDE'])
+    env=ExecutionEnv(ATFolder,"sell")
     env_params=env.default_params
-    # print(env_params.message_data.shape, env_params.book_data.shape)
+    print(env_params.message_data.shape, env_params.book_data.shape)
+    assert env.task_size == 500    
+    
+    # -----------------------------------        
+    import time
+    timestamp = str(int(time.time()))
+    rngInitNum = 1    
+    rng = jax.random.PRNGKey(rngInitNum)
+    
 
-    # rng = jax.random.PRNGKey(3) #1
-    # rng = jax.random.PRNGKey(30) #12
-    # rng = jax.random.PRNGKey(300) #7
-    rng = jax.random.PRNGKey(3000) #11
+    
+    
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     start=time.time()
     obs,state=env.reset(key_reset,env_params)
-    print(state.window_index)
     print("Time for reset: \n",time.time()-start)
-    # print(env_params.message_data.shape, env_params.book_data.shape)
-    
-    action_arr = jnp.array(
-        [[0, 0, 0, 0],
-        [10, 0, 0, 0],
-        [0, 1, 1, 0],
-        [15, 0, 0, 0],
-        [0, 2, 0, 3],
-        [1, 0, 0, 0],
-        [0, 2, 0, 0],
-        [6, 5, 6, 0],
-        [0, 9, 0, 1],
-        [3, 5, 5, 0],
-        [5, 0, 2, 0],
-        [2, 0, 4, 0],
-        [0, 0, 0, 2],
-        [3, 4, 0, 1],
-        [0, 0, 12, 0],
-        [0, 0, 1, 6],
-        [0, 5, 0, 8],
-        [0, 3, 0, 0],
-        [3, 2, 0, 0],
-        [0, 0, 0, 0],
-        [6, 0, 0, 0],
-        [4, 0, 0, 11],
-        [19, 0, 10, 1],
-        [1, 3, 8, 0],
-        [0, 5, 3, 7],
-        [3, 0, 1, 0],
-        [4, 0, 7, 0],
-        [0, 3, 0, 0],
-        [0, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 5, 3],
-        [13, 0, 4, 4],
-        [0, 0, 2, 0],
-        [4, 12, 0, 7],
-        [1, 4, 0, 0],
-        [7, 9, 1, 0],
-        [5, 0, 0, 0],
-        [1, 0, 10, 9],
-        [0, 4, 5, 0],
-        [0, 8, 0, 12],
-        [0, 0, 0, 4],
-        [13, 0, 0, 2],
-        [10, 4, 0, 2],
-        [0, 4, 2, 4],
-        [0, 3, 0, 1],
-        [1, 3, 0, 0]]
-    );assert state.window_index == 11
-    
-    action_arr.shape
-
-
-    
-    i = 0
-    for i in range(0,10000):
+    print(env_params.message_data.shape, env_params.book_data.shape)
+    erlist = []
+    excuted_list = []
+    er = 0
+    for i in range(1,10000):
         # ==================== ACTION ====================
-        action = action_arr[i,:]
+        # ---------- acion from trained network ----------
+        ac_in = (obs[np.newaxis,np.newaxis, :], jnp.array([done])[np.newaxis, :])
+        assert len(ac_in[0].shape) == 3, f"{ac_in[0].shape}"
+        assert len(ac_in[1].shape) == 2, f"{ac_in[1].shape}"
+        hstate, pi, value = network.apply(network_params, hstate, ac_in) 
+        action = pi.sample(seed=rng).round().astype(jnp.int32)[0,0,:].clip( 0, None)
+        # ---------- acion from trained network ----------
         # ==================== ACTION ====================    
-        print(f"-------------\nPPO {i}th actions are: {action} with sum {action.sum()}")
+        print(f"Sampled {i}th actions are: ",action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
+        er+=reward
         print(f"Time for {i} step: \n",time.time()-start)
-        # done, state.quant_executed
-        print("{" + ", ".join([f"'{k}': {v}" for k, v in info.items()]) + "}")
-        if done or i>=action_arr.shape[0]:
-            break
-    # print(info)
+        print("excuted ",info["quant_executed"])
+        excuted_list.append(info["quant_executed"])
+        if done:
+            erlist.append((i, er))
+            # print(f"windowIndex {:<10} , global step {i:<10} , episodic return {er:^20} , ",\
+            print(f" global step {i:<10} , episodic return {er:^20} , ",\
+                file=open('twap_'+ timestamp +"_OneDay_train_"+'.txt','a'))
+            network = ActorCriticRNN(env.action_space(env_params).shape[0], config=ppo_config)
+            init_hstate = ScannedRNN.initialize_carry(ppo_config["NUM_ENVS"], 128)
+            init_x = (
+                    jnp.zeros(
+                        (1, ppo_config["NUM_ENVS"], *env.observation_space(env_params).shape)
+                    ),
+                    jnp.zeros((1, ppo_config["NUM_ENVS"])),
+                )
+            _rng,_= jax.random.split(_rng,2)
+            network_params = network.init(_rng, init_hstate, init_x)
+            key_reset, _ = jax.random.split(key_reset,2)
+            obs,state=env.reset(key_reset,env_params)
+            er =0
