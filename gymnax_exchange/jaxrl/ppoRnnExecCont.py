@@ -2,7 +2,7 @@
 # config.update("jax_enable_x64",True)
 import os
 
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="true"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
