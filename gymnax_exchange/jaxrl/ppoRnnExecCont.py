@@ -110,10 +110,11 @@ class ActorCriticRNN(nn.Module):
         #pi = distrax.Categorical(logits=actor_mean)
         #Old version^^
 
-        actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
+        actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         #New version ^^
+
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
@@ -174,6 +175,7 @@ def make_train(config):
         )
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
         network_params = network.init(_rng, init_hstate, init_x)
+        
         if config["ANNEAL_LR"]:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
@@ -220,6 +222,9 @@ def make_train(config):
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+                #jax.debug.print("{} , {}",pi.mean(),pi.stddev())
+
+
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
                 # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
                 log_prob = pi.log_prob(action)
@@ -388,6 +393,7 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
+            jax.debug.print("{}",train_state.params)
             train_state = update_state[0]
             metric = traj_batch.info
             rng = update_state[-1]

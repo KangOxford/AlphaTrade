@@ -7,7 +7,7 @@ sys.path.append('/homes/80/kang/AlphaTrade')
 sys.path.append('../purejaxrl')
 
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-from gymnax_exchange.jaxes.jaxob_new import JaxOrderBookArrays as job
+from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 import chex
 import time
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env=ExecutionEnv(ATFolder,'buy',True)
+    env=ExecutionEnv(ATFolder,'buy',-1,'pure',True)
     env_params=env.default_params
     env = LogWrapper(env)
     print('Shape of message data and book data',env_params.message_data.shape, env_params.book_data.shape)
