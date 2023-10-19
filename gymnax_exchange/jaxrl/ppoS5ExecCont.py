@@ -96,7 +96,7 @@ class ActorCriticS5(nn.Module):
     
         self.action_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.action_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
-        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5))
 
         self.value_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.value_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
@@ -108,7 +108,7 @@ class ActorCriticS5(nn.Module):
             n_layers=n_layers,
             activation="half_glu1",
         )
-        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
 
     def __call__(self, hidden, x):
@@ -205,12 +205,12 @@ def make_train(config):
         if config["ANNEAL_LR"]:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(learning_rate=linear_schedule, eps=1e-5),
+                optax.adam(learning_rate=linear_schedule,b1=0.9,b2=0.99, eps=1e-5),
             )
         else:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(config["LR"], eps=1e-5),
+                optax.adam(config["LR"],b1=0.9,b2=0.99, eps=1e-5),
             )
         train_state = TrainState.create(
             apply_fn=network.apply,
@@ -422,15 +422,17 @@ def make_train(config):
                             jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
                             jax.debug.print("+++ time taken        {}",time.time()-start)        
                     evaluation()
-                        
+                    
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
-                    slippage = info["slippage"][info["returned_episode"]]
-                    price_drift = info["price_drift"][info["returned_episode"]]
+                    
+                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
+                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    
                     current_step = info["current_step"][info["returned_episode"]]
-                    # step_reward = info["step_reward"][info["returned_episode"]]
-                    drift_reward = info["drift_reward"][info["returned_episode"]]
                     advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     for t in range(len(timesteps)):  
@@ -442,11 +444,11 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
-                                    "slippage":slippage[t],
-                                    "price_drift":price_drift[t],
+                                    "slippage_rm":slippage_rm[t],
+                                    "price_adv_rm":price_adv_rm[t],
+                                    "price_drift_rm":price_drift_rm[t],
+                                    "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
-                                    # "step_reward":step_reward[t],
-                                    "drift_reward":drift_reward[t],
                                     "advantage_reward":advantage_reward[t],
                                     # "grad_norm":grad_norm,
                                 }
@@ -495,51 +497,49 @@ if __name__ == "__main__":
     #     # ATFolder = '/homes/80/kang/AlphaTrade'
     #     # ATFolder = '/home/duser/AlphaTrade'
     # print("AlphaTrade folder:",ATFolder)
+    timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 2.5e-4,
+        # "LR": 2.5e-3,
+        # "LR": 2.5e-4,
+        "LR": 2.5e-5,
+        # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
-        "NUM_ENVS": 1000,
+        # "ENT_COEF": 0.01,
+        "NUM_ENVS": 500,
         "TOTAL_TIMESTEPS": 1e8,
+        # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
-        "UPDATE_EPOCHS": 5,
-        "NUM_STEPS": 455,
-        "CLIP_EPS": 0.2,
-        
-        # "LR": 2.5e-6,
-        # "NUM_ENVS": 1,
-        # "NUM_STEPS": 1,
-        # "NUM_MINIBATCHES": 1,
-        # "NUM_ENVS": 1000,
-        # "NUM_STEPS": 10,
         # "NUM_MINIBATCHES": 4,
-        # "TOTAL_TIMESTEPS": 1e7,
+        "UPDATE_EPOCHS": 5,
         # "UPDATE_EPOCHS": 4,
+        "NUM_STEPS": 455,
+        # "NUM_STEPS": 10,
+        "CLIP_EPS": 0.2,
+        # "CLIP_EPS": 0.2,
+        
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
-        # "CLIP_EPS": 0.2,
-        # "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
         "ANNEAL_LR": True,
-        "NORMALIZE_ENV": True,
+        "NORMALIZE_ENV": False,
+        
+        "ACTOR_TYPE":"S5",
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1,
         "DEBUG": True,
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
-        # "ATFOLDER": ATFolder,
+        "ATFOLDER": ".",
         "TASKSIDE":'sell',
-        # "WINDOW_INDEX":1,
-        "REWARD_LAMBDA":0,
+        "REWARD_LAMBDA":1,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
-        # "LAMBDA":1,
         "TASK_SIZE":500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
-        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
+        "RESULTS_FILE":"./results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"./checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
@@ -549,41 +549,41 @@ if __name__ == "__main__":
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
         )
-        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
     else:
-        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
         
 
 
 
+    device = jax.devices()[0]
     # device = jax.devices()[1]
-    # # device = jax.devices()[-1]
-    # # device = jax.devices()[0]
-    # rng = jax.device_put(jax.random.PRNGKey(0), device)
-    # train_jit = jax.jit(make_train(ppo_config), device=device)
-    # out = train_jit(rng)
+    # device = jax.devices()[-1]
+    rng = jax.device_put(jax.random.PRNGKey(0), device)
+    train_jit = jax.jit(make_train(ppo_config), device=device)
+    out = train_jit(rng)
 
-    if jax.device_count() == 1:
-        # +++++ Single GPU +++++
-        rng = jax.random.PRNGKey(0)
-        # rng = jax.random.PRNGKey(30)
-        train_jit = jax.jit(make_train(ppo_config))
-        start=time.time()
-        out = train_jit(rng)
-        print("Time: ", time.time()-start)
-        # +++++ Single GPU +++++
-    else:
-        # +++++ Multiple GPUs +++++
-        num_devices = int(jax.device_count())
-        rng = jax.random.PRNGKey(30)
-        rngs = jax.random.split(rng, num_devices)
-        train_fn = lambda rng: make_train(ppo_config)(rng)
-        start=time.time()
-        out = jax.pmap(train_fn)(rngs)
-        print("Time: ", time.time()-start)
-        # +++++ Multiple GPUs +++++
+    # if jax.device_count() == 1:
+    #     # +++++ Single GPU +++++
+    #     rng = jax.random.PRNGKey(0)
+    #     # rng = jax.random.PRNGKey(30)
+    #     train_jit = jax.jit(make_train(ppo_config))
+    #     start=time.time()
+    #     out = train_jit(rng)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Single GPU +++++
+    # else:
+    #     # +++++ Multiple GPUs +++++
+    #     num_devices = int(jax.device_count())
+    #     rng = jax.random.PRNGKey(30)
+    #     rngs = jax.random.split(rng, num_devices)
+    #     train_fn = lambda rng: make_train(ppo_config)(rng)
+    #     start=time.time()
+    #     out = jax.pmap(train_fn)(rngs)
+    #     print("Time: ", time.time()-start)
+    #     # +++++ Multiple GPUs +++++
     
     
 
@@ -596,7 +596,7 @@ if __name__ == "__main__":
     
 
 
-    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+    import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))

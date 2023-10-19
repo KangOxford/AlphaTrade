@@ -1,13 +1,14 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
+import os
 
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="true"
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
 import numpy as np
 import optax
 import time
-import flax
 from flax.linen.initializers import constant, orthogonal
 from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
@@ -23,7 +24,14 @@ from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction,
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
 
-import optax._src.linear_algebra as linAlg
+
+from jax.lib import xla_bridge 
+print(xla_bridge.get_backend().platform)
+
+
+
+#print(torch.cuda_is_available())
+print(jax.devices()[0]) 
 
 
 #Code snippet to disable all jitting.
@@ -32,6 +40,7 @@ from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
+import datetime
 
 
 
@@ -41,10 +50,7 @@ wandbOn = True
 if wandbOn:
     import wandb
 
-def save_checkpoint(params, filename):
-    with open(filename, 'wb') as f:
-        f.write(flax.serialization.to_bytes(params))
-        print(f"Checkpoint saved to {filename}")
+
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -96,13 +102,16 @@ class ActorCriticRNN(nn.Module):
         )
         actor_mean = nn.relu(actor_mean)
         actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
         )(actor_mean)
+
+        #Changed bias to mu network output to center at 0.5 (unnormalised this will be half of max quant in act)
 
         #pi = distrax.Categorical(logits=actor_mean)
         #Old version^^
 
-        actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
+        #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         #New version ^^
 
@@ -127,7 +136,6 @@ class Transition(NamedTuple):
     info: jnp.ndarray
 
 
-
 def make_train(config):
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -135,9 +143,10 @@ def make_train(config):
     config["MINIBATCH_SIZE"] = (
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["TASK_SIZE"],config["LAMBDA"])
+    
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params = env.default_params
-    env = LogWrapper(env)
+    env = LogWrapper(env)    
     
     #FIXME : Uncomment normalisation.
     if config["NORMALIZE_ENV"]:
@@ -168,12 +177,12 @@ def make_train(config):
         if config["ANNEAL_LR"]:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(learning_rate=linear_schedule, eps=1e-5),
+                optax.adam(learning_rate=linear_schedule,b1=0.9,b2=0.99, eps=1e-5),
             )
         else:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(config["LR"], eps=1e-5),
+                optax.adam(config["LR"],b1=0.9,b2=0.99, eps=1e-5),
             )
         train_state = TrainState.create(
             apply_fn=network.apply,
@@ -321,9 +330,8 @@ def make_train(config):
                     total_loss, grads = grad_fn(
                         train_state.params, init_hstate, traj_batch, advantages, targets
                     )
-                    grad_norm=linAlg.global_norm(grads)
                     train_state = train_state.apply_gradients(grads=grads)
-                    return train_state, (total_loss,grad_norm)
+                    return train_state, total_loss
 
                 (
                     train_state,
@@ -380,14 +388,12 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-            grad_norm=jnp.mean(loss_info[1])
             train_state = update_state[0]
-            metric = (traj_batch.info,train_state.params,grad_norm)
+            metric = traj_batch.info
             rng = update_state[-1]
             if config.get("DEBUG"):
 
-                def callback(metric):
-                    info,trainstate,grad_norm=metric
+                def callback(info):
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
@@ -398,9 +404,14 @@ def make_train(config):
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
+                    
+                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
+                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    
                     current_step = info["current_step"][info["returned_episode"]]
-                    # benchmarkTotalRevenue = info["benchmarkTotalRevenue"][info["returned_episode"]]
-                    # advatange_in_bp = info["advatange_in_bp"][info["returned_episode"]]
+                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -412,11 +423,7 @@ def make_train(config):
                     # print(info["average_price"])   
                     # print(info["returned_episode_returns"])
                     '''
-                    if len(timesteps) >0:
-                        if any(timesteps % int(1e5) == 0):  # +1 since global_step is 0-indexed
-                            checkpoint_filename = f"checkpoint_{round(timesteps[0],-5)}.ckpt"
-                            save_checkpoint(trainstate, checkpoint_filename)  # Assuming runner_state[0] contains your model's state
-
+                    
                     # '''
                     for t in range(len(timesteps)):  
                         if wandbOn:
@@ -427,17 +434,18 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
+                                    "slippage_rm":slippage_rm[t],
+                                    "price_adv_rm":price_adv_rm[t],
+                                    "price_drift_rm":price_drift_rm[t],
+                                    "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
-                                    # "benchmarkTotalRevenue":benchmarkTotalRevenue[t],
-                                    # "advatange_in_bp":advatange_in_bp[t],
-                                    "grad_norm":grad_norm,
+                                    "advantage_reward":advantage_reward[t],
                                 }
                             )        
                         else:
                             print(
                                 f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
-                            )
-                            print(grad_norm)     
+                            )     
                             # print("==="*20)      
                             # print(info["current_step"])  
                             # print(info["total_revenue"])  
@@ -450,7 +458,7 @@ def make_train(config):
                 jax.debug.callback(callback, metric)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
-            return runner_state, traj_batch.info
+            return runner_state, metric
 
         rng, _rng = jax.random.split(rng)
         runner_state = (
@@ -464,65 +472,69 @@ def make_train(config):
         runner_state, metric = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
-        
-        
-        
-
-
-        
-        
         return {"runner_state": runner_state, "metric": metric}
 
     return train
 
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1] 
-    except:
-        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        ATFolder = '/homes/80/kang/AlphaTrade'
-        # ATFolder = '/home/duser/AlphaTrade'
-    print("AlphaTrade folder:",ATFolder)
+    timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
+        # "LR": 2.5e-3,
         # "LR": 2.5e-4,
-        "LR": 2.5e-6,
-        # "NUM_ENVS": 1,
-        # "NUM_STEPS": 1,
-        # "NUM_MINIBATCHES": 1,
-        "NUM_ENVS": 1000,
-        "NUM_STEPS": 10,
-        "NUM_MINIBATCHES": 4,
-        "TOTAL_TIMESTEPS": 1e7,
-        "UPDATE_EPOCHS": 4,
+        "LR": 2.5e-5,
+        # "LR": 2.5e-6,
+        "ENT_COEF": 0.1,
+        # "ENT_COEF": 0.01,
+        "NUM_ENVS": 500,
+        "TOTAL_TIMESTEPS": 1e8,
+        # "TOTAL_TIMESTEPS": 1e7,
+        # "TOTAL_TIMESTEPS": 3.5e7,
+        "NUM_MINIBATCHES": 2,
+        # "NUM_MINIBATCHES": 4,
+        "UPDATE_EPOCHS": 5,
+        # "UPDATE_EPOCHS": 4,
+        "NUM_STEPS": 400,
+        # "NUM_STEPS": 10,
+        "CLIP_EPS": 0.2,
+        # "CLIP_EPS": 0.2,
+        
         "GAMMA": 0.99,
         "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
-        "ENV_NAME": "alphatradeExec-v0",
         "ANNEAL_LR": True,
+        "NORMALIZE_ENV": False,
+        
+        "ACTOR_TYPE":"RNN",
+        
+        "ENV_NAME": "alphatradeExec-v0",
+        # "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": -1,
         "DEBUG": True,
-        "NORMALIZE_ENV": True,
-        "ATFOLDER": ATFolder,
+        "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
-        "LAMBDA":0.0,
+        "REWARD_LAMBDA":1,
+        "ACTION_TYPE":"pure",
+        # "ACTION_TYPE":"delta",
         "TASK_SIZE":500,
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeJAX_ParamSearch_Small",
+            project="AlphaTradeJAX_Train",
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
         )
-        import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
     else:
-        import datetime;params_file_name = f'params_file_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        import datetime;params_file_name = f'params_file_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
+        
         
 
     
