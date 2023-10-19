@@ -21,6 +21,7 @@ sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 import os
+import flax
 
 #Code snippet to disable all jitting.
 
@@ -472,8 +473,8 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 2.5e-3,
-        # "LR": 2.5e-4,
+        # "LR": 2.5e-3,
+        "LR": 2.5e-4,
         # "LR": 2.5e-5,
         # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
