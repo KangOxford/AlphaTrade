@@ -32,8 +32,8 @@ ppo_config = {
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     
     
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_upbeat-leaf-23_10-19_06-27/", # N.O. 23, pure quant
-    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_upbeat-leaf-23_10-19_06-27/csv/",
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/", # N.O. 23, pure quant
+    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/", # N.O. 11, pure quant
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_10-03/", # N.O. 11, pure quant
