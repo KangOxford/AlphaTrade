@@ -206,7 +206,8 @@ class ExecutionEnv(BaseLOBEnv):
         price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         vwap_rm = rollingMeanValueFunc_INT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
         # ---------- compute the final reward ----------
-        rewardValue = vwap_rm
+        rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+        # rewardValue = vwap_rm
         # rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentTrades[0,0]) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- noramlize the reward ----------
