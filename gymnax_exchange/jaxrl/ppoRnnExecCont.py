@@ -1,6 +1,8 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
+import os
 
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="true"
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -23,6 +25,16 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 import os
 import flax
 
+
+from jax.lib import xla_bridge 
+print(xla_bridge.get_backend().platform)
+
+
+
+#print(torch.cuda_is_available())
+print(jax.devices()[0]) 
+
+
 #Code snippet to disable all jitting.
 
 from jax import config
@@ -30,6 +42,7 @@ config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
 import datetime
+
 
 
 
@@ -94,13 +107,16 @@ class ActorCriticRNN(nn.Module):
         )
         actor_mean = nn.relu(actor_mean)
         actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
         )(actor_mean)
+
+        #Changed bias to mu network output to center at 0.5 (unnormalised this will be half of max quant in act)
 
         #pi = distrax.Categorical(logits=actor_mean)
         #Old version^^
 
-        actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
+        #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         #New version ^^
 
@@ -166,12 +182,12 @@ def make_train(config):
         if config["ANNEAL_LR"]:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(learning_rate=linear_schedule, eps=1e-5),
+                optax.adam(learning_rate=linear_schedule,b1=0.9,b2=0.99, eps=1e-5),
             )
         else:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(config["LR"], eps=1e-5),
+                optax.adam(config["LR"],b1=0.9,b2=0.99, eps=1e-5),
             )
         train_state = TrainState.create(
             apply_fn=network.apply,
@@ -409,7 +425,14 @@ def make_train(config):
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
+                    
+                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
+                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    
                     current_step = info["current_step"][info["returned_episode"]]
+                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -432,7 +455,12 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
+                                    "slippage_rm":slippage_rm[t],
+                                    "price_adv_rm":price_adv_rm[t],
+                                    "price_drift_rm":price_drift_rm[t],
+                                    "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
+                                    "advantage_reward":advantage_reward[t],
                                 }
                             )        
                         else:
@@ -479,7 +507,7 @@ if __name__ == "__main__":
         # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
         # "ENT_COEF": 0.01,
-        "NUM_ENVS": 1000,
+        "NUM_ENVS": 500,
         "TOTAL_TIMESTEPS": 1e8,
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
@@ -487,7 +515,7 @@ if __name__ == "__main__":
         # "NUM_MINIBATCHES": 4,
         "UPDATE_EPOCHS": 5,
         # "UPDATE_EPOCHS": 4,
-        "NUM_STEPS": 455,
+        "NUM_STEPS": 400,
         # "NUM_STEPS": 10,
         "CLIP_EPS": 0.2,
         # "CLIP_EPS": 0.2,
@@ -497,7 +525,7 @@ if __name__ == "__main__":
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 2.0,
         "ANNEAL_LR": True,
-        "NORMALIZE_ENV": True,
+        "NORMALIZE_ENV": False,
         
         "ACTOR_TYPE":"RNN",
         
@@ -505,7 +533,7 @@ if __name__ == "__main__":
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1,
         "DEBUG": True,
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA":1,
         "ACTION_TYPE":"pure",

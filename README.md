@@ -1,4 +1,4 @@
-# AlphaTrade
+# JAX-LOB
 
 ## Research in Limit Order Book for Optimal Execution
 
