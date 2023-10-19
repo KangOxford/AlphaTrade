@@ -214,7 +214,9 @@ class ExecutionEnv(BaseLOBEnv):
         slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
-        rewardValue = advantage + rewardLambda * drift
+        rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+        # rewardValue = vwap_rm
+        # rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- noramlize the reward ----------
         reward /= 10000
