@@ -152,10 +152,10 @@ class ExecutionEnv(BaseLOBEnv):
                 return jnp.array(quants) 
             get_base_action = lambda state, params:twapV3(state, params)
             def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
+                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
                 scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
+                scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
                 return scaledAction
-            
             action_ = get_base_action(state, params)  + action_space_clipping(delta,state.task_to_execute)  if self.action_type=='delta' else action_space_clipping(delta,state.task_to_execute)
             action = truncate_action(action_, state.task_to_execute-state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
