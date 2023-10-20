@@ -352,8 +352,6 @@ class ExecutionEnv(BaseLOBEnv):
         
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),\
             jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
-        # jax.debug.breakpoint()
-        # return obs
         def obsNorm(obs):
             return jnp.concatenate((
                 obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
@@ -370,9 +368,7 @@ class ExecutionEnv(BaseLOBEnv):
                 obs[608:609]/300, # step_counter TODO CHANGE THIS
                 obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
             ))
-        
         obsNorm_=obsNorm(obs)
-        # jax.debug.breakpoint()
         return obsNorm_
 
 
