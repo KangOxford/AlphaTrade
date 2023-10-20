@@ -239,6 +239,12 @@ class ExecutionEnv(BaseLOBEnv):
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
+        jax.debug.print("action_msgs \n{}",action_msgs)
+        jax.debug.print("new_executed {}",new_execution)
+        jax.debug.print("current_step {}",state.step_counter)
+        jax.debug.print("quant_executed {}",state.quant_executed)
+        jax.debug.print("done {}",done)
+        jax.debug.print("-----------------------------")
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\

@@ -96,7 +96,8 @@ class ActorCriticS5(nn.Module):
     
         self.action_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.action_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
-        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+        # self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
+        self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5))
 
         self.value_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.value_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
@@ -108,7 +109,8 @@ class ActorCriticS5(nn.Module):
             n_layers=n_layers,
             activation="half_glu1",
         )
-        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        # self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
 
     def __call__(self, hidden, x):
