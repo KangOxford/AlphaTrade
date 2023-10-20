@@ -4,10 +4,11 @@
 # ============== testing scripts ===============
 import jax
 import jax.numpy as jnp
-import gymnax
 import sys
 sys.path.append('/Users/sasrey/AlphaTrade')
-sys.path.append('/homes/80/kang/AlphaTrade')
+sys.path.insert(0, '/homes/80/kang/AlphaTrade')
+# sys.path.append('/homes/80/kang/AlphaTrade')
+import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 import chex
@@ -22,7 +23,7 @@ chex.assert_gpu_available(backend=None)
 
 # #Code snippet to disable all jitting.
 from jax import config
-config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", False) # use this during training
 # config.update("jax_disable_jit", True)
 
 import random
@@ -62,14 +63,14 @@ class EnvState:
     init_price:int
     task_to_execute:int
     quant_executed:int
-    total_revenue:int
+    total_revenue:float
     step_counter: int
     max_steps_in_episode: int
     
-    slippage_rm: int
-    price_adv_rm: int
-    price_drift_rm: int
-    vwap_rm: int
+    slippage_rm: float
+    price_adv_rm: float
+    price_drift_rm: float
+    vwap_rm: float
 
 
 @struct.dataclass
@@ -197,22 +198,17 @@ class ExecutionEnv(BaseLOBEnv):
             return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
         agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
-        revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
+        revenue = (agentTrades[:,0]/self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
-        vwapFunc = lambda executed: (executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
+        vwapFunc = lambda executed: (executed[:,0]/self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
         rollingMeanValueFunc_FLOAT = lambda average_price,new_price:(average_price*state.step_counter+new_price)/(state.step_counter+1)
-        rollingMeanValueFunc_INT = lambda average_price,new_price:((average_price*state.step_counter+new_price)/(state.step_counter+1)).astype(jnp.int32)
-        vwap_rm = rollingMeanValueFunc_INT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
+        vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
 
         #TODO VWAP price (vwap) is only over all trades in between steps. 
         advantage = revenue - vwap_rm * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         rewardLambda = self.rewardLambda
-        drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
-        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
-        price_adv_rm = rollingMeanValueFunc_INT(state.price_adv_rm,revenue//agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
-        price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
         # ---------- compute the final reward ----------
         # rewardValue = vwap_rm
         rewardValue = advantage + rewardLambda * drift
@@ -220,6 +216,11 @@ class ExecutionEnv(BaseLOBEnv):
         # ---------- noramlize the reward ----------
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
+        
+        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
+        price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price/self.tick_size*agentQuant)
+        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price/self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -266,20 +267,11 @@ class ExecutionEnv(BaseLOBEnv):
         # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
         # one window can be reached
         
-        # jax.debug.print("window_size {}",self.max_steps_in_episode_arr[0])
-        
-        # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],self.max_steps_in_episode_arr.max().astype(jnp.int32) 
-        # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],1000
-        # base_allocation = task_size // content_size
-        # remaining_tasks = task_size % content_size
-        # array = jnp.full(array_size, 0, dtype=jnp.int32)
-        # array = array.at[:remaining_tasks].set(base_allocation+1)
-        # twap_quant_arr = array.at[remaining_tasks:content_size].set(base_allocation)
-        
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0,0)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
+            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0.0, 0.0, 0.0, 0.0)
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
         stateArray = params.stateArray_list[idx_data_window]
@@ -291,7 +283,7 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(*state_)
         # jax.debug.print("state after reset {}", state)
         obs = obs_sell if self.task == "sell" else obs_buy
-        
+        # jax.debug.breakpoint()
         return obs,state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -371,6 +363,7 @@ class ExecutionEnv(BaseLOBEnv):
         obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),\
             jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
         # jax.debug.breakpoint()
+        # return obs
         def obsNorm(obs):
             return jnp.concatenate((
                 obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
@@ -387,6 +380,7 @@ class ExecutionEnv(BaseLOBEnv):
                 obs[608:609]/300, # step_counter TODO CHANGE THIS
                 obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
             ))
+        
         obsNorm_=obsNorm(obs)
         # jax.debug.breakpoint()
         return obsNorm_
