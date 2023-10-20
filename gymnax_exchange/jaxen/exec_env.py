@@ -28,7 +28,7 @@ config.update("jax_disable_jit", False) # use this during training
 
 import random
 # ============== testing scripts ===============
-
+jax.numpy.set_printoptions(linewidth=183)
 
 
 from ast import Dict
@@ -153,13 +153,16 @@ class ExecutionEnv(BaseLOBEnv):
                 return jnp.array(quants) 
             get_base_action = lambda state, params:twapV3(state, params)
             def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size)
+                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
                 scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
+                scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
                 return scaledAction
-            
+            jax.debug.print("+ Inside reshape_action BEGINE")
             action_ = get_base_action(state, params)  + action_space_clipping(delta,state.task_to_execute)  if self.action_type=='delta' else action_space_clipping(delta,state.task_to_execute)
             action = truncate_action(action_, state.task_to_execute-state.quant_executed)
+            jax.debug.print("action_ {}, state.task_to_execute-state.quant_executed {}, action {}",action_, state.task_to_execute-state.quant_executed , action)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+            jax.debug.print("+ Inside reshape_action END")
             return action
         action = reshape_action(delta, state, params)
         
@@ -168,7 +171,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
-        # jax.debug.print("action_msgs {}",action_msgs)
+        jax.debug.print("action_msgs \n{}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
@@ -214,7 +217,7 @@ class ExecutionEnv(BaseLOBEnv):
         rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- noramlize the reward ----------
-        reward /= 10000
+        # reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
         
         # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
@@ -245,13 +248,23 @@ class ExecutionEnv(BaseLOBEnv):
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
         done = self.is_terminal(state,params)
+        
+        jax.debug.print("new execution \n{}", new_execution)
+        jax.debug.print("quant_executed \n{}", state.quant_executed)
+        jax.debug.print("step_counter \n{}", state.step_counter)
+        jax.debug.print("price quant pairs \n{}", job.get_L2_state(state.bid_raw_orders,state.ask_raw_orders,10))
+        jax.debug.print("----------\n")
+        jax.debug.print("state ask_raw_orders \n{}", state.ask_raw_orders)
+        jax.debug.print("----------\n")
+        jax.debug.print("state bids \n{}", state.bid_raw_orders)
+        
         return self.get_obs(state,params),state,reward,done,\
             {"window_index":state.window_index,"total_revenue":state.total_revenue,\
             "quant_executed":state.quant_executed,"task_to_execute":state.task_to_execute,\
             "average_price":state.total_revenue/state.quant_executed,\
             "current_step":state.step_counter,\
-            'done':done,
-            'slippage_rm':state.slippage_rm,"price_adv_rm":state.price_adv_rm,
+            'done':done,\
+            'slippage_rm':state.slippage_rm,"price_adv_rm":state.price_adv_rm,\
             "price_drift_rm":state.price_drift_rm,"vwap_rm":state.vwap_rm,\
             "advantage_reward":advantage,\
             }
@@ -293,6 +306,7 @@ class ExecutionEnv(BaseLOBEnv):
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
+        jax.debug.print("Inside getActionMsgs BEGINE")
         types=jnp.ones((self.n_actions,),jnp.int32)
         sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
@@ -316,6 +330,9 @@ class ExecutionEnv(BaseLOBEnv):
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
+        jax.debug.print("remainingTime {}",remainingTime)
+        jax.debug.print("marketOrderTime {}",marketOrderTime)
+        jax.debug.print("ifMarketOrder {}",ifMarketOrder)
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
             prices = jnp.asarray((FT,M,NT,PP), jnp.int32)
@@ -325,13 +342,18 @@ class ExecutionEnv(BaseLOBEnv):
             quants = jnp.asarray((quant,0,0,0),jnp.int32) 
             prices = jnp.asarray((MKT, M,M,M),jnp.int32)
             return quants, prices
+        jax.debug.print("normal order logic quants {}",action)
+        jax.debug.print("market order logic quants {}",jnp.asarray((state.task_to_execute - state.quant_executed,0,0,0),jnp.int32) )
+        jax.debug.print("FT {}, M {}, NT {}, PP {};\nMKT {}, M{} ,M {}, M{}",FT,M,NT,PP,MKT,M,M,M)
         market_quants, market_prices = market_order_logic(state)
         normal_quants, normal_prices = normal_order_logic(state, action)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        jax.debug.print("quants {}, prices {}",quants,prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
         action_msgs=jnp.concatenate([action_msgs,times],axis=1)
+        jax.debug.print("Inside getActionMsgs END")
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
@@ -464,16 +486,16 @@ if __name__ == "__main__":
     for i in range(1,100000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
-        # print("-"*20)
+        print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
         # test_action=env.action_space().sample(key_policy)
         test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
-        # print(f"Sampled {i}th actions are: ",test_action)
+        print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-        # for key, value in info.items():
-        #     print(key, value)
+        for key, value in info.items():
+            print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
