@@ -10,7 +10,7 @@ import numpy as np
 import optax
 import time
 from flax.linen.initializers import constant, orthogonal
-from typing import Sequence, NamedTuple, Any, Dict
+from typing import Optional, Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
 import distrax
 import gymnax
@@ -81,6 +81,24 @@ class ScannedRNN(nn.Module):
             jax.random.PRNGKey(0), (batch_size,), hidden_size
         )
 
+class MultiVariateNormalDiagClipped(distrax.MultivariateNormalDiag):
+    def __init__(
+            self,
+            loc: Optional[jax.Array] = None,
+            scale_diag: Optional[jax.Array] = None,
+            max_scale_diag: Optional[jax.Array] = None,
+        ):
+        super().__init__(loc, scale_diag)
+        self.max_scale_diag = max_scale_diag
+
+    def __getitem__(self, index) -> distrax.MultivariateNormalDiag:
+        """See `Distribution.__getitem__`."""
+        index = distrax.distribution.to_batch_shape_index(self.batch_shape, index)
+        return distrax.MultivariateNormalDiag(
+            loc=self.loc[index],
+            scale_diag=jnp.min(self.max_scale_diag, self.scale_diag[index])
+        )
+
 
 class ActorCriticRNN(nn.Module):
     action_dim: Sequence[int]
@@ -92,21 +110,25 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.Dense(
             128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
         )(obs)
+        embedding = nn.LayerNorm()(embedding)
         embedding = nn.relu(embedding)
 
         rnn_in = (embedding, dones)
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
+        embedding = nn.LayerNorm()(embedding)
 
         actor_net = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
+        actor_net = nn.LayerNorm()(actor_net)
         actor_net = nn.relu(actor_net)
         
         actor_mean = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
         )(actor_net)
+        max_action_logstd = -1.6  # exp -1.6 = 0.2
         actor_logtstd = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(-10)#(-1.6)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(max_action_logstd), name="log_std"
         )(actor_net)
 
         #Changed bias to mu network output to center at 0.5 (unnormalised this will be half of max quant in act)
@@ -116,12 +138,15 @@ class ActorCriticRNN(nn.Module):
 
         # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
-        pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
+        # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
+        pi = MultiVariateNormalDiagClipped(actor_mean, jnp.exp(actor_logtstd), jnp.exp(actor_logtstd))
+        
         #New version ^^
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
+        critic = nn.LayerNorm()(critic)
         critic = nn.relu(critic)
         critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
             critic
@@ -155,7 +180,8 @@ def make_train(config):
     #FIXME : Uncomment normalisation.
     if config["NORMALIZE_ENV"]:
         env = NormalizeVecObservation(env)
-        env = NormalizeVecReward(env, config["GAMMA"])
+        # don't normalize reward for now
+        # env = NormalizeVecReward(env, config["GAMMA"])
     
 
     def linear_schedule(count):
@@ -339,7 +365,16 @@ def make_train(config):
                         train_state.params, init_hstate, traj_batch, advantages, targets
                     )
                     # jax.debug.print("grads: {}", grads['params']['log_std'])
+                    # jax.debug.print("grads: {}", grads)
+                    # print(jax.tree_util.tree_structure(grads))
                     train_state = train_state.apply_gradients(grads=grads)
+                    # make sure the action std doesn't grow too large
+                    # train_state.params = train_state.params.copy({
+                    #     'log_std': jnp.min(
+                    #         train_state.params["log_std"],
+                    #         -1.6 * jnp.ones_like(train_state.params["log_std"]),
+                    #     )
+                    # })
                     return train_state, total_loss
 
                 (
@@ -492,7 +527,7 @@ if __name__ == "__main__":
     ppo_config = {
         # "LR": 2.5e-3,
         # "LR": 2.5e-4,
-        "LR": 5e-5, #1e-4,#2.5e-5,
+        "LR": 5e-4, #5e-5, #1e-4,#2.5e-5,
         # "LR": 2.5e-6,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
@@ -513,7 +548,7 @@ if __name__ == "__main__":
         "VF_COEF": 1.0, #0.5,
         "MAX_GRAD_NORM": 0.5,# 2.0,
         "ANNEAL_LR": False, #True,
-        "NORMALIZE_ENV": False,
+        "NORMALIZE_ENV": True,
         
         "ACTOR_TYPE":"RNN",
         
