@@ -258,12 +258,20 @@ class ExecutionEnv(BaseLOBEnv):
 
 
     def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
+        self, key : chex.PRNGKey, params: EnvParams, reset_window_index = None
+        ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
         # all windows can be reached
+
+        window_index = jnp.where(reset_window_index is None, self.window_index, reset_window_index)
         
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()) if self.window_index == -1 else jnp.array(self.window_index,dtype=jnp.int32)
+        idx_data_window = jnp.where(
+            window_index == -1,
+            jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
+            jnp.array(window_index, dtype=jnp.int32)
+        )
+        
+        # idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()) if window_index == -1 else jnp.array(window_index,dtype=jnp.int32)
         # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
         # one window can be reached
         
