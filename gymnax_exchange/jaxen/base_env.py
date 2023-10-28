@@ -389,12 +389,16 @@ class BaseLOBEnv(environment.Environment):
             # -----------------------8--------------------------
             step_counter=0;max_steps_in_episode=state[-1]
             # ========= self.get_obs(state,params) =============
-            obs_sell = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
-            obs_buy  = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_buy_task, spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
+            # jax.debug.breakpoint()
+            obs_sell = jnp.concatenate((state[3].reshape(-1),state[4].reshape(-1),mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
+            obs_buy  = jnp.concatenate((state[3].reshape(-1),state[4].reshape(-1),mid_prices,second_passives_buy_task, spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
             # jax.debug.breakpoint()
             def obsNorm(obs):
                 return jnp.concatenate((
-                    obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
+                    obs[:400:2]/3.5e7, # best_prices
+                    obs[1:400:2]/10, # best_quants
+                    obs[400:600]/3.5e7, # mid_prices,second_passives  TODO CHANGE THIS
+                    # obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
                     obs[400:500]/100000, # spreads
                     obs[500:501]/100000, # timeOfDay
                     obs[501:502]/1000000000, # timeOfDay
