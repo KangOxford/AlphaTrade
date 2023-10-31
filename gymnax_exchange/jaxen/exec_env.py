@@ -132,8 +132,8 @@ class ExecutionEnv(BaseLOBEnv):
                 remainedQuant = state.task_to_execute - state.quant_executed
                 remainedStep = state.max_steps_in_episode - state.step_counter
                 stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True)
-                market_quants = jnp.array([stepQuant,stepQuant])
+                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
+                market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
                 quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                 # ---------- quants ----------
                 return jnp.array(quants) 
@@ -319,12 +319,12 @@ class ExecutionEnv(BaseLOBEnv):
         ifMarketOrder = (remainingTime <= marketOrderTime)
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((FT,M,NT,PP), jnp.int32)
+            prices = jnp.asarray((FT,NT), jnp.int32) if self.n_actions == 2 else jnp.asarray((FT,M,NT,PP), jnp.int32) 
             return quants, prices
         def market_order_logic(state: EnvState):
             quant = state.task_to_execute - state.quant_executed
-            quants = jnp.asarray((quant,0,0,0),jnp.int32) 
-            prices = jnp.asarray((MKT, M,M,M),jnp.int32)
+            quants =  jnp.asarray((quant,0),jnp.int32) if self.n_actions == 2 else jnp.asarray((quant,0,0,0),jnp.int32) 
+            prices =  jnp.asarray((MKT,  M),jnp.int32) if self.n_actions == 2 else jnp.asarray((MKT, M,M,M),jnp.int32)
             return quants, prices
         market_quants, market_prices = market_order_logic(state)
         normal_quants, normal_prices = normal_order_logic(state, action)

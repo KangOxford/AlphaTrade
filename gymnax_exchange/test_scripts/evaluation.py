@@ -28,12 +28,13 @@ ppo_config = {
     "TASK_SIZE":500,
     
     "WINDOW_INDEX": -1,
-    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
+    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing", # testing one Month data
+    # "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     
     
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/", # N.O. 23, pure quant
-    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/csv/",
+    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/", # N.O. 23, pure quant
+    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/", # N.O. 11, pure quant
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_10-03/", # N.O. 11, pure quant
@@ -42,8 +43,8 @@ ppo_config = {
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/", # N.O. 3, pure quant
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/csv/",
-    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/ckpt/csv/",
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
+    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/ckpt/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
     # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
@@ -105,7 +106,8 @@ def evaluate_savefile(paramsFile,window_idx):
         hstate = StackedEncoderModel.initialize_carry(1, ssm_size, n_layers)
         done = False
         
-        checkpoint = int(paramsFile.split("_")[1].split(".")[0])
+        checkpoint = paramsFile.split("_")[1].split(".")[0]
+        # checkpoint = int(paramsFile.split("_")[1].split(".")[0])
         network_config = (network,trainstate_params,checkpoint,env,env_params,key_step)
         device = jax.devices()[-1]
         evaluate_jit = jax.jit(make_evaluation(network_config), device=device)    
@@ -166,7 +168,8 @@ import argparse
 
 def main(idx=-1):
     start_time =time.time()
-    for window_idx in range(13):
+    for window_idx in range(260):
+    # for window_idx in range(13):
         start=time.time()
         print(f">>> window_idx: {window_idx}")
         def extract_number_from_filename(filename):
@@ -184,7 +187,8 @@ def main(idx=-1):
     
 def main2(idx=-1):
     start_time =time.time()
-    for window_idx in range(13):
+    for window_idx in range(260):
+    # for window_idx in range(13):
         start=time.time()
         print(f">>> window_idx: {window_idx}")        
         def extract_number_from_filename(filename):
