@@ -94,9 +94,10 @@ class MultiVariateNormalDiagClipped(distrax.MultivariateNormalDiag):
     def __getitem__(self, index) -> distrax.MultivariateNormalDiag:
         """See `Distribution.__getitem__`."""
         index = distrax.distribution.to_batch_shape_index(self.batch_shape, index)
-        return distrax.MultivariateNormalDiag(
+        return MultiVariateNormalDiagClipped(
             loc=self.loc[index],
-            scale_diag=jnp.min(self.max_scale_diag, self.scale_diag[index])
+            scale_diag=jnp.min(self.max_scale_diag, self.scale_diag[index]),
+            max_scale_diag=self.max_scale_diag,
         )
 
 
@@ -173,7 +174,7 @@ def make_train(config):
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
     
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+    env = ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params = env.default_params
     env = LogWrapper(env)    
     
@@ -527,7 +528,7 @@ if __name__ == "__main__":
     ppo_config = {
         # "LR": 2.5e-3,
         # "LR": 2.5e-4,
-        "LR": 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
         # "LR": 2.5e-6,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
@@ -554,7 +555,7 @@ if __name__ == "__main__":
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
-        "WINDOW_INDEX": 2, # fix random episode #-1,
+        "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
         "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
@@ -574,10 +575,10 @@ if __name__ == "__main__":
             save_code=True,  # optional
         )
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
-        print(f"Results would be saved to {params_file_name}")
     else:
         import datetime;params_file_name = f'params_file_{timestamp}'
-        print(f"Results would be saved to {params_file_name}")
+
+    print(f"Results will be saved to {params_file_name}")
         
         
 
@@ -631,4 +632,3 @@ if __name__ == "__main__":
 
     if wandbOn:
         run.finish()
-
