@@ -1,33 +1,28 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
-
 # ============== testing scripts ===============
-import jax
-import jax.numpy as jnp
-import gymnax
-import sys
 import os
+import sys
+import time 
+import timeit
+import random
 # sys.path.append('/Users/sasrey/AlphaTrade')
 # sys.path.append('/homes/80/kang/AlphaTrade')
 sys.path.append('.')
+import jax
+import jax.numpy as jnp
+import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 import chex
-import timeit
-
 import faulthandler
 faulthandler.enable()
-
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
-
 chex.assert_gpu_available(backend=None)
-
 # #Code snippet to disable all jitting.
 from jax import config
 config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
-
-import random
 # ============== testing scripts ===============
 
 
@@ -47,8 +42,6 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-# from gymnax_exchange.test_scripts.comparison import twapV3
-import time 
 
 @struct.dataclass
 class EnvState:
@@ -87,19 +80,6 @@ class EnvParams:
     # messages_per_step: int=1 # TODO never used, should be removed?
     time_per_step: int = 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
-    avg_twap_list=jnp.array([312747.47,
-                            312674.06,
-                            313180.38,
-                            312813.25,
-                            312763.78,
-                            313094.1,
-                            313663.97,
-                            313376.72,
-                            313533.25,
-                            313578.9,
-                            314559.1,
-                            315201.1,
-                            315190.2])
     
 
 
@@ -121,6 +101,119 @@ class ExecutionEnv(BaseLOBEnv):
         self.n_fragment_max=2
         self.n_ticks_in_book=2 #TODO: Used to be 20, too large for stocks with dense LOBs
         # self.debug : bool = False
+        
+        # ==================================================================
+        # =================    MOVE THE PRE_RESET HERE     =================
+        # ================= CAUTION NOT BELONG TO BASE ENV =================
+        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+        print("START:  pre-reset in the initialization")
+        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
+        def get_state(message_data, book_data,max_steps_in_episode):
+            time=jnp.array(message_data[0,0,-2:])
+            #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+            def get_initial_orders(book_data,time):
+                orderbookLevels=10
+                initid=-9000
+                data=jnp.array(book_data).reshape(int(10*2),2)
+                newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
+                initOB = newarr \
+                    .at[:,3].set(data[:,0]) \
+                    .at[:,2].set(data[:,1]) \
+                    .at[:,0].set(1) \
+                    .at[0:orderbookLevels*4:2,1].set(-1) \
+                    .at[1:orderbookLevels*4:2,1].set(1) \
+                    .at[:,4].set(initid) \
+                    .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
+                    .at[:,6].set(time[0]) \
+                    .at[:,7].set(time[1])
+                return initOB
+            init_orders=get_initial_orders(book_data,time)
+            #Initialise both sides of the book as being empty
+            asks_raw=job.init_orderside(nOrdersPerSide)
+            bids_raw=job.init_orderside(nOrdersPerSide)
+            trades_init=(jnp.ones((nTradesLogged,6))*-1).astype(jnp.int32)
+            #Process the initial messages through the orderbook
+            ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+            # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+            best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+            M = (best_bid[0] + best_ask[0])//2//tick_size*tick_size 
+            state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),\
+                time,time,0,-1,M,task_size,0,0,0,0,max_steps_in_episode)
+            return state
+        
+        def get_obs(state):
+            """Return observation from raw state trafo."""
+            # ========= self.get_obs(state,params) =============
+            # -----------------------1--------------------------
+            best_asks=state[3][:,0]
+            best_bids =state[4][:,0]
+            mid_prices=(best_asks+best_bids)//2//tick_size*tick_size 
+            second_passives_sell_task = best_asks+tick_size*n_ticks_in_book 
+            second_passives_buy_task =  best_bids-tick_size*n_ticks_in_book
+            spreads = best_asks - best_bids
+
+            # -----------------------2--------------------------
+            timeOfDay = state[6] #state.time
+            deltaT = timeOfDay -  state[5] # state.init_time
+            # -----------------------3--------------------------
+            initPrice = state[10] # state.init_price
+            priceDrift = mid_prices[-1] - initPrice
+            # -----------------------4--------------------------
+            # -----------------------5--------------------------
+            taskSize = state[11] # state.task_to_execute
+            executed_quant=state[12] # state.quant_executed
+            # -----------------------7--------------------------
+            bestAsksQtys = state[3][:,1]
+            bestBidsQtys = state[4][:,1]
+            shallowImbalance = bestAsksQtys - bestBidsQtys # ShallowImbalance
+            # -----------------------8--------------------------
+            step_counter=0;max_steps_in_episode=state[-1]
+            # ========= self.get_obs(state,params) =============
+            obs_sell = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_sell_task,spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
+            obs_buy  = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives_buy_task, spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),jnp.array([executed_quant]),shallowImbalance,jnp.array([step_counter]),jnp.array([max_steps_in_episode])))
+            # jax.debug.breakpoint()
+            def obsNorm(obs):
+                return jnp.concatenate((
+                    obs[:400]/3.5e7, # best_bids,best_asks,mid_prices,second_passives  TODO CHANGE THIS
+                    obs[400:500]/100000, # spreads
+                    obs[500:501]/100000, # timeOfDay
+                    obs[501:502]/1000000000, # timeOfDay
+                    obs[502:503]/10,# deltaT
+                    obs[503:504]/1000000000,# deltaT
+                    obs[504:505]/3.5e7,# initPrice  TODO CHANGE THIS
+                    obs[505:506]/100000,# priceDrift
+                    obs[506:507]/500, # taskSize TODO CHANGE THIS
+                    obs[507:508]/500, # executed_quant TODO CHANGE THIS
+                    obs[508:608]/100, # shallowImbalance 
+                    obs[608:609]/300, # step_counter TODO CHANGE THIS
+                    obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
+                ))
+            return obsNorm(obs_sell), obsNorm(obs_buy)
+        
+        def get_state_obs(message_data, book_data,max_steps_in_episode):
+            state = get_state(message_data, book_data,max_steps_in_episode)
+            obs_sell, obs_buy = get_obs(state)
+            return state, obs_sell, obs_buy
+
+        state_obs = [get_state_obs(self.messages, self.books, self.max_steps_in_episode_arr[i]) for i in range(len(self.max_steps_in_episode_arr))]
+        
+        def state2stateArray(state):
+            state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
+            padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
+            stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
+            # jax.debug.breakpoint()
+            return stateArray
+        
+        self.stateArray_list = jnp.array([state2stateArray(state) for state, obs_sell, obs_buy in state_obs])
+        self.obs_sell_list = jnp.array([jnp.array(obs_sell) for state, obs_sell, obs_buy in state_obs])
+        self.obs_buy_list =  jnp.array([jnp.array(obs_buy) for state, obs_sell, obs_buy in state_obs])
+        print("FINISH: pre-reset in the initialization")
+        #TODO Most of the state space should be exactly the same for the base and exec env, 
+        # can we think about keeping the base part seperate from the exec part? 
+        # ================= CAUTION NOT BELONG TO BASE ENV =================
+        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
+        # =================    MOVE THE PRE_RESET HERE     =================
+        # ==================================================================
 
 
     @property
