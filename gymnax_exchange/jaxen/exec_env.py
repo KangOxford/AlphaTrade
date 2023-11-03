@@ -77,7 +77,7 @@ class EnvState:
 
 @struct.dataclass
 class EnvParams:
-    is_buy_task: int = 0
+    # is_buy_task: int = 0
     message_data: chex.Array
     book_data: chex.Array
     stateArray_list: chex.Array
@@ -229,6 +229,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Default environment parameters
         # return EnvParams(self.messages,self.books)
         return EnvParams(self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
+        # return EnvParams(0 if self.task =='buy' else 1 if self.task=='sell' else -1, self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
     
 
     def step_env(
@@ -410,9 +411,8 @@ class ExecutionEnv(BaseLOBEnv):
         obs_buy = params.obs_buy_list[idx_data_window]
         state = EnvState(*state_)
         # jax.debug.print("state after reset {}", state)
-        # why would we use the observation from the parent env here?
-        # obs = obs_sell if self.task == "sell" else obs_buy
-        obs = self.get_obs(state, params)
+        obs = obs_sell if self.task == "sell" else obs_buy
+        # obs = self.get_obs(state, params)
 
         return obs,state
 
