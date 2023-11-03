@@ -334,7 +334,6 @@ class ExecutionEnv(BaseLOBEnv):
         # rewardValue = advantage + rewardLambda * drift
         # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
         rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
-        # rewardValue = vwap_rm
         # rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- noramlize the reward ----------
@@ -417,6 +416,7 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("state after reset {}", state)
         obs = obs_sell if self.task == "sell" else obs_buy
         # obs = self.get_obs(state, params)
+
 
         return obs,state
 
@@ -638,6 +638,7 @@ class ExecutionEnv(BaseLOBEnv):
 # >>>>>>> resetWithWindowCPU
 
 
+
     def action_space(
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
@@ -648,6 +649,7 @@ class ExecutionEnv(BaseLOBEnv):
         return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' \
           else spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
 # >>>>>>> resetWithWindowCPU
+
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
