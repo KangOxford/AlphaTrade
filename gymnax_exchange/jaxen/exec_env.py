@@ -16,9 +16,10 @@ import timeit
 import faulthandler
 faulthandler.enable()
 
+from jax import config
+config.update('jax_platform_name', 'cpu')
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
-
-chex.assert_gpu_available(backend=None)
+# chex.assert_gpu_available(backend=None)
 
 # #Code snippet to disable all jitting.
 from jax import config
