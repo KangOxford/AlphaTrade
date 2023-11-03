@@ -551,7 +551,7 @@ if __name__ == "__main__":
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
         "NUM_ENVS": 1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "TOTAL_TIMESTEPS": 1e9, #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 8, #8, #2,
