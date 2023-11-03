@@ -536,7 +536,7 @@ if __name__ == "__main__":
         "DEBUG": True,
         "ATFOLDER": ".",
         "TASKSIDE":'sell',
-        "REWARD_LAMBDA":1,
+        "REWARD_LAMBDA": 0., #1,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE":500,
