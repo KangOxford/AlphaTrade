@@ -22,7 +22,8 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-
+import os
+import flax
 
 
 from jax.lib import xla_bridge 
@@ -50,6 +51,10 @@ wandbOn = True
 if wandbOn:
     import wandb
 
+def save_checkpoint(params, filename):
+    with open(filename, 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"Checkpoint saved to {filename}")
 
 
 class ScannedRNN(nn.Module):
@@ -435,17 +440,33 @@ def make_train(config):
             )
             # jax.debug.print("{}", train_state.params['params']['log_std'])
             train_state = update_state[0]
-            metric = traj_batch.info
+            metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
             if config.get("DEBUG"):
 
-                def callback(info):
+                def callback(metric):
+                    
+                    info,trainstate_params=metric
+                    
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
+                    
+                    def evaluation():
+                        if not os.path.exists(config['CHECKPOINT_DIR']): os.makedirs(config['CHECKPOINT_DIR'])
+                        # Inside your loop or function where you save the checkpoint
+                        if any(timesteps % int(1e3) == 0) and len(timesteps) > 0:  # +1 since global_step is 0-indexed
+                            start = time.time()
+                            jax.debug.print(">>> checkpoint saving {}",round(timesteps[0], -3))
+                            # Save the checkpoint to the specific directory
+                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -3)}.ckpt")
+                            save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
+                            jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
+                            jax.debug.print("+++ time taken        {}",time.time()-start)        
+                    evaluation()
                     
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
@@ -526,10 +547,7 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        # "LR": 2.5e-3,
-        # "LR": 2.5e-4,
         "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        # "LR": 2.5e-6,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
         "NUM_ENVS": 1024, #128, #64, 1000,

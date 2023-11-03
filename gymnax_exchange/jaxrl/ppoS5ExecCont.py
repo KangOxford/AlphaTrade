@@ -23,6 +23,8 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 #Code snippet to disable all jitting.
 from jax import config
+config.update('jax_platform_name', 'cpu')
+print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
@@ -31,8 +33,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
     

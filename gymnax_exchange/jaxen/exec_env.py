@@ -17,8 +17,16 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 import chex
 import faulthandler
 faulthandler.enable()
+
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 chex.assert_gpu_available(backend=None)
+
+
+# from jax import config
+# config.update('jax_platform_name', 'cpu')
+# print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+
+
 # #Code snippet to disable all jitting.
 from jax import config
 config.update("jax_disable_jit", False)
@@ -240,8 +248,8 @@ class ExecutionEnv(BaseLOBEnv):
                 remainedQuant = state.task_to_execute - state.quant_executed
                 remainedStep = state.max_steps_in_episode - state.step_counter
                 stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True)
-                market_quants = jnp.array([stepQuant,stepQuant])
+                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
+                market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
                 quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                 # ---------- quants ----------
                 return jnp.array(quants) 
@@ -319,8 +327,10 @@ class ExecutionEnv(BaseLOBEnv):
         price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
         # rewardValue = advantage + rewardLambda * drift
-        rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
-
+        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+        # rewardValue = vwap_rm
+        # rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- noramlize the reward ----------
         reward /= 10000
@@ -361,25 +371,30 @@ class ExecutionEnv(BaseLOBEnv):
             }
 
 
+    # def reset_env(
+    #     self, key: chex.PRNGKey, params: EnvParams
+    #     ) -> Tuple[chex.Array, EnvState]:
+    #     """Reset environment state by sampling initial position in OB."""
+    #     # all windows can be reached
+        
+    #     idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()) if self.window_index == -1 else jnp.array(self.window_index,dtype=jnp.int32)
+    #     # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
+    #     # one window can be reached
+    
+    
     def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
+        self, key : chex.PRNGKey, params: EnvParams, reset_window_index = -999
+        ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
         # all windows can be reached
+
+        window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
         
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()) if self.window_index == -1 else jnp.array(self.window_index,dtype=jnp.int32)
-        # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
-        # one window can be reached
-        
-        # jax.debug.print("window_size {}",self.max_steps_in_episode_arr[0])
-        
-        # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],self.max_steps_in_episode_arr.max().astype(jnp.int32) 
-        # task_size,content_size,array_size = self.task_size,self.max_steps_in_episode_arr[idx_data_window],1000
-        # base_allocation = task_size // content_size
-        # remaining_tasks = task_size % content_size
-        # array = jnp.full(array_size, 0, dtype=jnp.int32)
-        # array = array.at[:remaining_tasks].set(base_allocation+1)
-        # twap_quant_arr = array.at[remaining_tasks:content_size].set(base_allocation)
+        idx_data_window = jnp.where(
+            window_index == -1,
+            jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
+            jnp.array(window_index, dtype=jnp.int32)
+        )
         
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
@@ -433,12 +448,12 @@ class ExecutionEnv(BaseLOBEnv):
         ifMarketOrder = (remainingTime <= marketOrderTime)
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
-            prices = jnp.asarray((FT,M,NT,PP), jnp.int32)
+            prices = jnp.asarray((FT,NT), jnp.int32) if self.n_actions == 2 else jnp.asarray((FT,M,NT,PP), jnp.int32) 
             return quants, prices
         def market_order_logic(state: EnvState):
             quant = state.task_to_execute - state.quant_executed
-            quants = jnp.asarray((quant,0,0,0),jnp.int32) 
-            prices = jnp.asarray((MKT, M,M,M),jnp.int32)
+            quants =  jnp.asarray((quant,0),jnp.int32) if self.n_actions == 2 else jnp.asarray((quant,0,0,0),jnp.int32) 
+            prices =  jnp.asarray((MKT,  M),jnp.int32) if self.n_actions == 2 else jnp.asarray((MKT, M,M,M),jnp.int32)
             return quants, prices
         market_quants, market_prices = market_order_logic(state)
         normal_quants, normal_prices = normal_order_logic(state, action)
@@ -500,83 +515,144 @@ class ExecutionEnv(BaseLOBEnv):
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
-        quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
-        quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
-        obs = {
-            "is_buy_task": 0. if self.task=='sell' else 1.,
-            "p_aggr": quote_aggr[0],
-            "p_pass": quote_pass[0],
-            "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
-            "q_aggr": quote_aggr[1],
-            "q_pass": quote_pass[1],
-            # TODO: add "q_pass2" as passive quantity to state in step_env and here
-            "time": state.time,
-            "episode_time": state.time - state.init_time,
-            "init_price": state.init_price,
-            "task_size": state.task_to_execute,
-            "executed_quant": state.quant_executed,
-            "step_counter": state.step_counter,
-            "max_steps": state.max_steps_in_episode,
-        }
+# <<<<<<< JaxV3_debugints_kang
+#         quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
+#         quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
+#         obs = {
+#             "is_buy_task": 0. if self.task=='sell' else 1.,
+#             "p_aggr": quote_aggr[0],
+#             "p_pass": quote_pass[0],
+#             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
+#             "q_aggr": quote_aggr[1],
+#             "q_pass": quote_pass[1],
+#             # TODO: add "q_pass2" as passive quantity to state in step_env and here
+#             "time": state.time,
+#             "episode_time": state.time - state.init_time,
+#             "init_price": state.init_price,
+#             "task_size": state.task_to_execute,
+#             "executed_quant": state.quant_executed,
+#             "step_counter": state.step_counter,
+#             "max_steps": state.max_steps_in_episode,
+#         }
 
-        @jax.jit
-        def normalize_obs(obs: dict[str, jax.Array]):
-            """ normalized observation by substracting 'mean' and dividing by 'std'
-                (config values don't need to be actual mean and std)
-            """
-            # TODO: put this into config somewhere?
-            p_mean = 3.5e7
-            p_std = 1e6
-            means = {
-                "is_buy_task": 0,
-                "p_aggr": p_mean,
-                "p_pass": p_mean,
-                "spread": 0,
-                "q_aggr": 0,
-                "q_pass": 0,
-                "time": jnp.array([0, 0]),
-                "episode_time": jnp.array([0, 0]),
-                "init_price": p_mean,
-                "task_size": 0,
-                "executed_quant": 0,
-                "step_counter": 0,
-                "max_steps": 0,
-            }
-            stds = {
-                "is_buy_task": 1,
-                "p_aggr": p_std,
-                "p_pass": p_std,
-                "spread": 1e4,
-                "q_aggr": 100,
-                "q_pass": 100,
-                "time": jnp.array([1e5, 1e9]),
-                "episode_time": jnp.array([1e3, 1e9]),
-                "init_price": p_std,
-                "task_size": 500,
-                "executed_quant": 500,
-                "step_counter": 300,
-                "max_steps": 300,
-            }
-            obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
-            return obs
+#         @jax.jit
+#         def normalize_obs(obs: dict[str, jax.Array]):
+#             """ normalized observation by substracting 'mean' and dividing by 'std'
+#                 (config values don't need to be actual mean and std)
+#             """
+#             # TODO: put this into config somewhere?
+#             p_mean = 3.5e7
+#             p_std = 1e6
+#             means = {
+#                 "is_buy_task": 0,
+#                 "p_aggr": p_mean,
+#                 "p_pass": p_mean,
+#                 "spread": 0,
+#                 "q_aggr": 0,
+#                 "q_pass": 0,
+#                 "time": jnp.array([0, 0]),
+#                 "episode_time": jnp.array([0, 0]),
+#                 "init_price": p_mean,
+#                 "task_size": 0,
+#                 "executed_quant": 0,
+#                 "step_counter": 0,
+#                 "max_steps": 0,
+#             }
+#             stds = {
+#                 "is_buy_task": 1,
+#                 "p_aggr": p_std,
+#                 "p_pass": p_std,
+#                 "spread": 1e4,
+#                 "q_aggr": 100,
+#                 "q_pass": 100,
+#                 "time": jnp.array([1e5, 1e9]),
+#                 "episode_time": jnp.array([1e3, 1e9]),
+#                 "init_price": p_std,
+#                 "task_size": 500,
+#                 "executed_quant": 500,
+#                 "step_counter": 300,
+#                 "max_steps": 300,
+#             }
+#             obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
+#             return obs
 
-        obs = normalize_obs(obs)
-        # jax.debug.print("obs {}", obs)
-        obs, _ = jax.flatten_util.ravel_pytree(obs)
+#         obs = normalize_obs(obs)
+#         # jax.debug.print("obs {}", obs)
+#         obs, _ = jax.flatten_util.ravel_pytree(obs)
         
-        return obs
+#         return obs
+# =======
+        # ========= self.get_obs(state,params) =============
+        # -----------------------1--------------------------
+        best_asks=state.best_asks[:,0]
+        best_bids =state.best_bids[:,0]
+        best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
+        mid_prices=(best_asks+best_bids)//2//self.tick_size*self.tick_size 
+        second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        spreads = best_asks - best_bids
+        # -----------------------2--------------------------
+        timeOfDay = state.time
+        deltaT = state.time - state.init_time
+        # -----------------------3--------------------------
+        initPrice = state.init_price
+        priceDrift = mid_prices[-1] - state.init_price
+        # -----------------------4--------------------------
+        taskSize = state.task_to_execute
+        executed_quant=state.quant_executed
+        # -----------------------5--------------------------
+        shallowImbalance = state.best_asks[:,1]- state.best_bids[:,1]
+        # ========= self.get_obs(state,params) =============
+        # jax.debug.breakpoint()
+        # [item for item in map(type,[best_bids,best_asks,mid_prices,second_passives,spreads,timeOfDay,deltaT,shallowImbalance])]
+        
+        obs = jnp.concatenate((state.best_bids.reshape(-1),state.best_asks.reshape(-1),mid_prices,second_passives,\
+        # obs = jnp.concatenate((best_bids,best_asks,mid_prices,second_passives,\
+            spreads,timeOfDay,deltaT,jnp.array([initPrice]),jnp.array([priceDrift]),jnp.array([taskSize]),\
+            jnp.array([executed_quant]),shallowImbalance,jnp.array([state.step_counter]),jnp.array([state.max_steps_in_episode])))
+        # jax.debug.breakpoint()
+        def obsNorm(obs):
+            return jnp.concatenate((
+                obs[:400:2]/3.5e7, # best_prices
+                obs[1:400:2]/10, # best_quants
+                obs[400:600]/3.5e7, # mid_prices,second_passives  TODO CHANGE THIS
+                obs[400:500]/100000, # spreads
+                obs[500:501]/100000, # timeOfDay
+                obs[501:502]/1000000000, # timeOfDay
+                obs[502:503]/10,# deltaT
+                obs[503:504]/1000000000,# deltaT
+                obs[504:505]/3.5e7,# initPrice  TODO CHANGE THIS
+                obs[505:506]/100000,# priceDrift
+                obs[506:507]/500, # taskSize TODO CHANGE THIS
+                obs[507:508]/500, # executed_quant TODO CHANGE THIS
+                obs[508:608]/100, # shallowImbalance 
+                obs[608:609]/300, # step_counter TODO CHANGE THIS
+                obs[609:610]/300, # max_steps_in_episode TODO CHANGE THIS
+            ))
+        obsNorm_=obsNorm(obs)
+        # jax.debug.breakpoint()
+        return obsNorm_
+# >>>>>>> resetWithWindowCPU
 
 
     def action_space(
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """Action space of the environment."""
-        return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,500,(self.n_actions,),dtype=jnp.int32)
+# <<<<<<< JaxV3_debugints_kang
+#         return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,500,(self.n_actions,),dtype=jnp.int32)
+# =======
+        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' \
+          else spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+# >>>>>>> resetWithWindowCPU
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
+# <<<<<<< JaxV3_debugints_kang
+#         space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
+# =======
+        space = spaces.Box(-10,10,(810,),dtype=jnp.float32) 
+# >>>>>>> resetWithWindowCPU
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 

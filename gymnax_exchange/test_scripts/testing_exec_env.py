@@ -43,6 +43,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
+
     env=ExecutionEnv(ATFolder,'buy',-1,'pure',True)
     env_params=env.default_params
     env = LogWrapper(env)
