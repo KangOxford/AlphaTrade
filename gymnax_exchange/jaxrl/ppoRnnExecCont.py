@@ -72,6 +72,8 @@ class ScannedRNN(nn.Module):
             rnn_state,
         )
         new_rnn_state, y = nn.GRUCell()(rnn_state, ins)
+        # try: add another rnn layer
+        new_rnn_state, y = nn.GRUCell()(new_rnn_state, y)
         return new_rnn_state, y
 
     @staticmethod
@@ -149,6 +151,14 @@ class ActorCriticRNN(nn.Module):
         )
         critic = nn.LayerNorm()(critic)
         critic = nn.relu(critic)
+
+        # try: add another critic layer
+        critic = nn.Dense(64, kernel_init=orthogonal(1), bias_init=constant(0.0))(
+            critic
+        )
+        critic = nn.LayerNorm()(critic)
+        critic = nn.relu(critic)
+
         critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
             critic
         )
@@ -174,7 +184,15 @@ def make_train(config):
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
     
-    env = ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+    env = ExecutionEnv(
+        config["ATFOLDER"],
+        # config["TASKSIDE"],
+        config["RANDOMIZE_DIRECTION"],
+        config["WINDOW_INDEX"],
+        config["ACTION_TYPE"],
+        config["TASK_SIZE"],
+        config["REWARD_LAMBDA"]
+    )
     env_params = env.default_params
     env = LogWrapper(env)    
     
@@ -533,7 +551,7 @@ if __name__ == "__main__":
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
         "NUM_ENVS": 1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e8,  # 6.9h
+        "TOTAL_TIMESTEPS": 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 8, #8, #2,
@@ -555,16 +573,17 @@ if __name__ == "__main__":
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
-        "WINDOW_INDEX": -1, # 2 fix random episode #-1,
+        "WINDOW_INDEX": 2, # 2 fix random episode #-1,
         "DEBUG": True,
-        "ATFOLDER": "../AlphaTrade/",
-        "TASKSIDE":'sell',
+        "ATFOLDER": ".",
+        # "TASKSIDE": 'sell',
+        "RANDOMIZE_DIRECTION": True,
         "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
-        "ACTION_TYPE":"pure",
+        "ACTION_TYPE": "pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE": 500, #500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
-        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
+        "RESULTS_FILE": "results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR": "checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:

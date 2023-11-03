@@ -14,6 +14,7 @@ from gymnax.environments import environment, spaces
 from typing import Tuple, Optional
 import chex
 from flax import struct
+import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 
 
@@ -44,7 +45,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
-    def __init__(self,alphatradePath):
+    def __init__(self, alphatradePath):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
@@ -118,7 +119,6 @@ class BaseLOBEnv(environment.Environment):
             def sliceWithoutOverlap(message, orderbook):
                 # print("start")
                 def splitMessage(message, orderbook):
-                    import numpy as np
                     sliced_parts = []
                     init_OBs = []
                     for i in range(len(indices) - 1):
@@ -162,7 +162,6 @@ class BaseLOBEnv(environment.Environment):
 
 
             def nestlist2flattenlist(nested_list):
-                import itertools
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
@@ -196,7 +195,14 @@ class BaseLOBEnv(environment.Environment):
             
             return Cubes_withOB, max_steps_in_episode_arr
 
-        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(self.sliceTimeWindow,self.stepLines,self.messagePath,self.orderbookPath,self.start_time,self.end_time)
+        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(
+            self.sliceTimeWindow,
+            self.stepLines,
+            self.messagePath,
+            self.orderbookPath,
+            self.start_time,
+            self.end_time
+        )
 
         self.max_steps_in_episode_arr = max_steps_in_episode_arr
         # # ------------------------------- TESTING ------------------------------
@@ -303,19 +309,12 @@ class BaseLOBEnv(environment.Environment):
         # step_mean = jnp.asarray(step_mean)
         # # assert step_mean.shape[0] == tvs_arr.shape[0]
         # # # ------------------------------- STATS ------------------------------            
-                    
-        
 
-            
-            
-        #List of message cubes 
-        msgs=[jnp.array(cube) for cube, book in Cubes_withOB]
-        bks=[jnp.array(book) for cube, book in Cubes_withOB]
-
-        self.messages=jnp.array(msgs)   #4D Array: (n_windows x n_steps (max) x n_messages x n_features)
-        self.books=jnp.array(bks)       #2D Array: (n_windows x [4*n_depth])
+        # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
+        # books:    2D Array: (n_windows x [4*n_depth])
+        self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
       
-        self.n_windows=len(self.books)
+        self.n_windows = len(self.books)
         # jax.debug.breakpoint()
         
         # ==================================================================
@@ -357,8 +356,20 @@ class BaseLOBEnv(environment.Environment):
             best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
             M = (best_bid[0] + best_ask[0])//2//tick_size*tick_size 
             
-            state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(stepLines,2)),jnp.resize(best_bid,(stepLines,2)),\
-                time,time,0,-1,M,task_size,0,0,0,0,max_steps_in_episode)
+            state = (
+                ordersides[0],
+                ordersides[1],
+                ordersides[2],
+                jnp.resize(best_ask, (stepLines,2)),
+                jnp.resize(best_bid,(stepLines,2)),
+                time,
+                time,
+                0,
+                -1,
+                M,
+                task_size,
+                0,0,0,0,
+                max_steps_in_episode)
             return state
         
         def get_obs(state):
