@@ -28,31 +28,22 @@ ppo_config = {
     "TASK_SIZE":500,
     
     "WINDOW_INDEX": -1,
-    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing", # testing one Month data
-    # "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
+    # "ATFOLDER": "/homes/80/kang/AlphaTrade/testing", # testing one Month data
+    "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     
-    
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/", # N.O. 23, pure quant
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/", # N.O. 11, pure quant
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_10-03/", # N.O. 11, pure quant
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_10-03/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/", # N.O. 10, pure quant
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/", # N.O. 3, pure quant
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/csv/",
     "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
-    "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/ckpt/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/csv/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
-    # "CHECKPOINT_CSV_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/csv/",
 }
 
 dir = ppo_config['CHECKPOINT_DIR']
-csv_dir = ppo_config["CHECKPOINT_CSV_DIR"]
+csv_dir = ppo_config['CHECKPOINT_DIR']+"csv/"
 
 
 def make_evaluation(network_config):    
@@ -166,10 +157,12 @@ def twap_evaluation(paramsFile,window_idx):
 import re
 import argparse
 
-def main(idx=-1):
+def PPO_main(idx=-1):
     start_time =time.time()
-    for window_idx in range(260):
-    # for window_idx in range(13):
+    # for window_idx in range(int(1e5)):
+    # for window_idx in range(260):
+    for window_idx in range(13):
+        # try:
         start=time.time()
         print(f">>> window_idx: {window_idx}")
         def extract_number_from_filename(filename):
@@ -183,12 +176,17 @@ def main(idx=-1):
         paramsFile = onlyfiles[idx]
         evaluate_savefile(paramsFile,window_idx)
         print(f"Time for evaluation: \n",time.time()-start)
+        # except:
+        #     print(f"End of the window index is {window_idx}")
+        #     break
     print(f"Total time for evaluation ppo : \n",time.time()-start_time)
     
-def main2(idx=-1):
+def TWAP_main(idx=-1):
     start_time =time.time()
-    for window_idx in range(260):
-    # for window_idx in range(13):
+    # for window_idx in range(int(1e5)):
+    # for window_idx in range(260):
+    for window_idx in range(13):
+        # try:
         start=time.time()
         print(f">>> window_idx: {window_idx}")        
         def extract_number_from_filename(filename):
@@ -202,14 +200,61 @@ def main2(idx=-1):
         paramsFile = onlyfiles[idx]
         twap_evaluation(paramsFile,window_idx)
         print(f"Time for evaluation: \n",time.time()-start)
+        # except:
+        #     print(f"End of the window index is {window_idx}")
+        #     break
     print(f"Total time for evaluation twap: \n",time.time()-start_time)
+
+
+# ===========================================================================================
+# your_checkpoint_dir (a directory)
+#     => csv (a directory)
+#         params_file_electric-waterfall-87_10-07_12-52_twap_0.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_1.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_2.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_3.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_4.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_5.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_6.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_7.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_8.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_9.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_10.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_11.csv
+#         params_file_electric-waterfall-87_10-07_12-52_twap_12.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_0.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_1.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_2.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_3.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_4.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_5.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_6.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_7.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_8.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_9.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_10.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_11.csv
+#         params_file_electric-waterfall-87_10-07_12-52_wdw_idx_12.csv
+#     => params_file_electric-waterfall-87_10-07_12-52 (your trained network params, a file)
+#     => params_file_electric-waterfall-87_10-07_13-52 (second network params during training)
+# ===========================================================================================
+'''
+generated by func <PPO_main> : params_file_electric-waterfall-87_10-07_12-52_twap_0.csv
+generated by func <TWAP_main>: params_file_electric-waterfall-87_10-07_12-52_wdw_idx_0.csv
+args.idx to be -1            : select the last params file, in our situation, it is 
+                               params_file_electric-waterfall-87_10-07_13-52
+'''
+def comparison_main(idx=-1):
+    PPO_main(idx)
+    TWAP_main(idx)
+    
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify index of the file to evaluate.')
     parser.add_argument('--idx', metavar='idx', type=int, default=-1, help='Index of the file to evaluate.')
-    
     args = parser.parse_args()
-    main(args.idx)
-    # main2(args.idx)
+    
+    comparison_main(args.idx)
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py 2
     # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/test_scripts/evaluation.py -1
+

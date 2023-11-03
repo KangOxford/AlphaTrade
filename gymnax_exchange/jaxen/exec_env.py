@@ -393,6 +393,7 @@ class ExecutionEnv(BaseLOBEnv):
         # all windows can be reached
 
         window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
+        '''if -999 use default static index, else use provided dynamic index'''
         
         idx_data_window = jnp.where(
             window_index == -1,
