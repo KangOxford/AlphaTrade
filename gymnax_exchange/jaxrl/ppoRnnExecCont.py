@@ -24,19 +24,9 @@ from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction,
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 import os
 import flax
-
-
 from jax.lib import xla_bridge 
 print(xla_bridge.get_backend().platform)
-
-
-
-#print(torch.cuda_is_available())
-print(jax.devices()[0]) 
-
-
 #Code snippet to disable all jitting.
-
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
@@ -46,8 +36,8 @@ import datetime
 
 
 
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
 
@@ -530,7 +520,7 @@ def make_train(config):
                             )        
                         else:
                             print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<15}"
                             )     
                             # print("==="*20)      
                             # print(info["current_step"])  
@@ -595,7 +585,8 @@ if __name__ == "__main__":
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
 
-        "ATFOLDER": "../AlphaTrade/",
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        # "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
         "ACTION_TYPE":"pure",
