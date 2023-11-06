@@ -54,7 +54,15 @@ def add_order(orderside: chex.Array, msg: dict) -> chex.Array :
     """Low level function that will add an order (Dict)
       to the orderbook (Array) and return the updated"""
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
-    orderside=orderside.at[emptyidx,:].set(jnp.array([msg['price'],jnp.maximum(0,msg['quantity']),msg['orderid'],msg['traderid'],msg['time'],msg['time_ns']])).astype(jnp.int32)
+    orderside=orderside.at[emptyidx,:]\
+                        .set(jnp.array([
+                            msg['price'],
+                            jnp.maximum(0,msg['quantity']),
+                            msg['orderid'],
+                            msg['traderid'],
+                            msg['time'],
+                            msg['time_ns']]))\
+                        .astype(jnp.int32)
     return _removeZeroNegQuant(orderside)
 
 @jax.jit
