@@ -46,7 +46,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import lax, flatten_util
 from gymnax.environments import environment, spaces
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
@@ -431,8 +431,8 @@ class ExecutionEnv(BaseLOBEnv):
         obs_buy = params.obs_buy_list[idx_data_window]
         state = EnvState(*state_)
         # jax.debug.print("state after reset {}", state)
-        obs = obs_sell if self.task == "sell" else obs_buy
-        # obs = self.get_obs(state, params)
+        # obs = obs_sell if self.task == "sell" else obs_buy
+        obs = self.get_obs(state, params)
         return obs,state
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -515,9 +515,6 @@ class ExecutionEnv(BaseLOBEnv):
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
             "q_aggr": quote_aggr[1],
             "q_pass": quote_pass[1],
-            # TODO: add "q_pass2" as passive quantity to state in step_env and here
-            # second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
-            # our second passive is not the exact second passive in the orderbook, but 
             "time": state.time,
             "episode_time": state.time - state.init_time,
             "init_price": state.init_price,
@@ -526,6 +523,9 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
         }
+        # TODO: add "q_pass2" as passive quantity to state in step_env and here
+        # second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+        # our second passive is not the exact second passive in the orderbook, but by minus or plus a fixed price delta
 
         def normalize_obs(obs: Dict[str, jax.Array]):
             """ normalized observation by substracting 'mean' and dividing by 'std'
@@ -537,7 +537,7 @@ class ExecutionEnv(BaseLOBEnv):
             p_mean = 3.5e7
             p_std = 1e6
             means = {
-                "is_buy_task": 0,
+                # "is_buy_task": 0,
                 "p_aggr": p_mean,
                 "p_pass": p_mean,
                 "spread": 0,
@@ -552,7 +552,7 @@ class ExecutionEnv(BaseLOBEnv):
                 "max_steps": 0,
             }
             stds = {
-                "is_buy_task": 1,
+                # "is_buy_task": 1,
                 "p_aggr": p_std,
                 "p_pass": p_std,
                 "spread": 1e4,
@@ -587,7 +587,8 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
+        space = spaces.Box(-10,10,(14,),dtype=jnp.float32) 
+        # space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
