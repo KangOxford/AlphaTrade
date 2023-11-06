@@ -77,6 +77,8 @@ class ScannedRNN(nn.Module):
             rnn_state,
         )
         new_rnn_state, y = nn.GRUCell()(rnn_state, ins)
+        # try: add another rnn layer
+        new_rnn_state, y = nn.GRUCell()(new_rnn_state, y)
         return new_rnn_state, y
 
     @staticmethod
@@ -154,6 +156,14 @@ class ActorCriticRNN(nn.Module):
         )
         critic = nn.LayerNorm()(critic)
         critic = nn.relu(critic)
+
+        # try: add another critic layer
+        critic = nn.Dense(64, kernel_init=orthogonal(1), bias_init=constant(0.0))(
+            critic
+        )
+        critic = nn.LayerNorm()(critic)
+        critic = nn.relu(critic)
+
         critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
             critic
         )
@@ -179,7 +189,16 @@ def make_train(config):
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
     
-    env = ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+
+    env = ExecutionEnv(
+        config["ATFOLDER"],
+        config["TASKSIDE"],
+        # config["RANDOMIZE_DIRECTION"],
+        config["WINDOW_INDEX"],
+        config["ACTION_TYPE"],
+        config["TASK_SIZE"],
+        config["REWARD_LAMBDA"]
+    )
     env_params = env.default_params
     env = LogWrapper(env)    
     
@@ -492,7 +511,7 @@ def make_train(config):
                     '''
                     
                     # '''
-                    for t in range(len(timesteps)):  
+                    for t in range(len(timesteps)):
                         if wandbOn:
                             wandb.log(
                                 {
@@ -501,12 +520,12 @@ def make_train(config):
                                     "episodic_revenue": revenues[t],
                                     "quant_executed":quant_executed[t],
                                     "average_price":average_price[t],
-                                    "slippage_rm":slippage_rm[t],
-                                    "price_adv_rm":price_adv_rm[t],
-                                    "price_drift_rm":price_drift_rm[t],
-                                    "vwap_rm":vwap_rm[t],
+                                    # "slippage_rm":slippage_rm[t],
+                                    # "price_adv_rm":price_adv_rm[t],
+                                    # "price_drift_rm":price_drift_rm[t],
+                                    # "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
-                                    "advantage_reward":advantage_reward[t],
+                                    # "advantage_reward":advantage_reward[t],
                                 }
                             )        
                         else:
@@ -566,8 +585,8 @@ if __name__ == "__main__":
         "GAE_LAMBDA": 1.0, #0.95,
         "VF_COEF": 1.0, #0.5,
         "MAX_GRAD_NORM": 0.5,# 2.0,
-        "ANNEAL_LR": False, #True,
-        "NORMALIZE_ENV": True,
+        "ANNEAL_LR": True, #True,
+        "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
         "ACTOR_TYPE":"RNN",
         
@@ -575,6 +594,7 @@ if __name__ == "__main__":
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
+
         "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
@@ -595,19 +615,18 @@ if __name__ == "__main__":
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
     else:
         import datetime;params_file_name = f'params_file_{timestamp}'
-
     print(f"Results will be saved to {params_file_name}")
-        
-        
 
-    
+
+
+
     # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(0)
     # rng = jax.random.PRNGKey(30)
     train_jit = jax.jit(make_train(ppo_config))
     start=time.time()
     out = train_jit(rng)
-    print("Time: ", time.time()-start)
+    print("Time: ", time.time() - start)
     # +++++ Single GPU +++++
 
     # # +++++ Multiple GPUs +++++
@@ -636,12 +655,12 @@ if __name__ == "__main__":
     # Save the params to a file using flax.serialization.to_bytes
     with open(params_file_name, 'wb') as f:
         f.write(flax.serialization.to_bytes(params))
-        print(f"pramas saved")
+        print(f"params saved")
 
     # Load the params from the file using flax.serialization.from_bytes
     with open(params_file_name, 'rb') as f:
         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-        print(f"pramas restored")
+        print(f"params restored")
         
     # jax.debug.breakpoint()
     # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
