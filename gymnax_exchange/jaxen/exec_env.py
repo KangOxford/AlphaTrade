@@ -387,7 +387,8 @@ class ExecutionEnv(BaseLOBEnv):
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (
-            ((state.time - state.init_time)[0] > params.episode_time) |
+            # ((state.time - state.init_time)[0] > params.episode_time) |
+            (state.step_counter >= state.max_steps_in_episode) |
             (state.task_to_execute - state.quant_executed <= 0)
         )
     
