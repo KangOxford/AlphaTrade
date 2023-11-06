@@ -118,12 +118,17 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
+        print(alphatradePath.split("/"))
+        pkl_file_name = alphatradePath+'state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        print("pre-reset will be saved to ",pkl_file_name)
         try:
             import pickle
             # Restore the list
-            with open('state_arrays.pkl', 'rb') as f:
+            with open(pkl_file_name, 'rb') as f:
                 self.stateArray_list = pickle.load(f)
+            print("LOAD FROM PKL")
         except:
+            print("DO COMPUTATION")
             def get_state(message_data, book_data,max_steps_in_episode):
                 time=jnp.array(message_data[0,0,-2:])
                 #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
@@ -166,7 +171,7 @@ class ExecutionEnv(BaseLOBEnv):
             self.stateArray_list = jnp.array([state2stateArray(state) for state in states])
             import pickle
             # Save the list
-            with open('state_arrays.pkl', 'wb') as f:
+            with open(pkl_file_name, 'wb') as f:
                 pickle.dump(self.stateArray_list, f) 
         print("FINISH: pre-reset in the initialization")
 
@@ -222,12 +227,12 @@ class ExecutionEnv(BaseLOBEnv):
                 scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
-            jax.debug.print("action_ {}; action {}",action_,action)
+            # jax.debug.print("action_ {}; action {}",action_,action)
 
             return action
         
         action = reshape_action(delta, state, params)
-        jax.debug.print("action {}",action)
+        # jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
         
         
@@ -573,7 +578,7 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
+        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
