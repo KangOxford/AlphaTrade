@@ -151,6 +151,7 @@ class ActorCriticRNN(nn.Module):
         
         #New version ^^
 
+
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
@@ -276,7 +277,6 @@ def make_train(config):
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                # jax.debug.print("{} , {}",pi.mean(),pi.stddev())
 
 
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
@@ -457,7 +457,7 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-            # jax.debug.print("{}", train_state.params['params']['log_std'])
+
             train_state = update_state[0]
             metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
