@@ -22,7 +22,8 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-
+import os
+import flax
 
 
 from jax.lib import xla_bridge 
@@ -50,6 +51,10 @@ wandbOn = True
 if wandbOn:
     import wandb
 
+def save_checkpoint(params, filename):
+    with open(filename, 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"Checkpoint saved to {filename}")
 
 
 class ScannedRNN(nn.Module):
@@ -184,10 +189,11 @@ def make_train(config):
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
     
+
     env = ExecutionEnv(
         config["ATFOLDER"],
-        # config["TASKSIDE"],
-        config["RANDOMIZE_DIRECTION"],
+        config["TASKSIDE"],
+        # config["RANDOMIZE_DIRECTION"],
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
         config["TASK_SIZE"],
@@ -453,17 +459,33 @@ def make_train(config):
             )
             # jax.debug.print("{}", train_state.params['params']['log_std'])
             train_state = update_state[0]
-            metric = traj_batch.info
+            metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
             if config.get("DEBUG"):
 
-                def callback(info):
+                def callback(metric):
+                    
+                    info,trainstate_params=metric
+                    
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
+                    
+                    def evaluation():
+                        if not os.path.exists(config['CHECKPOINT_DIR']): os.makedirs(config['CHECKPOINT_DIR'])
+                        # Inside your loop or function where you save the checkpoint
+                        if any(timesteps % int(1e3) == 0) and len(timesteps) > 0:  # +1 since global_step is 0-indexed
+                            start = time.time()
+                            jax.debug.print(">>> checkpoint saving {}",round(timesteps[0], -3))
+                            # Save the checkpoint to the specific directory
+                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -3)}.ckpt")
+                            save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
+                            jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
+                            jax.debug.print("+++ time taken        {}",time.time()-start)        
+                    evaluation()
                     
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
@@ -544,14 +566,11 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        # "LR": 2.5e-3,
-        # "LR": 2.5e-4,
         "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        # "LR": 2.5e-6,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
         "NUM_ENVS": 1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e9, #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "TOTAL_TIMESTEPS": 1e8,  # 6.9h
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 8, #8, #2,
@@ -575,15 +594,15 @@ if __name__ == "__main__":
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
-        "ATFOLDER": ".",
-        # "TASKSIDE": 'sell',
-        "RANDOMIZE_DIRECTION": True,
+
+        "ATFOLDER": "../AlphaTrade/",
+        "TASKSIDE":'sell',
         "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
-        "ACTION_TYPE": "pure",
+        "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE": 500, #500,
-        "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",
-        "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
@@ -596,7 +615,6 @@ if __name__ == "__main__":
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
     else:
         import datetime;params_file_name = f'params_file_{timestamp}'
-
     print(f"Results will be saved to {params_file_name}")
 
 
