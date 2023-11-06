@@ -586,7 +586,7 @@ if __name__ == "__main__":
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
 
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
         # "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA": 0., #0.001,  # CAVE: currently not used
