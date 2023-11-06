@@ -118,47 +118,58 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        def get_state(message_data, book_data,max_steps_in_episode):
-            time=jnp.array(message_data[0,0,-2:])
-            #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-            def get_initial_orders(book_data,time):
-                orderbookLevels=10
-                initid=-9000
-                data=jnp.array(book_data).reshape(int(10*2),2)
-                newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
-                initOB = newarr \
-                    .at[:,3].set(data[:,0]) \
-                    .at[:,2].set(data[:,1]) \
-                    .at[:,0].set(1) \
-                    .at[0:orderbookLevels*4:2,1].set(-1) \
-                    .at[1:orderbookLevels*4:2,1].set(1) \
-                    .at[:,4].set(initid) \
-                    .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
-                    .at[:,6].set(time[0]) \
-                    .at[:,7].set(time[1])
-                return initOB
-            init_orders=get_initial_orders(book_data,time)
-            #Initialise both sides of the book as being empty
-            asks_raw=job.init_orderside(self.nOrdersPerSide)
-            bids_raw=job.init_orderside(self.nOrdersPerSide)
-            trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
-            #Process the initial messages through the orderbook
-            ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
-            # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
-            best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
-            M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
-            state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),\
-                time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
-            return state
-        states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) for i in range(len(self.max_steps_in_episode_arr))]
-        
-        def state2stateArray(state):
-            state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
-            padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
-            stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
-            return stateArray
-        self.stateArray_list = jnp.array([state2stateArray(state) for state in states])
+        try:
+            import pickle
+            # Restore the list
+            with open('state_arrays.pkl', 'rb') as f:
+                self.stateArray_list = pickle.load(f)
+        except:
+            def get_state(message_data, book_data,max_steps_in_episode):
+                time=jnp.array(message_data[0,0,-2:])
+                #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+                def get_initial_orders(book_data,time):
+                    orderbookLevels=10
+                    initid=-9000
+                    data=jnp.array(book_data).reshape(int(10*2),2)
+                    newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
+                    initOB = newarr \
+                        .at[:,3].set(data[:,0]) \
+                        .at[:,2].set(data[:,1]) \
+                        .at[:,0].set(1) \
+                        .at[0:orderbookLevels*4:2,1].set(-1) \
+                        .at[1:orderbookLevels*4:2,1].set(1) \
+                        .at[:,4].set(initid) \
+                        .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
+                        .at[:,6].set(time[0]) \
+                        .at[:,7].set(time[1])
+                    return initOB
+                init_orders=get_initial_orders(book_data,time)
+                #Initialise both sides of the book as being empty
+                asks_raw=job.init_orderside(self.nOrdersPerSide)
+                bids_raw=job.init_orderside(self.nOrdersPerSide)
+                trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+                #Process the initial messages through the orderbook
+                ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+                # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
+                best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
+                M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
+                state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),\
+                    time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
+                return state
+            states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) for i in range(len(self.max_steps_in_episode_arr))]
+            
+            def state2stateArray(state):
+                state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
+                padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
+                stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
+                return stateArray
+            self.stateArray_list = jnp.array([state2stateArray(state) for state in states])
+            import pickle
+            # Save the list
+            with open('state_arrays.pkl', 'wb') as f:
+                pickle.dump(self.stateArray_list, f) 
         print("FINISH: pre-reset in the initialization")
+
         #TODO Most of the state space should be exactly the same for the base and exec env, 
         # can we think about keeping the base part seperate from the exec part? 
         # ================= CAUTION NOT BELONG TO BASE ENV =================
@@ -258,31 +269,28 @@ class ExecutionEnv(BaseLOBEnv):
         new_execution = agentTrades[:,1].sum()
         revenue = (agentTrades[:,0]/self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
-        vwapFunc = lambda executed: (executed[:,0]/self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum()
+        vwapFunc = lambda executed: jnp.nan_to_num((executed[:,0]/self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum(),0.0) # caution: this value can be zero (executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
+        advantage = revenue - vwap * agentQuant # advantage_vwap
+        #TODO VWAP price (vwap) is only over all trades in between steps. 
+        # ·········· used for slippage, price_drift, and  RM(rolling mean) ··········
         rollingMeanValueFunc_FLOAT = lambda average_price,new_price:(average_price*state.step_counter+new_price)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
-
-        #TODO VWAP price (vwap) is only over all trades in between steps. 
-        advantage = revenue - vwap_rm * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
-        rewardLambda = self.rewardLambda
-        drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
-        # ---------- compute the final reward ----------
-
-        # rewardValue = advantage + rewardLambda * drift
-        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
-        # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
-        rewardValue = advantage + rewardLambda * drift
-        reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
-        # ---------- normalize the reward ----------
-        reward /= 10000
-
-        # reward /= params.avg_twap_list[state.window_index]
-        
-        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
         price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
         slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price/self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price/self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        # ·········· used for slippage, price_drift, and  RM(rolling mean) ··········
+        drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
+        # ---------- compute the final reward ----------
+        
+        # rewardValue = revenue 
+        rewardValue = advantage + self.rewardLambda * drift
+        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+        reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
+        # ---------- normalize the reward ----------
+        reward /= 10000
+        # reward /= params.avg_twap_list[state.window_index]
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -298,7 +306,7 @@ class ExecutionEnv(BaseLOBEnv):
                 index = jnp.argmax(arr[:, 0] != 999999999)
                 return forward_fill_999999999_int(arr.at[0, 0].set(jnp.where(index == 0, arr[0, 0], arr[index][0])))
             back_fill = lambda arr: jnp.flip(forward_fill(jnp.flip(arr, axis=0)), axis=0)
-            mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
+            mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2     
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
         state = EnvState(

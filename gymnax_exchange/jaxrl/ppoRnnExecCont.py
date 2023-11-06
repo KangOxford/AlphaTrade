@@ -32,7 +32,7 @@ config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
 import datetime
-
+jax.numpy.set_printoptions(linewidth=250)
 
 
 
@@ -520,7 +520,8 @@ def make_train(config):
                             )        
                         else:
                             print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<15} | episodic revenue={revenues[t]:<15} | average_price={average_price[t]:<15}"
+                                # f"global step={timesteps[t]:<11} | episodic return={return_values[t]:.10f<15} | episodic revenue={revenues[t]:.10f<15} | average_price={average_price[t]:<15}"
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<20} | episodic revenue={revenues[t]:<20} | average_price={average_price[t]:<11}"
                             )     
                             # print("==="*20)      
                             # print(info["current_step"])  
