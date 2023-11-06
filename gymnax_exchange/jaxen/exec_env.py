@@ -169,6 +169,7 @@ class ExecutionEnv(BaseLOBEnv):
             with open('state_arrays.pkl', 'wb') as f:
                 pickle.dump(self.stateArray_list, f) 
         print("FINISH: pre-reset in the initialization")
+        breakpoint()
 
         #TODO Most of the state space should be exactly the same for the base and exec env, 
         # can we think about keeping the base part seperate from the exec part? 

@@ -112,37 +112,41 @@ class BaseLOBEnv(environment.Environment):
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
 
-            def index_of_sliceWithoutOverlap(start_time, end_time, interval):
-                indices = list(range(start_time, end_time, interval))
-                return indices
-            indices = index_of_sliceWithoutOverlap(start_time, end_time, sliceTimeWindow)
             def sliceWithoutOverlap(message, orderbook):
                 # print("start")
+                def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
+                    indices = list(range(start_time, end_time, interval))
+                    return indices
+                indices = index_of_sliceWithoutOverlap_by_lines(0, message.shape[0]//100*100, 100*100)
+                # def index_of_sliceWithoutOverlap_by_time(start_time, end_time, interval):
+                #     indices = list(range(start_time, end_time, interval))
+                #     return indices
+                # indices = index_of_sliceWithoutOverlap_by_time(start_time, end_time, sliceTimeWindow)
+                
                 def splitMessage(message, orderbook):
                     sliced_parts = []
                     init_OBs = []
                     for i in range(len(indices) - 1):
                         start_index = indices[i]
                         end_index = indices[i + 1]
-                        index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                        index_e = (index_e // stepLines + 10) * stepLines + index_s % stepLines
-                        assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
-                        sliced_part = message.loc[np.arange(index_s, index_e)]
+                        sliced_part = message[(message.index > start_index) & (message.index <= end_index)]
                         sliced_parts.append(sliced_part)
-                        init_OBs.append(orderbook.iloc[index_s,:])
-
-                    # Last sliced part from last index to end_time
-                    start_index = indices[i]
-                    end_index = indices[i + 1]
-                    index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                    index_s = (index_s // stepLines - 10) * stepLines + index_e % stepLines
-                    assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
-                    last_sliced_part = message.loc[np.arange(index_s, index_e)]
-                    sliced_parts.append(last_sliced_part)
-                    init_OBs.append(orderbook.iloc[index_s, :])
+                        init_OBs.append(orderbook.iloc[start_index,:])
+                    # # Last sliced part from last index to end_time
+                    # start_index = indices[i]
+                    # end_index = indices[i + 1]
+                    # index_s, index_e = message[(message.index >= start_index) & (message.index < end_index)].index[[0, -1]].tolist()
+                    # # index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                    # index_s = (index_s // stepLines - 10) * stepLines + index_e % stepLines
+                    # assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
+                    # last_sliced_part = message.loc[np.arange(index_s, index_e)]
+                    # sliced_parts.append(last_sliced_part)
+                    # init_OBs.append(orderbook.iloc[index_s, :])
+                    
                     for part in sliced_parts:
                         # print("start")
-                        assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
+                        # assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
+                        assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
                         assert part.shape[0] % stepLines == 0, 'wrong code 34'
                     return sliced_parts, init_OBs
                 sliced_parts, init_OBs = splitMessage(message, orderbook)
