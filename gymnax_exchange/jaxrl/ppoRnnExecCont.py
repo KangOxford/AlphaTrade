@@ -36,8 +36,8 @@ jax.numpy.set_printoptions(linewidth=250)
 
 
 
-# wandbOn = True
-wandbOn = False
+wandbOn = True
+# wandbOn = False
 if wandbOn:
     import wandb
 
@@ -589,9 +589,10 @@ if __name__ == "__main__":
         "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
         # "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
-        "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
-        "ACTION_TYPE":"pure",
-        # "ACTION_TYPE":"delta",
+        "REWARD_LAMBDA": 0., #0.001,  # CAVE: currently not used
+        # "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
+        # "ACTION_TYPE":"pure",
+        "ACTION_TYPE":"delta",
         "TASK_SIZE": 500, #500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
