@@ -41,3 +41,4 @@ results_file**
 **.ipynb
 *.png
 *.npy
+*.nfs*

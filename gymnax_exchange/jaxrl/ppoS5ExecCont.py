@@ -21,18 +21,20 @@ from gymnax.environments import spaces
 
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
-#Code snippet to disable all jitting.
 from jax import config
+# config.update('jax_platform_name', 'cpu')
+print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
+#Code snippet to disable all jitting.
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
     
@@ -534,7 +536,7 @@ if __name__ == "__main__":
         "DEBUG": True,
         "ATFOLDER": ".",
         "TASKSIDE":'sell',
-        "REWARD_LAMBDA":1,
+        "REWARD_LAMBDA": 0., #1,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE":500,
