@@ -1,11 +1,6 @@
 # JAX-LOB
 
-## Research in Limit Order Book for Optimal Execution
-
-
-![image](https://user-images.githubusercontent.com/37290277/233871831-cd0f3afd-62c0-4e0f-a16e-71e932784211.png)
-
-* perception, predicting, planning&controlling
+## JAX-LOB: A GPU-Accelerated limit order book simulator to unlock large scale reinforcement learning for trading
 
 ### Architecture of the package:
 * `gymnax_exchange`: the `GPU` version of rl_environment
