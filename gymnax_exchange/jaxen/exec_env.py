@@ -196,20 +196,22 @@ class ExecutionEnv(BaseLOBEnv):
                 def twapV3(state, env_params):
                     # ---------- ifMarketOrder ----------
                     remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-                    marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    marketOrderTime = jnp.array(10, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    # marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
                     ifMarketOrder = (remainingTime <= marketOrderTime)
                     # ---------- ifMarketOrder ----------
                     # ---------- quants ----------
                     remainedQuant = state.task_to_execute - state.quant_executed
                     remainedStep = state.max_steps_in_episode - state.step_counter
                     stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                    limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
+                    limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 \
+                        else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
                     market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
                     quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                     # ---------- quants ----------
                     return jnp.array(quants) 
                 action_space_clipping = lambda action: jnp.round(action).astype(jnp.int32).clip(-5,5) 
-                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
+                action_ = twapV3(state, params) + action_space_clipping(delta)
             else:
                 action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(0,task_size//5)# clippedAction, CAUTION not clipped by task_size, but task_size//5
                 action_ = action_space_clipping(delta, state.task_to_execute)
