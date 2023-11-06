@@ -169,7 +169,6 @@ class ExecutionEnv(BaseLOBEnv):
             with open('state_arrays.pkl', 'wb') as f:
                 pickle.dump(self.stateArray_list, f) 
         print("FINISH: pre-reset in the initialization")
-        breakpoint()
 
         #TODO Most of the state space should be exactly the same for the base and exec env, 
         # can we think about keeping the base part seperate from the exec part? 
@@ -193,41 +192,41 @@ class ExecutionEnv(BaseLOBEnv):
         #Obtain the messages for the step from the message data
         # '''
         def reshape_action(action : Dict, state: EnvState, params : EnvParams):
-            def twapV3(state, env_params):
-                # ---------- ifMarketOrder ----------
-                remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-                marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-                ifMarketOrder = (remainingTime <= marketOrderTime)
-                # ---------- ifMarketOrder ----------
-                # ---------- quants ----------
-                remainedQuant = state.task_to_execute - state.quant_executed
-                remainedStep = state.max_steps_in_episode - state.step_counter
-                stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
-                market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
-                quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-                # ---------- quants ----------
-                return jnp.array(quants) 
+            if self.action_type == 'delta':
+                def twapV3(state, env_params):
+                    # ---------- ifMarketOrder ----------
+                    remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+                    marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    ifMarketOrder = (remainingTime <= marketOrderTime)
+                    # ---------- ifMarketOrder ----------
+                    # ---------- quants ----------
+                    remainedQuant = state.task_to_execute - state.quant_executed
+                    remainedStep = state.max_steps_in_episode - state.step_counter
+                    stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
+                    limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
+                    market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
+                    quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
+                    # ---------- quants ----------
+                    return jnp.array(quants) 
+                action_space_clipping = lambda action: jnp.round(action).astype(jnp.int32).clip(-5,5) 
+                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
+            else:
+                action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(0,task_size//5)# clippedAction, CAUTION not clipped by task_size, but task_size//5
+                action_ = action_space_clipping(delta, state.task_to_execute)
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
                 scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
                 scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
                 return scaledAction
-            
-            if self.action_type == 'delta':
-                action_space_clipping = lambda action, task_size: jnp.round((action-0.5)*task_size).astype(jnp.int32)
-                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
-            else:
-                action_space_clipping = lambda action, task_size: jnp.round(action*task_size).astype(jnp.int32).clip(0,task_size)
-                action_ = action_space_clipping(delta, state.task_to_execute)
-            
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
-            # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+            jax.debug.print("action_ {}; action {}",action_,action)
 
             return action
-
+        
         action = reshape_action(delta, state, params)
+        jax.debug.print("action {}",action)
+        # TODO remains bugs in action and it wasn't caused by merging
         
         
         data_messages = job.get_data_messages(params.message_data,state.window_index,state.step_counter)
