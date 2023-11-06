@@ -98,6 +98,7 @@ class ActorCriticS5(nn.Module):
     
         self.action_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
         self.action_body_1 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
+        # self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))
         self.action_decoder = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5))
 
         self.value_body_0 = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))
@@ -110,6 +111,7 @@ class ActorCriticS5(nn.Module):
             n_layers=n_layers,
             activation="half_glu1",
         )
+        # self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
         self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
 
@@ -207,19 +209,19 @@ def make_train(config):
         if config["ANNEAL_LR"]:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(learning_rate=linear_schedule,b1=0.9,b2=0.99, eps=1e-5),
+                optax.adam(learning_rate=linear_schedule, eps=1e-5),
             )
         else:
             tx = optax.chain(
                 optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.adam(config["LR"],b1=0.9,b2=0.99, eps=1e-5),
+                optax.adam(config["LR"], eps=1e-5),
             )
         train_state = TrainState.create(
             apply_fn=network.apply,
             params=network_params,
             tx=tx,
         )
-
+        
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
@@ -502,9 +504,9 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        # "LR": 2.5e-3,
+        "LR": 2.5e-3,
         # "LR": 2.5e-4,
-        "LR": 2.5e-5,
+        # "LR": 2.5e-5,
         # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
         # "ENT_COEF": 0.01,
@@ -534,9 +536,11 @@ if __name__ == "__main__":
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1,
         "DEBUG": True,
-        "ATFOLDER": ".",
+        # "ATFOLDER": ".",
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
         "TASKSIDE":'sell',
-        "REWARD_LAMBDA": 0., #1,
+        "REWARD_LAMBDA":0,
+        # "REWARD_LAMBDA":1,
         "ACTION_TYPE":"pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE":500,

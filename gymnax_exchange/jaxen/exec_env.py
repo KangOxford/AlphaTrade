@@ -11,6 +11,7 @@ import random
 sys.path.append('.')
 import jax
 import jax.numpy as jnp
+
 import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
@@ -30,10 +31,10 @@ chex.assert_gpu_available(backend=None)
 
 # #Code snippet to disable all jitting.
 from jax import config
-config.update("jax_disable_jit", False)
+config.update("jax_disable_jit", False) # use this during training
 # config.update("jax_disable_jit", True)
 # ============== testing scripts ===============
-
+jax.numpy.set_printoptions(linewidth=183)
 
 
 from ast import Dict
@@ -66,14 +67,14 @@ class EnvState:
     init_price:int
     task_to_execute:int
     quant_executed:int
-    total_revenue:int
+    total_revenue:float
     step_counter: int
     max_steps_in_episode: int
     
-    slippage_rm: int
-    price_adv_rm: int
-    price_drift_rm: int
-    vwap_rm: int
+    slippage_rm: float
+    price_adv_rm: float
+    price_drift_rm: float
+    vwap_rm: float
 
 
 @struct.dataclass
@@ -251,7 +252,6 @@ class ExecutionEnv(BaseLOBEnv):
                 remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
                 marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
                 ifMarketOrder = (remainingTime <= marketOrderTime)
-                # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
                 # ---------- ifMarketOrder ----------
                 # ---------- quants ----------
                 remainedQuant = state.task_to_execute - state.quant_executed
@@ -278,6 +278,7 @@ class ExecutionEnv(BaseLOBEnv):
             
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+
             return action
 
         action = reshape_action(delta, state, params)
@@ -287,7 +288,6 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
-        # jax.debug.print("action_msgs {}",action_msgs)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
@@ -298,14 +298,14 @@ class ExecutionEnv(BaseLOBEnv):
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process messages of step (action+data) through the orderbook
+
         # jax.debug.breakpoint()
         asks, bids, trades, bestasks, bestbids = job.scan_through_entire_array_save_bidask(
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
         ) 
-        # jax.debug.print("bestasks {}", bestbids)
-        # jax.debug.breakpoint()
+
         
         # ========== get reward and revenue ==========
         #Gather the 'trades' that are nonempty, make the rest 0
@@ -322,31 +322,33 @@ class ExecutionEnv(BaseLOBEnv):
             return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
         # agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
         new_execution = agentTrades[:,1].sum()
-        revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
+        revenue = (agentTrades[:,0]/self.tick_size * agentTrades[:,1]).sum()
         agentQuant = agentTrades[:,1].sum()
-        vwapFunc = lambda executed: (executed[:,0]//self.tick_size* executed[:,1]).sum()//(executed[:,1]).sum()
+        vwapFunc = lambda executed: (executed[:,0]/self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
         rollingMeanValueFunc_FLOAT = lambda average_price,new_price:(average_price*state.step_counter+new_price)/(state.step_counter+1)
-        rollingMeanValueFunc_INT = lambda average_price,new_price:((average_price*state.step_counter+new_price)/(state.step_counter+1)).astype(jnp.int32)
-        vwap_rm = rollingMeanValueFunc_INT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
+        vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
 
         #TODO VWAP price (vwap) is only over all trades in between steps. 
         advantage = revenue - vwap_rm * agentQuant ### (weightedavgtradeprice-vwap)*agentQuant ### revenue = weightedavgtradeprice*agentQuant
         rewardLambda = self.rewardLambda
-        drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
-        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
-        price_adv_rm = rollingMeanValueFunc_INT(state.price_adv_rm,revenue//agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        slippage_rm = rollingMeanValueFunc_INT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
-        price_drift_rm = rollingMeanValueFunc_INT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
         # ---------- compute the final reward ----------
+
         # rewardValue = advantage + rewardLambda * drift
         # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
-        rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
-        # rewardValue = advantage + rewardLambda * drift
+        # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+        rewardValue = advantage + rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- normalize the reward ----------
         reward /= 10000
+
         # reward /= params.avg_twap_list[state.window_index]
+        
+        # ---------- used for slippage, price_drift, and  RM(rolling mean) ----------
+        price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price/self.tick_size*agentQuant)
+        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price/self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
@@ -374,6 +376,7 @@ class ExecutionEnv(BaseLOBEnv):
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
         # jax.debug.breakpoint()
+
         done = self.is_terminal(state, params)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
@@ -401,7 +404,7 @@ class ExecutionEnv(BaseLOBEnv):
     #     # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
     #     # one window can be reached
     
-    
+
     def reset_env(
         self, key : chex.PRNGKey, params: EnvParams, reset_window_index = -999
         ) -> Tuple[chex.Array, EnvState]:
@@ -411,25 +414,27 @@ class ExecutionEnv(BaseLOBEnv):
         window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
         '''if -999 use default static index, else use provided dynamic index'''
         
+
         idx_data_window = jnp.where(
             window_index == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(window_index, dtype=jnp.int32)
         )
+
         
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0,0)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
+            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0.0, 0.0, 0.0, 0.0)
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
-        # print(self.max_steps_in_episode_arr[idx_data_window])
-        # jax.debug.breakpoint()
         obs_sell = params.obs_sell_list[idx_data_window]
         obs_buy = params.obs_buy_list[idx_data_window]
         state = EnvState(*state_)
+
         # jax.debug.print("state after reset {}", state)
         # obs = obs_sell if self.task == "sell" else obs_buy
         obs = self.get_obs(state, params)
@@ -505,6 +510,7 @@ class ExecutionEnv(BaseLOBEnv):
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
+
         # NOTE: currently only uses most recent observation from state
         quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
         quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
@@ -568,6 +574,7 @@ class ExecutionEnv(BaseLOBEnv):
             }
             obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
             return obs
+
 
         obs = normalize_obs(obs)
         # jax.debug.print("obs {}", obs)
@@ -657,16 +664,16 @@ if __name__ == "__main__":
     for i in range(1,100000):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
-        # print("-"*20)
+        print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
         # test_action=env.action_space().sample(key_policy)
         test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
-        # print(f"Sampled {i}th actions are: ",test_action)
+        print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
         obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-        # for key, value in info.items():
-        #     print(key, value)
+        for key, value in info.items():
+            print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
