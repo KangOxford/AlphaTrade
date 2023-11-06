@@ -93,15 +93,15 @@ class EnvParams:
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, alphatradePath, randomize_direction, window_index, action_type,
+            self, alphatradePath, task, window_index, action_type,
             task_size = 500, rewardLambda=0.0, Gamma=0.00
         ):
         super().__init__(alphatradePath)
         #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
-        # self.task = task
-        self.randomize_direction = randomize_direction
+        self.task = task
+        # self.randomize_direction = randomize_direction
         self.window_index = window_index
         self.action_type = action_type
         self.rewardLambda = rewardLambda
@@ -119,7 +119,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,200, 20
+        nOrdersPerSide, nTradesLogged, tick_size,stepLines,task_size,n_ticks_in_book = self.nOrdersPerSide, self.nTradesLogged, self.tick_size,self.stepLines,self.task_size,self.n_ticks_in_book
         def get_state(message_data, book_data,max_steps_in_episode):
             time=jnp.array(message_data[0,0,-2:])
             #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
@@ -423,10 +423,6 @@ class ExecutionEnv(BaseLOBEnv):
             return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0,0)
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
             # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
-        key_, key = jax.random.split(key)
-        if self.randomize_direction:
-            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
-            params = dataclasses.replace(params, is_buy_task=direction)
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         # print(self.max_steps_in_episode_arr[idx_data_window])
@@ -438,7 +434,7 @@ class ExecutionEnv(BaseLOBEnv):
         obs = obs_sell if self.task == "sell" else obs_buy
         # obs = self.get_obs(state, params)
         return obs,state
-
+    
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (
@@ -459,8 +455,8 @@ class ExecutionEnv(BaseLOBEnv):
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
         types=jnp.ones((self.n_actions,),jnp.int32)
-        # sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        sides = (params.is_buy_task*2 - 1) * jnp.ones((self.n_actions,),jnp.int32)
+        sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
+        # sides = (params.is_buy_task*2 - 1) * jnp.ones((self.n_actions,),jnp.int32)
         trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
         times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
@@ -471,16 +467,16 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-        # FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
-        NT, FT, PP, MKT = jax.lax.cond(
-            params.is_buy_task,
-            lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT),
-            lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0)
-        )
+        # NT, FT, PP, MKT = jax.lax.cond(
+        #     params.is_buy_task,
+        #     lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT),
+        #     lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0)
+        # )
+        FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
         M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size # Mid price
-        # NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
-        # PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
-        # MKT = 0 if self.task=='sell' else job.MAX_INT
+        NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
+        PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
+        MKT = 0 if self.task=='sell' else job.MAX_INT
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -510,22 +506,18 @@ class ExecutionEnv(BaseLOBEnv):
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # NOTE: currently only uses most recent observation from state
-        # quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
-        # quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
-        quote_aggr, quote_pass = jax.lax.cond(
-            params.is_buy_task,
-            lambda: (state.best_asks[-1], state.best_bids[-1]),
-            lambda: (state.best_bids[-1], state.best_asks[-1])
-        )
+        quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
+        quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
         obs = {
-            # "is_buy_task": 0. if self.task=='sell' else 1.,
-            "is_buy_task": params.is_buy_task,
+            # "is_buy_task": params.is_buy_task,
             "p_aggr": quote_aggr[0],
             "p_pass": quote_pass[0],
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
             "q_aggr": quote_aggr[1],
             "q_pass": quote_pass[1],
             # TODO: add "q_pass2" as passive quantity to state in step_env and here
+            # second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
+            # our second passive is not the exact second passive in the orderbook, but 
             "time": state.time,
             "episode_time": state.time - state.init_time,
             "init_price": state.init_price,
@@ -535,7 +527,7 @@ class ExecutionEnv(BaseLOBEnv):
             "max_steps": state.max_steps_in_episode,
         }
 
-        def normalize_obs(obs: dict[str, jax.Array]):
+        def normalize_obs(obs: Dict[str, jax.Array]):
             """ normalized observation by substracting 'mean' and dividing by 'std'
                 (config values don't need to be actual mean and std)
             """
