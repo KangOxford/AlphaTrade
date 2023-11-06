@@ -51,8 +51,15 @@ MAX_INT = 2_147_483_647  # max 32 bit int
 ############### ADD AND REMOVE ###############
 @jax.jit
 def add_order(orderside: chex.Array, msg: dict) -> chex.Array :
-    """Low level function that will add an order (Dict)
-      to the orderbook (Array) and return the updated"""
+    """Adds an order to a given side of the orderbook. 
+    Will not add negative quantities to the book. 
+        Parameters:
+                orderside (Array): Array representing bid or ask side
+                msg (dict): Message with data of order to add
+
+        Returns:
+                orderside (Array): Side of orderbook with added order 
+    """
     emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
     orderside=orderside.at[emptyidx,:]\
                         .set(jnp.array([
@@ -67,26 +74,36 @@ def add_order(orderside: chex.Array, msg: dict) -> chex.Array :
 
 @jax.jit
 def _removeZeroNegQuant(orderside):
-    return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),x=(jnp.ones(orderside.shape)*-1).astype(jnp.int32),y=orderside)
+    """Remove any orders where quant is leq to 0"""
+    return jnp.where((orderside[:,1]<=0).reshape((orderside.shape[0],1)),
+                        x=(jnp.ones(orderside.shape)*-1).astype(jnp.int32),
+                        y=orderside)
 
-
-# @jax.jit
-# def cancel_order(orderside,msg):
-#     # jax.debug.breakpoint()
-#     condition=((orderside[:,2]==msg['orderid']) | ((orderside[:,0]==msg['price']) & (orderside[:,2]<=-9000)))
-#     idx=jnp.where(condition,size=1,fill_value=-1)[0]
-#     orderside=orderside.at[idx,1].set(orderside[idx,1]-msg['quantity'])
-#     return _removeZeroNegQuant(orderside)
 
 @jax.jit
 def cancel_order(orderside, msg):
+    """Removes quantity of an order from a given side of the orderbook.
+    If the resulting order has a remaining quantity of 0 or less it is
+    removed entirely. 
+    Identifies orders to cancel based on a matching order ID. If there
+    is no matching ID, an initial order may also be cancelled provided 
+    the price matches. 
+
+        Parameters:
+                orderside (Array): Array representing bid or ask side
+                msg (dict): Message identifying order to cancel
+
+        Returns:
+                orderside (Array): Orderbook side with cancelled order
+    """
     def get_init_id_match(orderside, msg):
+        """Function to check match of an initial message. Used only 
+        if the order ID of the message does not match with an 
+        existing order. 
+        """
         init_id_match = ((orderside[:, 0] == msg['price']) & (orderside[:, 2] <= INITID))
         idx = jnp.where(init_id_match, size=1, fill_value=-1)[0][0]
         return idx
-
-    # jax.debug.breakpoint()
-    # TODO: also check for price here?
     oid_match = (orderside[:, 2] == msg['orderid'])
     idx = jnp.where(oid_match, size=1, fill_value=-1)[0][0]
     idx = jax.lax.cond(idx == -1, get_init_id_match, lambda a, b: idx, orderside, msg)
@@ -96,6 +113,7 @@ def cancel_order(orderside, msg):
 ############### MATCHING FUNCTIONS ###############
 @jax.jit
 def _match_bid_order(data_tuple):
+    """"""
     return _get_top_bid_order_idx(data_tuple[1]), *match_order(data_tuple)
 
 @jax.jit
