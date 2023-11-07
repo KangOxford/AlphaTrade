@@ -108,6 +108,7 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.Dense(
             128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
         )(obs)
+        # jax.debug.print("embedding shape {}", embedding.shape)
         embedding = nn.LayerNorm()(embedding)
         embedding = nn.relu(embedding)
 

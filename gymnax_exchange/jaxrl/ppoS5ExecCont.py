@@ -33,8 +33,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
     
@@ -118,20 +118,21 @@ class ActorCriticS5(nn.Module):
     def __call__(self, hidden, x):
         obs, dones = x
         embedding = self.encoder_0(obs)
+        embedding = nn.LayerNorm()(embedding)
         embedding = nn.leaky_relu(embedding)
         embedding = self.encoder_1(embedding)
+        embedding = nn.LayerNorm()(embedding)
+        # jax.debug.print("embedding shape {}", embedding.shape)
         embedding = nn.leaky_relu(embedding)
-        # embedding = nn.LayerNorm(embedding)
 
         hidden, embedding = self.s5(hidden, embedding, dones)
-        # embedding = nn.LayerNorm(embedding)
+        embedding = nn.LayerNorm()(embedding)
 
         actor_mean = self.action_body_0(embedding)
-        # actor_mean = nn.LayerNorm(actor_mean)
+        actor_mean = nn.LayerNorm()(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
-        
         actor_mean = self.action_body_1(actor_mean)
-        # actor_mean = nn.LayerNorm(actor_mean)
+        actor_mean = nn.LayerNorm()(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
         
         actor_mean = self.action_decoder(actor_mean)
@@ -144,8 +145,10 @@ class ActorCriticS5(nn.Module):
         #New version ^^
 
         critic = self.value_body_0(embedding)
+        critic = nn.LayerNorm()(critic)
         critic = nn.leaky_relu(critic)
         critic = self.value_body_1(critic)
+        critic = nn.LayerNorm()(critic)
         critic = nn.leaky_relu(critic)
         critic = self.value_decoder(critic)
 
@@ -574,11 +577,14 @@ if __name__ == "__main__":
         
 
 
-
     # device = jax.devices()[0]
-    device = jax.devices()[1]
-    # device = jax.devices()[-1]
+    # device = jax.devices()[1]
+    device = jax.devices()[-1]
     print("Training on device: ", device)
+    from rich.console import Console
+    console = Console()
+    console.print(f"Training on device: [bold cyan]{device}[/bold cyan]")
+    
     rng = jax.device_put(jax.random.PRNGKey(0), device)
     train_jit = jax.jit(make_train(ppo_config), device=device)
     out = train_jit(rng)
