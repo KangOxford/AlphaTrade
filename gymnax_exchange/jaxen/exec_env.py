@@ -213,6 +213,7 @@ class ExecutionEnv(BaseLOBEnv):
                     market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
                     quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                     # ---------- quants ----------
+                    # jax.debug.breakpoint()
                     return jnp.array(quants) 
                 action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(-1*task_size//100,task_size//100) 
                 action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
@@ -223,7 +224,13 @@ class ExecutionEnv(BaseLOBEnv):
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
                 scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
-                scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
+                '''
+                # scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
+                Otherwise, if scaledAction is [0,0,0,0] and the task is 100, then the transformed scaledAction would be [100,0,0,0]
+                 jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction) is needed
+                 as in some cases, all the four quants is very small and might be scaled back to 0, making the task never finish.
+                '''
+                scaledAction = jnp.where((jnp.sum(scaledAction) == 0) & (remainQuant <= self.task_size // 100), jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             # jax.debug.print("action_ {}; action {}",action_,action)
@@ -266,22 +273,23 @@ class ExecutionEnv(BaseLOBEnv):
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         agentQuant = agentTrades[:,1].sum() # new_execution quants
         # ---------- used for vwap, revenue ----------
-        vwapFunc = lambda executed: jnp.nan_to_num((executed[:,0]/self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum(),0.0) # caution: this value can be zero (executed[:,1]).sum()
+        vwapFunc = lambda executed: jnp.nan_to_num((executed[:,0]//self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum(),0.0) # caution: this value can be zero (executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
-        revenue = (agentTrades[:,0]/self.tick_size * agentTrades[:,1]).sum()
+        revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_price,new_price:(average_price*state.step_counter+new_price)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
         price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price/self.tick_size*agentQuant)
-        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price/self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
+        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- used for advantage and drift ----------
         advantage = revenue - vwap * agentQuant # advantage_vwap
-        drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
+        drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
         # rewardValue = revenue 
+        rewardValue =  advantage
         # rewardValue = advantage + self.rewardLambda * drift
-        rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- normalize the reward ----------
@@ -332,17 +340,6 @@ class ExecutionEnv(BaseLOBEnv):
             "vwap_rm": state.vwap_rm,
             "advantage_reward": advantage,
         }
-
-
-    # def reset_env(
-    #     self, key: chex.PRNGKey, params: EnvParams
-    #     ) -> Tuple[chex.Array, EnvState]:
-    #     """Reset environment state by sampling initial position in OB."""
-    #     # all windows can be reached
-        
-    #     idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()) if self.window_index == -1 else jnp.array(self.window_index,dtype=jnp.int32)
-    #     # idx_data_window = jnp.array(self.window_index,dtype=jnp.int32)
-    #     # one window can be reached
     
 
     def reset_env(
@@ -583,7 +580,7 @@ if __name__ == "__main__":
     config = {
         "ATFOLDER": ATFolder,
         "TASKSIDE": "sell",
-        "TASK_SIZE": 500,
+        "TASK_SIZE": 100, # 500,
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "delta", # "pure",
         "REWARD_LAMBDA": 1.0,

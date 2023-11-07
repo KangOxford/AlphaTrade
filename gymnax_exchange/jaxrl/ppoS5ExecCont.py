@@ -4,6 +4,7 @@
 import os
 import sys
 import time
+import socket
 
 import chex
 import flax
@@ -111,8 +112,8 @@ class ActorCriticS5(nn.Module):
             n_layers=n_layers,
             activation="half_glu1",
         )
-        # self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-        self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
+        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        # self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
     @nn.compact
     def __call__(self, hidden, x):
@@ -503,32 +504,16 @@ def make_train(config):
     
 
 if __name__ == "__main__":
-    # try:
-    #     ATFolder = sys.argv[1] 
-    # except:
-    #     ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-    #     # ATFolder = '/homes/80/kang/AlphaTrade'
-    #     # ATFolder = '/home/duser/AlphaTrade'
-    # print("AlphaTrade folder:",ATFolder)
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
-
     ppo_config = {
         "LR": 2.5e-3,
-        # "LR": 2.5e-4,
-        # "LR": 2.5e-5,
-        # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
-        # "ENT_COEF": 0.01,
-        "NUM_ENVS": 500,
+        "NUM_ENVS": 100, # 500,
         "TOTAL_TIMESTEPS": 1e8,
-        # "TOTAL_TIMESTEPS": 1e7,
-        # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
         # "NUM_MINIBATCHES": 4,
-        "UPDATE_EPOCHS": 5,
-        # "UPDATE_EPOCHS": 4,
-        "NUM_STEPS": 100, #455,
-        # "NUM_STEPS": 10,
+        "UPDATE_EPOCHS": 30,
+        "NUM_STEPS": 200, #455,
         "CLIP_EPS": 0.2,
         # "CLIP_EPS": 0.2,
         
@@ -555,6 +540,7 @@ if __name__ == "__main__":
         "TASK_SIZE":500,
         "RESULTS_FILE":"./results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR":"./checkpoints_"+f"{timestamp}",
+        "DOCKER_CONTAINER_NAME": socket.gethostname(), # container_id
     }
 
     if wandbOn:
@@ -577,9 +563,9 @@ if __name__ == "__main__":
         
 
 
-    device = jax.devices()[0]
+    # device = jax.devices()[0]
     # device = jax.devices()[1]
-    # device = jax.devices()[-1]
+    device = jax.devices()[-1]
     from rich.console import Console
     console = Console()
     console.print(f"Training on device: [bold cyan]{device}[/bold cyan]")
