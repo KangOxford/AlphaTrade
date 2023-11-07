@@ -121,13 +121,19 @@ class ActorCriticS5(nn.Module):
         embedding = nn.leaky_relu(embedding)
         embedding = self.encoder_1(embedding)
         embedding = nn.leaky_relu(embedding)
+        embedding = nn.LayerNorm(embedding)
 
         hidden, embedding = self.s5(hidden, embedding, dones)
+        embedding = nn.LayerNorm(embedding)
 
         actor_mean = self.action_body_0(embedding)
+        actor_mean = nn.LayerNorm(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
+        
         actor_mean = self.action_body_1(actor_mean)
+        actor_mean = nn.LayerNorm(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
+        
         actor_mean = self.action_decoder(actor_mean)
 
 

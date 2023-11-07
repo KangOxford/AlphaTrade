@@ -263,38 +263,28 @@ class ExecutionEnv(BaseLOBEnv):
 
         
         # ========== get reward and revenue ==========
-        #Gather the 'trades' that are nonempty, make the rest 0
+        # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
-        #Mask to keep only the trades where the RL agent is involved, apply mask.
+        # Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-        #TODO: Is this truncation still needed given the action quantities will always < remaining exec quant?
-        def truncate_agent_trades(agentTrades, remainQuant):
-            quantities = agentTrades[:, 1]
-            cumsum_quantities = jnp.cumsum(quantities)
-            cut_idx = jnp.argmax(cumsum_quantities >= remainQuant)
-            truncated_agentTrades = jnp.where(jnp.arange(len(quantities))[:, jnp.newaxis] > cut_idx, jnp.zeros_like(agentTrades[0]), agentTrades.at[:, 1].set(jnp.where(jnp.arange(len(quantities)) < cut_idx, quantities, jnp.where(jnp.arange(len(quantities)) == cut_idx, remainQuant - cumsum_quantities[cut_idx - 1], 0))))
-            return jnp.where(remainQuant >= jnp.sum(quantities), agentTrades, jnp.where(remainQuant <= quantities[0], jnp.zeros_like(agentTrades).at[0, :].set(agentTrades[0]).at[0, 1].set(remainQuant), truncated_agentTrades))
-        # agentTrades = truncate_agent_trades(agentTrades, state.task_to_execute-state.quant_executed)
-        new_execution = agentTrades[:,1].sum()
-        revenue = (agentTrades[:,0]/self.tick_size * agentTrades[:,1]).sum()
-        agentQuant = agentTrades[:,1].sum()
+        agentQuant = agentTrades[:,1].sum() # new_execution quants
+        # ---------- used for vwap, revenue ----------
         vwapFunc = lambda executed: jnp.nan_to_num((executed[:,0]/self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum(),0.0) # caution: this value can be zero (executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
-        advantage = revenue - vwap * agentQuant # advantage_vwap
-        #TODO VWAP price (vwap) is only over all trades in between steps. 
-        # ·········· used for slippage, price_drift, and  RM(rolling mean) ··········
+        revenue = (agentTrades[:,0]/self.tick_size * agentTrades[:,1]).sum()
+        # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_price,new_price:(average_price*state.step_counter+new_price)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
         price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
         slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price/self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price/self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
-        # ·········· used for slippage, price_drift, and  RM(rolling mean) ··········
+        # ---------- used for advantage and drift ----------
+        advantage = revenue - vwap * agentQuant # advantage_vwap
         drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
         # ---------- compute the final reward ----------
-        
-        # rewardValue = revenue 
-        rewardValue = advantage + self.rewardLambda * drift
+        rewardValue = revenue 
+        # rewardValue = advantage + self.rewardLambda * drift
         # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
@@ -302,6 +292,7 @@ class ExecutionEnv(BaseLOBEnv):
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
         # ========== get reward and revenue END ==========
+        
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         def bestPircesImpute(bestprices,lastBestPrice):
@@ -322,7 +313,7 @@ class ExecutionEnv(BaseLOBEnv):
         state = EnvState(
             asks, bids, trades, bestasks, bestbids,
             state.init_time, time, state.customIDcounter + self.n_actions, state.window_index,
-            state.init_price, state.task_to_execute, state.quant_executed + new_execution,
+            state.init_price, state.task_to_execute, state.quant_executed + agentQuant,
             state.total_revenue + revenue, state.step_counter + 1,
             state.max_steps_in_episode,
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
@@ -330,6 +321,7 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
 
         done = self.is_terminal(state, params)
+        jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
             "total_revenue": state.total_revenue,
@@ -589,7 +581,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE": "sell",
         "TASK_SIZE": 500,
-        "WINDOW_INDEX": 2,
+        "WINDOW_INDEX": -1,
         "ACTION_TYPE": "pure",
         "REWARD_LAMBDA": 1.0,
     }
@@ -614,8 +606,9 @@ if __name__ == "__main__":
         # ---------- acion from random sampling ----------
         print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
+        key_step, _ =  jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
+        test_action=env.action_space().sample(key_policy)
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
