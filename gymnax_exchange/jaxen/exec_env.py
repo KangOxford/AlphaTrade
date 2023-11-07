@@ -20,14 +20,10 @@ import chex
 import faulthandler
 faulthandler.enable()
 
-print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
-chex.assert_gpu_available(backend=None)
-
-
 # from jax import config
 # config.update('jax_platform_name', 'cpu')
-# print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
-
+print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+chex.assert_gpu_available(backend=None)
 
 # #Code snippet to disable all jitting.
 from jax import config
@@ -283,9 +279,9 @@ class ExecutionEnv(BaseLOBEnv):
         advantage = revenue - vwap * agentQuant # advantage_vwap
         drift = agentQuant * (vwap_rm - state.init_price/self.tick_size)
         # ---------- compute the final reward ----------
-        rewardValue = revenue 
+        # rewardValue = revenue 
         # rewardValue = advantage + self.rewardLambda * drift
-        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- normalize the reward ----------
@@ -321,13 +317,13 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.breakpoint()
 
         done = self.is_terminal(state, params)
-        jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
+        # jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
             "total_revenue": state.total_revenue,
             "quant_executed": state.quant_executed,
             "task_to_execute": state.task_to_execute,
-            "average_price": state.total_revenue / state.quant_executed,
+            "average_price": jnp.nan_to_num(state.total_revenue / state.quant_executed, 0.0),
             "current_step": state.step_counter,
             'done': done,
             'slippage_rm': state.slippage_rm,

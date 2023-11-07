@@ -23,7 +23,7 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from jax import config
 # config.update('jax_platform_name', 'cpu')
-print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+# print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
@@ -33,8 +33,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-# wandbOn = True
-wandbOn = False
+wandbOn = True
+# wandbOn = False
 if wandbOn:
     import wandb
     
@@ -114,24 +114,24 @@ class ActorCriticS5(nn.Module):
         # self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
         self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
-
+    @nn.compact
     def __call__(self, hidden, x):
         obs, dones = x
         embedding = self.encoder_0(obs)
         embedding = nn.leaky_relu(embedding)
         embedding = self.encoder_1(embedding)
         embedding = nn.leaky_relu(embedding)
-        embedding = nn.LayerNorm(embedding)
+        # embedding = nn.LayerNorm(embedding)
 
         hidden, embedding = self.s5(hidden, embedding, dones)
-        embedding = nn.LayerNorm(embedding)
+        # embedding = nn.LayerNorm(embedding)
 
         actor_mean = self.action_body_0(embedding)
-        actor_mean = nn.LayerNorm(actor_mean)
+        # actor_mean = nn.LayerNorm(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
         
         actor_mean = self.action_body_1(actor_mean)
-        actor_mean = nn.LayerNorm(actor_mean)
+        # actor_mean = nn.LayerNorm(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
         
         actor_mean = self.action_decoder(actor_mean)
@@ -524,7 +524,7 @@ if __name__ == "__main__":
         # "NUM_MINIBATCHES": 4,
         "UPDATE_EPOCHS": 5,
         # "UPDATE_EPOCHS": 4,
-        "NUM_STEPS": 455,
+        "NUM_STEPS": 100, #455,
         # "NUM_STEPS": 10,
         "CLIP_EPS": 0.2,
         # "CLIP_EPS": 0.2,
@@ -539,16 +539,16 @@ if __name__ == "__main__":
         "ACTOR_TYPE":"S5",
         
         "ENV_NAME": "alphatradeExec-v0",
-        # "WINDOW_INDEX": 0,
-        "WINDOW_INDEX": -1,
+        "WINDOW_INDEX": 0,
+        # "WINDOW_INDEX": -1,
         "DEBUG": True,
         # "ATFOLDER": ".",
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA":0,
         # "REWARD_LAMBDA":1,
-        "ACTION_TYPE":"pure",
-        # "ACTION_TYPE":"delta",
+        # "ACTION_TYPE":"pure",
+        "ACTION_TYPE":"delta",
         "TASK_SIZE":500,
         "RESULTS_FILE":"./results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR":"./checkpoints_"+f"{timestamp}",
@@ -560,7 +560,12 @@ if __name__ == "__main__":
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
+            # settings=wandb.Settings(code_dir="~/AlphaTrade/gymnax_exchange/")
         )
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxen/base_env.py")
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxen/exec_env.py")
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/ppoS5ExecCont.py")
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/ppoRnnExecCont.py")
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
     else:
@@ -570,9 +575,10 @@ if __name__ == "__main__":
 
 
 
-    device = jax.devices()[0]
-    # device = jax.devices()[1]
+    # device = jax.devices()[0]
+    device = jax.devices()[1]
     # device = jax.devices()[-1]
+    print("Training on device: ", device)
     rng = jax.device_put(jax.random.PRNGKey(0), device)
     train_jit = jax.jit(make_train(ppo_config), device=device)
     out = train_jit(rng)
