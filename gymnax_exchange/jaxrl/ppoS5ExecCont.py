@@ -33,8 +33,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-# wandbOn = True
-wandbOn = False
+wandbOn = True 
+# wandbOn = False
 if wandbOn:
     import wandb
     
@@ -577,10 +577,9 @@ if __name__ == "__main__":
         
 
 
-    # device = jax.devices()[0]
+    device = jax.devices()[0]
     # device = jax.devices()[1]
-    device = jax.devices()[-1]
-    print("Training on device: ", device)
+    # device = jax.devices()[-1]
     from rich.console import Console
     console = Console()
     console.print(f"Training on device: [bold cyan]{device}[/bold cyan]")

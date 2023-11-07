@@ -201,7 +201,7 @@ class ExecutionEnv(BaseLOBEnv):
                     # ifMarketOrder = (remainingTime <= marketOrderTime)
                     # ·········· ifMarketOrder determined by steps ··········
                     remainingSteps = state.max_steps_in_episode - state.step_counter 
-                    marketOrderSteps = jnp.array(3, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in seconds, means the last minute was left for market order
                     ifMarketOrder = (remainingSteps <= marketOrderSteps)
                     # ---------- ifMarketOrder END ----------
                     # ---------- quants ----------
@@ -213,7 +213,6 @@ class ExecutionEnv(BaseLOBEnv):
                     market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
                     quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                     # ---------- quants ----------
-                    jax.debug.breakpoint()
                     return jnp.array(quants) 
                 action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(-1*task_size//100,task_size//100) 
                 action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
@@ -429,7 +428,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ifMarketOrder = (remainingTime <= marketOrderTime)
         # ·········· ifMarketOrder determined by steps ··········
         remainingSteps = state.max_steps_in_episode - state.step_counter 
-        marketOrderSteps = jnp.array(3, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+        marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in steps, means the last minute was left for market order
         ifMarketOrder = (remainingSteps <= marketOrderSteps)
         # ---------- ifMarketOrder END ----------
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
