@@ -118,7 +118,6 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        print(alphatradePath.split("/"))
         pkl_file_name = alphatradePath+'state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
         print("pre-reset will be saved to ",pkl_file_name)
         try:
@@ -200,10 +199,14 @@ class ExecutionEnv(BaseLOBEnv):
             if self.action_type == 'delta':
                 def twapV3(state, env_params):
                     # ---------- ifMarketOrder ----------
-                    remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-                    marketOrderTime = jnp.array(10, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    # ·········· ifMarketOrder determined by time ··········
+                    # remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
                     # marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-                    ifMarketOrder = (remainingTime <= marketOrderTime)
+                    # ifMarketOrder = (remainingTime <= marketOrderTime)
+                    # ·········· ifMarketOrder determined by steps ··········
+                    remainingSteps = state.max_steps_in_episode - state.step_counter 
+                    marketOrderSteps = jnp.array(3, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    ifMarketOrder = (remainingSteps <= marketOrderSteps)
                     # ---------- ifMarketOrder ----------
                     # ---------- quants ----------
                     remainedQuant = state.task_to_execute - state.quant_executed
@@ -215,8 +218,8 @@ class ExecutionEnv(BaseLOBEnv):
                     quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                     # ---------- quants ----------
                     return jnp.array(quants) 
-                action_space_clipping = lambda action: jnp.round(action).astype(jnp.int32).clip(-5,5) 
-                action_ = twapV3(state, params) + action_space_clipping(delta)
+                action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(-1*task_size//100,task_size//100) 
+                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
             else:
                 action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(0,task_size//5)# clippedAction, CAUTION not clipped by task_size, but task_size//5
                 action_ = action_space_clipping(delta, state.task_to_execute)

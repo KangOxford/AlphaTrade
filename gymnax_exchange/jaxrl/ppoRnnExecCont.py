@@ -36,8 +36,8 @@ jax.numpy.set_printoptions(linewidth=250)
 
 
 
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
 
