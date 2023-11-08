@@ -252,7 +252,7 @@ class ExecutionEnv(BaseLOBEnv):
                  jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction) is needed
                  as in some cases, all the four quants is very small and might be scaled back to 0, making the task never finish.
                 '''
-                scaledAction = jnp.where((jnp.sum(scaledAction) == 0) & (remainQuant <= self.task_size // 100), jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
+                scaledAction = jnp.where((jnp.sum(scaledAction) == 0) & (action.sum() != 0), jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
                 
                 
                 return scaledAction
