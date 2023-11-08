@@ -36,8 +36,8 @@ jax.numpy.set_printoptions(linewidth=250)
 
 
 
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
 
@@ -108,6 +108,7 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.Dense(
             128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
         )(obs)
+        # jax.debug.print("embedding shape {}", embedding.shape)
         embedding = nn.LayerNorm()(embedding)
         embedding = nn.relu(embedding)
 
@@ -560,7 +561,7 @@ if __name__ == "__main__":
         "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
-        "NUM_ENVS": 1024, #128, #64, 1000,
+        "NUM_ENVS": 128, #1024, #128, #64, 1000,
         "TOTAL_TIMESTEPS": 1e8,  # 6.9h
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,

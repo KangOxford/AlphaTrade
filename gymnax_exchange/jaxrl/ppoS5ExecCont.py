@@ -4,6 +4,7 @@
 import os
 import sys
 import time
+import socket
 
 import chex
 import flax
@@ -23,7 +24,7 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from jax import config
 # config.update('jax_platform_name', 'cpu')
-print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+# print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 
@@ -33,8 +34,8 @@ config.update("jax_disable_jit", False)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
 import datetime
-# wandbOn = True
-wandbOn = False
+wandbOn = True 
+# wandbOn = False
 if wandbOn:
     import wandb
     
@@ -111,23 +112,30 @@ class ActorCriticS5(nn.Module):
             n_layers=n_layers,
             activation="half_glu1",
         )
-        # self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
-        self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
+        self.actor_logtstd = self.param("log_std", nn.initializers.zeros, (self.action_dim,))
+        # self.actor_logtstd = self.param("log_std", nn.initializers.constant(-0.7), (self.action_dim,))
 
-
+    @nn.compact
     def __call__(self, hidden, x):
         obs, dones = x
         embedding = self.encoder_0(obs)
+        embedding = nn.LayerNorm()(embedding)
         embedding = nn.leaky_relu(embedding)
         embedding = self.encoder_1(embedding)
+        embedding = nn.LayerNorm()(embedding)
+        # jax.debug.print("embedding shape {}", embedding.shape)
         embedding = nn.leaky_relu(embedding)
 
         hidden, embedding = self.s5(hidden, embedding, dones)
+        embedding = nn.LayerNorm()(embedding)
 
         actor_mean = self.action_body_0(embedding)
+        actor_mean = nn.LayerNorm()(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
         actor_mean = self.action_body_1(actor_mean)
+        actor_mean = nn.LayerNorm()(actor_mean)
         actor_mean = nn.leaky_relu(actor_mean)
+        
         actor_mean = self.action_decoder(actor_mean)
 
 
@@ -138,8 +146,10 @@ class ActorCriticS5(nn.Module):
         #New version ^^
 
         critic = self.value_body_0(embedding)
+        critic = nn.LayerNorm()(critic)
         critic = nn.leaky_relu(critic)
         critic = self.value_body_1(critic)
+        critic = nn.LayerNorm()(critic)
         critic = nn.leaky_relu(critic)
         critic = self.value_decoder(critic)
 
@@ -494,32 +504,16 @@ def make_train(config):
     
 
 if __name__ == "__main__":
-    # try:
-    #     ATFolder = sys.argv[1] 
-    # except:
-    #     ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-    #     # ATFolder = '/homes/80/kang/AlphaTrade'
-    #     # ATFolder = '/home/duser/AlphaTrade'
-    # print("AlphaTrade folder:",ATFolder)
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
-
     ppo_config = {
         "LR": 2.5e-3,
-        # "LR": 2.5e-4,
-        # "LR": 2.5e-5,
-        # "LR": 2.5e-6,
         "ENT_COEF": 0.1,
-        # "ENT_COEF": 0.01,
-        "NUM_ENVS": 500,
+        "NUM_ENVS": 100, # 500,
         "TOTAL_TIMESTEPS": 1e8,
-        # "TOTAL_TIMESTEPS": 1e7,
-        # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 2,
         # "NUM_MINIBATCHES": 4,
-        "UPDATE_EPOCHS": 5,
-        # "UPDATE_EPOCHS": 4,
-        "NUM_STEPS": 455,
-        # "NUM_STEPS": 10,
+        "UPDATE_EPOCHS": 30,
+        "NUM_STEPS": 200, #455,
         "CLIP_EPS": 0.2,
         # "CLIP_EPS": 0.2,
         
@@ -533,19 +527,20 @@ if __name__ == "__main__":
         "ACTOR_TYPE":"S5",
         
         "ENV_NAME": "alphatradeExec-v0",
-        # "WINDOW_INDEX": 0,
-        "WINDOW_INDEX": -1,
+        "WINDOW_INDEX": 0,
+        # "WINDOW_INDEX": -1,
         "DEBUG": True,
         # "ATFOLDER": ".",
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay",
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA":0,
         # "REWARD_LAMBDA":1,
-        "ACTION_TYPE":"pure",
-        # "ACTION_TYPE":"delta",
-        "TASK_SIZE":500,
+        # "ACTION_TYPE":"pure",
+        "ACTION_TYPE":"delta",
+        "TASK_SIZE": 100, # 500,
         "RESULTS_FILE":"./results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR":"./checkpoints_"+f"{timestamp}",
+        "DOCKER_CONTAINER_NAME": socket.gethostname(), # container_id
     }
 
     if wandbOn:
@@ -554,7 +549,12 @@ if __name__ == "__main__":
             config=ppo_config,
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=True,  # optional
+            # settings=wandb.Settings(code_dir="~/AlphaTrade/gymnax_exchange/")
         )
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxen/base_env.py")
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxen/exec_env.py")
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/ppoS5ExecCont.py")
+        wandb.save("/homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/ppoRnnExecCont.py")
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
         print(f"Results would be saved to {params_file_name}")
     else:
@@ -563,10 +563,13 @@ if __name__ == "__main__":
         
 
 
-
-    device = jax.devices()[0]
+    # device = jax.devices()[0]
     # device = jax.devices()[1]
-    # device = jax.devices()[-1]
+    device = jax.devices()[-1]
+    from rich.console import Console
+    console = Console()
+    console.print(f"Training on device: [bold cyan]{device}[/bold cyan]")
+    
     rng = jax.device_put(jax.random.PRNGKey(0), device)
     train_jit = jax.jit(make_train(ppo_config), device=device)
     out = train_jit(rng)
