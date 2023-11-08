@@ -537,7 +537,7 @@ if __name__ == "__main__":
         # "REWARD_LAMBDA":1,
         # "ACTION_TYPE":"pure",
         "ACTION_TYPE":"delta",
-        "TASK_SIZE":500,
+        "TASK_SIZE": 100, # 500,
         "RESULTS_FILE":"./results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR":"./checkpoints_"+f"{timestamp}",
         "DOCKER_CONTAINER_NAME": socket.gethostname(), # container_id
