@@ -133,26 +133,13 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
-            def Cubes_withOB_padding(Cubes_withOB):
-                max_m = max(m.shape[0] for m, o in Cubes_withOB)
-                new_Cubes_withOB = []
-                for cube, OB in Cubes_withOB:
-                    def padding(cube, target_shape):
-                        pad_width = np.zeros((100, 8))
-                        # Calculate the amount of padding required
-                        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-                        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-                        return padded_cube
-                    cube = padding(cube, max_m)
-                    new_Cubes_withOB.append((cube, OB))
-                return new_Cubes_withOB
-            Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            start_time_list = []
+            
+            
+
             cube=Cubes_withOB[0][0]
-            for i in range(cube.shape[0]):
-                start_time_of_a_cube = cube[i][0][6],cube[i][0][7]
-                start_time_list.append(start_time_of_a_cube)
-            start_time_array = np.array(start_time_list)
+            print("cube.shape:",cube.shape)
+            
+            start_time_array = cube[:,0,[6,7]]
             start_time_stamp_array = np.arange(34200,57600,900)
             start_idx_list = [(0, 34200, 34200, 34200)]
             for start_time_stamp in start_time_stamp_array:
@@ -163,6 +150,7 @@ class BaseLOBEnv(environment.Environment):
                     if timestamp_before< start_time_stamp <timestamp_current:
                         start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
             start_idx_array = np.array(start_idx_list)
+
             start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr])
             return Cubes_withOB, max_steps_in_episode_arr, start_idx_array
         Cubes_withOB, max_steps_in_episode_arr, start_idx_array = load_LOBSTER(

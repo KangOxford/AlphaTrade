@@ -331,7 +331,7 @@ class ExecutionEnv(BaseLOBEnv):
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (
-            (state.task_to_execute - state.quant_executed <= 0)
+            (state.task_to_execute - state.quant_executed <= 0) | (state.max_steps_in_episode - state.step_counter<= 0)
         )
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):

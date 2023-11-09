@@ -95,7 +95,7 @@ if __name__ == "__main__":
     config = {
         "ATFOLDER": ATFolder,
         "TASKSIDE": "sell",
-        "TASK_SIZE": 8000, #100, # 500,
+        "TASK_SIZE": 1000, # 8000, #100, # 500,
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "delta", # "pure",
         "REWARD_LAMBDA": 1.0,
@@ -123,8 +123,10 @@ if __name__ == "__main__":
     print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
     allocation_array_final = VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_reset)
-    # jax.debug.breakpoint()
-    # breakpoint()
+    print("allocation_array_final.shape: ", allocation_array_final.shape)
+    print("allocation_array_final.sum: ", allocation_array_final.sum())
+    jax.debug.breakpoint()
+    breakpoint()
     # print(env_params.message_data.shape, env_params.book_data.shape)
     for i in range(1,100000):
         # ==================== ACTION ====================
@@ -133,7 +135,7 @@ if __name__ == "__main__":
         key_policy, _ =  jax.random.split(key_policy, 2)
         key_step, _ =  jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=allocation_array_final[state.step_counter] # TODO not sure step_counter or step_counter-1, prefer to be step_counter
+        test_action=allocation_array_final[state.step_counter-1] # TODO not sure step_counter or step_counter-1, prefer to be step_counter
         print(state.step_counter)
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
