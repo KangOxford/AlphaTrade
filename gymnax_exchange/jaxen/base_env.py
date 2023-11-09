@@ -113,43 +113,8 @@ class BaseLOBEnv(environment.Environment):
             messages, orderbooks = zip(*pairs)
 
             def sliceWithoutOverlap(message, orderbook):
-                # print("start")
-                def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
-                    indices = list(range(start_time, end_time, interval))
-                    return indices
-                indices = index_of_sliceWithoutOverlap_by_lines(0, message.shape[0]//100*100, 100*100)
-                # def index_of_sliceWithoutOverlap_by_time(start_time, end_time, interval):
-                #     indices = list(range(start_time, end_time, interval))
-                #     return indices
-                # indices = index_of_sliceWithoutOverlap_by_time(start_time, end_time, sliceTimeWindow)
-                
-                def splitMessage(message, orderbook):
-                    sliced_parts = []
-                    init_OBs = []
-                    for i in range(len(indices) - 1):
-                        start_index = indices[i]
-                        end_index = indices[i + 1]
-                        sliced_part = message[(message.index > start_index) & (message.index <= end_index)]
-                        sliced_parts.append(sliced_part)
-                        init_OBs.append(orderbook.iloc[start_index,:])
-                    # # Last sliced part from last index to end_time
-                    # start_index = indices[i]
-                    # end_index = indices[i + 1]
-                    # index_s, index_e = message[(message.index >= start_index) & (message.index < end_index)].index[[0, -1]].tolist()
-                    # # index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                    # index_s = (index_s // stepLines - 10) * stepLines + index_e % stepLines
-                    # assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
-                    # last_sliced_part = message.loc[np.arange(index_s, index_e)]
-                    # sliced_parts.append(last_sliced_part)
-                    # init_OBs.append(orderbook.iloc[index_s, :])
-                    
-                    for part in sliced_parts:
-                        # print("start")
-                        # assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
-                        assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
-                        assert part.shape[0] % stepLines == 0, 'wrong code 34'
-                    return sliced_parts, init_OBs
-                sliced_parts, init_OBs = splitMessage(message, orderbook)
+                max_horizon_of_message = message.shape[0]//100*100
+                sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
                 def sliced2cude(sliced):
                     columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
                     cube = sliced[columns].to_numpy()
@@ -182,18 +147,24 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            
-            # # breakpoint()
-            # for j in range(13):
-            #     data = Cubes_withOB[j][0][:,:,3]
-            #     dir = f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}.npy"
-            #     np.save(dir, data)
-            #     # breakpoint()
-            # # [print(Cubes_withOB[j][0][i,:,3],file=open(f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}",'a')) for i in range(Cubes_withOB[0][0].shape[0]) for j in range(13)]
-            
-            return Cubes_withOB, max_steps_in_episode_arr
-
-        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(
+            start_time_list = []
+            cube=Cubes_withOB[0][0]
+            for i in range(cube.shape[0]):
+                start_time_of_a_cube = cube[i][0][6],cube[i][0][7]
+                start_time_list.append(start_time_of_a_cube)
+            start_time_array = np.array(start_time_list)
+            start_time_stamp_array = np.arange(34200,57600,900)
+            start_idx_list = [(0, 34200, 34200, 34200)]
+            for start_time_stamp in start_time_stamp_array:
+                for i in range(1, start_time_array.shape[0]):
+                    timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
+                    timestamp_before = timestamp(i-1)
+                    timestamp_current = timestamp(i)
+                    if timestamp_before< start_time_stamp <timestamp_current:
+                        start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
+            start_idx_array = np.array(start_idx_list)
+            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array
+        Cubes_withOB, max_steps_in_episode_arr, start_idx_array = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
@@ -201,13 +172,11 @@ class BaseLOBEnv(environment.Environment):
             self.start_time,
             self.end_time
         )
-
+        self.start_idx_array = start_idx_array
         self.max_steps_in_episode_arr = max_steps_in_episode_arr 
-
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
-      
         self.n_windows = len(self.books)
         # jax.debug.breakpoint()
         print(f"Num of data_window: {self.n_windows}")
