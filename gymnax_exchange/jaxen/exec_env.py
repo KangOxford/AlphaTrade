@@ -233,8 +233,7 @@ class ExecutionEnv(BaseLOBEnv):
                         return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
                     (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.array([0,1,2,3]))
                     return init_seats
-                votes_jax, seats_jax, key = jnp.array([0, 1, 3, 1]), 2, random.PRNGKey(10312)
-                scaledAction = hamilton_apportionment_permuted_jax(votes_jax, seats_jax, key)
+                scaledAction = hamilton_apportionment_permuted_jax(action, remainQuant, key)
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             # jax.debug.print("action_ {}; action {}",action_,action)
