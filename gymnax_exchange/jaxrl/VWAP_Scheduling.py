@@ -123,8 +123,8 @@ if __name__ == "__main__":
     print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
     allocation_array_final = VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_reset)
-   
-
+    # jax.debug.breakpoint()
+    # breakpoint()
     # print(env_params.message_data.shape, env_params.book_data.shape)
     for i in range(1,100000):
         # ==================== ACTION ====================
@@ -134,6 +134,7 @@ if __name__ == "__main__":
         key_step, _ =  jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
         test_action=allocation_array_final[state.step_counter] # TODO not sure step_counter or step_counter-1, prefer to be step_counter
+        print(state.step_counter)
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
@@ -144,6 +145,7 @@ if __name__ == "__main__":
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
             print("==="*20)
+            break
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
         

@@ -192,57 +192,9 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
-        def reshape_action(action : Dict, state: EnvState, params : EnvParams):
-            if self.action_type == 'delta':
-                def twapV3(state, env_params):
-                    # ---------- ifMarketOrder BGN ----------
-                    # ·········· ifMarketOrder determined by time ··········
-                    # remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-                    # marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-                    # ifMarketOrder = (remainingTime <= marketOrderTime)
-                    # ·········· ifMarketOrder determined by steps ··········
-                    remainingSteps = state.max_steps_in_episode - state.step_counter 
-                    marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-                    ifMarketOrder = (remainingSteps <= marketOrderSteps)
-                    # ---------- ifMarketOrder END ----------
-                    # ---------- quants ----------
-                    remainedQuant = state.task_to_execute - state.quant_executed
-                    remainedStep = state.max_steps_in_episode - state.step_counter
-                    stepQuant = jnp.ceil(remainedQuant/remainedStep).astype(jnp.int32) # for limit orders
-                    limit_quants = jax.random.permutation(key, jnp.array([stepQuant-stepQuant//2,stepQuant//2]), independent=True) if self.n_actions == 2 \
-                        else jax.random.permutation(key, jnp.array([stepQuant-3*stepQuant//4,stepQuant//4,stepQuant//4,stepQuant//4]), independent=True)
-                    market_quants = jnp.array([stepQuant,stepQuant]) if self.n_actions == 2 else jnp.array([stepQuant,stepQuant,stepQuant,stepQuant])
-                    quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
-                    # ---------- quants ----------
-                    # jax.debug.breakpoint()
-                    return jnp.array(quants) 
-                action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(-1*task_size//100,task_size//100) 
-                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
-            else:
-                action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(0,task_size//5)# clippedAction, CAUTION not clipped by task_size, but task_size//5
-                action_ = action_space_clipping(delta, state.task_to_execute)
-            
-            def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
-                def hamilton_apportionment_permuted_jax(votes, seats, key):
-                    init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-                    remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
-                    def f(carry,x):
-                        key,init_seats,remainders=carry
-                        key, subkey = jax.random.split(key)
-                        chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
-                        return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(self.action_space(params).shape[0]))
-                    return init_seats
-                scaledAction = hamilton_apportionment_permuted_jax(action, remainQuant, key)
-                return scaledAction
-            action = truncate_action(action_, state.task_to_execute - state.quant_executed)
-            # jax.debug.print("action_ {}; action {}",action_,action)
-
-            return action
         
-        action = reshape_action(delta, state, params)
-        # jax.debug.print("action {}",action)
+        action = jnp.array([delta,0,0,0],dtype=jnp.int32)
+        jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
         
         
