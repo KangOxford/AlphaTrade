@@ -12,6 +12,7 @@ sys.path.append('.')
 import jax
 import jax.numpy as jnp
 
+
 import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
@@ -225,11 +226,11 @@ class ExecutionEnv(BaseLOBEnv):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
                 def hamilton_apportionment_permuted_jax(votes, seats, key):
                     init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-                    remaining_seats = int(seats - init_seats.sum()) # in {0,1,2,3}
+                    remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
                     def f(carry,x):
                         key,init_seats,remainders=carry
-                        key, subkey = random.split(key)
-                        chosen_index = random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+                        key, subkey = jax.random.split(key)
+                        chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
                         return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
                     (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.array([0,1,2,3]))
                     return init_seats
