@@ -28,6 +28,7 @@ from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
+np.set_printoptions(suppress=True)
 
 @jax.jit
 def hamilton_apportionment_permuted_jax(votes, seats, key):
@@ -38,7 +39,7 @@ def hamilton_apportionment_permuted_jax(votes, seats, key):
         key, subkey = jax.random.split(key)
         chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
         return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(26))
+    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
     return init_seats.astype(jnp.int32)
 
 
@@ -66,10 +67,19 @@ def VWAP_Scheduling(state, env, forcasted_volume, key):
     start_idx_array = env.start_idx_array
     forcasted_volume = hamilton_apportionment_permuted_jax(forcasted_volume, env.task_size, key)
     print(forcasted_volume.sum(),env.task_size)
-    jnp.concatenate([start_idx_array,forcasted_volume.reshape(-1,1)],axis=1)
-
-    breakpoint()
-    return jnp.array([1,0,0,0],dtype=jnp.int32)
+    
+    allocation_array_full = jnp.concatenate([start_idx_array,forcasted_volume.reshape(-1,1)],axis=1)
+    allocation_array_breif = allocation_array_full[:,[0,-1]].astype(jnp.int32)
+    allocation_array_breif = jnp.concatenate([allocation_array_breif, np.insert(np.diff(allocation_array_breif[:, 0]),0,allocation_array_breif[0, 0]).reshape(-1,1)],axis=1)
+    
+    lst = []
+    key = jax.random.PRNGKey(100)
+    for i in range(allocation_array_breif.shape[0]):
+        print(i)
+        key, subkey = jax.random.split(key)
+        lst.append(hamilton_apportionment_permuted_jax(jnp.ones(allocation_array_breif[i,2]), allocation_array_breif[i,1], key))
+    allocation_array_final = np.concatenate(lst)
+    return allocation_array_final
 
 if __name__ == "__main__":
     try:
@@ -112,6 +122,7 @@ if __name__ == "__main__":
     obs,state=env.reset(key_reset,env_params)
     print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
+    allocation_array_final = VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_reset)
    
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
@@ -122,7 +133,7 @@ if __name__ == "__main__":
         key_policy, _ =  jax.random.split(key_policy, 2)
         key_step, _ =  jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_policy)
+        test_action=allocation_array_final[state.step_counter] # TODO not sure step_counter or step_counter-1, prefer to be step_counter
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()

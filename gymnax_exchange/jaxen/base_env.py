@@ -163,6 +163,7 @@ class BaseLOBEnv(environment.Environment):
                     if timestamp_before< start_time_stamp <timestamp_current:
                         start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
             start_idx_array = np.array(start_idx_list)
+            start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr])
             return Cubes_withOB, max_steps_in_episode_arr, start_idx_array
         Cubes_withOB, max_steps_in_episode_arr, start_idx_array = load_LOBSTER(
             self.sliceTimeWindow,
