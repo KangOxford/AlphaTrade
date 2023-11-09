@@ -223,38 +223,18 @@ class ExecutionEnv(BaseLOBEnv):
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
-                '''
-                NOT JITTABLE YET
                 def hamilton_apportionment_permuted_jax(votes, seats, key):
                     init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-                    
-                    for _ in range(int(seats - init_seats.sum())):  # Convert to int if not already, remaining_seats = seats - init_seats.sum()
-                        
+                    remaining_seats = int(seats - init_seats.sum()) # in {0,1,2,3}
+                    def f(carry,x):
+                        key,init_seats,remainders=carry
                         key, subkey = random.split(key)
-                        chosen_index = random.choice(subkey, jnp.flatnonzero(remainders == remainders.max())) # max_indices
-                        init_seats = init_seats.at[chosen_index].add(1)
-                        remainders = remainders.at[chosen_index].set(0)
-                    
+                        chosen_index = random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+                        return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
+                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.array([0,1,2,3]))
                     return init_seats
-
-                # Example usage
                 votes_jax, seats_jax, key = jnp.array([0, 1, 3, 1]), 2, random.PRNGKey(10312)
                 scaledAction = hamilton_apportionment_permuted_jax(votes_jax, seats_jax, key)
-                '''
-                
-                
-                scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
-                '''
-                action = [1,1,1,1] and remainQuant is 1. action * remainQuant / action.sum() is [1,1,1,1]/4 and round to [0,0,0,0]
-                Then scaledAction is [0,0,0,0], which is wrong. We now convert it into [4,0,0,0].
-        
-                Otherwise, if scaledAction is [0,0,0,0] and the task is 100, then the transformed scaledAction would be [100,0,0,0]
-                 jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction) is needed
-                 as in some cases, all the four quants is very small and might be scaled back to 0, making the task never finish.
-                '''
-                scaledAction = jnp.where((jnp.sum(scaledAction) == 0) & (action.sum() != 0), jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
-                
-                
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             # jax.debug.print("action_ {}; action {}",action_,action)
