@@ -453,17 +453,19 @@ class ExecutionEnv(BaseLOBEnv):
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
-
-        # NOTE: currently only uses most recent observation from state
-        quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
-        quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
+        best_asks, best_bids=state.best_asks[:,0], state.best_bids[:,0]
+        best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
+        
         obs = {
             # "is_buy_task": params.is_buy_task,
-            "p_aggr": quote_aggr[0],
-            "p_pass": quote_pass[0],
-            "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
-            "q_aggr": quote_aggr[1],
-            "q_pass": quote_pass[1],
+            "p_aggr": best_bids if self.task=='sell' else best_asks,
+            "q_aggr": best_bid_qtys if self.task=='sell' else best_ask_qtys, 
+            "p_pass": best_asks if self.task=='sell' else best_bids,
+            "q_pass": best_ask_qtys if self.task=='sell' else best_bid_qtys, 
+            "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
+            "p_pass2": best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book, # second_passives
+            "spread": best_asks - best_bids,
+            "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,
             "episode_time": state.time - state.init_time,
             "init_price": state.init_price,
@@ -472,9 +474,6 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
         }
-        # TODO: add "q_pass2" as passive quantity to state in step_env and here
-        # second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
-        # our second passive is not the exact second passive in the orderbook, but by minus or plus a fixed price delta
 
         def normalize_obs(obs: Dict[str, jax.Array]):
             """ normalized observation by substracting 'mean' and dividing by 'std'
@@ -488,10 +487,13 @@ class ExecutionEnv(BaseLOBEnv):
             means = {
                 # "is_buy_task": 0,
                 "p_aggr": p_mean,
-                "p_pass": p_mean,
-                "spread": 0,
                 "q_aggr": 0,
+                "p_pass": p_mean,
                 "q_pass": 0,
+                "p_mid":p_mean,
+                "p_pass2":p_mean,
+                "spread": 0,
+                "shallow_imbalance":0,
                 "time": jnp.array([0, 0]),
                 "episode_time": jnp.array([0, 0]),
                 "init_price": p_mean,
@@ -503,10 +505,13 @@ class ExecutionEnv(BaseLOBEnv):
             stds = {
                 # "is_buy_task": 1,
                 "p_aggr": p_std,
-                "p_pass": p_std,
-                "spread": 1e4,
                 "q_aggr": 100,
+                "p_pass": p_std,
                 "q_pass": 100,
+                "p_mid": p_std,
+                "p_pass2": p_std,   
+                "spread": 1e4,
+                "shallow_imbalance": 10,
                 "time": jnp.array([1e5, 1e9]),
                 "episode_time": jnp.array([1e3, 1e9]),
                 "init_price": p_std,
@@ -522,7 +527,7 @@ class ExecutionEnv(BaseLOBEnv):
         obs = normalize_obs(obs)
         # jax.debug.print("obs {}", obs)
         obs, _ = jax.flatten_util.ravel_pytree(obs)
-        
+        # jax.debug.breakpoint()
         return obs
 
     def action_space(
@@ -537,8 +542,7 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10,10,(14,),dtype=jnp.float32) 
-        # space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
+        space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
