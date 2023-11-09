@@ -262,7 +262,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Process messages of step (action+data) through the orderbook
 
         # jax.debug.breakpoint()
-        asks, bids, trades, bestasks, bestbids = job.scan_through_entire_array_save_bidask(
+        (asks, bids, trades), (bestasks, bestbids) = job.scan_through_entire_array_save_bidask(
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines

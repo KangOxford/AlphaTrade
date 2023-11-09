@@ -117,7 +117,7 @@ class OrderBook():
         all_asks, all_bids, trades = job.scan_through_entire_array_save_states(msgs, tuple(state), msgs.shape[0])
         state = LobState(all_asks[-1], all_bids[-1], trades)
         # calculate l2 states
-        l2_states = job.vmap_get_L2_state(all_asks, all_bids, n_levels)
+        l2_states = jax.vmap(job.get_L2_state, (0, 0, None), 0)(all_asks, all_bids, n_levels)
         return state, l2_states
 
     @partial(jax.jit, static_argnums=(2,4))

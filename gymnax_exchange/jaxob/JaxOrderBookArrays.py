@@ -51,12 +51,14 @@ from jax import numpy as jnp
 import jax
 import chex
 
+
 INITID = -9000
 MAX_INT = 2_147_483_647  # max 32 bit int
-#TODO: Get rid of these magic numbers by allowing a config dict to be passed through as a static arg 
+#TODO: Get rid of these magic numbers by allowing a config dict
+#  to be passed through as a static arg 
 
 
-############### ADD AND REMOVE ###############
+################ CORE OPERATIONS ################
 @jax.jit
 def add_order(orderside: chex.Array, msg: dict) -> chex.Array :
     """Adds an order to a given side of the orderbook. 
@@ -123,7 +125,7 @@ def cancel_order(orderside, msg):
     orderside = orderside.at[idx, 1].set(orderside[idx, 1] - msg['quantity'])
     return _removeZeroNegQuant(orderside)
 
-############### MATCHING FUNCTIONS ###############
+################ MATCHING FUNCTIONS ################
 
 
 @jax.jit
@@ -154,7 +156,7 @@ def match_order(data_tuple):
     """
     (top_order_idx, orderside, qtm, price,
             trade, agrOID, time, time_ns) = data_tuple
-    newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm) #Could theoretically be removed as an operation because the removeZeroQuand func also removes negatives. 
+    newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm)
     qtm=qtm-orderside[top_order_idx,1]
     qtm=qtm.astype(jnp.int32)
     emptyidx=jnp.where(trade==-1,size=1,fill_value=-1)[0]
@@ -275,7 +277,7 @@ def _match_against_ask_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
                                                 time,time_ns))
     return (orderside,qtm,price,trade)
 
-######## TYPE AND SIDE FUNCTIONS #############
+################ TYPE AND SIDE FUNCTIONS ################
 
 def doNothing(msg,askside,bidside,trades):
     """Dummy function for conditional statements to do nothing
@@ -413,7 +415,7 @@ def ask_cancel(msg,askside,bidside,trades):
     return cancel_order(askside,msg),bidside,trades
 
 
-###############  BRANCHING FUNCTIONS ###############
+################  BRANCHING FUNCTIONS ################
 @jax.jit
 def cond_type_side(book_state, data):
     """Branching function which calls the relevant function based on
@@ -459,7 +461,7 @@ def cond_type_side(book_state, data):
     return (ask, bid, trade), 0
 
 @jax.jit
-def cond_type_side_save_states(ordersides,data):
+def cond_type_side_save_states(book_state,data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. Addtionally, returns the order 
@@ -478,7 +480,7 @@ def cond_type_side_save_states(ordersides,data):
                     the message in data
                 book_state_to_save (Int): book_state
     """
-    askside,bidside,trades=ordersides
+    askside,bidside,trades=book_state
     msg={'side':data[1],
          'type':data[0],
          'price':data[3],
@@ -494,11 +496,17 @@ def cond_type_side_save_states(ordersides,data):
              + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 
              + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
              + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3)
-    ask, bid, trade = jax.lax.switch(index, (ask_lim, bid_lim, ask_cancel, bid_cancel), msg, askside, bidside, trades)
+    ask, bid, trade = jax.lax.switch(index,
+                                     (ask_lim, bid_lim,
+                                       ask_cancel, bid_cancel),
+                                     msg,
+                                     askside,
+                                     bidside,
+                                     trades)
     return (ask,bid,trade),(ask,bid,trade)
 
 @jax.jit
-def cond_type_side_save_bidask(ordersides,data):
+def cond_type_side_save_bidask(book_state,data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. Addtionally, returns the order 
@@ -517,7 +525,7 @@ def cond_type_side_save_bidask(ordersides,data):
                     the message in data
                 book_state_to_save (Int): best bid/ask price & quant
     """
-    askside,bidside,trades=ordersides
+    askside,bidside,trades=book_state
     msg={'side':data[1],
          'type':data[0],
          'price':data[3],
@@ -533,123 +541,225 @@ def cond_type_side_save_bidask(ordersides,data):
              + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 
              + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
              + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3)
-    ask, bid, trade = jax.lax.switch(index, (ask_lim, bid_lim, ask_cancel, bid_cancel), msg, askside, bidside, trades)
+    ask, bid, trade = jax.lax.switch(index,
+                                     (ask_lim, bid_lim,
+                                       ask_cancel, bid_cancel),
+                                     msg,
+                                     askside,
+                                     bidside,
+                                     trades)
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
 
-vcond_type_side=jax.vmap(cond_type_side,((0,0,0),0))
+################ SCAN FUNCTIONS ################
 
-############### SCAN FUNCTIONS ###############
-def scan_through_entire_array(msg_array,ordersides):
-    ordersides,_=jax.lax.scan(cond_type_side,ordersides,msg_array)
-    return ordersides
+def scan_through_entire_array(msg_array: chex.Array,
+                              book_state: tuple):
+    """Wrapper function around lax.scan which returns only the new 
+    state of the orderbook after processing ALL messages.
+    No intermediate order book states are saved. 
+        Parameters:
+                msg_array (Array): All messages to process
+                book_state (Tuple): State of the orderbook
+                    askside (Array): All ask orders in the book
+                    bidside (Array): All bid orders in the book
+                    trades (Array): All trades which have occured
+        Returns:
+                book_state (Tuple): Same as parameter after processing
+                    the messages in msg_array.
+    """
+    book_state,_=jax.lax.scan(cond_type_side,book_state,msg_array)
+    return book_state
 
-def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
-    #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
-    last,all=jax.lax.scan(cond_type_side_save_states,ordersides,msg_array)
-    return (all[0][-steplines:],all[1][-steplines:],last[2])
+def scan_through_entire_array_save_states(msg_array: chex.Array,
+                                          book_state: tuple,
+                                          N_steps: int):
+    """Wrapper function around lax.scan which returns all order 
+    book states after processing the last N_steps in the message
+    Array. The list of logged trades is returned only once after all
+    messages are processed. 
+        Parameters:
+                msg_array (Array): All messages to process
+                book_state (Tuple): State of the orderbook
+                    askside (Array): All ask orders in the book
+                    bidside (Array): All bid orders in the book
+                    trades (Array): All trades which have occured
+                N_steps (Int): Number of steps for which to return
+                                the book state. 
+        Returns:
+                book_state (Tuple):
+                    askside (Array): All ask orders in the book
+                                    for the last N_steps
+                    bidside (Array): All bid orders in the book
+                                    for the last N_steps
+                    trades (Array): All trades which have occured
+    """
+    last_state,all_states=jax.lax.scan(cond_type_side_save_states,
+                                       book_state,
+                                       msg_array)
+    return (all_states[0][-N_steps:],all_states[1][-N_steps:],last_state[2])
 
-def scan_through_entire_array_save_bidask(msg_array,ordersides,steplines):
-    #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
-    last,all=jax.lax.scan(cond_type_side_save_bidask,ordersides,msg_array)
-    # jax.debug.breakpoint()
-    return (last[0],last[1],last[2],all[0][-steplines:],all[1][-steplines:])
-
-vscan_through_entire_array=jax.vmap(scan_through_entire_array,(2,(0,0,0)),0)
+def scan_through_entire_array_save_bidask(msg_array,book_state,N_steps):
+    """Wrapper function around lax.scan which returns only the new 
+    state of the orderbook after processing ALL messages. Additionally,
+    the best bid and ask price for the last N_steps processed messages
+    are returned.
+        Parameters:
+                msg_array (Array): All messages to process
+                book_state (Tuple): State of the orderbook
+                    askside (Array): All ask orders in the book
+                    bidside (Array): All bid orders in the book
+                    trades (Array): All trades which have occured
+                N_steps (Int): Number of steps for which to return
+                                the best bid and ask prices. 
+        Returns:
+                book_state (Tuple): Same as parameter after processing
+                    the messages in msg_array.
+                best_bid_ask (Tuple): Two arrays of the best bid and
+                                        best ask prices respectively.
+    """
+    last_state,all_bid_asks=jax.lax.scan(cond_type_side_save_bidask,
+                                         book_state,
+                                         msg_array)
+    
+    return (last_state[0],last_state[1],last_state[2]),\
+            (all_bid_asks[0][-N_steps:],all_bid_asks[1][-N_steps:])
 
 ################ GET CANCEL MESSAGES ################
-def get_size(bookside,agentID):
-    """ """
-    return jnp.sum(jnp.where(bookside[:,3]==agentID,1,0)).astype(jnp.int32)
 
 def getCancelMsgs(bookside,agentID,size,side):
-    """Obtain messages to cancel based on a given ID to lookup.
-        Currently only used in the execution environment."""
-    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
-    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,\
-                                 jnp.ones((1,size),dtype=jnp.int32)*side, \
-                                bookside[indeces_to_cancel,1], \
-                                bookside[indeces_to_cancel,0], \
-                                bookside[indeces_to_cancel,3], \
-                                bookside[indeces_to_cancel,2], \
-                                bookside[indeces_to_cancel,4], \
-                                bookside[indeces_to_cancel,5]],axis=0).transpose()
+    """Obtain messages indicating cancellations based on a Trader ID.
+    The aim is to cancel all orders held by a given trader (or agent).
+        Parameters:
+                bookside (Array): All bid or ask orders in book.
+                agentID (int): Trader ID of orders to cancel. 
+                size (int): Max number of orders to cancel
+                side (int): Bid side = 1, ask side = -1
+        Returns:
+                cancel_msgs: Array of messages of fixed size which
+                                represent cancel orders. 
+    """
+    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],
+                             axis=0)
+    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,
+                                size=size,
+                                fill_value=-1)
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,
+                                 jnp.ones((1,size),dtype=jnp.int32)*side,
+                                bookside[indeces_to_cancel,1],
+                                bookside[indeces_to_cancel,0],
+                                bookside[indeces_to_cancel,3],
+                                bookside[indeces_to_cancel,2],
+                                bookside[indeces_to_cancel,4],
+                                bookside[indeces_to_cancel,5]],
+                                axis=0).transpose()
     return cancel_msgs
 
 
-#TODO Currently not implemented: should be used for a less naive version of the autocancel
-"""def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
-    cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
-    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2, \
-                                jnp.ones((1,size),dtype=jnp.int32)*side, \
-                                bookside[indeces_to_cancel,1], \
-                                bookside[indeces_to_cancel,0], \
-                                bookside[indeces_to_cancel,3], \
-                                bookside[indeces_to_cancel,2], \
-                                bookside[indeces_to_cancel,4], \
-                                bookside[indeces_to_cancel,5]],axis=0).transpose()
-    cancel_msgs=jnp.where(cancel_msgs==-1,0,cancel_msgs)
-    jax.lax.scan(remove_cnl_if_renewed,cancel_msgs,action_msgs)
-    return cancel_msgs"""
+#TODO: Implement less naive version of the auto-cancel, which does not
+#  cancel and re-submit in the event where the desired position
+#  overlaps with the previous position. 
 
 
-   
+################ HELPER FUNCTIONS ################
 
 
+def get_volume_at_price(orderside,price):
+    """Returns the total quantity in the book at a given price for the
+    bid or ask side. 
+        Parameters:
+                orderside (Array): All bid or ask orders in book.
+                price (int): Price level of interest. 
 
+        Returns:
+                quantity: Total volume for the given price level
+    """
+    return jnp.sum(jnp.where(orderside[:,0]==price,orderside[:,1],0))
 
+@jax.jit
+def get_best_ask(asks):
+    """Returns the best (lowest) ask price. If there is no ask, return -1. 
+        Parameters:
+                asks (Array): All ask orders in book.
+        Returns:
+                best_ask: Price of best ask order.
+    """
+    min = jnp.min(jnp.where(asks[:, 0] == -1, MAX_INT, asks[:, 0]))
+    return jnp.where(min == MAX_INT, -1, min)
 
-######Helper functions for getting information #######
+@jax.jit
+def get_best_bid(bids):
+    """Returns the best (lowest) bid price. If there is no bid, return -1. 
+        Parameters:
+                bids (Array): All bid orders in book.
+        Returns:
+                best_bid: Price of best bid order.
+    """
+    return jnp.max(bids[:, 0])
 
+@jax.jit
+def get_best_bid_and_ask(askside,bidside):
+    """Returns the best bid and the best ask price given the bid
+    side and the ask side. 
+        Parameters:
+                askside (Array): All ask orders in book.
+                bidside (Array): All bid orders in book.
 
-def get_totquant_at_price(orderside,price):
-        return jnp.sum(jnp.where(orderside[:,0]==price,orderside[:,1],0))
+        Returns:
+                best_ask (int): Price of best ask order
+                best_bid (int): Price of best ask order
+    """
+    return get_best_ask(askside),get_best_bid(bidside)
 
-get_totquant_at_prices=jax.vmap(get_totquant_at_price,(None,0),0)
+def get_best_bid_and_ask_inclQuants(askside,bidside):
+    """Returns the best bid and the best ask price and the volume at
+    that price,given the bid side and the ask side. 
+        Parameters:
+                askside (Array): All ask orders in book.
+                bidside (Array): All bid orders in book.
 
-# @partial(jax.jit,static_argnums=0)
-# def get_L2_state(N,asks,bids):
-#     bid_prices=-jnp.unique(-bids[:,0],size=N,fill_value=1)
-#     ask_prices=jnp.unique(jnp.where(asks[:,0]==-1,999999999,asks[:,0]),size=N,fill_value=999999999)
-#     ask_prices=jnp.where(ask_prices==999999999,-1,ask_prices)
-
-#     bid_quants=get_totquant_at_prices(bids,bid_prices)
-#     ask_quants=get_totquant_at_prices(asks,ask_prices)
-#     bid_quants=jnp.where(bid_quants<0,0,bid_quants)
-#     ask_quants=jnp.where(ask_quants<0,0,ask_quants)
-#     return jnp.stack((ask_prices,ask_quants,bid_prices,bid_quants),axis=1,dtype=jnp.int32)
-
-def get_best_bid_and_ask(asks,bids):
-    best_ask=jnp.min(jnp.where(asks[:,0]==-1,999999999,asks[:,0]))
-    best_bid=jnp.max(bids[:,0])
+        Returns:
+                best_ask (Array): Price and volume of best ask order
+                best_bid (Array): Price and volume of best ask order
+    """
+    best_ask,best_bid=get_best_bid_and_ask(askside,bidside)
+    best_ask_Q=get_volume_at_price(askside,best_ask)
+    best_bid_Q=get_volume_at_price(bidside,best_bid)
+    best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)
+    best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)    
     return best_ask,best_bid
-
-def get_best_bid_and_ask_inclQuants(asks,bids):
-    best_ask,best_bid=get_best_bid_and_ask(asks,bids)
-    best_ask_Q=jnp.sum(jnp.where(asks[:,0]==best_ask,asks[:,1],0))                     
-    best_bid_Q=jnp.sum(jnp.where(bids[:,0]==best_bid,bids[:,1],0))
-    best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)             
-    best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)             
-    return best_ask,best_bid  
 
 
 @partial(jax.jit,static_argnums=0)
 def init_orderside(nOrders=100):
+    """Initialise an order side of fixed size with values -1 to denote
+    empty fields.
+        Parameters:
+                nOrders (int): Size of array, max number of orders
+
+        Returns:
+                order_side (Array): Array of size 6xnOrders with -1.
+    """
     return (jnp.ones((nOrders,6))*-1).astype(jnp.int32)
 
 @jax.jit
-def init_msgs_from_l2(
-    book_l2: jnp.ndarray,
-    time: Optional[jax.Array] = None,
-) -> jax.Array:
-
+def init_msgs_from_l2(book_l2: jnp.array,
+                      time: Optional[jax.Array] = None,) -> jax.Array:
+    """Creates a set of messages, limit orders, to initialise an empty
+    order book based on a single initial state of the orderbook from data.
+        Parameters:
+                book_l2 (Array): L2 order book data at one instance
+                time (Array): Timestamp of order book state. [s, ns]
+        Returns:
+                initOB_msgs (Array): Messages representing limit orders
+                                        to process to reconstruct order
+                                        book state. 
+    """
     orderbookLevels = book_l2.shape[0] // 4  # price/quantity for bid/ask
     data = book_l2.reshape(orderbookLevels * 2, 2)
     newarr = jnp.zeros((orderbookLevels * 2, 8), dtype=jnp.int32)
     if time is None:
         time = jnp.array([34200, 0])
-    initOB = newarr \
+    initOB_msgs = newarr \
         .at[:, 3].set(data[:,0]) \
         .at[:, 2].set(data[:,1]) \
         .at[:, 0].set(1) \
@@ -659,55 +769,23 @@ def init_msgs_from_l2(
         .at[:, 5].set(INITID - jnp.arange(0, orderbookLevels*2)) \
         .at[:, 6].set(time[0]) \
         .at[:, 7].set(time[1])
-    return initOB
-
-
-def get_initial_time(messageData,idx_window):
-    return messageData[idx_window,0,0,-2:]
-
-
-def get_data_messages(messageData,idx_window,step_counter):
-    messages=messageData[idx_window,step_counter,:,:]
-    return messages
-    
-
-
-
-
-# ===================================== #
-# ******* Config your own func ******** #
-# ===================================== #
-
+    return initOB_msgs
 
 @jax.jit
-def get_best_ask(asks):
-    '''  Return the best / lowest ask price. If there is no ask, return -1. '''
-    min = jnp.min(jnp.where(asks[:, 0] == -1, MAX_INT, asks[:, 0]))
-    return jnp.where(min == MAX_INT, -1, min)
-
-@jax.jit
-def get_best_bid(bids):
-    ''' Return the best / highest bid price. If there is no bid, return -1. '''
-    return jnp.max(bids[:, 0])
-
-@jax.jit
-def get_volume_at_price(side_array, price):
-    volume = jnp.sum(jnp.where(side_array[:,0] == price, side_array[:,1], 0))
-    return volume
-
-@jax.jit
-def get_init_volume_at_price(
-        side_array: jax.Array,
-        price: int
-    ) -> jax.Array:
-    ''' Returns the size of initial volume (order with INITID) at given price. '''
+def get_init_volume_at_price(side_array: jax.Array,
+                             price: int) -> jax.Array:
+    """Returns the initial volume (orders with INITID) at a given price.
+        Parameters:
+                side_array (Array): Bid or ask orders in the book
+                price (int): Price of interest
+        Returns:
+                volume (int): Volume of intial orders at the price.
+    """
     volume = jnp.sum(
         jnp.where(
             (side_array[:, 0] == price) & (side_array[:, 2] <= INITID), 
             side_array[:, 1], 
-            0
-        )
-    )
+            0))
     return volume
 
 @jax.jit
@@ -715,56 +793,74 @@ def get_order_by_id(
         side_array: jax.Array,
         order_id: int,
     ) -> jax.Array:
-    """ Returns all order fields for the first order matching the given order_id.
-        CAVE: if the same ID is used multiple times, will only return the first 
-        (e.g. for INITID)
+    """Returns all order fields for the first order matching the given
+       order_id. CAVE: if the same ID is used multiple times, will only
+       return the first (e.g. for INITID).
+        Parameters:
+                side_array (Array): Bid or ask orders in the book
+                order_id (int): ID of order of interest
+        Returns:
+                order (Array): Particular order as it is in the book.
+                                 Returns an empty array (-1 dummy 
+                                 values) if not found.
     """
-    idx = jnp.where( 
-        side_array[..., 2] == order_id,
-        size=1,
-        fill_value=-1,
-    )
+    idx = jnp.where(side_array[..., 2] == order_id,
+                    size=1,
+                    fill_value=-1,)
     # return vector of -1 if not found
-    return jax.lax.cond(
-        idx == -1,
-        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
-        lambda i: side_array[i][0],
-        idx
-    )
+    return jax.lax.cond(idx == -1,
+                        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: side_array[i][0],
+                        idx)
 
 @jax.jit
 def get_order_by_id_and_price(
         side_array: jax.Array,
         order_id: int,
-        price: int,
-    ) -> jax.Array:
-    """ Returns all order fields for the first order matching the given order_id at the given price.
-        CAVE: if the same ID is used multiple times at the given price level, will only return the first 
+        price: int,) -> jax.Array:
+    """Returns all order fields for the first order matching the given
+       order_id at the given price. CAVE: if the same ID is used
+       multiple times at the same price level, will only return the 
+       first.
+        Parameters:
+                side_array (Array): Bid or ask orders in the book
+                order_id (int): ID of order of interest
+        Returns:
+                order (Array): Particular order as it is in the book.
+                                 Returns an empty array (-1 dummy 
+                                 values) if not found.
     """
-    idx = jnp.where(
-        ((side_array[..., 2] == order_id) &
-         (side_array[..., 0] == price)),
-        size=1,
-        fill_value=-1,
-    )
+    idx = jnp.where(((side_array[..., 2] == order_id) &
+                     (side_array[..., 0] == price)),
+                    size=1,
+                    fill_value=-1,)
     # return vector of -1 if not found
-    return jax.lax.cond(
-        idx == -1,
-        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
-        lambda i: side_array[i][0],
-        idx
-    )
+    return jax.lax.cond(idx == -1,
+                        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: side_array[i][0],
+                        idx)
 
 @jax.jit
-def get_order_ids(
-        orderbook_array: jax.Array,
-    ) -> jax.Array:
-    """ Returns a list of all order ids in the orderbook
+def get_order_ids(orderside: jax.Array,) -> jax.Array:
+    """Returns a list of all order IDs for a given side of the orderbook
+        Parameters:
+                orderside (Array): Bid or ask orders in the book
+        Returns:
+                order_ids (Array): List of unique IDs, same length as 
+                                    order side length, padded with 1s.
     """
-    return jnp.unique(orderbook_array[:, 2], size=orderbook_array.shape[0], fill_value=1)
+    return jnp.unique(orderside[:, 2], size=orderside.shape[0], fill_value=1)
 
 @partial(jax.jit, static_argnums=0)
-def get_next_executable_order(side, side_array):
+def get_next_executable_order(side, side_array):   
+    """Gets the the best ask/bid order in the book.
+        Parameters:
+                side (int): 0 for ask, 1 for bid. Static arg.
+                side_array (Array): Bid or ask orders in the book
+
+        Returns:
+                order (Array): Best order as it is in the book.
+    """
     # best sell order / ask
     if side == 0:
         idx = _get_top_ask_order_idx(side_array)
@@ -777,6 +873,17 @@ def get_next_executable_order(side, side_array):
 
 @partial(jax.jit, static_argnums=2)
 def get_L2_state(asks, bids, n_levels):
+    """Returns the price levels and volumes for the first n_levels of
+    the bid and ask side of the orderbook. 
+        Parameters:
+                asks (Array): Ask orders in the book.
+                bids (Array): Ask orders in the book.
+                n_levels (int): Desired number of levels (static arg).
+
+        Returns:
+                l2_state (Array): Array of the prices and volumes of
+                                    the first n_levels price levels.  
+    """
     # unique sorts ascending --> negative values to get descending
     bid_prices = -1 * jnp.unique(-1 * bids[:, 0], size=n_levels, fill_value=1)
     # replace -1 with max 32 bit int in sorting asks before sorting
@@ -788,13 +895,11 @@ def get_L2_state(asks, bids, n_levels):
     # replace max 32 bit int with -1 after sorting
     ask_prices = jnp.where(ask_prices == MAX_INT, -1, ask_prices)
 
-    bids = jnp.stack((bid_prices, get_totquant_at_prices(bids, bid_prices)))
-    asks = jnp.stack((ask_prices, get_totquant_at_prices(asks, ask_prices)))
+    bids = jnp.stack((bid_prices, jax.vmap(get_volume_at_price,(None,0),0)(bids, bid_prices)))
+    asks = jnp.stack((ask_prices, jax.vmap(get_volume_at_price,(None,0),0)(asks, ask_prices)))
     # set negative volumes to 0
     bids = bids.at[1].set(jnp.where(bids[1] < 0, 0, bids[1]))
     asks = asks.at[1].set(jnp.where(asks[1] < 0, 0, asks[1]))
     # combine asks and bids in joint representation
     l2_state = jnp.hstack((asks.T, bids.T)).flatten()
     return l2_state
-
-vmap_get_L2_state = jax.vmap(get_L2_state, (0, 0, None), 0)

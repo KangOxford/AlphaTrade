@@ -230,7 +230,7 @@ class BaseLOBEnv(environment.Environment):
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        data_messages=self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
@@ -272,7 +272,7 @@ class BaseLOBEnv(environment.Environment):
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
         #Get the init time based on the first message to be processed in the first step. 
-        time=job.get_initial_time(params.message_data,idx_data_window) 
+        time=self._get_initial_time(params.message_data,idx_data_window) 
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
         #Initialise both sides of the book as being empty
@@ -335,3 +335,29 @@ class BaseLOBEnv(environment.Environment):
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )
+    
+    def _get_initial_time(messageData,idx_window):
+        """Obtain the arrival time of the first message in a given
+        data_window. Data window: pre-arranged 
+            Parameters:
+                    messageData (Array): 4D array with dimensions: windows,
+                                            steps, messages, features. 
+                    idx_window (int): Index of the window to consider.
+            Returns:
+                    Time (Array): Timestamp of first message [s, ns]
+        """
+        return messageData[idx_window,0,0,-2:]
+
+    def _get_data_messages(messageData,idx_window,step_counter):
+        """Returns an array of messages for a given step. 
+            Parameters:
+                    messageData (Array): 4D array with dimensions: windows,
+                                            steps, messages, features. 
+                    idx_window (int): Index of the window to consider.
+                    step_counter (int): desired step to consider. 
+            Returns:
+                    Time (Array): Timestamp of first message [s, ns]
+        """
+        messages=messageData[idx_window,step_counter,:,:]
+        return messages
+    
