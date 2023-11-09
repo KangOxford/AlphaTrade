@@ -232,7 +232,7 @@ class ExecutionEnv(BaseLOBEnv):
                         key, subkey = jax.random.split(key)
                         chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
                         return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.array([0,1,2,3]))
+                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(self.action_space(params).shape[0]))
                     return init_seats
                 scaledAction = hamilton_apportionment_permuted_jax(action, remainQuant, key)
                 return scaledAction
