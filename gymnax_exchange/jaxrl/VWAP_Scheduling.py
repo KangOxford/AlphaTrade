@@ -29,8 +29,45 @@ config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
+@jax.jit
+def hamilton_apportionment_permuted_jax(votes, seats, key):
+    init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
+    remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
+    def f(carry,x):
+        key,init_seats,remainders=carry
+        key, subkey = jax.random.split(key)
+        chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+        return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
+    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(26))
+    return init_seats.astype(jnp.int32)
 
-def VWAP_Scheduling(obs):
+
+def VWAP_Scheduling(state, env, forcasted_volume, key):
+    best_asks, best_bids=state.best_asks[:,0], state.best_bids[:,0]
+    best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
+    obs = {
+        # "is_buy_task": params.is_buy_task,
+        "p_aggr": best_bids if env.task=='sell' else best_asks,
+        "q_aggr": best_bid_qtys if env.task=='sell' else best_ask_qtys, 
+        "p_pass": best_asks if env.task=='sell' else best_bids,
+        "q_pass": best_ask_qtys if env.task=='sell' else best_bid_qtys, 
+        "p_mid": (best_asks+best_bids)//2//env.tick_size*env.tick_size, 
+        "p_pass2": best_asks+env.tick_size*env.n_ticks_in_book if env.task=='sell' else best_bids-env.tick_size*env.n_ticks_in_book, # second_passives
+        "spread": best_asks - best_bids,
+        "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
+        "time": state.time,
+        "episode_time": state.time - state.init_time,
+        "init_price": state.init_price,
+        "task_size": state.task_to_execute,
+        "executed_quant": state.quant_executed,
+        "step_counter": state.step_counter,
+        "max_steps": state.max_steps_in_episode,
+    }    
+    start_idx_array = env.start_idx_array
+    forcasted_volume = hamilton_apportionment_permuted_jax(forcasted_volume, env.task_size, key)
+    print(forcasted_volume.sum(),env.task_size)
+    jnp.concatenate([start_idx_array,forcasted_volume.reshape(-1,1)],axis=1)
+
     breakpoint()
     return jnp.array([1,0,0,0],dtype=jnp.int32)
 
@@ -44,14 +81,24 @@ if __name__ == "__main__":
         ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
+        
     config = {
         "ATFOLDER": ATFolder,
         "TASKSIDE": "sell",
-        "TASK_SIZE": 100, # 500,
+        "TASK_SIZE": 8000, #100, # 500,
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "delta", # "pure",
         "REWARD_LAMBDA": 1.0,
-    }
+        "FORECASTED_VOLUME": jax.random.permutation(jax.random.PRNGKey(0),jnp.arange(1,27)),
+        }
+    
+    
+    
+    
+    
+    
+    
+    
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -75,7 +122,7 @@ if __name__ == "__main__":
         key_policy, _ =  jax.random.split(key_policy, 2)
         key_step, _ =  jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=VWAP_Scheduling(obs)
+        test_action=VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_policy)
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
