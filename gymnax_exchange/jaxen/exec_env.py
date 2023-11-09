@@ -12,6 +12,7 @@ sys.path.append('.')
 import jax
 import jax.numpy as jnp
 
+
 import gymnax
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
@@ -223,38 +224,17 @@ class ExecutionEnv(BaseLOBEnv):
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
-                '''
-                NOT JITTABLE YET
                 def hamilton_apportionment_permuted_jax(votes, seats, key):
                     init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-                    
-                    for _ in range(int(seats - init_seats.sum())):  # Convert to int if not already, remaining_seats = seats - init_seats.sum()
-                        
-                        key, subkey = random.split(key)
-                        chosen_index = random.choice(subkey, jnp.flatnonzero(remainders == remainders.max())) # max_indices
-                        init_seats = init_seats.at[chosen_index].add(1)
-                        remainders = remainders.at[chosen_index].set(0)
-                    
+                    remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
+                    def f(carry,x):
+                        key,init_seats,remainders=carry
+                        key, subkey = jax.random.split(key)
+                        chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+                        return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
+                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.array([0,1,2,3]))
                     return init_seats
-
-                # Example usage
-                votes_jax, seats_jax, key = jnp.array([0, 1, 3, 1]), 2, random.PRNGKey(10312)
-                scaledAction = hamilton_apportionment_permuted_jax(votes_jax, seats_jax, key)
-                '''
-                
-                
-                scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
-                '''
-                action = [1,1,1,1] and remainQuant is 1. action * remainQuant / action.sum() is [1,1,1,1]/4 and round to [0,0,0,0]
-                Then scaledAction is [0,0,0,0], which is wrong. We now convert it into [4,0,0,0].
-        
-                Otherwise, if scaledAction is [0,0,0,0] and the task is 100, then the transformed scaledAction would be [100,0,0,0]
-                 jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction) is needed
-                 as in some cases, all the four quants is very small and might be scaled back to 0, making the task never finish.
-                '''
-                scaledAction = jnp.where((jnp.sum(scaledAction) == 0) & (action.sum() != 0), jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
-                
-                
+                scaledAction = hamilton_apportionment_permuted_jax(action, remainQuant, key)
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             # jax.debug.print("action_ {}; action {}",action_,action)
@@ -474,17 +454,19 @@ class ExecutionEnv(BaseLOBEnv):
 
     def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
-
-        # NOTE: currently only uses most recent observation from state
-        quote_aggr = state.best_bids[-1] if self.task=='sell' else state.best_asks[-1]
-        quote_pass = state.best_asks[-1] if self.task=='sell' else state.best_bids[-1]
+        best_asks, best_bids=state.best_asks[:,0], state.best_bids[:,0]
+        best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
+        
         obs = {
             # "is_buy_task": params.is_buy_task,
-            "p_aggr": quote_aggr[0],
-            "p_pass": quote_pass[0],
-            "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
-            "q_aggr": quote_aggr[1],
-            "q_pass": quote_pass[1],
+            "p_aggr": best_bids if self.task=='sell' else best_asks,
+            "q_aggr": best_bid_qtys if self.task=='sell' else best_ask_qtys, 
+            "p_pass": best_asks if self.task=='sell' else best_bids,
+            "q_pass": best_ask_qtys if self.task=='sell' else best_bid_qtys, 
+            "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
+            "p_pass2": best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book, # second_passives
+            "spread": best_asks - best_bids,
+            "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,
             "episode_time": state.time - state.init_time,
             "init_price": state.init_price,
@@ -493,9 +475,6 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
         }
-        # TODO: add "q_pass2" as passive quantity to state in step_env and here
-        # second_passives = best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book
-        # our second passive is not the exact second passive in the orderbook, but by minus or plus a fixed price delta
 
         def normalize_obs(obs: Dict[str, jax.Array]):
             """ normalized observation by substracting 'mean' and dividing by 'std'
@@ -509,10 +488,13 @@ class ExecutionEnv(BaseLOBEnv):
             means = {
                 # "is_buy_task": 0,
                 "p_aggr": p_mean,
-                "p_pass": p_mean,
-                "spread": 0,
                 "q_aggr": 0,
+                "p_pass": p_mean,
                 "q_pass": 0,
+                "p_mid":p_mean,
+                "p_pass2":p_mean,
+                "spread": 0,
+                "shallow_imbalance":0,
                 "time": jnp.array([0, 0]),
                 "episode_time": jnp.array([0, 0]),
                 "init_price": p_mean,
@@ -524,10 +506,13 @@ class ExecutionEnv(BaseLOBEnv):
             stds = {
                 # "is_buy_task": 1,
                 "p_aggr": p_std,
-                "p_pass": p_std,
-                "spread": 1e4,
                 "q_aggr": 100,
+                "p_pass": p_std,
                 "q_pass": 100,
+                "p_mid": p_std,
+                "p_pass2": p_std,   
+                "spread": 1e4,
+                "shallow_imbalance": 10,
                 "time": jnp.array([1e5, 1e9]),
                 "episode_time": jnp.array([1e3, 1e9]),
                 "init_price": p_std,
@@ -543,7 +528,7 @@ class ExecutionEnv(BaseLOBEnv):
         obs = normalize_obs(obs)
         # jax.debug.print("obs {}", obs)
         obs, _ = jax.flatten_util.ravel_pytree(obs)
-        
+        # jax.debug.breakpoint()
         return obs
 
     def action_space(
@@ -558,8 +543,7 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10,10,(14,),dtype=jnp.float32) 
-        # space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
+        space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
