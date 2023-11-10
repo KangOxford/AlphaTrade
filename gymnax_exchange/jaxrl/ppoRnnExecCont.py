@@ -139,9 +139,9 @@ class ActorCriticRNN(nn.Module):
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         pi = MultiVariateNormalDiagClipped(
-            actor_mean * config['max_task_size'],
-            jnp.exp(actor_logtstd) * config['max_task_size'],
-            jnp.exp(actor_logtstd) * config['max_task_size']
+            actor_mean * self.config['MAX_TASK_SIZE'],
+            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'],
+            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE']
         )
         
         #New version ^^
@@ -585,6 +585,7 @@ if __name__ == "__main__":
         "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
         "ACTOR_TYPE":"RNN",
+        "MAX_TASK_SIZE": 500,
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
