@@ -469,13 +469,13 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     
-                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
-                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
-                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
-                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    # slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    # price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    # price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
+                    # vwap_rm = info["vwap_rm"][info["returned_episode"]]
                     
                     current_step = info["current_step"][info["returned_episode"]]
-                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
+                    # advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -546,12 +546,12 @@ if __name__ == "__main__":
     ppo_config = {
         # "LR": 2.5e-3,
         # "LR": 2.5e-4,
-        "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "LR": 5e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
         # "LR": 2.5e-6,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
         "NUM_ENVS": 1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e9, #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "TOTAL_TIMESTEPS": 1e8, #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 8, #8, #2,
@@ -569,7 +569,7 @@ if __name__ == "__main__":
         "ANNEAL_LR": True, #True,
         "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
-        "ACTOR_TYPE":"RNN",
+        "ACTOR_TYPE": "RNN",
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
