@@ -138,7 +138,11 @@ class ActorCriticRNN(nn.Module):
         # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
-        pi = MultiVariateNormalDiagClipped(actor_mean, jnp.exp(actor_logtstd), jnp.exp(actor_logtstd))
+        pi = MultiVariateNormalDiagClipped(
+            actor_mean * config['max_task_size'],
+            jnp.exp(actor_logtstd) * config['max_task_size'],
+            jnp.exp(actor_logtstd) * config['max_task_size']
+        )
         
         #New version ^^
 
