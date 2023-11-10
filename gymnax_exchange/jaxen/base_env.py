@@ -336,7 +336,7 @@ class BaseLOBEnv(environment.Environment):
             }
         )
     
-    def _get_initial_time(messageData,idx_window):
+    def _get_initial_time(self,messageData,idx_window):
         """Obtain the arrival time of the first message in a given
         data_window. Data window: pre-arranged 
             Parameters:
@@ -348,7 +348,7 @@ class BaseLOBEnv(environment.Environment):
         """
         return messageData[idx_window,0,0,-2:]
 
-    def _get_data_messages(messageData,idx_window,step_counter):
+    def _get_data_messages(self,messageData,idx_window,step_counter):
         """Returns an array of messages for a given step. 
             Parameters:
                     messageData (Array): 4D array with dimensions: windows,

@@ -246,7 +246,7 @@ class ExecutionEnv(BaseLOBEnv):
         # TODO remains bugs in action and it wasn't caused by merging
         
         
-        data_messages = job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        data_messages = self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
@@ -353,7 +353,7 @@ class ExecutionEnv(BaseLOBEnv):
         # all windows can be reached
 
         window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
-        '''if -999 use default static index, else use provided dynamic index'''
+        '''if -999 use default static index [self.window_index], else use provided dynamic index [reset_window_index]'''
         
 
         idx_data_window = jnp.where(
