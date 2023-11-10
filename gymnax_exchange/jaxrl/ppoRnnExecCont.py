@@ -127,24 +127,21 @@ class ActorCriticRNN(nn.Module):
         actor_net = nn.relu(actor_net)
         
         actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
         )(actor_net)
         max_action_logstd = -1.6  # exp -1.6 = 0.2
         actor_logtstd = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(max_action_logstd), name="log_std"
         )(actor_net)
 
-        #Changed bias to mu network output to center at 0.5 (unnormalised this will be half of max quant in act)
-
-        #pi = distrax.Categorical(logits=actor_mean)
-        #Old version^^
-
         # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
-        pi = MultiVariateNormalDiagClipped(actor_mean, jnp.exp(actor_logtstd), jnp.exp(actor_logtstd))
-        
-        #New version ^^
+        pi = MultiVariateNormalDiagClipped(
+            actor_mean * self.config['MAX_TASK_SIZE'],
+            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'],
+            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE']
+        )
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
@@ -152,7 +149,6 @@ class ActorCriticRNN(nn.Module):
         critic = nn.LayerNorm()(critic)
         critic = nn.relu(critic)
 
-        # try: add another critic layer
         critic = nn.Dense(64, kernel_init=orthogonal(1), bias_init=constant(0.0))(
             critic
         )
@@ -570,6 +566,7 @@ if __name__ == "__main__":
         "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
         "ACTOR_TYPE": "RNN",
+        "MAX_TASK_SIZE": 500,
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,

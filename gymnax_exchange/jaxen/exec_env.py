@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import gymnax
 import sys
 import os
+from gymnax_exchange import utils
 # sys.path.append('/Users/sasrey/AlphaTrade')
 # sys.path.append('/homes/80/kang/AlphaTrade')
 sys.path.append('.')
@@ -139,7 +140,7 @@ class ExecutionEnv(BaseLOBEnv):
     
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, delta: Dict, params: EnvParams
+        self, key: chex.PRNGKey, state: EnvState, a: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
@@ -162,23 +163,21 @@ class ExecutionEnv(BaseLOBEnv):
                 return jnp.array(quants) 
             
             def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
-                scaledAction = jnp.where(action.sum() > remainQuant, (action * remainQuant / action.sum()).astype(jnp.int32), action)
-                scaledAction = jnp.where(jnp.sum(scaledAction) == 0, jnp.array([remainQuant - jnp.sum(scaledAction), 0, 0, 0]), scaledAction)
+                action = jnp.round(action).astype(jnp.int32).clip(0, remainQuant)
+                scaledAction = utils.clip_by_sum_int(action, remainQuant)
                 return scaledAction
             
+            action_scaling_fn = lambda action, task_size: jnp.round(action*task_size).astype(jnp.int32)
             if self.action_type == 'delta':
-                action_space_clipping = lambda action, task_size: jnp.round((action-0.5)*task_size).astype(jnp.int32)
-                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
+                action_ = twapV3(state, params) + action_scaling_fn(a, state.task_to_execute)
             else:
-                action_space_clipping = lambda action, task_size: jnp.round(action*task_size).astype(jnp.int32).clip(0,task_size)
-                action_ = action_space_clipping(delta, state.task_to_execute)
+                action_ = action_scaling_fn(a, state.task_to_execute)
             
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
             return action
 
-        action = reshape_action(delta, state, params)
+        action = reshape_action(a, state, params)
         
         
         data_messages = job.get_data_messages(params.message_data,state.window_index,state.step_counter)
