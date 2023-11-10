@@ -202,7 +202,7 @@ class ExecutionEnv(BaseLOBEnv):
                     # ifMarketOrder = (remainingTime <= marketOrderTime)
                     # ·········· ifMarketOrder determined by steps ··········
                     remainingSteps = state.max_steps_in_episode - state.step_counter 
-                    marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    marketOrderSteps = jnp.array(1, dtype=jnp.int32) 
                     ifMarketOrder = (remainingSteps <= marketOrderSteps)
                     # ---------- ifMarketOrder END ----------
                     # ---------- quants ----------
@@ -224,25 +224,12 @@ class ExecutionEnv(BaseLOBEnv):
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
-                def hamilton_apportionment_permuted_jax(votes, seats, key):
-                    init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-                    remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
-                    def f(carry,x):
-                        key,init_seats,remainders=carry
-                        key, subkey = jax.random.split(key)
-                        chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
-                        return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(self.action_space(params).shape[0]))
-                    return init_seats
-                scaledAction = hamilton_apportionment_permuted_jax(action, remainQuant, key)
+                scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
-            # jax.debug.print("action_ {}; action {}",action_,action)
-
-            return action
+            return action.astype(jnp.int32)
         
         action = reshape_action(delta, state, params)
-        # jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
         
         
@@ -366,10 +353,12 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0.0, 0.0, 0.0, 0.0)
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
+            return (
+                state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,\
+                0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],\
+                jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), \
+                jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32)
+                )
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         state = EnvState(*state_)
@@ -568,6 +557,17 @@ class ExecutionEnv(BaseLOBEnv):
     def num_actions(self) -> int:
         """Number of actions possible in environment."""
         return self.n_actions
+    
+    def hamilton_apportionment_permuted_jax(self, votes, seats, key):
+        init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
+        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
+        def f(carry,x):
+            key,init_seats,remainders=carry
+            key, subkey = jax.random.split(key)
+            chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+            return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
+        (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
+        return init_seats
 
 # ============================================================================= #
 # ============================================================================= #
