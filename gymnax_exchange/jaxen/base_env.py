@@ -45,7 +45,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
-    def __init__(self, alphatradePath):
+    def __init__(self, alphatradePath, data_type):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
@@ -60,6 +60,7 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id=-9000+1
         self.tick_size=100
+        self.data_type = data_type
 
 
 
@@ -114,14 +115,19 @@ class BaseLOBEnv(environment.Environment):
 
             def sliceWithoutOverlap(message, orderbook):
                 # print("start")
-                def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
-                    indices = list(range(start_time, end_time, interval))
-                    return indices
-                indices = index_of_sliceWithoutOverlap_by_lines(0, message.shape[0]//100*100, 100*100)
-                # def index_of_sliceWithoutOverlap_by_time(start_time, end_time, interval):
-                #     indices = list(range(start_time, end_time, interval))
-                #     return indices
-                # indices = index_of_sliceWithoutOverlap_by_time(start_time, end_time, sliceTimeWindow)
+                print("data_type: ",self.data_type)
+                if self.data_type == "fixed_steps":
+                    def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
+                        indices = list(range(start_time, end_time, interval))
+                        return indices
+                    indices = index_of_sliceWithoutOverlap_by_lines(0, message.shape[0]//100*100, 100*100)
+                
+                elif self.data_type == "fixed_time":
+                    def index_of_sliceWithoutOverlap_by_time(start_time, end_time, interval):
+                        indices = list(range(start_time, end_time, interval))
+                        return indices
+                    indices = index_of_sliceWithoutOverlap_by_time(start_time, end_time, sliceTimeWindow)
+                else: raise NotImplementedError
                 
                 def splitMessage(message, orderbook):
                     sliced_parts = []
@@ -129,24 +135,20 @@ class BaseLOBEnv(environment.Environment):
                     for i in range(len(indices) - 1):
                         start_index = indices[i]
                         end_index = indices[i + 1]
-                        sliced_part = message[(message.index > start_index) & (message.index <= end_index)]
+                        if self.data_type == "fixed_steps":
+                            sliced_part = message[(message.index > start_index) & (message.index <= end_index)]
+                        elif self.data_type == "fixed_time":
+                            index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                            index_e = (index_e // stepLines + 10) * stepLines + index_s % stepLines
+                            assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
+                            sliced_part = message.loc[np.arange(index_s, index_e)]
                         sliced_parts.append(sliced_part)
                         init_OBs.append(orderbook.iloc[start_index,:])
-                    # # Last sliced part from last index to end_time
-                    # start_index = indices[i]
-                    # end_index = indices[i + 1]
-                    # index_s, index_e = message[(message.index >= start_index) & (message.index < end_index)].index[[0, -1]].tolist()
-                    # # index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                    # index_s = (index_s // stepLines - 10) * stepLines + index_e % stepLines
-                    # assert (index_e - index_s) % stepLines == 0, 'wrong code 32'
-                    # last_sliced_part = message.loc[np.arange(index_s, index_e)]
-                    # sliced_parts.append(last_sliced_part)
-                    # init_OBs.append(orderbook.iloc[index_s, :])
-                    
                     for part in sliced_parts:
-                        # print("start")
-                        # assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
-                        assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
+                        if self.data_type == "fixed_steps":
+                            assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
+                        elif self.data_type == "fixed_time":
+                            assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
                         assert part.shape[0] % stepLines == 0, 'wrong code 34'
                     return sliced_parts, init_OBs
                 sliced_parts, init_OBs = splitMessage(message, orderbook)
@@ -155,11 +157,13 @@ class BaseLOBEnv(environment.Environment):
                     cube = sliced[columns].to_numpy()
                     cube = cube.reshape((-1, stepLines, 8))
                     return cube
-                # def initialOrderbook():
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
                 # Cube: dynamic_horizon * stepLines * 8
                 slicedCubes_withOB = zip(slicedCubes, init_OBs)
                 return slicedCubes_withOB
+            
+            
+            
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             # i = 6 ; message,orderbook = messages[i],orderbooks[i]
             # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
@@ -182,15 +186,6 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            
-            # # breakpoint()
-            # for j in range(13):
-            #     data = Cubes_withOB[j][0][:,:,3]
-            #     dir = f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}.npy"
-            #     np.save(dir, data)
-            #     # breakpoint()
-            # # [print(Cubes_withOB[j][0][i,:,3],file=open(f"/homes/80/kang/AlphaTrade/testing_oneDay/prices/results_file_numpy_{j}",'a')) for i in range(Cubes_withOB[0][0].shape[0]) for j in range(13)]
-            
             return Cubes_withOB, max_steps_in_episode_arr
 
         Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(
