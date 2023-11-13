@@ -23,21 +23,22 @@ ppo_config = {
     "TASKSIDE":'sell',
 
     "REWARD_LAMBDA":0,
-    "ACTION_TYPE":"pure",
-    # "ACTION_TYPE":"delta",
-    "TASK_SIZE":500,
+    # "ACTION_TYPE":"pure",
+    "ACTION_TYPE":"delta",
+    "TASK_SIZE": 100, #500,
     
     "WINDOW_INDEX": -1,
     # "ATFOLDER": "/homes/80/kang/AlphaTrade/testing", # testing one Month data
     "ATFOLDER": "/homes/80/kang/AlphaTrade/testing_oneDay",
     "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{datetime.datetime.now().strftime('%m-%d_%H-%M')}",
     
+    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_11-10_03-13/", # N.O. 81, delta quant
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-19_06-27/", # N.O. 23, pure quant
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_00-33/", # N.O. 11, pure quant
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-15_10-03/", # N.O. 11, pure quant
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-14_10-16/", # N.O. 10, pure quant
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-11_04-22/", # N.O. 3, pure quant
-    "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
+    # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/ckpt/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-07_09-09/",
     # "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_10-06_12-57/",
 }
@@ -59,9 +60,11 @@ def make_evaluation(network_config):
         action = raw_action[0,0,:]
         obs,state,reward,done,info=env.step(key_step, state,action, env_params)
         row_data = [
-            checkpoint, info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
-            info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
-            info['drift_reward'], info['quant_executed'], 
+            info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
+            # checkpoint, info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0,0,0],raw_action[0,0,1],
+            info['done'], 
+            # info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], info['drift_reward'], 
+            info['quant_executed'], 
             info['task_to_execute'], info['total_revenue']
         ]
         return row_data,(obs, done, hstate,state,reward,info)
@@ -74,18 +77,18 @@ def evaluate_savefile(paramsFile,window_idx):
     # env=ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx)
     env= ExecutionEnv(ppo_config['ATFOLDER'],ppo_config["TASKSIDE"],window_idx,ppo_config["ACTION_TYPE"],ppo_config["TASK_SIZE"],ppo_config["REWARD_LAMBDA"])
     env_params=env.default_params
-    assert env.task_size == 500
+    assert env.task_size == 100 # 500
     # Automatically create the directory if it doesn't exist
     os.makedirs(csv_dir, exist_ok=True)
     with open(csv_dir+paramsFile.split(".")[0]+f'_wdw_idx_{window_idx}.csv', 'w', newline='') as csvfile:
         print(paramsFile)
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
-        row_title = [
-            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','quant_executed', 'task_to_execute', 'total_revenue'
-        ]
-        csvwriter.writerow(row_title)
-        csvfile.flush() 
+        # row_title = [
+        #     'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','quant_executed', 'task_to_execute', 'total_revenue'
+        # ]
+        # csvwriter.writerow(row_title)
+        # csvfile.flush() 
     
         with open(dir+paramsFile, 'rb') as f:
             trainstate_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
@@ -127,11 +130,11 @@ def twap_evaluation(paramsFile,window_idx):
         print(paramsFile)
         csvwriter = csv.writer(csvfile)
         # Add a header row if needed
-        row_title = [
-            'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','quant_executed', 'task_to_execute', 'total_revenue'
-        ]
-        csvwriter.writerow(row_title)
-        csvfile.flush() 
+        # row_title = [
+        #     'checkpiont_name','window_index', 'current_step' , 'average_price', 'delta_sum',"delta_aggressive",'delta_passive','raw_delta_aggressive','raw_delta_passive','done', 'slippage', 'price_drift', 'advantage_reward', 'drift_reward','quant_executed', 'task_to_execute', 'total_revenue'
+        # ]
+        # csvwriter.writerow(row_title)
+        # csvfile.flush() 
     
         rng = jax.random.PRNGKey(0)
         rng, key_reset, key_step = jax.random.split(rng, 3)
@@ -144,9 +147,11 @@ def twap_evaluation(paramsFile,window_idx):
             action = raw_action
             obs,state,reward,done,info=env.step(key_step, state,action, env_params)
             row_data = [
-                paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0],raw_action[1],
-                info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], 
-                info['drift_reward'], info['quant_executed'], 
+                info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0],raw_action[1],
+                # paramsFile.split("_")[1].split(".")[0], info['window_index'], info['current_step'], info['average_price'], action.sum(), action[0], action[1],raw_action[0],raw_action[1],
+                info['done'],
+                # info['done'], info['slippage'], info['price_drift'], info['advantage_reward'], info['drift_reward'], 
+                info['quant_executed'], 
                 info['task_to_execute'], info['total_revenue']
             ]
             csvwriter.writerow(row_data)

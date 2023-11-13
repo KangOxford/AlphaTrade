@@ -49,7 +49,7 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-import utils
+# import utils
 
 @struct.dataclass
 class EnvState:
@@ -226,8 +226,8 @@ class ExecutionEnv(BaseLOBEnv):
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
                 # NOTE: didn't know this was already implemented? I think the util function is more readable though
-                # scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
-                scaledAction = utils.clip_by_sum_int(action, remainQuant)
+                scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
+                # scaledAction = utils.clip_by_sum_int(action, remainQuant) # same thing, and hamilton_apportionment_permuted_jax add permutation if same prob
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             return action.astype(jnp.int32)
@@ -278,14 +278,18 @@ class ExecutionEnv(BaseLOBEnv):
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- used for advantage and drift ----------
         advantage = revenue - vwap * agentQuant # advantage_vwap
-        drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
+        drift = agentQuant * (vwap - state.init_price//self.tick_size)
+        # drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
-        # rewardValue = revenue 
-        rewardValue =  advantage
-        # rewardValue = advantage + self.rewardLambda * drift
-        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        rewardValue = revenue 
+        # rewardValue =  advantage
+        # rewardValue1 = advantage + self.rewardLambda * drift
+        # rewardValue1 = advantage + 1.0 * drift
+        # rewardValue2 = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = rewardValue1 - rewardValue2
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
+        jax.debug.print("reward {}", reward)
         # ---------- normalize the reward ----------
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
@@ -561,16 +565,16 @@ class ExecutionEnv(BaseLOBEnv):
         """Number of actions possible in environment."""
         return self.n_actions
     
-    # def hamilton_apportionment_permuted_jax(self, votes, seats, key):
-    #     init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-    #     remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
-    #     def f(carry,x):
-    #         key,init_seats,remainders=carry
-    #         key, subkey = jax.random.split(key)
-    #         chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
-    #         return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-    #     (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
-    #     return init_seats
+    def hamilton_apportionment_permuted_jax(self, votes, seats, key):
+        init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
+        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
+        def f(carry,x):
+            key,init_seats,remainders=carry
+            key, subkey = jax.random.split(key)
+            chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+            return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
+        (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
+        return init_seats
 
 # ============================================================================= #
 # ============================================================================= #
