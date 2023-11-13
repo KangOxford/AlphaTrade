@@ -49,6 +49,7 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+import dataclasses
 # import utils
 
 @struct.dataclass
@@ -77,6 +78,7 @@ class EnvState:
 
 @struct.dataclass
 class EnvParams:
+    is_sell_task: int
     message_data: chex.Array
     book_data: chex.Array
     stateArray_list: chex.Array
@@ -97,7 +99,7 @@ class ExecutionEnv(BaseLOBEnv):
         #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
-        self.task = task
+        self.task = task # "random", "buy", "sell"
         # self.randomize_direction = randomize_direction
         self.window_index = window_index
         self.action_type = action_type
@@ -183,9 +185,8 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        # return EnvParams(self.messages,self.books)
-        return EnvParams(self.messages,self.books,self.stateArray_list)
-        # return EnvParams(0 if self.task =='buy' else 1 if self.task=='sell' else -1, self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
+        is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
+        return EnvParams(is_sell_task, self.messages,self.books,self.stateArray_list)
     
 
     def step_env(
@@ -241,11 +242,22 @@ class ExecutionEnv(BaseLOBEnv):
         
         action_msgs = self.getActionMsgs(action, state, params)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
+        
+        raw_orders = jax.lax.cond(
+            params.is_sell_task,
+            lambda: state.ask_raw_orders,
+            lambda: state.bid_raw_orders
+        )
+        cnl_msgs = job.getCancelMsgs(
+            raw_orders,
+            -8999,
+            self.n_actions,
+            1 - params.is_sell_task * 2 
+        )
+        
         #Add to the top of the data messages
         total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         #Save time of final message to add to state
-        # time=total_messages[-1:][0][-2:]
         time=total_messages[-1, -2:]
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
@@ -369,6 +381,12 @@ class ExecutionEnv(BaseLOBEnv):
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         state = EnvState(*state_)
+        
+        key_, key = jax.random.split(key)
+        if self.task == 'random':
+            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
+            params = dataclasses.replace(params, is_sell_task=direction)
+        
         obs = self.get_obs(state, params)
         return obs,state
     
@@ -405,16 +423,12 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-        # NT, FT, PP, MKT = jax.lax.cond(
-        #     params.is_buy_task,
-        #     lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT),
-        #     lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0)
-        # )
-        FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
+        NT, FT, PP, MKT = jax.lax.cond(
+            params.is_sell_task,
+            lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0),
+            lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT)
+        )
         M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size # Mid price
-        NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
-        PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
-        MKT = 0 if self.task=='sell' else job.MAX_INT
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -454,13 +468,13 @@ class ExecutionEnv(BaseLOBEnv):
         best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
         
         obs = {
-            # "is_buy_task": params.is_buy_task,
-            "p_aggr": best_bids if self.task=='sell' else best_asks,
-            "q_aggr": best_bid_qtys if self.task=='sell' else best_ask_qtys, 
-            "p_pass": best_asks if self.task=='sell' else best_bids,
-            "q_pass": best_ask_qtys if self.task=='sell' else best_bid_qtys, 
+            "is_sell_task": params.is_sell_task,
+            "p_aggr": jnp.where(params.is_sell_task, best_bids, best_asks),
+            "q_aggr": jnp.where(params.is_sell_task, best_bid_qtys, best_ask_qtys), 
+            "p_pass": jnp.where(params.is_sell_task, best_asks, best_bids),
+            "q_pass": jnp.where(params.is_sell_task, best_ask_qtys, best_bid_qtys), 
             "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
-            "p_pass2": best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book, # second_passives
+            "p_pass2": jnp.where(params.is_sell_task, best_asks+self.tick_size*self.n_ticks_in_book, best_bids-self.tick_size*self.n_ticks_in_book), # second_passives
             "spread": best_asks - best_bids,
             "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,
@@ -482,7 +496,7 @@ class ExecutionEnv(BaseLOBEnv):
             p_mean = 3.5e7
             p_std = 1e6
             means = {
-                # "is_buy_task": 0,
+                "is_sell_task": 0,
                 "p_aggr": p_mean,
                 "q_aggr": 0,
                 "p_pass": p_mean,
@@ -500,7 +514,7 @@ class ExecutionEnv(BaseLOBEnv):
                 "max_steps": 0,
             }
             stds = {
-                # "is_buy_task": 1,
+                "is_sell_task": 1,
                 "p_aggr": p_std,
                 "q_aggr": 100,
                 "p_pass": p_std,
@@ -594,7 +608,7 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "TASKSIDE": "sell",
+        "TASKSIDE": "random", # "sell",
         "TASK_SIZE": 100, # 500,
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "delta", # "pure",
