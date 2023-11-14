@@ -76,7 +76,6 @@ class BaseLOBEnv(environment.Environment):
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
                 return messageCSVs, orderbookCSVs
             messages, orderbooks = load_files()
-
             def preProcessingMassegeOB(message, orderbook):
                 def splitTimeStamp(m):
                     m[6] = m[0].apply(lambda x: int(x))
@@ -84,6 +83,10 @@ class BaseLOBEnv(environment.Environment):
                     m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
                     return m
                 message = splitTimeStamp(message)
+                def selectTradingInterval(m):
+                    return m[(m.time_s>=34200) & (m.time_s<=57600)].reset_index(drop=True)
+                message = selectTradingInterval(message)
+                breakpoint()
                 def filterValid(message):
                     message = message[message.type.isin([1,2,3,4])]
                     valid_index = message.index.to_numpy()
@@ -132,7 +135,11 @@ class BaseLOBEnv(environment.Environment):
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+            
+            
+            m = Cubes_withOB[0][0]
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
+            breakpoint()
             
             def get_start_idx_array_list():
                 def get_start_idx_array(idx):

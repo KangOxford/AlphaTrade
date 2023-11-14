@@ -397,7 +397,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ifMarketOrder = (remainingTime <= marketOrderTime)
         # ·········· ifMarketOrder determined by steps ··········
         remainingSteps = state.max_steps_in_episode - state.step_counter 
-        marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in steps, means the last minute was left for market order
+        marketOrderSteps = jnp.array(1, dtype=jnp.int32) # in steps, means the last step was left for market order
         ifMarketOrder = (remainingSteps <= marketOrderSteps)
         # ---------- ifMarketOrder END ----------
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
