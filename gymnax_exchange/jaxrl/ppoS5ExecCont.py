@@ -33,6 +33,9 @@ config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 
+import os; os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = 'false'
+# %env XLA_PYTHON_CLIENT_PREALLOCATE=false
+
 import datetime
 wandbOn = True 
 # wandbOn = False

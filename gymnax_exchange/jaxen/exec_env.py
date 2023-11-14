@@ -49,6 +49,8 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+import dataclasses
+# import utils
 
 @struct.dataclass
 class EnvState:
@@ -76,6 +78,7 @@ class EnvState:
 
 @struct.dataclass
 class EnvParams:
+    is_sell_task: int
     message_data: chex.Array
     book_data: chex.Array
     stateArray_list: chex.Array
@@ -89,19 +92,19 @@ class EnvParams:
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, alphatradePath, task, window_index, action_type,
-            task_size = 500, rewardLambda=0.0, Gamma=0.00
+            self, alphatradePath, task, window_index, action_type, 
+            task_size = 500, rewardLambda=0.0, data_type="fixed_steps"
         ):
-        super().__init__(alphatradePath)
+        super().__init__(alphatradePath, data_type)
         #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
-        self.task = task
+        self.task = task # "random", "buy", "sell"
         # self.randomize_direction = randomize_direction
         self.window_index = window_index
         self.action_type = action_type
+        self.data_type = data_type # fixed_steps, fixed_time
         self.rewardLambda = rewardLambda
-        self.Gamma = Gamma
         # self.task_size = 5000 # num to sell or buy for the task
         # self.task_size = 2000 # num to sell or buy for the task
         self.task_size = task_size # num to sell or buy for the task
@@ -182,9 +185,8 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        # return EnvParams(self.messages,self.books)
-        return EnvParams(self.messages,self.books,self.stateArray_list)
-        # return EnvParams(0 if self.task =='buy' else 1 if self.task=='sell' else -1, self.messages,self.books,self.stateArray_list,self.obs_sell_list,self.obs_buy_list)
+        is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
+        return EnvParams(is_sell_task, self.messages,self.books,self.stateArray_list)
     
 
     def step_env(
@@ -202,7 +204,7 @@ class ExecutionEnv(BaseLOBEnv):
                     # ifMarketOrder = (remainingTime <= marketOrderTime)
                     # ·········· ifMarketOrder determined by steps ··········
                     remainingSteps = state.max_steps_in_episode - state.step_counter 
-                    marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+                    marketOrderSteps = jnp.array(1, dtype=jnp.int32) 
                     ifMarketOrder = (remainingSteps <= marketOrderSteps)
                     # ---------- ifMarketOrder END ----------
                     # ---------- quants ----------
@@ -223,39 +225,39 @@ class ExecutionEnv(BaseLOBEnv):
                 action_ = action_space_clipping(delta, state.task_to_execute)
             
             def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,self.task_size).clip(0,remainQuant)
-                def hamilton_apportionment_permuted_jax(votes, seats, key):
-                    init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-                    remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
-                    def f(carry,x):
-                        key,init_seats,remainders=carry
-                        key, subkey = jax.random.split(key)
-                        chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
-                        return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-                    (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(self.action_space(params).shape[0]))
-                    return init_seats
-                scaledAction = hamilton_apportionment_permuted_jax(action, remainQuant, key)
+                action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
+                # NOTE: didn't know this was already implemented? I think the util function is more readable though
+                scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
+                # scaledAction = utils.clip_by_sum_int(action, remainQuant) # same thing, and hamilton_apportionment_permuted_jax add permutation if same prob
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
-            # jax.debug.print("action_ {}; action {}",action_,action)
-
-            return action
+            return action.astype(jnp.int32)
         
         action = reshape_action(delta, state, params)
-        # jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
         
         
-        data_messages = job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        data_messages = self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
+        
+        raw_orders = jax.lax.cond(
+            params.is_sell_task,
+            lambda: state.ask_raw_orders,
+            lambda: state.bid_raw_orders
+        )
+        cnl_msgs = job.getCancelMsgs(
+            raw_orders,
+            -8999,
+            self.n_actions,
+            1 - params.is_sell_task * 2 
+        )
+        
         #Add to the top of the data messages
         total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         #Save time of final message to add to state
-        # time=total_messages[-1:][0][-2:]
         time=total_messages[-1, -2:]
         #To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
@@ -288,14 +290,18 @@ class ExecutionEnv(BaseLOBEnv):
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- used for advantage and drift ----------
         advantage = revenue - vwap * agentQuant # advantage_vwap
-        drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
+        drift = agentQuant * (vwap - state.init_price//self.tick_size)
+        # drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
-        # rewardValue = revenue 
-        rewardValue =  advantage
-        # rewardValue = advantage + self.rewardLambda * drift
-        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        rewardValue = revenue 
+        # rewardValue =  advantage
+        # rewardValue1 = advantage + self.rewardLambda * drift
+        # rewardValue1 = advantage + 1.0 * drift
+        # rewardValue2 = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = rewardValue1 - rewardValue2
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
+        jax.debug.print("reward {}", reward)
         # ---------- normalize the reward ----------
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
@@ -353,7 +359,7 @@ class ExecutionEnv(BaseLOBEnv):
         # all windows can be reached
 
         window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
-        '''if -999 use default static index, else use provided dynamic index'''
+        '''if -999 use default static index [self.window_index], else use provided dynamic index [reset_window_index]'''
         
 
         idx_data_window = jnp.where(
@@ -366,13 +372,21 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0.0, 0.0, 0.0, 0.0)
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
+            return (
+                state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,\
+                0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],\
+                jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), \
+                jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32)
+                )
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         state = EnvState(*state_)
+        
+        key_, key = jax.random.split(key)
+        if self.task == 'random':
+            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
+            params = dataclasses.replace(params, is_sell_task=direction)
+        
         obs = self.get_obs(state, params)
         return obs,state
     
@@ -409,16 +423,12 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
-        # NT, FT, PP, MKT = jax.lax.cond(
-        #     params.is_buy_task,
-        #     lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT),
-        #     lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0)
-        # )
-        FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
+        NT, FT, PP, MKT = jax.lax.cond(
+            params.is_sell_task,
+            lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0),
+            lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT)
+        )
         M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size # Mid price
-        NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
-        PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
-        MKT = 0 if self.task=='sell' else job.MAX_INT
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -458,13 +468,13 @@ class ExecutionEnv(BaseLOBEnv):
         best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
         
         obs = {
-            # "is_buy_task": params.is_buy_task,
-            "p_aggr": best_bids if self.task=='sell' else best_asks,
-            "q_aggr": best_bid_qtys if self.task=='sell' else best_ask_qtys, 
-            "p_pass": best_asks if self.task=='sell' else best_bids,
-            "q_pass": best_ask_qtys if self.task=='sell' else best_bid_qtys, 
+            "is_sell_task": params.is_sell_task,
+            "p_aggr": jnp.where(params.is_sell_task, best_bids, best_asks),
+            "q_aggr": jnp.where(params.is_sell_task, best_bid_qtys, best_ask_qtys), 
+            "p_pass": jnp.where(params.is_sell_task, best_asks, best_bids),
+            "q_pass": jnp.where(params.is_sell_task, best_ask_qtys, best_bid_qtys), 
             "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
-            "p_pass2": best_asks+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bids-self.tick_size*self.n_ticks_in_book, # second_passives
+            "p_pass2": jnp.where(params.is_sell_task, best_asks+self.tick_size*self.n_ticks_in_book, best_bids-self.tick_size*self.n_ticks_in_book), # second_passives
             "spread": best_asks - best_bids,
             "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,
@@ -486,7 +496,7 @@ class ExecutionEnv(BaseLOBEnv):
             p_mean = 3.5e7
             p_std = 1e6
             means = {
-                # "is_buy_task": 0,
+                "is_sell_task": 0,
                 "p_aggr": p_mean,
                 "q_aggr": 0,
                 "p_pass": p_mean,
@@ -504,7 +514,7 @@ class ExecutionEnv(BaseLOBEnv):
                 "max_steps": 0,
             }
             stds = {
-                # "is_buy_task": 1,
+                "is_sell_task": 1,
                 "p_aggr": p_std,
                 "q_aggr": 100,
                 "p_pass": p_std,
@@ -568,6 +578,17 @@ class ExecutionEnv(BaseLOBEnv):
     def num_actions(self) -> int:
         """Number of actions possible in environment."""
         return self.n_actions
+    
+    def hamilton_apportionment_permuted_jax(self, votes, seats, key):
+        init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
+        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
+        def f(carry,x):
+            key,init_seats,remainders=carry
+            key, subkey = jax.random.split(key)
+            chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
+            return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
+        (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
+        return init_seats
 
 # ============================================================================= #
 # ============================================================================= #
@@ -587,18 +608,19 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "TASKSIDE": "sell",
+        "TASKSIDE": "random", # "sell",
         "TASK_SIZE": 100, # 500,
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "delta", # "pure",
         "REWARD_LAMBDA": 1.0,
+        "DTAT_TYPE":"fixed_time",
     }
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # env=ExecutionEnv(ATFolder,"sell",1)
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"],config["DTAT_TYPE"])
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
