@@ -44,7 +44,34 @@ class EnvParams:
 
 
 
+
+
+
+
+
 class BaseLOBEnv(environment.Environment):
+    """The basic RL environment for the limit order book (LOB) using
+    JAX-LOB functions for manipulating the orderbook.
+
+    Inherits from gymnax base environment. 
+
+    ...
+    Attributes
+    ----------
+    sliceTimeWindow : int
+        first name of the person
+    stepLines : int
+        family name of the person
+    messagePath : int
+        age of the person
+
+        ... #TODO Complete the class docstring once refactored. 
+
+    Methods
+    -------
+    info(additional=""):
+        Prints the person's name and age.
+    """
     def __init__(self, alphatradePath):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
@@ -323,10 +350,10 @@ class BaseLOBEnv(environment.Environment):
         """Observation space of the environment."""
         return NotImplementedError
 
-    #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
-    #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
     def state_space(self, params: EnvParams) -> spaces.Dict:
-        """State space of the environment."""
+        """State space of the environment. #FIXME Samples absolute
+          nonsense, don't use.
+        """
         return spaces.Dict(
             {
                 "bids": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
