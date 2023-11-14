@@ -20,6 +20,7 @@ from gymnax.environments import spaces
 
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
+sys.path.append('/homes/80/kang/AlphaTrade')
 #Code snippet to disable all jitting.
 from jax import config
 
@@ -42,8 +43,14 @@ def hamilton_apportionment_permuted_jax(votes, seats, key):
     (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
     return init_seats.astype(jnp.int32)
 
+def TWAP_Scheduling(state, env, key):
+    print("TWAP_Scheduling")
+    allocation_array_final = hamilton_apportionment_permuted_jax(jnp.ones(state.max_steps_in_episode), env.task_size, key)
+    return allocation_array_final
+
 
 def VWAP_Scheduling(state, env, forcasted_volume, key):
+    print("VWAP_Scheduling")
     best_asks, best_bids=state.best_asks[:,0], state.best_bids[:,0]
     best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
     obs = {
@@ -64,7 +71,7 @@ def VWAP_Scheduling(state, env, forcasted_volume, key):
         "step_counter": state.step_counter,
         "max_steps": state.max_steps_in_episode,
     }    
-    start_idx_array = env.start_idx_array
+    start_idx_array = env.start_idx_array_list[state.window_index]
     forcasted_volume = hamilton_apportionment_permuted_jax(forcasted_volume, env.task_size, key)
     print(forcasted_volume.sum(),env.task_size)
     
@@ -88,8 +95,9 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
+        # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+        ATFolder = "/homes/80/kang/aap2017"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
         
     config = {
@@ -122,7 +130,8 @@ if __name__ == "__main__":
     obs,state=env.reset(key_reset,env_params)
     print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
-    allocation_array_final = VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_reset)
+    allocation_array_final = TWAP_Scheduling(state, env, key_reset)
+    # allocation_array_final = VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_reset)
     print("allocation_array_final.shape: ", allocation_array_final.shape)
     print("allocation_array_final.sum: ", allocation_array_final.sum())
     # jax.debug.breakpoint()

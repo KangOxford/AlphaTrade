@@ -134,26 +134,43 @@ class BaseLOBEnv(environment.Environment):
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
             
-            
+            def get_start_idx_array_list():
+                def get_start_idx_array(idx):
+                    cube=Cubes_withOB[idx][0]
+                    print(f"cube{idx} shape:{cube.shape}")
+                    start_time_array = cube[:,0,[6,7]]
+                    start_time_stamp_array = np.arange(34200,57600,900)
+                    start_idx_list = [(0, 34200, 34200, 34200)]
+                    for start_time_stamp in start_time_stamp_array:
+                        for i in range(1, start_time_array.shape[0]):
+                            timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
+                            timestamp_before = timestamp(i-1)
+                            timestamp_current = timestamp(i)
+                            if timestamp_before< start_time_stamp <timestamp_current:
+                                start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
+                    start_idx_array = np.array(start_idx_list)
+                    start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr[idx]])
+                    return start_idx_array
+                return [get_start_idx_array(idx) for idx in range(len(Cubes_withOB))] # start_idx_array_list
+            start_idx_array_list = get_start_idx_array_list()
 
-            cube=Cubes_withOB[0][0]
-            print("cube.shape:",cube.shape)
-            
-            start_time_array = cube[:,0,[6,7]]
-            start_time_stamp_array = np.arange(34200,57600,900)
-            start_idx_list = [(0, 34200, 34200, 34200)]
-            for start_time_stamp in start_time_stamp_array:
-                for i in range(1, start_time_array.shape[0]):
-                    timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
-                    timestamp_before = timestamp(i-1)
-                    timestamp_current = timestamp(i)
-                    if timestamp_before< start_time_stamp <timestamp_current:
-                        start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
-            start_idx_array = np.array(start_idx_list)
+            def Cubes_withOB_padding(Cubes_withOB):
+                max_m = max(m.shape[0] for m, o in Cubes_withOB)
+                new_Cubes_withOB = []
+                for cube, OB in Cubes_withOB:
+                    def padding(cube, target_shape):
+                        pad_width = np.zeros((100, 8))
+                        # Calculate the amount of padding required
+                        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+                        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+                        return padded_cube
+                    cube = padding(cube, max_m)
+                    new_Cubes_withOB.append((cube, OB))
+                return new_Cubes_withOB 
+            Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
 
-            start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr])
-            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array
-        Cubes_withOB, max_steps_in_episode_arr, start_idx_array = load_LOBSTER(
+            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list
+        Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
@@ -161,11 +178,13 @@ class BaseLOBEnv(environment.Environment):
             self.start_time,
             self.end_time
         )
-        self.start_idx_array = start_idx_array
+        self.start_idx_array_list = start_idx_array_list
         self.max_steps_in_episode_arr = max_steps_in_episode_arr 
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
+        # breakpoint()
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
+        # breakpoint()
         self.n_windows = len(self.books)
         # jax.debug.breakpoint()
         print(f"Num of data_window: {self.n_windows}")

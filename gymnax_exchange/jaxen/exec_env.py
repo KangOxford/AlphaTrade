@@ -115,7 +115,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        pkl_file_name = alphatradePath+'state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        pkl_file_name = alphatradePath+'/state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
         print("pre-reset will be saved to ",pkl_file_name)
         try:
             import pickle
