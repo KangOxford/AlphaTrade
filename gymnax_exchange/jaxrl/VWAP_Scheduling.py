@@ -125,8 +125,8 @@ if __name__ == "__main__":
     allocation_array_final = VWAP_Scheduling(state, env, config["FORECASTED_VOLUME"], key_reset)
     print("allocation_array_final.shape: ", allocation_array_final.shape)
     print("allocation_array_final.sum: ", allocation_array_final.sum())
-    jax.debug.breakpoint()
-    breakpoint()
+    # jax.debug.breakpoint()
+    # breakpoint()
     # print(env_params.message_data.shape, env_params.book_data.shape)
     for i in range(1,100000):
         # ==================== ACTION ====================
@@ -145,6 +145,19 @@ if __name__ == "__main__":
             print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         # print(f"Time for {i} step: \n",time.time()-start)
+        # if state.quant_executed == 535:
+        #     breakpoint()
+        # if state.step_counter == 2243:
+        #     breakpoint()
+        # if state.step_counter == 2244:
+        #     breakpoint()
+        # if state.step_counter == 2245:
+        #     breakpoint()
+        # if state.step_counter == 2246:
+        #     breakpoint()
+        # if state.step_counter == 2247:
+        #     breakpoint()
+
         if done:
             print("==="*20)
             break
@@ -154,26 +167,26 @@ if __name__ == "__main__":
         
         
 
-    # # ####### Testing the vmap abilities ########
+    # # # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
-    if enable_vmap:
-        # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
-        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+    # enable_vmap=True
+    # if enable_vmap:
+    #     # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
+    #     vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
         
-        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
-        vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
+    #     vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+    #     vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 10
-        vmap_keys = jax.random.split(rng, num_envs)
+    #     num_envs = 10
+    #     vmap_keys = jax.random.split(rng, num_envs)
 
-        test_actions=vmap_act_sample(vmap_keys)
-        print(test_actions)
+    #     test_actions=vmap_act_sample(vmap_keys)
+    #     print(test_actions)
 
-        start=time.time()
-        obs, state = vmap_reset(vmap_keys, env_params)
-        print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     obs, state = vmap_reset(vmap_keys, env_params)
+    #     print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
 
-        start=time.time()
-        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
-        print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+    #     start=time.time()
+    #     n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+    #     print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)

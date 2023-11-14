@@ -130,7 +130,7 @@ class ExecutionEnv(BaseLOBEnv):
                 #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
                 def get_initial_orders(book_data,time):
                     orderbookLevels=10
-                    initid=-9000
+                    initid=job.INITID
                     data=jnp.array(book_data).reshape(int(10*2),2)
                     newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
                     initOB = newarr \
@@ -193,6 +193,12 @@ class ExecutionEnv(BaseLOBEnv):
         #Obtain the messages for the step from the message data
         # '''
         
+        
+        l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
+        jax.debug.print("l2 state: \n {}",l2)
+        
+        
+        # action = jnp.array([0,0,delta,0],dtype=jnp.int32)
         action = jnp.array([delta,0,0,0],dtype=jnp.int32)
         jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
@@ -202,8 +208,10 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
+        jax.debug.print("action_msgs \n{}",action_msgs)
+        
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
-        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,-8999,self.n_actions,-1 if self.task=='sell' else 1)
+        cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,job.INITID+1,self.n_actions,-1 if self.task=='sell' else 1)
         #Add to the top of the data messages
         total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         #Save time of final message to add to state
@@ -225,7 +233,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         # Mask to keep only the trades where the RL agent is involved, apply mask.
-        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        mask2 = ((job.INITID < executed[:, 2]) & (executed[:, 2] < 0)) | ((job.INITID < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         agentQuant = agentTrades[:,1].sum() # new_execution quants
         # ---------- used for vwap, revenue ----------
@@ -278,9 +286,12 @@ class ExecutionEnv(BaseLOBEnv):
             state.max_steps_in_episode,
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
-        # jax.debug.breakpoint()
 
         done = self.is_terminal(state, params)
+        # jax.debug.print("time {}",state.time)
+        l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
+        jax.debug.print("l2 state: \n {}",l2)
+        # jax.debug.breakpoint()
         # jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
@@ -369,6 +380,13 @@ class ExecutionEnv(BaseLOBEnv):
         NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
         PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
         MKT = 0 if self.task=='sell' else job.MAX_INT
+        jax.debug.print("best_ask {}",best_ask)
+        jax.debug.print("best_bid {}",best_bid)
+        jax.debug.print("FT {}",FT)
+        jax.debug.print("M {}",M)
+        jax.debug.print("NT {}",NT)
+        jax.debug.print("PP {}",PP)
+        jax.debug.print("MKT {}",MKT)
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -395,6 +413,9 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        jax.debug.print("ifMarketOrder {}",ifMarketOrder)
+        jax.debug.print("quants {}",quants)
+        jax.debug.print("prices {}",prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs,times],axis=1)
