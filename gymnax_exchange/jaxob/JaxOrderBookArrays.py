@@ -68,11 +68,15 @@ def cancel_order(orderside, msg):
 
 @jax.jit
 def match_bid_order(data_tuple):
-    return __get_top_bid_order_idx(data_tuple[1]), *match_order(data_tuple)
+    matching_tuple = match_order(data_tuple)
+    top_i = __get_top_bid_order_idx(matching_tuple[0])
+    return top_i, *matching_tuple
 
 @jax.jit
 def match_ask_order(data_tuple):
-    return __get_top_ask_order_idx(data_tuple[1]), *match_order(data_tuple)
+    matching_tuple = match_order(data_tuple)
+    top_i = __get_top_ask_order_idx(matching_tuple[0])
+    return top_i, *matching_tuple
 
 @jax.jit
 def match_order(data_tuple):
@@ -97,9 +101,9 @@ def __get_top_bid_order_idx(orderside):
 @jax.jit
 def __get_top_ask_order_idx(orderside):
     prices=orderside[:,0]
-    prices=jnp.where(prices==-1,999999999,prices)
+    prices=jnp.where(prices==-1, 999999999, prices)
     minPrice=jnp.min(prices)
-    times=jnp.where(orderside[:,0]==minPrice,orderside[:,4],999999999)
+    times=jnp.where(orderside[:,0]==minPrice, orderside[:,4], 999999999)
     minTime_s=jnp.min(times,axis=0)
     times_ns=jnp.where(times==minTime_s,orderside[:,5],999999999)
     minTime_ns=jnp.min(times_ns,axis=0)
@@ -119,6 +123,7 @@ def _match_against_bid_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
 
 @jax.jit
 def __check_before_matching_ask(data_tuple):
+    # jax.debug.print('data_tuple: {}', data_tuple)
     top_order_idx,orderside,qtm,price,trade,_,_,_=data_tuple
     returnarray=(orderside[top_order_idx,0]<=price) & (qtm>0) & (orderside[top_order_idx,0]!=-1)
     return jnp.squeeze(returnarray)
@@ -254,6 +259,13 @@ def cond_type_side_save_bidask(ordersides,data):
             (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
     # ask,bid,trade=jax.lax.switch(index-1,(ask_lim,ask_cancel,bid_lim,bid_cancel),msg,askside,bidside,trades)
     ask, bid, trade = jax.lax.switch(index, (ask_lim, bid_lim, ask_cancel, bid_cancel), msg, askside, bidside, trades)
+    
+    l2_state = get_L2_state(ask, bid, 5)
+    b_ask, b_bid = get_best_bid_and_ask(ask, bid)
+    # jax.debug.print('l2_state\n{}', l2_state)
+    # jax.debug.print('{} ask-bid', b_ask - b_bid)
+    # jax.debug.breakpoint()
+    
     #jax.debug.print("Askside after is \n {}",ask)
     # jax.debug.breakpoint()
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(ask,bid)
@@ -273,7 +285,10 @@ def scan_through_entire_array_save_states(msg_array,ordersides,steplines):
 
 def scan_through_entire_array_save_bidask(msg_array,ordersides,steplines):
     #Will return the states for each of the processed messages, but only those from data to keep array size constant, and enabling variable #of actions (AutoCancel)
+    # jax.debug.print('before scan_through_entire_array_save_bidask')
+    # jax.debug.breakpoint()
     last,all=jax.lax.scan(cond_type_side_save_bidask,ordersides,msg_array)
+    # jax.debug.print('after scan_through_entire_array_save_bidask')
     # jax.debug.breakpoint()
     return (last[0],last[1],last[2],all[0][-steplines:],all[1][-steplines:])
 

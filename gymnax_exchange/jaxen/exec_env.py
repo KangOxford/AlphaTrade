@@ -200,7 +200,8 @@ class ExecutionEnv(BaseLOBEnv):
             self.n_actions,
             params.is_buy_task * 2 - 1  # direction in {-1, 1}
         )
-        # action_msgs, cnl_msgs = self.filter_messages(action_msgs, cnl_msgs)
+        # net actions and cancellations at same price if new action is not bigger than cancellation
+        action_msgs, cnl_msgs = self.filter_messages(action_msgs, cnl_msgs)
         # prepend cancel and new action to data messages
         total_messages = jnp.concatenate(
             [cnl_msgs, action_msgs, data_messages],
@@ -219,7 +220,7 @@ class ExecutionEnv(BaseLOBEnv):
             self.stepLines
         )
         # DEBUGBEST
-        jax.debug.print("bestasks[-1] - bids[-1] {}", bestasks[-1, 0] - bestbids[-1, 0])
+        # jax.debug.print("bestasks[-1] - bids[-1] {}", bestasks[-1, 0] - bestbids[-1, 0])
         # jax.debug.breakpoint()
         
         # ========== get reward and revenue ==========
@@ -320,11 +321,10 @@ class ExecutionEnv(BaseLOBEnv):
             action_msgs: jax.Array,
             cnl_msgs: jax.Array
         ) -> Tuple[jax.Array, jax.Array]:
-        """ Filter out cancelation messages, when same actions should be placed again. 
-            CAVE: only simplifies cancellations if new action size <= old action size.
+        """ Filter out cancelation messages, when same actions should be placed again.
+            NOTE: only simplifies cancellations if new action size <= old action size.
                   To prevent multiple split orders, new larger orders still cancel the entire old order.
             TODO: consider allowing multiple split orders
-            TODO: test and debug (assuming action and cnl are sorted by level)
             ex: at one level, 3 cancel & 1 action --> 2 cancel, 0 action
         """
         @partial(jax.vmap, in_axes=(0, None))
@@ -333,16 +333,14 @@ class ExecutionEnv(BaseLOBEnv):
         def matching_masks(prices_a, prices_cnl):
             res = p_in_cnl(prices_a, prices_cnl)
             return jnp.any(res, axis=1), jnp.any(res, axis=0)
-
-        # type, side, quant, price, trader_ids, order_ids, time_s, time_ns
-        # TODO: match price levels
-        jax.debug.print("action_msgs\n {}", action_msgs)
-        jax.debug.print("cnl_msgs\n {}", cnl_msgs)
+        
+        # jax.debug.print("action_msgs\n {}", action_msgs)
+        # jax.debug.print("cnl_msgs\n {}", cnl_msgs)
 
         a_mask, c_mask = matching_masks(action_msgs[:, 3], cnl_msgs[:, 3])
-        jax.debug.print("a_mask \n{}", a_mask)
-        jax.debug.print("c_mask \n{}", c_mask)
-        jax.debug.print("DIFF: {}", a_mask.sum() - c_mask.sum())
+        # jax.debug.print("a_mask \n{}", a_mask)
+        # jax.debug.print("c_mask \n{}", c_mask)
+        # jax.debug.print("MASK DIFF: {}", a_mask.sum() - c_mask.sum())
         
         a_i = jnp.where(a_mask, size=a_mask.shape[0], fill_value=-1)[0]
         a = jnp.where(a_i == -1, 0, action_msgs[a_i][:, 2])
@@ -354,8 +352,9 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("c_i \n{}", c_i)
         # jax.debug.print("c \n{}", c)
 
-        rel_cnl_quants = jnp.minimum(c, a) # min
-        jax.debug.print("rel_cnl_quants {}", rel_cnl_quants)
+        rel_cnl_quants = (c >= a) * a
+        # rel_cnl_quants = jnp.maximum(0, c - a)
+        # jax.debug.print("rel_cnl_quants {}", rel_cnl_quants)
         # reduce both cancel and action message quantities to simplify
         action_msgs = action_msgs.at[:, 2].set(
             action_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(a_mask)])
@@ -367,8 +366,8 @@ class ExecutionEnv(BaseLOBEnv):
         ).T
         cnl_msgs = cnl_msgs.at[:, 2].set(
             cnl_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(c_mask)])
-        jax.debug.print("action_msgs NEW \n{}", action_msgs)
-        jax.debug.print("cnl_msgs NEW \n{}", cnl_msgs)
+        # jax.debug.print("action_msgs NEW \n{}", action_msgs)
+        # jax.debug.print("cnl_msgs NEW \n{}", cnl_msgs)
 
         return action_msgs, cnl_msgs
 
@@ -405,10 +404,12 @@ class ExecutionEnv(BaseLOBEnv):
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         # print(self.max_steps_in_episode_arr[idx_data_window])
-        # jax.debug.breakpoint()
         obs_sell = params.obs_sell_list[idx_data_window]
         obs_buy = params.obs_buy_list[idx_data_window]
         state = EnvState(*state_)
+        # jax.debug.print('in reset_env')
+        # jax.debug.print('{}', job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 3))
+        # jax.debug.breakpoint()
         # jax.debug.print("state after reset {}", state)
         # why would we use the observation from the parent env here?
         # obs = obs_sell if self.task == "sell" else obs_buy
@@ -424,14 +425,56 @@ class ExecutionEnv(BaseLOBEnv):
         )
     
     def getActionMsgs(self, action: jax.Array, state: EnvState, params: EnvParams):
-        def normal_order_logic(action: jnp.ndarray):
-            quants = action.astype(jnp.int32) # from action space
-            return quants
+        # def normal_order_logic(action: jnp.ndarray):
+        #     quants = action.astype(jnp.int32) # from action space
+        #     return quants
 
-        def market_order_logic(state: EnvState):
-            quant = state.task_to_execute - state.quant_executed
-            quants = jnp.asarray((quant, 0, 0, 0), jnp.int32) 
-            return quants
+        # def market_order_logic(state: EnvState):
+        #     quant = state.task_to_execute - state.quant_executed
+        #     quants = jnp.asarray((quant, 0, 0, 0), jnp.int32) 
+        #     return quants
+        
+        def normal_qp(price_levels: jax.Array, state: EnvState, action: jax.Array):
+            def combine_mid_nt(quants, prices):
+                quants = quants \
+                    .at[2].set(quants[2] + quants[1]) \
+                    .at[1].set(0)
+                prices = prices.at[1].set(-1)
+                return quants, prices
+
+            quants = action.astype(jnp.int32)
+            prices = jnp.array(price_levels[:-1])
+            # if mid_price == near_touch_price: combine orders into one
+            return jax.lax.cond(
+                price_levels[1] != price_levels[2],
+                lambda q, p: (q, p),
+                combine_mid_nt,
+                quants, prices
+            )
+        
+        def market_qp(price_levels: jax.Array, state: EnvState, action: jax.Array):
+            mkt_quant = state.task_to_execute - state.quant_executed
+            quants = jnp.asarray((mkt_quant, 0, 0, 0), jnp.int32) 
+            return quants, jnp.asarray((price_levels[-1], -1, -1, -1), jnp.int32)
+        
+        def buy_task_prices(best_ask, best_bid):
+            NT = best_bid
+            # mid defaults to one tick more passive if between ticks
+            M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
+            FT = best_ask
+            PP = best_bid - self.tick_size*self.n_ticks_in_book
+            MKT = job.MAX_INT
+            return NT, M, FT, PP, MKT
+
+        def sell_task_prices(best_ask, best_bid):
+            NT = best_ask
+            # mid defaults to one tick more passive if between ticks
+            M = (jnp.ceil((best_bid + best_ask) / 2 / self.tick_size)
+                 * self.tick_size).astype(jnp.int32)
+            FT = best_bid
+            PP = best_ask + self.tick_size*self.n_ticks_in_book
+            MKT = 0
+            return NT, M, FT, PP, MKT
 
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
@@ -455,30 +498,25 @@ class ExecutionEnv(BaseLOBEnv):
         best_ask, best_bid = state.best_asks[-1, 0], state.best_bids[-1, 0]
         # jax.debug.print("ask - bid {}", best_ask - best_bid)
 
-        # FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
-        NT, FT, PP, MKT = jax.lax.cond(
+        NT, M, FT, PP, MKT = jax.lax.cond(
             params.is_buy_task,
-            lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT),
-            lambda: (best_ask, best_bid, best_ask + self.tick_size*self.n_ticks_in_book, 0)
+            buy_task_prices,
+            sell_task_prices,
+            best_ask, best_bid
         )
-        M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size # Mid price
-        # NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
-        # PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
-        # MKT = 0 if self.task=='sell' else job.MAX_INT
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
-        ifMarketOrder = (remainingTime <= marketOrderTime)
 
-        normal_prices = jnp.asarray((FT, M, NT, PP), jnp.int32)
-        market_prices = jnp.asarray((MKT, M, M, M), jnp.int32)
-        market_quants = market_order_logic(state)
-        normal_quants = normal_order_logic(action)
-        
-        quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
-        prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        price_levels = (FT, M, NT, PP, MKT)
+        quants, prices = jax.lax.cond(
+            (remainingTime <= marketOrderTime),
+            market_qp,
+            normal_qp,
+            price_levels, state, action
+        )
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs,times],axis=1)
