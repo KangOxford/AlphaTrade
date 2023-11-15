@@ -193,7 +193,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        pkl_file_name = alphatradePath+'state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        pkl_file_name = alphatradePath+'/state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
         print("pre-reset will be saved to ",pkl_file_name)
         try:
             import pickle
@@ -208,7 +208,7 @@ class ExecutionEnv(BaseLOBEnv):
                 #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
                 def get_initial_orders(book_data,time):
                     orderbookLevels=10
-                    initid=-9000
+                    initid=job.INITID
                     data=jnp.array(book_data).reshape(int(10*2),2)
                     newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
                     initOB = newarr \
@@ -269,6 +269,7 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
+        # action = jnp.array([delta,0,0,0],dtype=jnp.int32)
         def reshape_action(action : Dict, state: EnvState, params : EnvParams):
             if self.action_type == 'delta':
                 def twapV3(state, env_params):
@@ -316,8 +317,10 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
-        #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
+        jax.debug.print("action_msgs \n{}",action_msgs)
         
+        #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
+
         raw_orders = jax.lax.cond(
             params.is_sell_task,
             lambda: state.ask_raw_orders,
@@ -330,6 +333,7 @@ class ExecutionEnv(BaseLOBEnv):
             1 - params.is_sell_task * 2 
         )
         
+
         #Add to the top of the data messages
         total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         #Save time of final message to add to state
@@ -350,7 +354,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         # Mask to keep only the trades where the RL agent is involved, apply mask.
-        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        mask2 = ((job.INITID < executed[:, 2]) & (executed[:, 2] < 0)) | ((job.INITID < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         agentQuant = agentTrades[:,1].sum() # new_execution quants
         # ---------- used for vwap, revenue ----------
@@ -407,9 +411,12 @@ class ExecutionEnv(BaseLOBEnv):
             state.max_steps_in_episode,
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
-        # jax.debug.breakpoint()
 
         done = self.is_terminal(state, params)
+        # jax.debug.print("time {}",state.time)
+        l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
+        jax.debug.print("l2 state: \n {}",l2)
+        # jax.debug.breakpoint()
         # jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
@@ -468,9 +475,7 @@ class ExecutionEnv(BaseLOBEnv):
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (
-            # ((state.time - state.init_time)[0] > params.episode_time) |
-            (state.step_counter >= state.max_steps_in_episode) |
-            (state.task_to_execute - state.quant_executed <= 0)
+            (state.task_to_execute - state.quant_executed <= 0) | (state.max_steps_in_episode - state.step_counter<= 0)
         )
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
@@ -504,6 +509,8 @@ class ExecutionEnv(BaseLOBEnv):
             lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT)
         )
         M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size # Mid price
+
+
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -514,7 +521,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ifMarketOrder = (remainingTime <= marketOrderTime)
         # ·········· ifMarketOrder determined by steps ··········
         remainingSteps = state.max_steps_in_episode - state.step_counter 
-        marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in steps, means the last minute was left for market order
+        marketOrderSteps = jnp.array(1, dtype=jnp.int32) # in steps, means the last step was left for market order
         ifMarketOrder = (remainingSteps <= marketOrderSteps)
         # ---------- ifMarketOrder END ----------
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
@@ -530,6 +537,9 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
+        jax.debug.print("ifMarketOrder {}",ifMarketOrder)
+        jax.debug.print("quants {}",quants)
+        jax.debug.print("prices {}",prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs,times],axis=1)

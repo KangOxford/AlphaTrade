@@ -52,7 +52,7 @@ import jax
 import chex
 
 
-INITID = -9000
+INITID = -900000
 MAX_INT = 2_147_483_647  # max 32 bit int
 #TODO: Get rid of these magic numbers by allowing a config dict
 #  to be passed through as a static arg 
