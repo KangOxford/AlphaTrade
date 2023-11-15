@@ -62,13 +62,6 @@ getActionMsgs:      Generates action messages based on
                     the current state and action. 
                     It determines the type, side, quantity, 
                     and price of orders to be executed.
-get_obs:            Returns the current observation from environment's state. 
-                    It includes market information and execution status.
-action_space:       Defines the action space of the environment, 
-                    tailored for trade execution.
-observation_space:  Defines the observation space of the environment, 
-                    including market conditions and execution metrics.
-state_space:        Defines the state space of the environment, 
                     including detailed order book information and trade history
 hamilton_apportionment_permuted_jax: A utility function using JAX, 
                                      implementing a Hamilton apportionment 
