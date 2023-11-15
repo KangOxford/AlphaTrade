@@ -1,3 +1,85 @@
+"""
+Execution Environment for Limit Order Book
+
+University of Oxford
+Corresponding Author: 
+Kang Li     (kang.li@keble.ox.ac.uk)
+Sascha Frey (sascha.frey@st-hughs.ox.ac.uk)
+Peer Nagy   (peer.nagy@reuben.ox.ac.uk)
+V1.0
+
+
+
+Module Description
+This module extends the base simulation environment for limit order books 
+ using JAX for high-performance computations, specifically tailored for 
+ execution tasks in financial markets. It is particularly designed for 
+ reinforcement learning applications focusing on 
+ optimal trade execution strategies.
+
+Key Components
+EnvState:   Dataclass to encapsulate the current state of the environment, 
+            including the raw order book, trades, and time information.
+EnvParams:  Configuration class for environment-specific parameters, 
+            such as task details, message and book data, and episode timing.
+ExecutionEnv: Environment class inheriting from BaseLOBEnv, 
+              offering specialized methods for order placement and 
+              execution tasks in trading environments. 
+
+
+Functionality Overview
+__init__:           Initializes the execution environment, setting up paths 
+                    for data, action types, and task details. 
+                    It includes pre-processing and initialization steps 
+                    specific to execution tasks.
+default_params:     Returns the default parameters for execution environment,
+                    adjusting for tasks such as buying or selling.
+step_env:           Advances the environment by processing actions and market 
+                    messages. It updates the state and computes the reward and 
+                    termination condition based on execution-specific criteria.
+reset_env:          Resets the environment to a state appropriate for a new 
+                    execution task. Initializes the order book and sets initial
+                    state specific to the execution context.
+is_terminal:        Checks if the current state meets the terminal condition, 
+                    specific to execution tasks, such as completion of the 
+                    execution order or time constraints.
+get_obs:            Constructs and returns the current observation for the 
+                    execution environment, derived from the state.
+name, num_actions:  Inherited methods providing the name of the environment 
+                    and the number of possible actions.
+action_space:       Defines the action space for execution tasks, including 
+                    order types and quantities.
+observation_space:  Define the observation space for execution tasks.
+state_space:        Describes the state space of the environment, tailored 
+                    for execution tasks with components 
+                    like bids, asks, and trades.
+reset_env:          Resets the environment to a specific state for execution. 
+                    It selects a new data window, initializes the order book, 
+                    and sets the initial state for execution tasks.
+is_terminal:        Checks whether the current state is terminal, based on 
+                    the number of steps executed or tasks completed.
+getActionMsgs:      Generates action messages based on 
+                    the current state and action. 
+                    It determines the type, side, quantity, 
+                    and price of orders to be executed.
+get_obs:            Returns the current observation from environment's state. 
+                    It includes market information and execution status.
+action_space:       Defines the action space of the environment, 
+                    tailored for trade execution.
+observation_space:  Defines the observation space of the environment, 
+                    including market conditions and execution metrics.
+state_space:        Defines the state space of the environment, 
+                    including detailed order book information and trade history
+hamilton_apportionment_permuted_jax: A utility function using JAX, 
+                                     implementing a Hamilton apportionment 
+                                     method with randomized seat allocation.
+_get_initial_time:  Inherited method to retrieve the 
+                    initial time of a data window.
+_get_data_messages: Inherited method to fetch market messages for a given 
+                    step within a data window.
+"""
+
+
 # from jax import config
 # config.update("jax_enable_x64",True)
 # ============== testing scripts ===============
@@ -580,6 +662,17 @@ class ExecutionEnv(BaseLOBEnv):
         return self.n_actions
     
     def hamilton_apportionment_permuted_jax(self, votes, seats, key):
+        """
+        Compute the Hamilton apportionment method with permutation using JAX.
+
+        Args:
+            votes (jax.Array): Array of votes for each party/entity.
+            seats (int): Total number of seats to be apportioned.
+            key (chex.PRNGKey): JAX key for random number generation.
+
+        Returns:
+            jax.Array: Array of allocated seats to each party/entity.
+        """
         init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
         remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
         def f(carry,x):
