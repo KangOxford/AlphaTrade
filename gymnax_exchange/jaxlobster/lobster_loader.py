@@ -1,4 +1,7 @@
-"""Docstring TBD"""
+"""Data Loading Module
+
+Example use of class is given in 'main' part at end of file. 
+"""
 from os import listdir
 from os.path import isfile, join
 import warnings
@@ -12,14 +15,37 @@ from jax import numpy as jnp
 import jax
 from jax import lax
 
-            
-
-
-
-
 
 class LoadLOBSTER():
-    """Docstring
+    """
+    Class which completes all of the loading from the lobster data
+    set files. 
+
+    ...
+
+    Attributes
+    ----------
+    atpath : str
+        Path to the "AlphaTrade" repository folder
+    messagePath : str
+        Path to folder containing all message data
+    orderbookPath : str
+        Path to folder containing all orderbook state data
+    window_type : str
+        "fixed_time" or "fixed_steps" defines whether episode windows
+        are defined by time (e.g. 30mins) or n_steps (e.g. 150)
+    window_length : int
+        Length of an episode window. In seconds or steps (see above)
+    n_messages : int
+        number of messages to process from data per step
+
+    Methods
+    -------
+    run_loading():
+        Returns jax.numpy arrays with messages sliced into fixed-size
+        windows. Dimensions: (Window, Step, Message, Features)
+        Additionally returns initial state data for each window, and 
+        the lengths (horizons) of each window. 
     """
     def __init__(self,
                  alphatradepath,
@@ -33,16 +59,26 @@ class LoadLOBSTER():
         self.window_type=type_
         self.window_length=window_length
         self.n_messages=n_msg_per_step
-        self.day_start=34200
-        self.day_end=57600
+
 
     def run_loading(self):
-        message_days, orderbook_days = self.load_files()
-        pairs = [self.pre_process_msg_ob(msg,ob) 
+        """Returns jax.numpy arrays with messages sliced into fixed-size
+        windows. Dimensions: (Window, Step, Message, Features)
+        
+            Parameters:
+                NA   
+            Returns:
+                loaded_msg_windows (Array): messages sliced into fixed-
+                                            size windows.
+                                            Dimensions: 
+                                            (Window, Step, Message, Features)
+        """
+        message_days, orderbook_days = self._load_files()
+        pairs = [self._pre_process_msg_ob(msg,ob) 
                  for msg,ob 
                  in zip(message_days,orderbook_days)]
         message_days, orderbook_days = zip(*pairs)
-        slicedCubes_withOB_list = [self.slice_day_no_overlap(msg_day,ob_day) 
+        slicedCubes_withOB_list = [self._slice_day_no_overlap(msg_day,ob_day) 
                                    for msg_day,ob_day 
                                    in zip(message_days,orderbook_days)]
         cubes_withOB = list(itertools.chain \
@@ -50,7 +86,7 @@ class LoadLOBSTER():
         max_steps_in_windows_arr = jnp.array([m.shape[0] 
                                               for m,o 
                                               in cubes_withOB],jnp.int32)
-        cubes_withOB=self.pad_window_cubes(cubes_withOB)
+        cubes_withOB=self._pad_window_cubes(cubes_withOB)
         loaded_msg_windows,loaded_book_windows=map(jnp.array,
                                                     zip(*cubes_withOB))
         n_windows=len(loaded_book_windows)
@@ -59,41 +95,45 @@ class LoadLOBSTER():
                 max_steps_in_windows_arr,
                 n_windows)
 
-    def pad_window_cubes(self,cubes_withOB):
+    def _pad_window_cubes(self,cubes_withOB):
         #Get length of longest window
         max_win = max(w.shape[0] for w, o in cubes_withOB)
         new_cubes_withOB = []
         for cube, OB in cubes_withOB:
-            cube = self.pad_cube(cube, max_win)
+            cube = self._pad_cube(cube, max_win)
             new_cubes_withOB.append((cube, OB))
         return new_cubes_withOB
     
-    def pad_cube(self, cube, target_shape):
-                # Calculate the amount of padding required
-                padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-                padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-                return padded_cube
+    def _pad_cube(self, cube, target_shape):
+        """Given a 'cube' of data, representing one episode window, pad
+        it with extra entries of 0 to reach a target number of steps.
+        """
+        # Calculate the amount of padding required
+        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+        return padded_cube
 
-    def slice_day_no_overlap(self, message_day, orderbook_day):
-        sliced_parts, init_OBs = self.split_day_to_windows(message_day, orderbook_day)
+    def _slice_day_no_overlap(self, message_day, orderbook_day):
+        """ Given a day of message and orderbook data, slice it into
+        'cubes' of episode windows. 
+        """
+        sliced_parts, init_OBs = self._split_day_to_windows(message_day, orderbook_day)
         slicedCubes = [self._slice_to_cube(slice_) for slice_ in sliced_parts]
         slicedCubes_withOB = zip(slicedCubes, init_OBs)
         return slicedCubes_withOB
 
-    def load_files(self):
+    def _load_files(self):
         """Loads the csvs as pandas arrays. Files are seperated by days
-
         Could potentially be optimised to work around pandas, very slow.         
         """
-        from os import listdir; from os.path import isfile, join; import pandas as pd
         readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-        messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
+        messageFiles, orderbookFiles = readFromPath(self.messagePath), readFromPath(self.orderbookPath)
         dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
-        messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
-        orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
+        messageCSVs = [pd.read_csv(self.messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
+        orderbookCSVs = [pd.read_csv(self.orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
         return messageCSVs, orderbookCSVs
-    messages, orderbooks = load_files()
-    def preProcessingMassegeOB(message, orderbook):
+    
+    def _pre_process_msg_ob(self,message_day,orderbook_day):
         """Adjust message_day data and orderbook_day data. 
         Splits time into two fields, drops unused message_day types,
         transforms executions into limit orders and delete into cancel
@@ -118,7 +158,7 @@ class LoadLOBSTER():
         orderbook_day.iloc[valid_index,:].reset_index(inplace=True, drop=True)
         return message_day,orderbook_day
     
-    def daily_slice_indeces(self,type,start, end, interval, msgs_length=100000):
+    def _daily_slice_indeces(self,type,start, end, interval, msgs_length=100000):
         """Returns a list of times of indices at which to cut the daily
         message data into data windows.
             Parameters:
@@ -140,22 +180,21 @@ class LoadLOBSTER():
         """
         if type == "fixed_steps":
             end_index = ((msgs_length-start)
-                            //self.n_messages*self.n_messages+start
+                            //self.n_messages*self.n_messages+start+1
                           if end==-1 else (end-start)
-                            //self.n_messages*self.n_messages+start)
+                            //self.n_messages*self.n_messages+start+1)
             indices = list(range(start, end_index, self.n_messages*interval))
         elif type == "fixed_time":
             if end==-1:
                 raise IndexError('Cannot use -1 as an index if fixed_time')
-            indices = list(range(start, end, interval))
-            print(indices)
+            indices = list(range(start, end+1, interval))
         else: raise NotImplementedError('Use either "fixed_time" or' 
                                         + ' "fixed_steps"')
         if len(indices)<2:
             raise ValueError("Not enough range to get a slice")
         return indices
 
-    def split_day_to_windows(self,message,orderbook):
+    def _split_day_to_windows(self,message_day,orderbook_day):
         """Splits a day of messages into given windows.
         The windows are either defined by a fixed time interval or a 
         fixed number of steps, whereby each step is a fixed number of 
@@ -171,42 +210,45 @@ class LoadLOBSTER():
                 init_OBs (List): List of arrays repr. init. orderbook
                                     data for each window. 
         """
-        indices=self.daily_slice_indeces(self.window_type,
-                                         self.day_start,
-                                         self.day_end,
+        d_end = (message_day['time_s'].max()+1 
+                 if self.window_type=="fixed_time"  
+                 else -1)
+        d_start = (message_day['time_s'].min() 
+                 if self.window_type=="fixed_time"  
+                 else 0)
+        indices=self._daily_slice_indeces(self.window_type,
+                                         d_start,
+                                         d_end,
                                          self.window_length,
-                                         message.shape[0])
+                                         message_day.shape[0])
         sliced_parts = []
         init_OBs = []
         for i in range(len(indices) - 1):
             start_index = indices[i]
             end_index = indices[i + 1]
             if self.window_type == "fixed_steps":
-                sliced_part = message[(message.index > start_index) &
-                                             (message.index <= end_index)]
+                sliced_part = message_day[(message_day.index > start_index) &
+                                             (message_day.index <= end_index)]
             elif self.window_type == "fixed_time":
-                index_s, index_e = message[(message['time'] >= start_index) &
-                                            (message['time'] < end_index)].index[[0, -1]].tolist()
-                
-                index_e = ((index_e // self.n_messages + 10) * self.n_messages
+                index_s, index_e = message_day[(message_day['time'] >= start_index) &
+                                            (message_day['time'] < end_index)].index[[0, -1]].tolist()
+                index_e = ((index_e // self.n_messages - 1) * self.n_messages
                             + index_s % self.n_messages)
                 assert ((index_e - index_s) 
                         % self.n_messages == 0), 'wrong code 31'
-                sliced_part = message.loc[np.arange(index_s, index_e)]
+                sliced_part = message_day.loc[np.arange(index_s, index_e)]
             sliced_parts.append(sliced_part)
-            init_OBs.append(orderbook.iloc[start_index,:])
+            init_OBs.append(orderbook_day.iloc[start_index,:])
         
-            if self.window_type == "fixed_steps":
-                assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
-                for part in sliced_parts:
-                    assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
-            elif self.window_type == "fixed_time":
-                for part in sliced_parts:
-                    assert (part.time_s.iloc[-1] 
-                            - part.time_s.iloc[0] 
-                            >= self.window_length), \
-                            f"wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {self.window_length}"
-                    assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
+        if self.window_type == "fixed_steps":
+            print(indices)
+            print(len(sliced_parts))
+            assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
+            for part in sliced_parts:
+                assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
+        elif self.window_type == "fixed_time":
+            for part in sliced_parts:
+                assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
         return sliced_parts, init_OBs
     
     def _slice_to_cube(self,sliced):
@@ -221,10 +263,17 @@ class LoadLOBSTER():
 
 
 if __name__ == "__main__":
-    loader=LoadLOBSTER(".",10)
-    print(loader.daily_slice_indeces(loader.window_type,loader.day_start,loader.day_end,loader.window_length))
+    #Load data from 50 Levels, fixing each episode to 150 steps
+    #containing 100 messages each. 
+    loader=LoadLOBSTER(".",50,"fixed_steps",window_length=150,n_msg_per_step=100)
     msgs,books,window_lengths,n_windows=loader.run_loading()
     print(msgs.shape,books.shape,window_lengths,n_windows)
-    print(list(range(0,10+1,2)))
+
+    #Load data from 50 Levels, fixing each episode to 30 minutes
+    #(1800 seconds) containing a varied number of steps of 100
+    # messages each.
+    loader=LoadLOBSTER(".",50,"fixed_time",window_length=1800,n_msg_per_step=100)
+    msgs,books,window_lengths,n_windows=loader.run_loading()
+    print(msgs.shape,books.shape,window_lengths,n_windows)
 
 
