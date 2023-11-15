@@ -173,7 +173,7 @@ class ExecutionEnv(BaseLOBEnv):
 
             action = truncate_action(action, state.task_to_execute - state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
-            jax.debug.print("action {}", action)
+            # jax.debug.print("action {}", action)
             return action
 
         action = reshape_action(a, state, params)
@@ -218,7 +218,8 @@ class ExecutionEnv(BaseLOBEnv):
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
         )
-        # jax.debug.print("bestasks {}", bestbids)
+        # DEBUGBEST
+        jax.debug.print("bestasks[-1] - bids[-1] {}", bestasks[-1, 0] - bestbids[-1, 0])
         # jax.debug.breakpoint()
         
         # ========== get reward and revenue ==========
@@ -263,7 +264,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ========== get reward and revenue END ==========
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
-        def bestPircesImpute(bestprices,lastBestPrice):
+        def bestPricesImpute(bestprices, lastBestPrice):
             def replace_values(prev, curr):
                 last_non_999999999_values = jnp.where(curr != 999999999, curr, prev) #non_999999999_mask
                 replaced_curr = jnp.where(curr == 999999999, last_non_999999999_values, curr)
@@ -276,8 +277,19 @@ class ExecutionEnv(BaseLOBEnv):
                 return forward_fill_999999999_int(arr.at[0, 0].set(jnp.where(index == 0, arr[0, 0], arr[index][0])))
             back_fill = lambda arr: jnp.flip(forward_fill(jnp.flip(arr, axis=0)), axis=0)
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2
-            return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
-        bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
+            return jnp.where(
+                (bestprices[:,0] == 999999999).all(),
+                jnp.tile(
+                    jnp.array([lastBestPrice, 0]),
+                    (bestprices.shape[0], 1)
+                ),
+                mean_forward_back_fill(bestprices)
+            )
+
+        bestasks = bestPricesImpute(
+            bestasks[-self.stepLines:], state.best_asks[-1,0])
+        bestbids = bestPricesImpute(
+            bestbids[-self.stepLines:], state.best_bids[-1,0])
         state = EnvState(
             asks, bids, trades, bestasks, bestbids,
             state.init_time, time, state.customIDcounter + self.n_actions, state.window_index,
@@ -441,6 +453,8 @@ class ExecutionEnv(BaseLOBEnv):
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
         best_ask, best_bid = state.best_asks[-1, 0], state.best_bids[-1, 0]
+        # jax.debug.print("ask - bid {}", best_ask - best_bid)
+
         # FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
         NT, FT, PP, MKT = jax.lax.cond(
             params.is_buy_task,

@@ -84,6 +84,11 @@ class BaseLOBEnv(environment.Environment):
                     m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
                     return m
                 message = splitTimeStamp(message)
+                def selectTradingInterval(m, o):
+                    m = m[(m.time_s>=34200) & (m.time_s<=57600)]
+                    o = o.iloc[m.index.to_numpy(),:] # valid_index 
+                    return m.reset_index(drop=True), o.reset_index(drop=True)
+                message, orderbook = selectTradingInterval(message, orderbook)
                 def filterValid(message):
                     message = message[message.type.isin([1,2,3,4])]
                     valid_index = message.index.to_numpy()
