@@ -1,6 +1,58 @@
+"""
+Base Environment 
+
+University of Oxford
+Corresponding Author: 
+Sascha Frey (sascha.frey@st-hughs.ox.ac.uk)
+Kang Li     (kang.li@keble.ox.ac.uk)
+Peer Nagy   (peer.nagy@reuben.ox.ac.uk)
+V1.0
+
+Module Description
+This module offers an advanced simulation environment for limit order books 
+ using JAX for high-performance computations. It is designed for reinforcement
+ learning applications in financial markets.
+
+Key Components
+EnvState:   Dataclass to manage the state of the environment, 
+            including order book states, trade records, and timing information.
+EnvParams:  Configuration class for environment parameters, 
+            including message data, book data, and episode timing.
+BaseLOBEnv: Main environment class inheriting from Gymnax's base environment, 
+            providing methods for environment initialization, 
+            stepping through time steps, and resetting the environment. 
+
+Functionality Overview
+__init__:           Initializes the environment. Sets up paths for data, 
+                    time windows, order book depth, and other parameters. 
+                    It also loads and preprocesses the data from LOBSTER.
+default_params:     Returns the default environment parameters, 
+                    including the preprocessed message and book data.
+step_env:           Advances the environment by one step. It processes both the
+                    action messages and data messages through the order book, 
+                    updates the state, and determines the reward 
+                    and termination condition.
+reset_env:          Resets the environment to an initial state. 
+                    It selects a new data window, initializes the order book, 
+                    and sets the initial state.
+is_terminal:        Checks whether the current state is terminal, 
+                    based on the elapsed time since the episode's start.
+get_obs:            Returns the current observation from environment's state.
+name:               Provides the name of the environment.
+num_actions:        Returns the number of possible actions in the environment.
+action_space:       Defines the action space of the environment, including 
+                    sides, quantities, and prices of actions.
+observation_space:  (Not implemented) Intended to define 
+                    the observation space of the environment.
+state_space:        Defines the state space of the environment, 
+                    including bids, asks, trades, and time.
+_get_initial_time:  Retrieves the initial time of a data window.
+_get_data_messages: Fetches an array of messages for a given step 
+                    within a data window.
+"""
+
 # from jax import config
 # config.update("jax_enable_x64",True)
-
 from ast import Dict
 from contextlib import nullcontext
 from email import message
@@ -15,8 +67,7 @@ from typing import Tuple, Optional
 import chex
 from flax import struct
 import itertools
-from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-
+from gymnax_exchange.jaxob import JaxOrderBookArrays as job  
 
 
 @struct.dataclass
@@ -37,16 +88,9 @@ class EnvParams:
     book_data: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     # max_steps_in_episode: int = 100
-    time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
+    time_per_step: int= 0
+    ##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
-    
-
-
-
-
-
-
-
 
 
 class BaseLOBEnv(environment.Environment):
@@ -85,9 +129,11 @@ class BaseLOBEnv(environment.Environment):
         self.book_depth=10
         self.n_actions=3
         self.customIDCounter=0
-        self.trader_unique_id=-9000+1
+        self.trader_unique_id=job.INITID+1
         self.tick_size=100
+        self.tradeVolumePercentage = 0.01
         self.data_type = data_type
+
 
 
 
@@ -104,14 +150,19 @@ class BaseLOBEnv(environment.Environment):
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
                 return messageCSVs, orderbookCSVs
             messages, orderbooks = load_files()
-
             def preProcessingMassegeOB(message, orderbook):
                 def splitTimeStamp(m):
                     m[6] = m[0].apply(lambda x: int(x))
                     m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
-                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
+                    m[8] = ((m[1]==4) | (m[1]==5)).astype(int)
+                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns','ifTraded']
                     return m
                 message = splitTimeStamp(message)
+                def selectTradingInterval(m, o):
+                    m = m[(m.time_s>=34200) & (m.time_s<=57600)]
+                    o = o.iloc[m.index.to_numpy(),:] # valid_index 
+                    return m.reset_index(drop=True), o.reset_index(drop=True)
+                message, orderbook = selectTradingInterval(message, orderbook)
                 def filterValid(message):
                     message = message[message.type.isin([1,2,3,4])]
                     valid_index = message.index.to_numpy()
@@ -141,7 +192,9 @@ class BaseLOBEnv(environment.Environment):
             messages, orderbooks = zip(*pairs)
 
             def sliceWithoutOverlap(message, orderbook):
-                # print("start")
+                # max_horizon_of_message = message.shape[0]//100*100
+                # sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
+
                 print("data_type: ",self.data_type)
                 if self.data_type == "fixed_steps":
                     def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
@@ -179,13 +232,14 @@ class BaseLOBEnv(environment.Environment):
                         assert part.shape[0] % stepLines == 0, 'wrong code 34'
                     return sliced_parts, init_OBs
                 sliced_parts, init_OBs = splitMessage(message, orderbook)
+
                 def sliced2cude(sliced):
-                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
+                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns','ifTraded']
                     cube = sliced[columns].to_numpy()
-                    cube = cube.reshape((-1, stepLines, 8))
+                    cube = cube.reshape((-1, stepLines, 9))
                     return cube
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
-                # Cube: dynamic_horizon * stepLines * 8
+                # Cube: dynamic_horizon * stepLines * 9
                 slicedCubes_withOB = zip(slicedCubes, init_OBs)
                 return slicedCubes_withOB
             
@@ -198,7 +252,12 @@ class BaseLOBEnv(environment.Environment):
                 flattened_list = list(itertools.chain.from_iterable(nested_list))
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+            
+            taskSize_array = np.array([int((m[:,:,2]*m[:,:,8]).sum()*self.tradeVolumePercentage) for m,o in Cubes_withOB])
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
+            
+            Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded
+            
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
                 new_Cubes_withOB = []
@@ -211,11 +270,10 @@ class BaseLOBEnv(environment.Environment):
                         return padded_cube
                     cube = padding(cube, max_m)
                     new_Cubes_withOB.append((cube, OB))
-                return new_Cubes_withOB
+                return new_Cubes_withOB 
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            return Cubes_withOB, max_steps_in_episode_arr
-
-        Cubes_withOB, max_steps_in_episode_arr = load_LOBSTER(
+            return Cubes_withOB, max_steps_in_episode_arr, taskSize_array
+        Cubes_withOB, max_steps_in_episode_arr, taskSize_array = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
@@ -223,15 +281,12 @@ class BaseLOBEnv(environment.Environment):
             self.start_time,
             self.end_time
         )
-
+        self.taskSize_array = taskSize_array
         self.max_steps_in_episode_arr = max_steps_in_episode_arr 
-
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
-      
         self.n_windows = len(self.books)
-        # jax.debug.breakpoint()
         print(f"Num of data_window: {self.n_windows}")
 
 

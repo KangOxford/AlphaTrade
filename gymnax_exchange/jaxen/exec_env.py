@@ -1,3 +1,78 @@
+"""
+Execution Environment for Limit Order Book
+
+University of Oxford
+Corresponding Author: 
+Kang Li     (kang.li@keble.ox.ac.uk)
+Sascha Frey (sascha.frey@st-hughs.ox.ac.uk)
+Peer Nagy   (peer.nagy@reuben.ox.ac.uk)
+V1.0
+
+
+
+Module Description
+This module extends the base simulation environment for limit order books 
+ using JAX for high-performance computations, specifically tailored for 
+ execution tasks in financial markets. It is particularly designed for 
+ reinforcement learning applications focusing on 
+ optimal trade execution strategies.
+
+Key Components
+EnvState:   Dataclass to encapsulate the current state of the environment, 
+            including the raw order book, trades, and time information.
+EnvParams:  Configuration class for environment-specific parameters, 
+            such as task details, message and book data, and episode timing.
+ExecutionEnv: Environment class inheriting from BaseLOBEnv, 
+              offering specialized methods for order placement and 
+              execution tasks in trading environments. 
+
+
+Functionality Overview
+__init__:           Initializes the execution environment, setting up paths 
+                    for data, action types, and task details. 
+                    It includes pre-processing and initialization steps 
+                    specific to execution tasks.
+default_params:     Returns the default parameters for execution environment,
+                    adjusting for tasks such as buying or selling.
+step_env:           Advances the environment by processing actions and market 
+                    messages. It updates the state and computes the reward and 
+                    termination condition based on execution-specific criteria.
+reset_env:          Resets the environment to a state appropriate for a new 
+                    execution task. Initializes the order book and sets initial
+                    state specific to the execution context.
+is_terminal:        Checks if the current state meets the terminal condition, 
+                    specific to execution tasks, such as completion of the 
+                    execution order or time constraints.
+get_obs:            Constructs and returns the current observation for the 
+                    execution environment, derived from the state.
+name, num_actions:  Inherited methods providing the name of the environment 
+                    and the number of possible actions.
+action_space:       Defines the action space for execution tasks, including 
+                    order types and quantities.
+observation_space:  Define the observation space for execution tasks.
+state_space:        Describes the state space of the environment, tailored 
+                    for execution tasks with components 
+                    like bids, asks, and trades.
+reset_env:          Resets the environment to a specific state for execution. 
+                    It selects a new data window, initializes the order book, 
+                    and sets the initial state for execution tasks.
+is_terminal:        Checks whether the current state is terminal, based on 
+                    the number of steps executed or tasks completed.
+getActionMsgs:      Generates action messages based on 
+                    the current state and action. 
+                    It determines the type, side, quantity, 
+                    and price of orders to be executed.
+                    including detailed order book information and trade history
+hamilton_apportionment_permuted_jax: A utility function using JAX, 
+                                     implementing a Hamilton apportionment 
+                                     method with randomized seat allocation.
+_get_initial_time:  Inherited method to retrieve the 
+                    initial time of a data window.
+_get_data_messages: Inherited method to fetch market messages for a given 
+                    step within a data window.
+"""
+
+
 # from jax import config
 # config.update("jax_enable_x64",True)
 # ============== testing scripts ===============
@@ -118,7 +193,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        pkl_file_name = alphatradePath+'state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        pkl_file_name = alphatradePath+'/state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
         print("pre-reset will be saved to ",pkl_file_name)
         try:
             import pickle
@@ -133,7 +208,7 @@ class ExecutionEnv(BaseLOBEnv):
                 #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
                 def get_initial_orders(book_data,time):
                     orderbookLevels=10
-                    initid=-9000
+                    initid=job.INITID
                     data=jnp.array(book_data).reshape(int(10*2),2)
                     newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
                     initOB = newarr \
@@ -194,6 +269,7 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
+        # action = jnp.array([delta,0,0,0],dtype=jnp.int32)
         def reshape_action(action : Dict, state: EnvState, params : EnvParams):
             if self.action_type == 'delta':
                 def twapV3(state, env_params):
@@ -226,23 +302,33 @@ class ExecutionEnv(BaseLOBEnv):
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
-                # NOTE: didn't know this was already implemented? I think the util function is more readable though
+                # NOTE: didn't know this was already implemented? <= posted in channel 2 days(8th Nov) before your commit(10th Nov)
+                # NOTE: already add comments and variable names to make it readable
+                # NOTE: same thing with Peer's commit, and the logic from our discussion proposed by Sascha
+                #       but hamilton_apportionment_permuted_jax add permutation if two poistions shares the same probability
+                #       such as [2,1,0,1] and remain 2, in the utils.clip_by_sum_int 
+                #       implementation, the second position will always be added by 1
+                #       it will turns out to be [3,2,0,1]
+                #       but in reality we should permutate between the second and fourth position
+                #       it will turns out to be [3,2,0,1] or [3,1,0,2]
+                #       the name hamilton_apportionment means our interger split problem, a classical math problem
+                #       permuted in the name means randomly choose a position if two or more positions 
+                #       shares the same probability.
+                #       jax in the name means it is jittable
+                # TODO  delete this comment after read
                 scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
-                # scaledAction = utils.clip_by_sum_int(action, remainQuant) # same thing, and hamilton_apportionment_permuted_jax add permutation if same prob
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             return action.astype(jnp.int32)
         
-        action = reshape_action(delta, state, params)
-        # TODO remains bugs in action and it wasn't caused by merging
-        
+        action = reshape_action(delta, state, params)        
         
         data_messages = self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
-        
+
         raw_orders = jax.lax.cond(
             params.is_sell_task,
             lambda: state.ask_raw_orders,
@@ -250,11 +336,12 @@ class ExecutionEnv(BaseLOBEnv):
         )
         cnl_msgs = job.getCancelMsgs(
             raw_orders,
-            -8999,
+            job.INITID + 1,
             self.n_actions,
             1 - params.is_sell_task * 2 
         )
         
+
         #Add to the top of the data messages
         total_messages=jnp.concatenate([cnl_msgs,action_msgs,data_messages],axis=0) # TODO DO NOT FORGET TO ENABLE CANCEL MSG
         #Save time of final message to add to state
@@ -263,7 +350,6 @@ class ExecutionEnv(BaseLOBEnv):
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process messages of step (action+data) through the orderbook
 
-        # jax.debug.breakpoint()
         (asks, bids, trades), (bestasks, bestbids) = job.scan_through_entire_array_save_bidask(
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
@@ -275,7 +361,7 @@ class ExecutionEnv(BaseLOBEnv):
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         # Mask to keep only the trades where the RL agent is involved, apply mask.
-        mask2 = ((-9000 < executed[:, 2]) & (executed[:, 2] < 0)) | ((-9000 < executed[:, 3]) & (executed[:, 3] < 0))
+        mask2 = ((job.INITID < executed[:, 2]) & (executed[:, 2] < 0)) | ((job.INITID < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         agentQuant = agentTrades[:,1].sum() # new_execution quants
         # ---------- used for vwap, revenue ----------
@@ -332,10 +418,8 @@ class ExecutionEnv(BaseLOBEnv):
             state.max_steps_in_episode,
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
-        # jax.debug.breakpoint()
 
         done = self.is_terminal(state, params)
-        # jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
             "total_revenue": state.total_revenue,
@@ -392,10 +476,9 @@ class ExecutionEnv(BaseLOBEnv):
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return (
-            # ((state.time - state.init_time)[0] > params.episode_time) |
-            (state.step_counter >= state.max_steps_in_episode) |
-            (state.task_to_execute - state.quant_executed <= 0)
+        return(
+            (state.max_steps_in_episode - state.step_counter<= 0)
+            (state.task_to_execute - state.quant_executed <= 0) | 
         )
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
@@ -439,7 +522,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ifMarketOrder = (remainingTime <= marketOrderTime)
         # ·········· ifMarketOrder determined by steps ··········
         remainingSteps = state.max_steps_in_episode - state.step_counter 
-        marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in steps, means the last minute was left for market order
+        marketOrderSteps = jnp.array(1, dtype=jnp.int32) # in steps, means the last step was left for market order
         ifMarketOrder = (remainingSteps <= marketOrderSteps)
         # ---------- ifMarketOrder END ----------
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
@@ -580,14 +663,40 @@ class ExecutionEnv(BaseLOBEnv):
         return self.n_actions
     
     def hamilton_apportionment_permuted_jax(self, votes, seats, key):
-        init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
-        def f(carry,x):
-            key,init_seats,remainders=carry
+        """
+        Compute the Hamilton apportionment method with permutation using JAX.
+
+        Args:
+            votes (jax.Array): Array of votes for each party/entity.
+            seats (int): Total number of seats to be apportioned.
+            key (chex.PRNGKey): JAX key for random number generation.
+
+        Returns:
+            jax.Array: Array of allocated seats to each party/entity.
+        """
+        std_divisor = jnp.sum(votes) / seats # Calculate the standard divisor.
+        # Initial allocation of seats based on the standard divisor and compute remainders.
+        init_seats, remainders = jnp.divmod(votes, std_divisor)
+        # Compute the number of remaining seats to be allocated.
+        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) 
+        # Define the scanning function for iterative seat allocation.
+        def allocate_remaining_seats(carry,x): # only iterate 4 times, as remaining_seats in {0,1,2,3}
+            key,init_seats,remainders = carry
             key, subkey = jax.random.split(key)
-            chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
-            return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-        (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
+            # Create a probability distribution based on the maximum remainder.
+            distribution = (remainders == remainders.max())/(remainders == remainders.max()).sum()
+            # Randomly choose a party/entity to allocate a seat based on the distribution.
+            chosen_index = jax.random.choice(subkey, remainders.size, p=distribution)
+            # Update the initial seats and remainders for the chosen party/entity.
+            updated_init_seats = init_seats.at[chosen_index].add(jnp.where(x < remaining_seats, 1, 0))
+            updated_remainders = remainders.at[chosen_index].set(0)
+            return (key, updated_init_seats, updated_remainders), x
+            # Iterate over parties/entities to allocate the remaining seats.
+        (key, init_seats, remainders), _ = jax.lax.scan(
+                                                        allocate_remaining_seats,
+                                                        (key, init_seats, remainders), 
+                                                        xs=jnp.arange(votes.shape[0])
+                                                        )
         return init_seats
 
 # ============================================================================= #
