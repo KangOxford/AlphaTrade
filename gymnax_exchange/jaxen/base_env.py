@@ -1,6 +1,58 @@
+"""
+Base Environment 
+
+University of Oxford
+Corresponding Author: 
+Sascha Frey (sascha.frey@st-hughs.ox.ac.uk)
+Kang Li     (kang.li@keble.ox.ac.uk)
+Peer Nagy   (peer.nagy@reuben.ox.ac.uk)
+V1.0
+
+Module Description
+This module offers an advanced simulation environment for limit order books 
+ using JAX for high-performance computations. It is designed for reinforcement
+ learning applications in financial markets.
+
+Key Components
+EnvState:   Dataclass to manage the state of the environment, 
+            including order book states, trade records, and timing information.
+EnvParams:  Configuration class for environment parameters, 
+            including message data, book data, and episode timing.
+BaseLOBEnv: Main environment class inheriting from Gymnax's base environment, 
+            providing methods for environment initialization, 
+            stepping through time steps, and resetting the environment. 
+
+Functionality Overview
+__init__:           Initializes the environment. Sets up paths for data, 
+                    time windows, order book depth, and other parameters. 
+                    It also loads and preprocesses the data from LOBSTER.
+default_params:     Returns the default environment parameters, 
+                    including the preprocessed message and book data.
+step_env:           Advances the environment by one step. It processes both the
+                    action messages and data messages through the order book, 
+                    updates the state, and determines the reward 
+                    and termination condition.
+reset_env:          Resets the environment to an initial state. 
+                    It selects a new data window, initializes the order book, 
+                    and sets the initial state.
+is_terminal:        Checks whether the current state is terminal, 
+                    based on the elapsed time since the episode's start.
+get_obs:            Returns the current observation from environment's state.
+name:               Provides the name of the environment.
+num_actions:        Returns the number of possible actions in the environment.
+action_space:       Defines the action space of the environment, including 
+                    sides, quantities, and prices of actions.
+observation_space:  (Not implemented) Intended to define 
+                    the observation space of the environment.
+state_space:        Defines the state space of the environment, 
+                    including bids, asks, trades, and time.
+_get_initial_time:  Retrieves the initial time of a data window.
+_get_data_messages: Fetches an array of messages for a given step 
+                    within a data window.
+"""
+
 # from jax import config
 # config.update("jax_enable_x64",True)
-
 from ast import Dict
 from contextlib import nullcontext
 from email import message
@@ -39,15 +91,35 @@ class EnvParams:
     book_data: chex.Array
     episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     # max_steps_in_episode: int = 100
-    time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
+    time_per_step: int= 0
+    ##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
 
 
-
-
-
 class BaseLOBEnv(environment.Environment):
-    def __init__(self, alphatradePath):
+    """The basic RL environment for the limit order book (LOB) using
+    JAX-LOB functions for manipulating the orderbook.
+
+    Inherits from gymnax base environment. 
+
+    ...
+    Attributes
+    ----------
+    sliceTimeWindow : int
+        first name of the person
+    stepLines : int
+        family name of the person
+    messagePath : int
+        age of the person
+
+        ... #TODO Complete the class docstring once refactored. 
+
+    Methods
+    -------
+    info(additional=""):
+        Prints the person's name and age.
+    """
+    def __init__(self, alphatradePath,data_type):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
@@ -63,6 +135,8 @@ class BaseLOBEnv(environment.Environment):
         self.trader_unique_id=job.INITID+1
         self.tick_size=100
         self.tradeVolumePercentage = 0.01
+        self.data_type = data_type
+
 
 
 
@@ -122,18 +196,59 @@ class BaseLOBEnv(environment.Environment):
             breakpoint()
 
             def sliceWithoutOverlap(message, orderbook):
-                max_horizon_of_message = message.shape[0]//100*100
-                sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
+                # max_horizon_of_message = message.shape[0]//100*100
+                # sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
+
+                print("data_type: ",self.data_type)
+                if self.data_type == "fixed_steps":
+                    def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
+                        indices = list(range(start_time, end_time, interval))
+                        return indices
+                    indices = index_of_sliceWithoutOverlap_by_lines(0, message.shape[0]//100*100, 100*100)
+                
+                elif self.data_type == "fixed_time":
+                    def index_of_sliceWithoutOverlap_by_time(start_time, end_time, interval):
+                        indices = list(range(start_time, end_time, interval))
+                        return indices
+                    indices = index_of_sliceWithoutOverlap_by_time(start_time, end_time, sliceTimeWindow)
+                else: raise NotImplementedError
+                
+                def splitMessage(message, orderbook):
+                    sliced_parts = []
+                    init_OBs = []
+                    for i in range(len(indices) - 1):
+                        start_index = indices[i]
+                        end_index = indices[i + 1]
+                        if self.data_type == "fixed_steps":
+                            sliced_part = message[(message.index > start_index) & (message.index <= end_index)]
+                        elif self.data_type == "fixed_time":
+                            index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
+                            index_e = (index_e // stepLines + 10) * stepLines + index_s % stepLines
+                            assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
+                            sliced_part = message.loc[np.arange(index_s, index_e)]
+                        sliced_parts.append(sliced_part)
+                        init_OBs.append(orderbook.iloc[start_index,:])
+                    for part in sliced_parts:
+                        if self.data_type == "fixed_steps":
+                            assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
+                        elif self.data_type == "fixed_time":
+                            assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
+                        assert part.shape[0] % stepLines == 0, 'wrong code 34'
+                    return sliced_parts, init_OBs
+                sliced_parts, init_OBs = splitMessage(message, orderbook)
+
                 def sliced2cude(sliced):
                     columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns','ifTraded']
                     cube = sliced[columns].to_numpy()
                     cube = cube.reshape((-1, stepLines, 9))
                     return cube
-                # def initialOrderbook():
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
                 # Cube: dynamic_horizon * stepLines * 9
                 slicedCubes_withOB = zip(slicedCubes, init_OBs)
                 return slicedCubes_withOB
+            
+            
+            
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             # i = 6 ; message,orderbook = messages[i],orderbooks[i]
             # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
@@ -181,7 +296,6 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB 
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-
             return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array
         Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = load_LOBSTER(
             self.sliceTimeWindow,
@@ -221,7 +335,7 @@ class BaseLOBEnv(environment.Environment):
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        data_messages=job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        data_messages=self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #jax.debug.print("Data Messages to process \n: {}",data_messages)
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
@@ -263,7 +377,7 @@ class BaseLOBEnv(environment.Environment):
         idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
 
         #Get the init time based on the first message to be processed in the first step. 
-        time=job.get_initial_time(params.message_data,idx_data_window) 
+        time=self._get_initial_time(params.message_data,idx_data_window) 
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
         #Initialise both sides of the book as being empty
@@ -314,10 +428,10 @@ class BaseLOBEnv(environment.Environment):
         """Observation space of the environment."""
         return NotImplementedError
 
-    #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
-    #           fields in the bid/ask arrays to return something of value. Not sure if actually needed.   
     def state_space(self, params: EnvParams) -> spaces.Dict:
-        """State space of the environment."""
+        """State space of the environment. #FIXME Samples absolute
+          nonsense, don't use.
+        """
         return spaces.Dict(
             {
                 "bids": spaces.Box(-1,999999999,shape=(6,self.nOrdersPerSide),dtype=jnp.int32),
@@ -326,3 +440,29 @@ class BaseLOBEnv(environment.Environment):
                 "time": spaces.Discrete(params.max_steps_in_episode),
             }
         )
+    
+    def _get_initial_time(self,messageData,idx_window):
+        """Obtain the arrival time of the first message in a given
+        data_window. Data window: pre-arranged 
+            Parameters:
+                    messageData (Array): 4D array with dimensions: windows,
+                                            steps, messages, features. 
+                    idx_window (int): Index of the window to consider.
+            Returns:
+                    Time (Array): Timestamp of first message [s, ns]
+        """
+        return messageData[idx_window,0,0,-2:]
+
+    def _get_data_messages(self,messageData,idx_window,step_counter):
+        """Returns an array of messages for a given step. 
+            Parameters:
+                    messageData (Array): 4D array with dimensions: windows,
+                                            steps, messages, features. 
+                    idx_window (int): Index of the window to consider.
+                    step_counter (int): desired step to consider. 
+            Returns:
+                    Time (Array): Timestamp of first message [s, ns]
+        """
+        messages=messageData[idx_window,step_counter,:,:]
+        return messages
+    
