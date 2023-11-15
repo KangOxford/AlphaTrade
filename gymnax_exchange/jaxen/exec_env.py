@@ -304,7 +304,7 @@ class ExecutionEnv(BaseLOBEnv):
                 action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
                 # NOTE: didn't know this was already implemented? <= posted in channel 2 days(8th Nov) before your commit(10th Nov)
                 # NOTE: already add comments and variable names to make it readable
-                # NOTE: same thing with your commit 
+                # NOTE: same thing with Peer's commit, and the logic from our discussion proposed by Sascha
                 #       but hamilton_apportionment_permuted_jax add permutation if two poistions shares the same probability
                 #       such as [2,1,0,1] and remain 2, in the utils.clip_by_sum_int 
                 #       implementation, the second position will always be added by 1
@@ -321,9 +321,7 @@ class ExecutionEnv(BaseLOBEnv):
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             return action.astype(jnp.int32)
         
-        action = reshape_action(delta, state, params)
-        # TODO remains bugs in action and it wasn't caused by merging
-        
+        action = reshape_action(delta, state, params)        
         
         data_messages = self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
@@ -338,7 +336,7 @@ class ExecutionEnv(BaseLOBEnv):
         )
         cnl_msgs = job.getCancelMsgs(
             raw_orders,
-            -8999,
+            job.INITID + 1,
             self.n_actions,
             1 - params.is_sell_task * 2 
         )
