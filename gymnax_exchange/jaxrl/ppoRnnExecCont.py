@@ -485,7 +485,8 @@ def make_train(config):
                     '''
                     
                     # '''
-                    for t in range(len(timesteps)):
+                    # NOTE: only log every 100th timestep
+                    for t in range(0, len(timesteps), 100):
                         if wandbOn:
                             wandb.log(
                                 {

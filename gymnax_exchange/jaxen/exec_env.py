@@ -2,15 +2,16 @@
 # config.update("jax_enable_x64",True)
 
 # ============== testing scripts ===============
+from functools import partial
 import jax
 import jax.numpy as jnp
 import gymnax
 import sys
 import os
-from gymnax_exchange import utils
+sys.path.append('.')
 # sys.path.append('/Users/sasrey/AlphaTrade')
 # sys.path.append('/homes/80/kang/AlphaTrade')
-sys.path.append('.')
+from gymnax_exchange import utils
 # from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 import chex
@@ -20,7 +21,7 @@ import dataclasses
 import faulthandler
 faulthandler.enable()
 
-print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
+print("Num Jax Devices:", jax.device_count(), "Device List:", jax.devices())
 
 chex.assert_gpu_available(backend=None)
 
@@ -140,11 +141,11 @@ class ExecutionEnv(BaseLOBEnv):
     
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, a: Dict, params: EnvParams
+        self, key: chex.PRNGKey, state: EnvState, a: jax.Array, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
-        def reshape_action(action : Dict, state: EnvState, params : EnvParams):
+        def reshape_action(action : jax.Array, state: EnvState, params : EnvParams):
             def twapV3(state, env_params):
                 # ---------- ifMarketOrder ----------
                 remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -161,26 +162,27 @@ class ExecutionEnv(BaseLOBEnv):
                 quants = jnp.where(ifMarketOrder,market_quants,limit_quants)
                 # ---------- quants ----------
                 return jnp.array(quants) 
-            
+
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0, remainQuant)
                 scaledAction = utils.clip_by_sum_int(action, remainQuant)
                 return scaledAction
-            
-            action_scaling_fn = lambda action, task_size: jnp.round(action*task_size).astype(jnp.int32)
+
             if self.action_type == 'delta':
-                action_ = twapV3(state, params) + action_scaling_fn(a, state.task_to_execute)
-            else:
-                action_ = action_scaling_fn(a, state.task_to_execute)
-            
-            action = truncate_action(action_, state.task_to_execute - state.quant_executed)
+                action = twapV3(state, params) + action
+
+            action = truncate_action(action, state.task_to_execute - state.quant_executed)
             # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
+            jax.debug.print("action {}", action)
             return action
 
         action = reshape_action(a, state, params)
         
-        
-        data_messages = job.get_data_messages(params.message_data,state.window_index,state.step_counter)
+        data_messages = job.get_data_messages(
+            params.message_data,
+            state.window_index,
+            state.step_counter
+        )
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
@@ -191,12 +193,14 @@ class ExecutionEnv(BaseLOBEnv):
             lambda: state.bid_raw_orders,
             lambda: state.ask_raw_orders
         )
+        # jax.debug.print("raw_orders {}", raw_orders)
         cnl_msgs = job.getCancelMsgs(
             raw_orders,
             -8999,
             self.n_actions,
             params.is_buy_task * 2 - 1  # direction in {-1, 1}
         )
+        # action_msgs, cnl_msgs = self.filter_messages(action_msgs, cnl_msgs)
         # prepend cancel and new action to data messages
         total_messages = jnp.concatenate(
             [cnl_msgs, action_msgs, data_messages],
@@ -213,7 +217,7 @@ class ExecutionEnv(BaseLOBEnv):
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
-        ) 
+        )
         # jax.debug.print("bestasks {}", bestbids)
         # jax.debug.breakpoint()
         
@@ -298,7 +302,63 @@ class ExecutionEnv(BaseLOBEnv):
             "vwap_rm": state.vwap_rm,
             "advantage_reward": advantage,
         }
+    
+    def filter_messages(
+            self, 
+            action_msgs: jax.Array,
+            cnl_msgs: jax.Array
+        ) -> Tuple[jax.Array, jax.Array]:
+        """ Filter out cancelation messages, when same actions should be placed again. 
+            CAVE: only simplifies cancellations if new action size <= old action size.
+                  To prevent multiple split orders, new larger orders still cancel the entire old order.
+            TODO: consider allowing multiple split orders
+            TODO: test and debug (assuming action and cnl are sorted by level)
+            ex: at one level, 3 cancel & 1 action --> 2 cancel, 0 action
+        """
+        @partial(jax.vmap, in_axes=(0, None))
+        def p_in_cnl(p, prices_cnl):
+            return jnp.where((prices_cnl == p) & (p != 0), True, False)
+        def matching_masks(prices_a, prices_cnl):
+            res = p_in_cnl(prices_a, prices_cnl)
+            return jnp.any(res, axis=1), jnp.any(res, axis=0)
 
+        # type, side, quant, price, trader_ids, order_ids, time_s, time_ns
+        # TODO: match price levels
+        jax.debug.print("action_msgs\n {}", action_msgs)
+        jax.debug.print("cnl_msgs\n {}", cnl_msgs)
+
+        a_mask, c_mask = matching_masks(action_msgs[:, 3], cnl_msgs[:, 3])
+        jax.debug.print("a_mask \n{}", a_mask)
+        jax.debug.print("c_mask \n{}", c_mask)
+        jax.debug.print("DIFF: {}", a_mask.sum() - c_mask.sum())
+        
+        a_i = jnp.where(a_mask, size=a_mask.shape[0], fill_value=-1)[0]
+        a = jnp.where(a_i == -1, 0, action_msgs[a_i][:, 2])
+        c_i = jnp.where(c_mask, size=c_mask.shape[0], fill_value=-1)[0]
+        c = jnp.where(c_i == -1, 0, cnl_msgs[c_i][:, 2])
+        
+        # jax.debug.print("a_i \n{}", a_i)
+        # jax.debug.print("a \n{}", a)
+        # jax.debug.print("c_i \n{}", c_i)
+        # jax.debug.print("c \n{}", c)
+
+        rel_cnl_quants = jnp.minimum(c, a) # min
+        jax.debug.print("rel_cnl_quants {}", rel_cnl_quants)
+        # reduce both cancel and action message quantities to simplify
+        action_msgs = action_msgs.at[:, 2].set(
+            action_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(a_mask)])
+        # set actions with 0 quant to dummy messages
+        action_msgs = jnp.where(
+            (action_msgs[:, 2] == 0).T,
+            0,
+            action_msgs.T,
+        ).T
+        cnl_msgs = cnl_msgs.at[:, 2].set(
+            cnl_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(c_mask)])
+        jax.debug.print("action_msgs NEW \n{}", action_msgs)
+        jax.debug.print("cnl_msgs NEW \n{}", cnl_msgs)
+
+        return action_msgs, cnl_msgs
 
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
@@ -351,7 +411,7 @@ class ExecutionEnv(BaseLOBEnv):
             (state.task_to_execute - state.quant_executed <= 0)
         )
     
-    def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
+    def getActionMsgs(self, action: jax.Array, state: EnvState, params: EnvParams):
         def normal_order_logic(action: jnp.ndarray):
             quants = action.astype(jnp.int32) # from action space
             return quants
@@ -363,19 +423,24 @@ class ExecutionEnv(BaseLOBEnv):
 
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
-        types=jnp.ones((self.n_actions,),jnp.int32)
+        types = jnp.ones((self.n_actions,), jnp.int32)
         # sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        sides = (params.is_buy_task*2 - 1) * jnp.ones((self.n_actions,),jnp.int32)
-        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
-        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
+        sides = (params.is_buy_task*2 - 1) * jnp.ones((self.n_actions,), jnp.int32)
+        trader_ids = jnp.ones((self.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids = (jnp.ones((self.n_actions,), jnp.int32) *
+                    (self.trader_unique_id + state.customIDcounter)) \
+                    + jnp.arange(0, self.n_actions) #Each message has a unique ID
+        times = jnp.resize(
+            state.time + params.time_delay_obs_act,
+            (self.n_actions, 2)
+        ) #time from last (data) message of prev. step + some delay
         #Stack (Concatenate) the info into an array 
         # --------------- 01 rest info for deciding action_msgs ---------------
         
         # --------------- 02 info for deciding prices ---------------
         # Can only use these if statements because self is a static arg.
         # Done: We said we would do ticks, not levels, so really only the best bid/ask is required -- Write a function to only get those rather than sort the whole array (get_L2) 
-        best_ask, best_bid = state.best_asks[-1,0], state.best_bids[-1,0]
+        best_ask, best_bid = state.best_asks[-1, 0], state.best_bids[-1, 0]
         # FT = best_bid if self.task=='sell' else best_ask # aggressive: far touch
         NT, FT, PP, MKT = jax.lax.cond(
             params.is_buy_task,
@@ -393,8 +458,8 @@ class ExecutionEnv(BaseLOBEnv):
         marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
         ifMarketOrder = (remainingTime <= marketOrderTime)
 
-        normal_prices = jnp.asarray((FT,M,NT,PP), jnp.int32)
-        market_prices = jnp.asarray((MKT, M,M,M), jnp.int32)
+        normal_prices = jnp.asarray((FT, M, NT, PP), jnp.int32)
+        market_prices = jnp.asarray((MKT, M, M, M), jnp.int32)
         market_quants = market_order_logic(state)
         normal_quants = normal_order_logic(action)
         
@@ -486,9 +551,13 @@ class ExecutionEnv(BaseLOBEnv):
     def action_space(
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
-        """Action space of the environment."""
-        return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,500,(self.n_actions,),dtype=jnp.int32)
-    
+        """ Action space of the environment. """
+        # return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,500,(self.n_actions,),dtype=jnp.int32)
+        if self.action_type == 'delta':
+            return spaces.Box(-100, 100, (self.n_actions,), dtype=jnp.int32)
+        else:
+            return spaces.Box(0, self.task_size, (self.n_actions,), dtype=jnp.int32)
+
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
@@ -547,7 +616,14 @@ if __name__ == "__main__":
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # env=ExecutionEnv(ATFolder,"sell",1)
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+    env= ExecutionEnv(
+        config["ATFOLDER"],
+        config["TASKSIDE"],
+        config["WINDOW_INDEX"],
+        config["ACTION_TYPE"],
+        config["TASK_SIZE"],
+        config["REWARD_LAMBDA"]
+    )
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
@@ -564,11 +640,11 @@ if __name__ == "__main__":
         # print("-"*20)
         key_policy, _ =  jax.random.split(key_policy, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
-        # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
-        # print(f"Sampled {i}th actions are: ",test_action)
+        # test_action=env.action_space().sample(key_policy) * random.randint(1, 10) # CAUTION not real action
+        test_action = env.action_space().sample(key_policy) // 10
+        print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
-        obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        obs, state, reward, done, info = env.step(key_step, state,test_action, env_params)
         # for key, value in info.items():
         #     print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
@@ -577,13 +653,13 @@ if __name__ == "__main__":
             print("==="*20)
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
-        
-        
-        
+
+
+
 
     # # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
+    enable_vmap=False
     if enable_vmap:
         # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
