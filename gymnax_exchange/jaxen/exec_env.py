@@ -302,9 +302,21 @@ class ExecutionEnv(BaseLOBEnv):
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
-                # NOTE: didn't know this was already implemented? I think the util function is more readable though
+                # NOTE: didn't know this was already implemented? <= posted in channel 2 days(8th Nov) before your commit(10th Nov)
+                # NOTE: already add comments and variable names to make it readable
+                # NOTE: same thing with your commit 
+                #       but hamilton_apportionment_permuted_jax add permutation if two poistions shares the same probability
+                #       such as [2,1,0,1] and remain 2, in the utils.clip_by_sum_int 
+                #       implementation, the second position will always be added by 1
+                #       it will turns out to be [3,2,0,1]
+                #       but in reality we should permutate between the second and fourth position
+                #       it will turns out to be [3,2,0,1] or [3,1,0,2]
+                #       the name hamilton_apportionment means our interger split problem, a classical math problem
+                #       permuted in the name means randomly choose a position if two or more positions 
+                #       shares the same probability.
+                #       jax in the name means it is jittable
+                # TODO  delete this comment after read
                 scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
-                # scaledAction = utils.clip_by_sum_int(action, remainQuant) # same thing, and hamilton_apportionment_permuted_jax add permutation if same prob
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             return action.astype(jnp.int32)
@@ -340,7 +352,6 @@ class ExecutionEnv(BaseLOBEnv):
         trades_reinit=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
         #Process messages of step (action+data) through the orderbook
 
-        # jax.debug.breakpoint()
         (asks, bids, trades), (bestasks, bestbids) = job.scan_through_entire_array_save_bidask(
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
@@ -665,14 +676,29 @@ class ExecutionEnv(BaseLOBEnv):
         Returns:
             jax.Array: Array of allocated seats to each party/entity.
         """
-        init_seats, remainders = jnp.divmod(votes, jnp.sum(votes) / seats) # std_divisor = jnp.sum(votes) / seats
-        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) # in {0,1,2,3}
-        def f(carry,x):
-            key,init_seats,remainders=carry
+        std_divisor = jnp.sum(votes) / seats # Calculate the standard divisor.
+        # Initial allocation of seats based on the standard divisor and compute remainders.
+        init_seats, remainders = jnp.divmod(votes, std_divisor)
+        # Compute the number of remaining seats to be allocated.
+        remaining_seats = jnp.array(seats - init_seats.sum(), dtype=jnp.int32) 
+        # Define the scanning function for iterative seat allocation.
+        def allocate_remaining_seats(carry,x): # only iterate 4 times, as remaining_seats in {0,1,2,3}
+            key,init_seats,remainders = carry
             key, subkey = jax.random.split(key)
-            chosen_index = jax.random.choice(subkey, remainders.size, p=(remainders == remainders.max())/(remainders == remainders.max()).sum())
-            return (key,init_seats.at[chosen_index].add(jnp.where(x < remaining_seats,1,0)),remainders.at[chosen_index].set(0)),x
-        (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
+            # Create a probability distribution based on the maximum remainder.
+            distribution = (remainders == remainders.max())/(remainders == remainders.max()).sum()
+            # Randomly choose a party/entity to allocate a seat based on the distribution.
+            chosen_index = jax.random.choice(subkey, remainders.size, p=distribution)
+            # Update the initial seats and remainders for the chosen party/entity.
+            updated_init_seats = init_seats.at[chosen_index].add(jnp.where(x < remaining_seats, 1, 0))
+            updated_remainders = remainders.at[chosen_index].set(0)
+            return (key, updated_init_seats, updated_remainders), x
+            # Iterate over parties/entities to allocate the remaining seats.
+        (key, init_seats, remainders), _ = jax.lax.scan(
+                                                        allocate_remaining_seats,
+                                                        (key, init_seats, remainders), 
+                                                        xs=jnp.arange(votes.shape[0])
+                                                        )
         return init_seats
 
 # ============================================================================= #
