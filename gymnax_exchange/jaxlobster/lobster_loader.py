@@ -1,6 +1,34 @@
-"""Data Loading Module
+"""
+#TODO: Update to fit reality. 
 
-Example use of class is given in 'main' part at end of file. 
+University of Oxford
+Corresponding Author: 
+Kang Li     (kang.li@keble.ox.ac.uk)
+Sascha Frey (sascha.frey@st-hughs.ox.ac.uk)
+Peer Nagy   (peer.nagy@reuben.ox.ac.uk)
+V1.0
+
+Module Description
+This module loads data from load_LOBSTER, initializes orders data in cubes from
+ messages for downstream tasks, and creates auxiliary arrays with 
+ essential information for these tasks.
+
+Key Components 
+The return of the funcion is:
+    Cubes_withOB: a list of (cube, OB), where cube is of of three dimension
+                  0-aixs is index of data windows 
+                  1-axis is index of steps inside the data window
+                  2-axis is index of lines of data inside the steps
+    max_steps_in_episode_arr: horizon(max steps) of one data window
+    taskSize_array: the amount of share for n%(default as 1) of 
+                    the traded volume in the window
+
+Functionality Overview
+load_files:             loads the csvs as pandas arrays
+preProcessingMassegeOB: adjust message_day data and orderbook_day data. 
+sliceWithoutOverlap:    split the message of one day into multiple cubes.
+Cubes_withOB_padding:   pad the cubes to have the shape shape
+                        to be stored in single array.
 """
 from os import listdir
 from os.path import isfile, join
