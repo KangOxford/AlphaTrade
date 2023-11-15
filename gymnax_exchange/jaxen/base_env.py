@@ -67,10 +67,7 @@ from typing import Tuple, Optional
 import chex
 from flax import struct
 import itertools
-from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-    
-np.set_printoptions(linewidth=183)    
-jax.numpy.set_printoptions(linewidth=183)    
+from gymnax_exchange.jaxob import JaxOrderBookArrays as job  
 
 
 @struct.dataclass
@@ -193,7 +190,6 @@ class BaseLOBEnv(environment.Environment):
                 return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
-            breakpoint()
 
             def sliceWithoutOverlap(message, orderbook):
                 # max_horizon_of_message = message.shape[0]//100*100
@@ -260,26 +256,6 @@ class BaseLOBEnv(environment.Environment):
             taskSize_array = np.array([int((m[:,:,2]*m[:,:,8]).sum()*self.tradeVolumePercentage) for m,o in Cubes_withOB])
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
             
-            def get_start_idx_array_list():
-                def get_start_idx_array(idx):
-                    cube=Cubes_withOB[idx][0]
-                    print(f"cube{idx} shape:{cube.shape}")
-                    start_time_array = cube[:,0,[6,7]]
-                    start_time_stamp_array = np.arange(34200,57600,900)
-                    start_idx_list = [(0, 34200, 34200, 34200)]
-                    for start_time_stamp in start_time_stamp_array:
-                        for i in range(1, start_time_array.shape[0]):
-                            timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
-                            timestamp_before = timestamp(i-1)
-                            timestamp_current = timestamp(i)
-                            if timestamp_before< start_time_stamp <timestamp_current:
-                                start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
-                    start_idx_array = np.array(start_idx_list)
-                    start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr[idx]])
-                    return start_idx_array
-                return [get_start_idx_array(idx) for idx in range(len(Cubes_withOB))] # start_idx_array_list
-            start_idx_array_list = get_start_idx_array_list()
-            
             Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded
             
             def Cubes_withOB_padding(Cubes_withOB):
@@ -296,8 +272,8 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB 
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array
-        Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = load_LOBSTER(
+            return Cubes_withOB, max_steps_in_episode_arr, taskSize_array
+        Cubes_withOB, max_steps_in_episode_arr, taskSize_array = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
@@ -305,16 +281,12 @@ class BaseLOBEnv(environment.Environment):
             self.start_time,
             self.end_time
         )
-        self.start_idx_array_list = start_idx_array_list
         self.taskSize_array = taskSize_array
         self.max_steps_in_episode_arr = max_steps_in_episode_arr 
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
-        # breakpoint()
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
-        # breakpoint()
         self.n_windows = len(self.books)
-        # jax.debug.breakpoint()
         print(f"Num of data_window: {self.n_windows}")
 
 

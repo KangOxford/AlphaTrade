@@ -317,8 +317,6 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
-        jax.debug.print("action_msgs \n{}",action_msgs)
-        
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
 
         raw_orders = jax.lax.cond(
@@ -413,11 +411,6 @@ class ExecutionEnv(BaseLOBEnv):
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
 
         done = self.is_terminal(state, params)
-        # jax.debug.print("time {}",state.time)
-        l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
-        jax.debug.print("l2 state: \n {}",l2)
-        # jax.debug.breakpoint()
-        # jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
             "window_index": state.window_index,
             "total_revenue": state.total_revenue,
@@ -474,8 +467,9 @@ class ExecutionEnv(BaseLOBEnv):
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return (
-            (state.task_to_execute - state.quant_executed <= 0) | (state.max_steps_in_episode - state.step_counter<= 0)
+        return(
+            (state.max_steps_in_episode - state.step_counter<= 0)
+            (state.task_to_execute - state.quant_executed <= 0) | 
         )
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
@@ -509,8 +503,6 @@ class ExecutionEnv(BaseLOBEnv):
             lambda: (best_bid, best_ask, best_bid - self.tick_size*self.n_ticks_in_book, job.MAX_INT)
         )
         M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size # Mid price
-
-
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -537,9 +529,6 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
-        jax.debug.print("ifMarketOrder {}",ifMarketOrder)
-        jax.debug.print("quants {}",quants)
-        jax.debug.print("prices {}",prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs,times],axis=1)
