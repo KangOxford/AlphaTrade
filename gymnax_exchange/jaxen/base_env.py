@@ -16,7 +16,9 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-
+    
+np.set_printoptions(linewidth=183)    
+jax.numpy.set_printoptions(linewidth=183)    
 
 
 @struct.dataclass
@@ -39,7 +41,7 @@ class EnvParams:
     # max_steps_in_episode: int = 100
     time_per_step: int= 0##Going forward, assume that 0 implies not to use time step?
     time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
-    
+
 
 
 
@@ -60,6 +62,7 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id=job.INITID+1
         self.tick_size=100
+        self.tradeVolumePercentage = 0.01
 
 
 
@@ -80,13 +83,15 @@ class BaseLOBEnv(environment.Environment):
                 def splitTimeStamp(m):
                     m[6] = m[0].apply(lambda x: int(x))
                     m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
-                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
+                    m[8] = ((m[1]==4) | (m[1]==5)).astype(int)
+                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns','ifTraded']
                     return m
                 message = splitTimeStamp(message)
-                def selectTradingInterval(m):
-                    return m[(m.time_s>=34200) & (m.time_s<=57600)].reset_index(drop=True)
-                message = selectTradingInterval(message)
-                breakpoint()
+                def selectTradingInterval(m, o):
+                    m = m[(m.time_s>=34200) & (m.time_s<=57600)]
+                    o = o.iloc[m.index.to_numpy(),:] # valid_index 
+                    return m.reset_index(drop=True), o.reset_index(drop=True)
+                message, orderbook = selectTradingInterval(message, orderbook)
                 def filterValid(message):
                     message = message[message.type.isin([1,2,3,4])]
                     valid_index = message.index.to_numpy()
@@ -114,18 +119,19 @@ class BaseLOBEnv(environment.Environment):
                 return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
+            breakpoint()
 
             def sliceWithoutOverlap(message, orderbook):
                 max_horizon_of_message = message.shape[0]//100*100
                 sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
                 def sliced2cude(sliced):
-                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns']
+                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns','ifTraded']
                     cube = sliced[columns].to_numpy()
-                    cube = cube.reshape((-1, stepLines, 8))
+                    cube = cube.reshape((-1, stepLines, 9))
                     return cube
                 # def initialOrderbook():
                 slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
-                # Cube: dynamic_horizon * stepLines * 8
+                # Cube: dynamic_horizon * stepLines * 9
                 slicedCubes_withOB = zip(slicedCubes, init_OBs)
                 return slicedCubes_withOB
             slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
@@ -136,10 +142,8 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
             
-            
-            m = Cubes_withOB[0][0]
+            taskSize_array = np.array([int((m[:,:,2]*m[:,:,8]).sum()*self.tradeVolumePercentage) for m,o in Cubes_withOB])
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
-            breakpoint()
             
             def get_start_idx_array_list():
                 def get_start_idx_array(idx):
@@ -160,7 +164,9 @@ class BaseLOBEnv(environment.Environment):
                     return start_idx_array
                 return [get_start_idx_array(idx) for idx in range(len(Cubes_withOB))] # start_idx_array_list
             start_idx_array_list = get_start_idx_array_list()
-
+            
+            Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded
+            
             def Cubes_withOB_padding(Cubes_withOB):
                 max_m = max(m.shape[0] for m, o in Cubes_withOB)
                 new_Cubes_withOB = []
@@ -176,8 +182,8 @@ class BaseLOBEnv(environment.Environment):
                 return new_Cubes_withOB 
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
 
-            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list
-        Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list = load_LOBSTER(
+            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array
+        Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
@@ -186,6 +192,7 @@ class BaseLOBEnv(environment.Environment):
             self.end_time
         )
         self.start_idx_array_list = start_idx_array_list
+        self.taskSize_array = taskSize_array
         self.max_steps_in_episode_arr = max_steps_in_episode_arr 
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
