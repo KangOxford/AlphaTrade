@@ -6,7 +6,7 @@ Corresponding Author:
 Kang Li     (kang.li@keble.ox.ac.uk)
 Sascha Frey (sascha.frey@st-hughs.ox.ac.uk)
 Peer Nagy   (peer.nagy@reuben.ox.ac.uk)
-V1.0
+V1.0 
 
 
 
@@ -121,30 +121,48 @@ from jax import lax, flatten_util
 from gymnax.environments import environment, spaces
 from typing import Tuple, Optional, Dict
 import chex
+import pickle
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
+from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
 import dataclasses
+
+import jax.tree_util as jtu
+def tree_stack(trees):
+    return jtu.tree_map(lambda *v: jnp.stack(v), *trees)
+
+def tree_unstack(tree):
+    leaves, treedef = jtu.tree_flatten(tree)
+    return [treedef.unflatten(leaf) for leaf in zip(*leaves, strict=True)]
+
+def array_index(array,index):
+    return array[index]
+
+@jax.jit
+def index_tree(tree,index):
+    array_index = lambda array,index : array[index]
+    indeces=[index]*len(jtu.tree_flatten(tree)[0])
+    tree_indeces=jtu.tree_unflatten(jtu.tree_flatten(tree)[1],indeces)
+    return jtu.tree_map(array_index,tree,tree_indeces)
+    
+
+
 # import utils
 
 @struct.dataclass
-class EnvState:
-    ask_raw_orders: chex.Array
-    bid_raw_orders: chex.Array
-    trades: chex.Array
+class EnvState(BaseEnvState):
+    # Potentially could be moved to base,
+    # so long as saving of best ask/bids is base behaviour. 
     best_asks: chex.Array
     best_bids: chex.Array
-    init_time: chex.Array
-    time: chex.Array
-    customIDcounter: int
-    window_index:int
+    # Execution specific stuff
     init_price:int
     task_to_execute:int
     quant_executed:int
     total_revenue:float
-    step_counter: int
-    max_steps_in_episode: int
-    
+    # Execution specific rewards. 
     slippage_rm: float
     price_adv_rm: float
     price_drift_rm: float
@@ -152,116 +170,61 @@ class EnvState:
 
 
 @struct.dataclass
-class EnvParams:
+class EnvParams(BaseEnvParams):
     is_sell_task: int
-    message_data: chex.Array
-    book_data: chex.Array
-    stateArray_list: chex.Array
-    episode_time: int = 60*10  # 60*10, 10 mins
-    # max_steps_in_episode: int = 100 # TODO should be a variable, decied by the data_window
-    # messages_per_step: int=1 # TODO never used, should be removed?
-    time_per_step: int = 0##Going forward, assume that 0 implies not to use time step?
-    time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
-    
+    stateArray: chex.Array    
 
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, alphatradePath, task, window_index, action_type, 
-            task_size = 500, rewardLambda=0.0, data_type="fixed_steps"
-        ):
-        super().__init__(alphatradePath, data_type)
-        #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
-        # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
-        self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
+            self, alphatradePath, task, window_index, action_type,
+            task_size = 500, rewardLambda=0.0,data_type="fixed_time"):
+        print(alphatradePath,window_index,data_type)
+        super().__init__(alphatradePath,window_index,data_type)
+        self.n_actions = 4 # [FT, M, NT, PP]
+        self.n_ticks_in_book = 2 # Depth of PP actions
         self.task = task # "random", "buy", "sell"
-        # self.randomize_direction = randomize_direction
-        self.window_index = window_index
-        self.action_type = action_type
-        self.data_type = data_type # fixed_steps, fixed_time
+        self.action_type = action_type # 'delta' or 'pure'
         self.rewardLambda = rewardLambda
-        # self.task_size = 5000 # num to sell or buy for the task
-        # self.task_size = 2000 # num to sell or buy for the task
         self.task_size = task_size # num to sell or buy for the task
-        # self.task_size = 200 # num to sell or buy for the task
-        self.n_fragment_max = 2
-        self.n_ticks_in_book = 2 #TODO: Used to be 20, too large for stocks with dense LOBs
-        # self.debug : bool = False
-        
+                
         # ==================================================================
         # =================    MOVE THE PRE_RESET HERE     =================
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        pkl_file_name = alphatradePath+'/state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        pkl_file_name = (alphatradePath
+                         + 'stateArray_idx_'+ str(window_index)
+                         +'_dtype_"'+data_type
+                         +'"_depth_'+str(self.book_depth)
+                         +'.pkl')
         print("pre-reset will be saved to ",pkl_file_name)
         try:
-            import pickle
-            # Restore the list
             with open(pkl_file_name, 'rb') as f:
-                self.stateArray_list = pickle.load(f)
+                self.stateArray = pickle.load(f)
             print("LOAD FROM PKL")
         except:
             print("DO COMPUTATION")
-            def get_state(message_data, book_data,max_steps_in_episode):
-                time=jnp.array(message_data[0,0,-2:])
-                #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-                def get_initial_orders(book_data,time):
-                    orderbookLevels=10
-                    initid=job.INITID
-                    data=jnp.array(book_data).reshape(int(10*2),2)
-                    newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
-                    initOB = newarr \
-                        .at[:,3].set(data[:,0]) \
-                        .at[:,2].set(data[:,1]) \
-                        .at[:,0].set(1) \
-                        .at[0:orderbookLevels*4:2,1].set(-1) \
-                        .at[1:orderbookLevels*4:2,1].set(1) \
-                        .at[:,4].set(initid) \
-                        .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
-                        .at[:,6].set(time[0]) \
-                        .at[:,7].set(time[1])
-                    return initOB
-                init_orders=get_initial_orders(book_data,time)
-                #Initialise both sides of the book as being empty
-                asks_raw=job.init_orderside(self.nOrdersPerSide)
-                bids_raw=job.init_orderside(self.nOrdersPerSide)
-                trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
-                #Process the initial messages through the orderbook
-                ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
-                # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
-                best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
-                M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
-                state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),\
-                    time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
-                return state
-            states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) for i in range(len(self.max_steps_in_episode_arr))]
-            
-            def state2stateArray(state):
-                state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
-                padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
-                stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
-                return stateArray
-            self.stateArray_list = jnp.array([state2stateArray(state) for state in states])
-            import pickle
-            # Save the list
+            states = [self._get_state_from_data(self.messages[i],
+                                                self.books[i],
+                                                self.max_steps_in_episode_arr[i]) 
+                        for i in range(self.n_windows)]
+            self.stateArray=tree_stack(states)
             with open(pkl_file_name, 'wb') as f:
-                pickle.dump(self.stateArray_list, f) 
+                pickle.dump(self.stateArray, f) 
         print("FINISH: pre-reset in the initialization")
 
-        #TODO Most of the state space should be exactly the same for the base and exec env, 
-        # can we think about keeping the base part seperate from the exec part? 
-        # ================= CAUTION NOT BELONG TO BASE ENV =================
-        # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
-        # =================    MOVE THE PRE_RESET HERE     =================
-        # ==================================================================
+        #Theoretically, this entire thing above here could be encapsulated in a function and 
 
 
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
         is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
-        return EnvParams(is_sell_task, self.messages,self.books,self.stateArray_list)
+        base_params=super().default_params
+        base_vals=jtu.tree_flatten(base_params)[0]
+        return EnvParams(*base_vals,is_sell_task,self.stateArray)
+        #self.messages,self.books,jnp.array([0, 0])
     
 
     def step_env(
@@ -440,8 +403,6 @@ class ExecutionEnv(BaseLOBEnv):
         self, key : chex.PRNGKey, params: EnvParams, reset_window_index = -999
         ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
-        # all windows can be reached
-
         window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
         '''if -999 use default static index [self.window_index], else use provided dynamic index [reset_window_index]'''
         
@@ -456,30 +417,26 @@ class ExecutionEnv(BaseLOBEnv):
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (
-                state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,\
-                0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],\
-                jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), \
-                jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32)
-                )
-        stateArray = params.stateArray_list[idx_data_window]
-        state_ = stateArray2state(stateArray)
-        state = EnvState(*state_)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,
+                    0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],
+                    jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32),
+                    jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
+
+        state = index_tree(params.stateArray,idx_data_window)
         
         key_, key = jax.random.split(key)
         if self.task == 'random':
             direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
             params = dataclasses.replace(params, is_sell_task=direction)
         
+
         obs = self.get_obs(state, params)
         return obs,state
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        return(
-            (state.max_steps_in_episode - state.step_counter<= 0)
-            (state.task_to_execute - state.quant_executed <= 0) | 
-        )
+        return((state.max_steps_in_episode - state.step_counter<= 0),
+                (state.task_to_execute - state.quant_executed <= 0))
     
     def getActionMsgs(self, action: Dict, state: EnvState, params: EnvParams):
         def normal_order_logic(action: jnp.ndarray):
@@ -623,6 +580,23 @@ class ExecutionEnv(BaseLOBEnv):
         obs, _ = jax.flatten_util.ravel_pytree(obs)
         # jax.debug.breakpoint()
         return obs
+    
+    def _get_state_from_data(self,message_data,book_data,max_steps_in_episode):
+        base_state=super()._get_state_from_data(message_data,book_data,max_steps_in_episode)
+        base_vals=jtu.tree_flatten(base_state)[0]
+        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(base_state.ask_raw_orders,base_state.bid_raw_orders)
+        M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
+        return EnvState(*base_vals,
+                        best_asks=jnp.resize(best_ask,(self.stepLines,2)),
+                        best_bids=jnp.resize(best_bid,(self.stepLines,2)),
+                        init_price=M,
+                        task_to_execute=self.task_size,
+                        quant_executed=0,
+                        total_revenue=0,
+                        slippage_rm=0,
+                        price_adv_rm=0,
+                        price_drift_rm=0,
+                        vwap_rm=0)
 
     def action_space(
         self, params: Optional[EnvParams] = None
@@ -705,6 +679,12 @@ class ExecutionEnv(BaseLOBEnv):
 # ============================================================================= #
 # ============================================================================= #
 
+def list_of_state_to_state_of_arrays(env_states:list[EnvState]):
+    for state in env_states:
+        print(state.__dataclass_fields__)
+
+    return state_arrays
+
 if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1]
@@ -727,6 +707,19 @@ if __name__ == "__main__":
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+
+    index=1
+    arr1=jnp.array([[[1,2,3],[3,4,5]],[[6,7,8],[9,10,11]],[[6,7,8],[9,10,11]]])
+    arr2=jnp.array([[1,2,3],[3,4,5],[3,4,5]])
+    arr3=jnp.array([1,2,3])
+    arr4=jnp.array([[1,2,3],[3,4,5],[3,4,5]])
+
+    test_tree=((arr1,arr2),(arr3,arr4))
+    
+    print(index_tree(test_tree,0))
+
+
+    
 
     # env=ExecutionEnv(ATFolder,"sell",1)
     env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"],config["DTAT_TYPE"])
