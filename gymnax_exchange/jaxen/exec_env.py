@@ -184,6 +184,7 @@ class ExecutionEnv(BaseLOBEnv):
             self, alphatradePath, task, window_index, action_type, 
             task_size = 500, rewardLambda=0.0, data_type="fixed_steps"
         ):
+        print('alphatradePath', alphatradePath)
         super().__init__(alphatradePath, data_type)
         #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
@@ -274,7 +275,7 @@ class ExecutionEnv(BaseLOBEnv):
     def default_params(self) -> EnvParams:
         # Default environment parameters
         is_sell_task = 0 if self.task == 'buy' else 1 # {("random","sell"): sell_task, ("buy",): buy_task}
-        return EnvParams(is_sell_task, self.messages,self.books,self.stateArray_list)
+        return EnvParams(is_sell_task, self.messages, self.books, self.stateArray_list)
     
 
     def step_env(
@@ -377,18 +378,22 @@ class ExecutionEnv(BaseLOBEnv):
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         # drift = agentQuant * (vwap_rm - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
-        rewardValue = revenue 
+        # rewardValue = revenue 
         # rewardValue =  advantage
         # rewardValue1 = advantage + self.rewardLambda * drift
         # rewardValue1 = advantage + 1.0 * drift
         # rewardValue2 = revenue - (state.init_price // self.tick_size) * agentQuant
         # rewardValue = rewardValue1 - rewardValue2
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+        # direct_reward = revenue - (state.init_price // self.tick_size) * agentQuant
+        rewardValue = advantage + self.rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
-        jax.debug.print("reward {}", reward)
         # ---------- normalize the reward ----------
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
+
+        # jax.debug.print("reward {}", reward)
+
         # ========== get reward and revenue END ==========
             
         
@@ -893,9 +898,10 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
+        ATFolder = "./testing_oneDay"
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
+        # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {

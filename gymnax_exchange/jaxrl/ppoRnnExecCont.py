@@ -30,14 +30,13 @@ print(xla_bridge.get_backend().platform)
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
+config.update("jax_check_tracer_leaks", False) #finds a whole assortment of leaks if true... bizarre.
 import datetime
 jax.numpy.set_printoptions(linewidth=250)
 
 
 
-# wandbOn = True
-wandbOn = False
+wandbOn = True # False
 if wandbOn:
     import wandb
 
@@ -575,11 +574,11 @@ if __name__ == "__main__":
         "DEBUG": True,
         
         "TASKSIDE": "random",
-        "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
+        "REWARD_LAMBDA": 1., #0.001,
         "ACTION_TYPE": "pure", # "delta"
         "TASK_SIZE": 500, # 500,
       
-        "ATFOLDER": "./training_oneDay/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        "ATFOLDER": "./training_oneDay", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }

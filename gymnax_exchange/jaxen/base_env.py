@@ -138,7 +138,7 @@ class BaseLOBEnv(environment.Environment):
         self.tradeVolumePercentage = 0.01
         self.data_type = data_type
         
-        loader=LoadLOBSTER(".",10,"fixed_time",self.sliceTimeWindow,self.stepLines)
+        loader=LoadLOBSTER(alphatradePath,10,"fixed_time",self.sliceTimeWindow,self.stepLines)
         msgs,books,window_lengths,n_windows=loader.run_loading()
         self.max_steps_in_episode_arr = window_lengths 
         self.messages=msgs
