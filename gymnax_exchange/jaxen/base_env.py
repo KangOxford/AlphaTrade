@@ -71,6 +71,7 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER
 
 
+
 @struct.dataclass
 class EnvState:
     ask_raw_orders: chex.Array
@@ -95,6 +96,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
+
     """The basic RL environment for the limit order book (LOB) using
     JAX-LOB functions for manipulating the orderbook.
 
@@ -118,6 +120,7 @@ class BaseLOBEnv(environment.Environment):
         Prints the person's name and age.
     """
     def __init__(self, alphatradePath,data_type):
+
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
@@ -143,7 +146,6 @@ class BaseLOBEnv(environment.Environment):
         self.n_windows = n_windows
 
 
-    
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters

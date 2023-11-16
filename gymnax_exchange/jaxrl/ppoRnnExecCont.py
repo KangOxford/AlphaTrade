@@ -108,7 +108,6 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.Dense(
             128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
         )(obs)
-        # jax.debug.print("embedding shape {}", embedding.shape)
         embedding = nn.LayerNorm()(embedding)
         embedding = nn.relu(embedding)
 
@@ -123,18 +122,13 @@ class ActorCriticRNN(nn.Module):
         actor_net = nn.relu(actor_net)
         
         actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            # self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
         )(actor_net)
         max_action_logstd = -1.6  # exp -1.6 = 0.2
         actor_logtstd = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(max_action_logstd), name="log_std"
         )(actor_net)
-
-        #Changed bias to mu network output to center at 0.5 (unnormalised this will be half of max quant in act)
-
-        #pi = distrax.Categorical(logits=actor_mean)
-        #Old version^^
-
         # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
@@ -143,9 +137,6 @@ class ActorCriticRNN(nn.Module):
             jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'],
             jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE']
         )
-        
-        #New version ^^
-
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
@@ -153,7 +144,6 @@ class ActorCriticRNN(nn.Module):
         critic = nn.LayerNorm()(critic)
         critic = nn.relu(critic)
 
-        # try: add another critic layer
         critic = nn.Dense(64, kernel_init=orthogonal(1), bias_init=constant(0.0))(
             critic
         )
@@ -189,7 +179,6 @@ def make_train(config):
     env = ExecutionEnv(
         config["ATFOLDER"],
         config["TASKSIDE"],
-        # config["RANDOMIZE_DIRECTION"],
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
         config["TASK_SIZE"],
@@ -452,7 +441,6 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-
             train_state = update_state[0]
             metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
@@ -486,13 +474,13 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     
-                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
-                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
-                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
-                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    # slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    # price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    # price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
+                    # vwap_rm = info["vwap_rm"][info["returned_episode"]]
                     
                     current_step = info["current_step"][info["returned_episode"]]
-                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
+                    # advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -506,7 +494,9 @@ def make_train(config):
                     '''
                     
                     # '''
-                    for t in range(len(timesteps)):
+                    # NOTE: only log every 100th timestep
+                    for t in range(0, len(timesteps), 100):
+                    # for t in range(len(timesteps)):
                         if wandbOn:
                             wandb.log(
                                 {
@@ -584,15 +574,23 @@ if __name__ == "__main__":
         "ANNEAL_LR": True, #True,
         "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
-        "ACTOR_TYPE":"RNN",
+        "ACTOR_TYPE": "RNN",
         "MAX_TASK_SIZE": 500,
         
         "ENV_NAME": "alphatradeExec-v0",
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
-
+        
+        # "TASKSIDE": 'sell',
+        "RANDOMIZE_DIRECTION": True,
+        "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
+        "ACTION_TYPE": "pure",
+        # "ACTION_TYPE":"delta",
+        "TASK_SIZE": 500, #500,
+      
         "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
+        # "ATFOLDER": ".",
         # "ATFOLDER": "../AlphaTrade/",
         "TASKSIDE":'sell',
         "REWARD_LAMBDA": 0., #0.001,  # CAVE: currently not used
@@ -602,6 +600,8 @@ if __name__ == "__main__":
         "TASK_SIZE": 500, #500,
         "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
+        # "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",
+        # "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
@@ -614,11 +614,9 @@ if __name__ == "__main__":
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
     else:
         import datetime;params_file_name = f'params_file_{timestamp}'
+
     print(f"Results will be saved to {params_file_name}")
-
-
-
-
+    
     # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(0)
     # rng = jax.random.PRNGKey(30)
