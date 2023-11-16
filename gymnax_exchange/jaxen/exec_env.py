@@ -73,40 +73,41 @@ _get_data_messages: Inherited method to fetch market messages for a given
 """
 
 
-# from jax import config
-# config.update("jax_enable_x64",True)
-# ============== testing scripts ===============
+# ================= imports ==================
 import os
 import sys
 import time 
 import timeit
 import random
+import dataclasses
+from ast import Dict
+from flax import struct
+from typing import Tuple, Optional, Dict
+import jax
+import numpy as np
+import jax.numpy as jnp
+from jax import lax, flatten_util
+# ----------------------------------------------
+import gymnax
+from gymnax.environments import environment, spaces
 # sys.path.append('/Users/sasrey/AlphaTrade')
 # sys.path.append('/homes/80/kang/AlphaTrade')
 sys.path.append('.')
-import jax
-import jax.numpy as jnp
-
-
-import gymnax
-# from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+# ---------------------------------------------- 
 import chex
-
+from jax import config
 import faulthandler
 faulthandler.enable()
-
-# from jax import config
-# config.update('jax_platform_name', 'cpu')
-print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 chex.assert_gpu_available(backend=None)
-
-# #Code snippet to disable all jitting.
-from jax import config
+# config.update('jax_platform_name', 'cpu')
+# config.update("jax_enable_x64",True)
 config.update("jax_disable_jit", False) # use this during training
-# config.update("jax_disable_jit", True)
-# ============== testing scripts ===============
+# config.update("jax_disable_jit", True) # Code snippet to disable all jitting.
+print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 jax.numpy.set_printoptions(linewidth=183)
+# ================= imports ==================
 
 
 from ast import Dict
