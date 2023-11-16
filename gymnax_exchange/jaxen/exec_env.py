@@ -72,6 +72,16 @@ _get_data_messages: Inherited method to fetch market messages for a given
                     step within a data window.
 """
 
+# NOTE line length maximum for comments is 79, 
+#      and for codes is 99, 
+#      as we do functional computation and nested functions
+#      more spaces is in need,
+#      according to the PEP8, 99 is also allowed.
+#      I would suggest to follow the code style of purejaxrl,
+#      and in his blog he mentioned to be inspired by cleanrl
+#      and have all things of a functionality inside one file.
+#      In the meanwhile, keep one single file not too long.
+
 
 # ================= imports ==================
 import os
@@ -155,13 +165,6 @@ class EnvState:
 
 @struct.dataclass
 class EnvParams:
-    is_buy_task: int
-    message_data: chex.Array
-    book_data: chex.Array
-    stateArray_list: chex.Array
-    obs_sell_list: chex.Array
-    obs_buy_list: chex.Array
-    episode_time: int = 60*10  # 60*30 #60seconds times 30 minutes = 1800seconds
     is_sell_task: int
     message_data: chex.Array
     book_data: chex.Array
@@ -243,10 +246,13 @@ class ExecutionEnv(BaseLOBEnv):
                 # Mid Price after init added to env state as the initial price --> Do not at to self as this applies to all environments.
                 best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
                 M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
-                state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),\
-                    time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
+                state = (ordersides[0],ordersides[1],ordersides[2],
+                         jnp.resize(best_ask,(self.stepLines,2)),
+                         jnp.resize(best_bid,(self.stepLines,2)),
+                         time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
                 return state
-            states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) for i in range(len(self.max_steps_in_episode_arr))]
+            states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) 
+                      for i in range(len(self.max_steps_in_episode_arr))]
             
             def state2stateArray(state):
                 state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
@@ -271,12 +277,12 @@ class ExecutionEnv(BaseLOBEnv):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
+        is_sell_task = 0 if self.task == 'buy' else 1 # {("random","sell"): sell_task, ("buy",): buy_task}
         return EnvParams(is_sell_task, self.messages,self.books,self.stateArray_list)
     
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, a: jax.Array, params: EnvParams
+        self, key: chex.PRNGKey, state: EnvState, input_action: jax.Array, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         # '''
@@ -306,10 +312,10 @@ class ExecutionEnv(BaseLOBEnv):
                     # jax.debug.breakpoint()
                     return jnp.array(quants) 
                 action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(-1*task_size//100,task_size//100) 
-                action_ = twapV3(state, params) + action_space_clipping(delta, state.task_to_execute)
+                action_ = twapV3(state, params) + action_space_clipping(input_action, state.task_to_execute)
             else:
                 action_space_clipping = lambda action, task_size: jnp.round(action).astype(jnp.int32).clip(0,task_size//5)# clippedAction, CAUTION not clipped by task_size, but task_size//5
-                action_ = action_space_clipping(delta, state.task_to_execute)
+                action_ = action_space_clipping(input_action, state.task_to_execute)
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
@@ -331,7 +337,7 @@ class ExecutionEnv(BaseLOBEnv):
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
             return action.astype(jnp.int32)
-        action = reshape_action(delta, state, params)        
+        action = reshape_action(input_action, state, params)        
         data_messages = self._get_data_messages(params.message_data,state.window_index,state.step_counter)
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
@@ -365,7 +371,7 @@ class ExecutionEnv(BaseLOBEnv):
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
         ) 
-
+        
         # ========== get reward and revenue ==========
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -402,7 +408,7 @@ class ExecutionEnv(BaseLOBEnv):
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
         # ========== get reward and revenue END ==========
-        
+            
         
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter,init_price,trades to exec, trades executed)
         def bestPricesImpute(bestprices, lastBestPrice):
@@ -427,14 +433,12 @@ class ExecutionEnv(BaseLOBEnv):
                 mean_forward_back_fill(bestprices)
             )
 
-        bestasks = bestPricesImpute(
-            bestasks[-self.stepLines:], state.best_asks[-1,0])
-        bestbids = bestPricesImpute(
-            bestbids[-self.stepLines:], state.best_bids[-1,0])
+        bestasks = bestPricesImpute(bestasks[-self.stepLines:], state.best_asks[-1,0])
+        bestbids = bestPricesImpute(bestbids[-self.stepLines:], state.best_bids[-1,0])
         state = EnvState(
             asks, bids, trades, bestasks, bestbids,
             state.init_time, time, state.customIDcounter + self.n_actions, state.window_index,
-            state.init_price, state.task_to_execute, state.quant_executed + new_execution,
+            state.init_price, state.task_to_execute, state.quant_executed + agentQuant,
             state.total_revenue + revenue, state.step_counter + 1,
             state.max_steps_in_episode,
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
@@ -473,6 +477,14 @@ class ExecutionEnv(BaseLOBEnv):
         def matching_masks(prices_a, prices_cnl):
             res = p_in_cnl(prices_a, prices_cnl)
             return jnp.any(res, axis=1), jnp.any(res, axis=0)
+        @jax.jit
+        def argsort_rev(arr):
+            """ 'arr' sorted in descending order (LTR priority tie-breaker) """
+            return (arr.shape[0] - 1 - jnp.argsort(arr[::-1]))[::-1]
+        @jax.jit
+        def rank_rev(arr):
+            """ Rank array in descending order, with ties having left-to-right priority. """
+            return jnp.argsort(argsort_rev(arr))
         
         # jax.debug.print("action_msgs\n {}", action_msgs)
         # jax.debug.print("cnl_msgs\n {}", cnl_msgs)
@@ -497,15 +509,16 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("rel_cnl_quants {}", rel_cnl_quants)
         # reduce both cancel and action message quantities to simplify
         action_msgs = action_msgs.at[:, 2].set(
-            action_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(a_mask)])
+            action_msgs[:, 2] - rel_cnl_quants[rank_rev(a_mask)])
+            # action_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(a_mask)])
         # set actions with 0 quant to dummy messages
         action_msgs = jnp.where(
-            (action_msgs[:, 2] == 0).T,
-            0,
-            action_msgs.T,
-        ).T
-        cnl_msgs = cnl_msgs.at[:, 2].set(
-            cnl_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(c_mask)])
+                                (action_msgs[:, 2] == 0).T,
+                                0,
+                                action_msgs.T,
+                                ).T
+        cnl_msgs = cnl_msgs.at[:, 2].set(cnl_msgs[:, 2] - rel_cnl_quants[rank_rev(c_mask)])
+            # cnl_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(c_mask)])
         # jax.debug.print("action_msgs NEW \n{}", action_msgs)
         # jax.debug.print("cnl_msgs NEW \n{}", cnl_msgs)
 
@@ -530,36 +543,41 @@ class ExecutionEnv(BaseLOBEnv):
             jnp.array(window_index, dtype=jnp.int32)
         )
 
-        
         def stateArray2state(stateArray):
-            state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
-            state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,0,0,0)
-        key_, key = jax.random.split(key)
-        if self.randomize_direction:
-            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
-            params = dataclasses.replace(params, is_buy_task=direction)
+            state0 = stateArray[:,0:6]
+            state1 = stateArray[:,6:12]
+            state2 = stateArray[:,12:18]
+            state3 = stateArray[:,18:20]
+            state4 = stateArray[:,20:22]
+            state5 = stateArray[0:2,22:23].squeeze(axis=-1)
+            state6 = stateArray[2:4,22:23].squeeze(axis=-1)
+            state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,
+                    self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,
+                    self.max_steps_in_episode_arr[idx_data_window],
+                    jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), 
+                    jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
+        
+        
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
-        # print(self.max_steps_in_episode_arr[idx_data_window])
-        obs_sell = params.obs_sell_list[idx_data_window]
-        obs_buy = params.obs_buy_list[idx_data_window]
         state = EnvState(*state_)
-        # jax.debug.print('in reset_env')
-        # jax.debug.print('{}', job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 3))
-        # jax.debug.breakpoint()
-        # jax.debug.print("state after reset {}", state)
-        # why would we use the observation from the parent env here?
-        # obs = obs_sell if self.task == "sell" else obs_buy
+        
+        key_, key = jax.random.split(key)
+        if self.task == 'random':
+            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
+            params = dataclasses.replace(params, is_sell_task=direction)
+        
         obs = self.get_obs(state, params)
-
-        return obs, state
+        return obs,state
+    
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (
-            ((state.time - state.init_time)[0] > params.episode_time) |
-            (state.task_to_execute - state.quant_executed <= 0)
+            # (params.episode_time - (state.time - state.init_time)[0] <= 0) 
+            (state.max_steps_in_episode - state.step_counter <= 0)
+            |  (state.task_to_execute - state.quant_executed <= 0)
         )
     
     def getActionMsgs(self, action: jax.Array, state: EnvState, params: EnvParams):
@@ -572,7 +590,7 @@ class ExecutionEnv(BaseLOBEnv):
         #     quants = jnp.asarray((quant, 0, 0, 0), jnp.int32) 
         #     return quants
         
-        def normal_qp(price_levels: jax.Array, state: EnvState, action: jax.Array):
+        def normal_quant_price(price_levels: jax.Array, state: EnvState, action: jax.Array):
             def combine_mid_nt(quants, prices):
                 quants = quants \
                     .at[2].set(quants[2] + quants[1]) \
@@ -590,7 +608,7 @@ class ExecutionEnv(BaseLOBEnv):
                 quants, prices
             )
         
-        def market_qp(price_levels: jax.Array, state: EnvState, action: jax.Array):
+        def market_quant_price(price_levels: jax.Array, state: EnvState, action: jax.Array):
             mkt_quant = state.task_to_execute - state.quant_executed
             quants = jnp.asarray((mkt_quant, 0, 0, 0), jnp.int32) 
             return quants, jnp.asarray((price_levels[-1], -1, -1, -1), jnp.int32)
@@ -618,7 +636,7 @@ class ExecutionEnv(BaseLOBEnv):
         # --------------- 01 rest info for deciding action_msgs ---------------
         types = jnp.ones((self.n_actions,), jnp.int32)
         # sides=-1*jnp.ones((self.n_actions,),jnp.int32) if self.task=='sell' else jnp.ones((self.n_actions),jnp.int32) #if self.task=='buy'
-        sides = (params.is_buy_task*2 - 1) * jnp.ones((self.n_actions,), jnp.int32)
+        sides = (1 - params.is_sell_task*2) * jnp.ones((self.n_actions,), jnp.int32)
         trader_ids = jnp.ones((self.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
         order_ids = (jnp.ones((self.n_actions,), jnp.int32) *
                     (self.trader_unique_id + state.customIDcounter)) \
@@ -637,22 +655,22 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("ask - bid {}", best_ask - best_bid)
 
         NT, M, FT, PP, MKT = jax.lax.cond(
-            params.is_buy_task,
-            buy_task_prices,
+            params.is_sell_task,
             sell_task_prices,
-            best_ask, best_bid
+            buy_task_prices,
+            best_bid, best_ask
         )
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-        marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
+        marketOrderTime = jnp.array(1, dtype=jnp.int32) 
 
         price_levels = (FT, M, NT, PP, MKT)
         quants, prices = jax.lax.cond(
             (remainingTime <= marketOrderTime),
-            market_qp,
-            normal_qp,
+            market_quant_price,
+            normal_quant_price,
             price_levels, state, action
         )
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -684,60 +702,58 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
         }
-
-        def normalize_obs(obs: Dict[str, jax.Array]):
-            """ normalized observation by substracting 'mean' and dividing by 'std'
-                (config values don't need to be actual mean and std)
-            """
-            # TODO: put this into config somewhere?
-            #       also check if we can get rid of manual normalization
-            #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
-            p_mean = 3.5e7
-            p_std = 1e6
-            means = {
-                "is_sell_task": 0,
-                "p_aggr": p_mean,
-                "q_aggr": 0,
-                "p_pass": p_mean,
-                "q_pass": 0,
-                "p_mid":p_mean,
-                "p_pass2":p_mean,
-                "spread": 0,
-                "shallow_imbalance":0,
-                "time": jnp.array([0, 0]),
-                "episode_time": jnp.array([0, 0]),
-                "init_price": p_mean,
-                "task_size": 0,
-                "executed_quant": 0,
-                "step_counter": 0,
-                "max_steps": 0,
-            }
-            stds = {
-                "is_sell_task": 1,
-                "p_aggr": p_std,
-                "q_aggr": 100,
-                "p_pass": p_std,
-                "q_pass": 100,
-                "p_mid": p_std,
-                "p_pass2": p_std,   
-                "spread": 1e4,
-                "shallow_imbalance": 10,
-                "time": jnp.array([1e5, 1e9]),
-                "episode_time": jnp.array([1e3, 1e9]),
-                "init_price": p_std,
-                "task_size": 500,
-                "executed_quant": 500,
-                "step_counter": 300,
-                "max_steps": 300,
-            }
-            obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
-            return obs
-
-
-        obs = normalize_obs(obs)
+        obs = self.normalize_obs(obs)
         # jax.debug.print("obs {}", obs)
         obs, _ = jax.flatten_util.ravel_pytree(obs)
         # jax.debug.breakpoint()
+        return obs
+
+    def normalize_obs(self, obs: Dict[str, jax.Array]):
+        """ normalized observation by substracting 'mean' and dividing by 'std'
+            (config values don't need to be actual mean and std)
+        """
+        # TODO: put this into config somewhere?
+        #       also check if we can get rid of manual normalization
+        #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
+        p_mean = 3.5e7
+        p_std = 1e6
+        means = {
+            "is_sell_task": 0,
+            "p_aggr": p_mean,
+            "q_aggr": 0,
+            "p_pass": p_mean,
+            "q_pass": 0,
+            "p_mid":p_mean,
+            "p_pass2":p_mean,
+            "spread": 0,
+            "shallow_imbalance":0,
+            "time": jnp.array([0, 0]),
+            "episode_time": jnp.array([0, 0]),
+            "init_price": p_mean,
+            "task_size": 0,
+            "executed_quant": 0,
+            "step_counter": 0,
+            "max_steps": 0,
+        }
+        stds = {
+            "is_sell_task": 1,
+            "p_aggr": p_std,
+            "q_aggr": 100,
+            "p_pass": p_std,
+            "q_pass": 100,
+            "p_mid": p_std,
+            "p_pass2": p_std,   
+            "spread": 1e4,
+            "shallow_imbalance": 10,
+            "time": jnp.array([1e5, 1e9]),
+            "episode_time": jnp.array([1e3, 1e9]),
+            "init_price": p_std,
+            "task_size": 500,
+            "executed_quant": 500,
+            "step_counter": 300,
+            "max_steps": 300,
+        }
+        obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
         return obs
 
     def action_space(
