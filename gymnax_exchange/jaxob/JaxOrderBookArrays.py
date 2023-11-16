@@ -130,13 +130,13 @@ def cancel_order(orderside, msg):
 @jax.jit
 def match_bid_order(data_tuple):
     matching_tuple = match_order(data_tuple)
-    top_i = __get_top_bid_order_idx(matching_tuple[0])
+    top_i = _get_top_bid_order_idx(matching_tuple[0])
     return top_i, *matching_tuple
 
 @jax.jit
 def match_ask_order(data_tuple):
     matching_tuple = match_order(data_tuple)
-    top_i = __get_top_ask_order_idx(matching_tuple[0])
+    top_i = _get_top_ask_order_idx(matching_tuple[0])
     return top_i, *matching_tuple
 
 
@@ -185,19 +185,19 @@ def match_order(data_tuple):
              price, trade, agrOID, time, time_ns)
 
 
-@jax.jit
-def _match_bid_order(data_tuple):
-    """Wrapper to call the matching function and return the index of
-      the next best bid order.
-    """
-    return _get_top_bid_order_idx(data_tuple[1]), *match_order(data_tuple)
+# @jax.jit
+# def _match_bid_order(data_tuple):
+#     """Wrapper to call the matching function and return the index of
+#       the next best bid order.
+#     """
+#     return _get_top_bid_order_idx(data_tuple[1]), *match_order(data_tuple)
 
-@jax.jit
-def _match_ask_order(data_tuple):
-    """Wrapper to call the matching function and return the index of
-      the next best ask order.
-    """
-    return _get_top_ask_order_idx(data_tuple[1]), *match_order(data_tuple)
+# @jax.jit
+# def _match_ask_order(data_tuple):
+#     """Wrapper to call the matching function and return the index of
+#       the next best ask order.
+#     """
+#     return _get_top_ask_order_idx(data_tuple[1]), *match_order(data_tuple)
 
 @jax.jit
 def _get_top_bid_order_idx(orderside):
@@ -253,7 +253,7 @@ def _match_against_bid_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
     top_order_idx=_get_top_bid_order_idx(orderside)
     (top_order_idx,orderside,
      qtm,price,trade,_,_,_)=jax.lax.while_loop(_check_before_matching_bid,
-                                               _match_bid_order,
+                                               match_bid_order,
                                                (top_order_idx,orderside,
                                                 qtm,price,trade,agrOID,
                                                 time,time_ns))
@@ -284,7 +284,7 @@ def _match_against_ask_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
     top_order_idx=_get_top_ask_order_idx(orderside)
     (top_order_idx,orderside,
      qtm,price,trade,_,_,_)=jax.lax.while_loop(_check_before_matching_ask,
-                                               _match_ask_order,
+                                               match_ask_order,
                                                (top_order_idx,orderside,
                                                 qtm,price,trade,agrOID,
                                                 time,time_ns))
