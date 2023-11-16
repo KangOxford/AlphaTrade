@@ -182,7 +182,7 @@ class EnvParams:
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
             self, alphatradePath, task, window_index, action_type, 
-            task_size = 500, rewardLambda=0.0, data_type="fixed_steps"
+            task_size = 500, rewardLambda=1.0, data_type="fixed_time"
         ):
         print('alphatradePath', alphatradePath)
         super().__init__(alphatradePath, data_type)
@@ -284,7 +284,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Obtain the messages for the step from the message data
         # '''
         # action = jnp.array([delta,0,0,0],dtype=jnp.int32)
-        def reshape_action(action : Dict, state: EnvState, params : EnvParams):
+        def reshape_action(action: jax.Array, state: EnvState, params : EnvParams):
             if self.action_type == 'delta':
                 def twapV3(state, env_params):
                     # ---------- ifMarketOrder BGN ----------
@@ -315,7 +315,7 @@ class ExecutionEnv(BaseLOBEnv):
                 action_ = action_space_clipping(input_action, state.task_to_execute)
             
             def truncate_action(action, remainQuant):
-                action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
+                action = jnp.round(action).astype(jnp.int32).clip(0, remainQuant)
                 scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
@@ -325,7 +325,6 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
-        #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
 
         raw_orders = jax.lax.cond(
             params.is_sell_task,
@@ -367,6 +366,7 @@ class ExecutionEnv(BaseLOBEnv):
         vwapFunc = lambda executed: jnp.nan_to_num((executed[:,0]//self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum(),0.0) # caution: this value can be zero (executed[:,1]).sum()
         vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
         revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
+        # jax.debug.print("revenue {}, sell_task: {}", revenue, params.is_sell_task)
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_price,new_price:(average_price*state.step_counter+new_price)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
@@ -385,8 +385,9 @@ class ExecutionEnv(BaseLOBEnv):
         # rewardValue2 = revenue - (state.init_price // self.tick_size) * agentQuant
         # rewardValue = rewardValue1 - rewardValue2
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
-        # direct_reward = revenue - (state.init_price // self.tick_size) * agentQuant
-        rewardValue = advantage + self.rewardLambda * drift
+        
+        rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = advantage + self.rewardLambda * drift
         reward = jnp.sign(agentQuant) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- normalize the reward ----------
         reward /= 10000
@@ -500,10 +501,10 @@ class ExecutionEnv(BaseLOBEnv):
             # action_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(a_mask)])
         # set actions with 0 quant to dummy messages
         action_msgs = jnp.where(
-                                (action_msgs[:, 2] == 0).T,
-                                0,
-                                action_msgs.T,
-                                ).T
+            (action_msgs[:, 2] == 0).T,
+            0,
+            action_msgs.T,
+            ).T
         cnl_msgs = cnl_msgs.at[:, 2].set(cnl_msgs[:, 2] - rel_cnl_quants[rank_rev(c_mask)])
             # cnl_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(c_mask)])
         # jax.debug.print("action_msgs NEW \n{}", action_msgs)
@@ -523,6 +524,12 @@ class ExecutionEnv(BaseLOBEnv):
         window_index = jnp.where(reset_window_index == -999, self.window_index, reset_window_index)
         '''if -999 use default static index [self.window_index], else use provided dynamic index [reset_window_index]'''
         
+        key_, key = jax.random.split(key)
+        if self.task == 'random':
+            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
+            # TODO: fix this (urgent)!
+            # jax.debug.print("new direction {} (key {})", direction, key_)
+            params = dataclasses.replace(params, is_sell_task=direction)
 
         idx_data_window = jnp.where(
             window_index == -1,
@@ -545,15 +552,9 @@ class ExecutionEnv(BaseLOBEnv):
                     jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), 
                     jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
         
-        
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         state = EnvState(*state_)
-        
-        key_, key = jax.random.split(key)
-        if self.task == 'random':
-            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
-            params = dataclasses.replace(params, is_sell_task=direction)
         
         obs = self.get_obs(state, params)
         return obs,state
@@ -742,7 +743,7 @@ class ExecutionEnv(BaseLOBEnv):
             lambda: (state.best_asks[-1], state.best_bids[-1]),
         )
         obs = {
-            "is_buy_task": params.is_sell_task,
+            "is_sell_task": params.is_sell_task,
             "p_aggr": quote_aggr[0],
             "p_pass": quote_pass[0],
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
@@ -763,7 +764,7 @@ class ExecutionEnv(BaseLOBEnv):
         p_mean = 3.5e7
         p_std = 1e6
         means = {
-            "is_buy_task": 0,
+            "is_sell_task": 0,
             "p_aggr": p_mean,
             "p_pass": p_mean,
             "spread": 0,
@@ -778,7 +779,7 @@ class ExecutionEnv(BaseLOBEnv):
             "max_steps": 0,
         }
         stds = {
-            "is_buy_task": 1,
+            "is_sell_task": 1,
             "p_aggr": p_std,
             "p_pass": p_std,
             "spread": 1e4,
@@ -906,12 +907,12 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "TASKSIDE": "sell", # "random", # "buy",
-        "TASK_SIZE": 100, # 500,
+        "TASKSIDE": "buy", # "random", # "buy",
+        "TASK_SIZE": 500, # 500,
         "WINDOW_INDEX": -1,
-        "ACTION_TYPE": "delta", # "pure",
+        "ACTION_TYPE": "pure", # "pure",
         "REWARD_LAMBDA": 1.0,
-        "DTAT_TYPE":"fixed_time",
+        "DTAT_TYPE": "fixed_time",
     }
         
     rng = jax.random.PRNGKey(0)
@@ -931,7 +932,7 @@ if __name__ == "__main__":
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
     start=time.time()
-    obs,state=env.reset(key_reset,env_params)
+    obs,state=env.reset(key_reset, env_params)
     print("Time for reset: \n",time.time()-start)
     # print("State after reset: \n",state)
    
@@ -941,13 +942,13 @@ if __name__ == "__main__":
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
-        key_policy, _ =  jax.random.split(key_policy, 2)
-        key_step, _ =  jax.random.split(key_step, 2)
+        key_policy, _ = jax.random.split(key_policy, 2)
+        key_step, _ = jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=env.action_space().sample(key_policy)
-        print(f"Sampled {i}th actions are: ",test_action)
+        test_action = env.action_space().sample(key_policy) // 10
+        print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
-        obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
+        obs,state,reward,done,info=env.step(key_step, state, test_action, env_params)
         for key, value in info.items():
             print(key, value)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))

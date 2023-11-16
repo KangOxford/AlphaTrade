@@ -2,7 +2,7 @@
 # config.update("jax_enable_x64",True)
 import os
 
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="true"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -181,7 +181,8 @@ def make_train(config):
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
         config["TASK_SIZE"],
-        config["REWARD_LAMBDA"]
+        config["REWARD_LAMBDA"],
+        config["DATA_TYPE"],
     )
     env_params = env.default_params
     env = LogWrapper(env)    
@@ -497,7 +498,7 @@ def make_train(config):
                     # for t in range(len(timesteps)):
                         if wandbOn:
                             wandb.log(
-                                {
+                                data={
                                     "global_step": timesteps[t],
                                     "episodic_return": return_values[t],
                                     "episodic_revenue": revenues[t],
@@ -509,7 +510,8 @@ def make_train(config):
                                     # "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
                                     # "advantage_reward":advantage_reward[t],
-                                }
+                                },
+                                commit=True
                             )        
                         else:
                             print(
@@ -570,15 +572,17 @@ if __name__ == "__main__":
         "MAX_TASK_SIZE": 500,
         
         "ENV_NAME": "alphatradeExec-v0",
-        "WINDOW_INDEX": -1, # 2 fix random episode #-1,
+        "WINDOW_INDEX": 2, # 2 fix random episode #-1,
         "DEBUG": True,
         
-        "TASKSIDE": "random",
+        "TASKSIDE": "sell",
         "REWARD_LAMBDA": 1., #0.001,
         "ACTION_TYPE": "pure", # "delta"
         "TASK_SIZE": 500, # 500,
+        "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
       
         "ATFOLDER": "./training_oneDay", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        # "ATFOLDER": "./training_oneMonth", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
