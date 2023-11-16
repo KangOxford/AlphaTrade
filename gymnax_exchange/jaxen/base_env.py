@@ -67,7 +67,7 @@ from typing import Tuple, Optional
 import chex
 from flax import struct
 import itertools
-from gymnax_exchange.jaxob import JaxOrderBookArrays as job  
+
 
 
 @struct.dataclass
@@ -94,6 +94,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
+
     """The basic RL environment for the limit order book (LOB) using
     JAX-LOB functions for manipulating the orderbook.
 
@@ -117,6 +118,7 @@ class BaseLOBEnv(environment.Environment):
         Prints the person's name and age.
     """
     def __init__(self, alphatradePath,data_type):
+
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
@@ -272,8 +274,10 @@ class BaseLOBEnv(environment.Environment):
                     new_Cubes_withOB.append((cube, OB))
                 return new_Cubes_withOB 
             Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
+
             return Cubes_withOB, max_steps_in_episode_arr, taskSize_array
         Cubes_withOB, max_steps_in_episode_arr, taskSize_array = load_LOBSTER(
+
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,

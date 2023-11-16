@@ -127,6 +127,19 @@ def cancel_order(orderside, msg):
 
 ################ MATCHING FUNCTIONS ################
 
+@jax.jit
+def match_bid_order(data_tuple):
+    matching_tuple = match_order(data_tuple)
+    top_i = __get_top_bid_order_idx(matching_tuple[0])
+    return top_i, *matching_tuple
+
+@jax.jit
+def match_ask_order(data_tuple):
+    matching_tuple = match_order(data_tuple)
+    top_i = __get_top_ask_order_idx(matching_tuple[0])
+    return top_i, *matching_tuple
+
+
 
 @jax.jit
 def match_order(data_tuple):
@@ -637,21 +650,39 @@ def getCancelMsgs(bookside,agentID,size,side):
         Returns:
                 cancel_msgs: Array of messages of fixed size which
                                 represent cancel orders. 
-    """
-    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],
-                             axis=0)
-    indeces_to_cancel=jnp.where(bookside[:,3]==agentID,
-                                size=size,
-                                fill_value=-1)
+    """  
+    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
+    indices_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
     cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,
                                  jnp.ones((1,size),dtype=jnp.int32)*side,
-                                bookside[indeces_to_cancel,1],
-                                bookside[indeces_to_cancel,0],
-                                bookside[indeces_to_cancel,3],
-                                bookside[indeces_to_cancel,2],
-                                bookside[indeces_to_cancel,4],
-                                bookside[indeces_to_cancel,5]],
-                                axis=0).transpose()
+                                bookside[indices_to_cancel,1],
+                                bookside[indices_to_cancel,0],
+                                bookside[indices_to_cancel,3],
+                                bookside[indices_to_cancel,2],
+                                bookside[indices_to_cancel,4],
+                                bookside[indices_to_cancel,5]],axis=0).transpose()
+    return cancel_msgs
+
+
+#TODO Currently not implemented: should be used for a less naive version of the autocancel
+def getCancelMsgs_smart(bookside,agentID,size,side,action_msgs):
+    cond=jnp.stack([bookside[:,3]==agentID]*6,axis=1)
+    indices_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=0)
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,
+                                jnp.ones((1,size),dtype=jnp.int32)*side,
+                                bookside[indices_to_cancel,1],
+                                bookside[indices_to_cancel,0],
+                                bookside[indices_to_cancel,3],
+                                bookside[indices_to_cancel,2],
+                                bookside[indices_to_cancel,4],
+                                bookside[indices_to_cancel,5]],axis=0).transpose()
+    cancel_msgs=jnp.where(cancel_msgs==-1,0,cancel_msgs)
+    jax.lax.scan(remove_cnl_if_renewed,cancel_msgs,action_msgs)
+    return cancel_msgs
+
+#TODO Currently not implemented: should be used for a less naive version of the autocancel
+def remove_cnl_if_renewed(cancel_msgs,action_msg):
+    jnp.where(cancel_msgs[:,3]==action_msg[3],)
     return cancel_msgs
 
 
