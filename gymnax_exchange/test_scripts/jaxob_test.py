@@ -64,7 +64,7 @@ class OrderBook():
         print("Bidside Batch Shape:",bidsides.shape)
         print("Askside Batch Shape:",asksides.shape)
         for msg in msg_arrays:
-            ordersides,trades=job.vcond_type_side(ordersides,msg)
+            ordersides,trades=jax.vmap(job.cond_type_side,((0,0,0),0))(ordersides,msg)
         return ordersides,trades
 
     def vprocess_mult_order_arrays_scan(self,single_array,Nparallel):
@@ -75,7 +75,7 @@ class OrderBook():
         print("Msg Batch Shape:",msg_arrays.shape)
         print("Bidside Batch Shape:",bidsides.shape)
         print("Askside Batch Shape:",asksides.shape)
-        ordersides=job.vscan_through_entire_array(msg_arrays,ordersides)
+        ordersides=jax.vmap(job.scan_through_entire_array,(2,(0,0,0)),0)(msg_arrays,ordersides)
         return ordersides
 
 
@@ -86,8 +86,8 @@ class OrderBook():
         index=int(jnp.where(ask_prices[::-1]==-1,fill_value=0,size=1)[0])
         topNask=jnp.concatenate((ask_prices[-index:],jnp.zeros(N).astype("int32")))
         topNask=topNask[0:N]
-        bids=jnp.stack((job.get_totquant_at_prices(self.bids,topNbid),topNbid))
-        asks=jnp.stack((job.get_totquant_at_prices(self.asks,topNask),topNask))
+        bids=jnp.stack((jax.vmap(job.get_volume_at_price,(None,0),0)(self.bids,topNbid),topNbid))
+        asks=jnp.stack((jax.vmap(job.get_volume_at_price,(None,0),0)(self.asks,topNask),topNask))
         return bids.T,asks.T
     
 

@@ -9,7 +9,7 @@ def argsort_rev(arr):
 def rank_rev(arr):
     """ Rank array in descending order, with ties having left-to-right priority. """
     return jnp.argsort(argsort_rev(arr))
-
+  
 @jax.jit
 def clip_by_sum_int(a: jax.Array, max_sum: int) -> jax.Array:
     """ Clip a vector so that its sum is at most max_sum as an integer,
@@ -61,3 +61,4 @@ if __name__ == '__main__':
             jnp.array([100, 4, 4, 4])
         )
     )
+

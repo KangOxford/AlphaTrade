@@ -22,34 +22,29 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-
-
-
+import os
+import flax
 from jax.lib import xla_bridge 
 print(xla_bridge.get_backend().platform)
-
-
-
-#print(torch.cuda_is_available())
-print(jax.devices()[0]) 
-
-
 #Code snippet to disable all jitting.
-
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
 import datetime
+jax.numpy.set_printoptions(linewidth=250)
 
 
 
-
-wandbOn = True
-# wandbOn = False
+# wandbOn = True
+wandbOn = False
 if wandbOn:
     import wandb
 
+def save_checkpoint(params, filename):
+    with open(filename, 'wb') as f:
+        f.write(flax.serialization.to_bytes(params))
+        print(f"Checkpoint saved to {filename}")
 
 
 class ScannedRNN(nn.Module):
@@ -128,12 +123,12 @@ class ActorCriticRNN(nn.Module):
         
         actor_mean = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            # self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
         )(actor_net)
         max_action_logstd = -1.6  # exp -1.6 = 0.2
         actor_logtstd = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(max_action_logstd), name="log_std"
         )(actor_net)
-
         # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
@@ -180,10 +175,10 @@ def make_train(config):
         config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
     
+
     env = ExecutionEnv(
         config["ATFOLDER"],
-        # config["TASKSIDE"],
-        config["RANDOMIZE_DIRECTION"],
+        config["TASKSIDE"],
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
         config["TASK_SIZE"],
@@ -266,7 +261,6 @@ def make_train(config):
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
-                # jax.debug.print("{} , {}",pi.mean(),pi.stddev())
 
 
                 action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
@@ -447,19 +441,34 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-            # jax.debug.print("{}", train_state.params['params']['log_std'])
             train_state = update_state[0]
-            metric = traj_batch.info
+            metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
             if config.get("DEBUG"):
 
-                def callback(info):
+                def callback(metric):
+                    
+                    info,trainstate_params=metric
+                    
                     return_values = info["returned_episode_returns"][
                         info["returned_episode"]
                     ]
                     timesteps = (
                         info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
                     )
+                    
+                    def evaluation():
+                        if not os.path.exists(config['CHECKPOINT_DIR']): os.makedirs(config['CHECKPOINT_DIR'])
+                        # Inside your loop or function where you save the checkpoint
+                        if any(timesteps % int(1e3) == 0) and len(timesteps) > 0:  # +1 since global_step is 0-indexed
+                            start = time.time()
+                            jax.debug.print(">>> checkpoint saving {}",round(timesteps[0], -3))
+                            # Save the checkpoint to the specific directory
+                            checkpoint_filename = os.path.join(config['CHECKPOINT_DIR'], f"checkpoint_{round(timesteps[0], -3)}.ckpt")
+                            save_checkpoint(trainstate_params, checkpoint_filename)  # Assuming trainstate_params contains your model's state
+                            jax.debug.print("+++ checkpoint saved  {}",round(timesteps[0], -3))
+                            jax.debug.print("+++ time taken        {}",time.time()-start)        
+                    evaluation()
                     
                     revenues = info["total_revenue"][info["returned_episode"]]
                     quant_executed = info["quant_executed"][info["returned_episode"]]
@@ -487,6 +496,7 @@ def make_train(config):
                     # '''
                     # NOTE: only log every 100th timestep
                     for t in range(0, len(timesteps), 100):
+                    # for t in range(len(timesteps)):
                         if wandbOn:
                             wandb.log(
                                 {
@@ -505,7 +515,8 @@ def make_train(config):
                             )        
                         else:
                             print(
-                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<11} | episodic revenue={revenues[t]:<11} | average_price={average_price[t]:<11}"
+                                # f"global step={timesteps[t]:<11} | episodic return={return_values[t]:.10f<15} | episodic revenue={revenues[t]:.10f<15} | average_price={average_price[t]:<15}"
+                                f"global step={timesteps[t]:<11} | episodic return={return_values[t]:<20} | episodic revenue={revenues[t]:<20} | average_price={average_price[t]:<11}"
                             )     
                             # print("==="*20)      
                             # print(info["current_step"])  
@@ -541,14 +552,11 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        # "LR": 2.5e-3,
-        # "LR": 2.5e-4,
-        "LR": 5e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        # "LR": 2.5e-6,
+        "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
         "ENT_COEF": 0.0, #0.1,
         # "ENT_COEF": 0.01,
-        "NUM_ENVS": 1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e8, #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "NUM_ENVS": 128, #1024, #128, #64, 1000,
+        "TOTAL_TIMESTEPS": 1e8,  # 6.9h
         # "TOTAL_TIMESTEPS": 1e7,
         # "TOTAL_TIMESTEPS": 3.5e7,
         "NUM_MINIBATCHES": 8, #8, #2,
@@ -573,15 +581,27 @@ if __name__ == "__main__":
         # "WINDOW_INDEX": 0,
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
-        "ATFOLDER": ".",
+        
         # "TASKSIDE": 'sell',
         "RANDOMIZE_DIRECTION": True,
         "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
         "ACTION_TYPE": "pure",
         # "ACTION_TYPE":"delta",
         "TASK_SIZE": 500, #500,
-        "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",
-        "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",
+      
+        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
+        # "ATFOLDER": ".",
+        # "ATFOLDER": "../AlphaTrade/",
+        "TASKSIDE":'sell',
+        "REWARD_LAMBDA": 0., #0.001,  # CAVE: currently not used
+        # "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
+        # "ACTION_TYPE":"pure",
+        "ACTION_TYPE":"delta",
+        "TASK_SIZE": 500, #500,
+        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
+        # "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",
+        # "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
@@ -596,10 +616,7 @@ if __name__ == "__main__":
         import datetime;params_file_name = f'params_file_{timestamp}'
 
     print(f"Results will be saved to {params_file_name}")
-
-
-
-
+    
     # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(0)
     # rng = jax.random.PRNGKey(30)
