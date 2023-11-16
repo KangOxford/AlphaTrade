@@ -189,15 +189,11 @@ class ExecutionEnv(BaseLOBEnv):
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task # "random", "buy", "sell"
-        # self.randomize_direction = randomize_direction
         self.window_index = window_index
         self.action_type = action_type
         self.data_type = data_type # fixed_steps, fixed_time
         self.rewardLambda = rewardLambda
-        # self.task_size = 5000 # num to sell or buy for the task
-        # self.task_size = 2000 # num to sell or buy for the task
         self.task_size = task_size # num to sell or buy for the task
-        # self.task_size = 200 # num to sell or buy for the task
         self.n_fragment_max = 2
         self.n_ticks_in_book = 2 #TODO: Used to be 20, too large for stocks with dense LOBs
         # self.debug : bool = False
