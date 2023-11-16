@@ -68,9 +68,8 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-    
-np.set_printoptions(linewidth=183)    
-jax.numpy.set_printoptions(linewidth=183)    
+from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER
+
 
 
 @struct.dataclass
@@ -97,6 +96,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
+
     """The basic RL environment for the limit order book (LOB) using
     JAX-LOB functions for manipulating the orderbook.
 
@@ -120,6 +120,7 @@ class BaseLOBEnv(environment.Environment):
         Prints the person's name and age.
     """
     def __init__(self, alphatradePath,data_type):
+
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
@@ -136,187 +137,13 @@ class BaseLOBEnv(environment.Environment):
         self.tick_size=100
         self.tradeVolumePercentage = 0.01
         self.data_type = data_type
-
-
-
-
-        # Load the data from LOBSTER
-        def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
-            def preProcessingData_csv2pkl():
-                return 0
-            def load_files():
-                from os import listdir; from os.path import isfile, join; import pandas as pd
-                readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-                messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
-                dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
-                messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
-                orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
-                return messageCSVs, orderbookCSVs
-            messages, orderbooks = load_files()
-            def preProcessingMassegeOB(message, orderbook):
-                def splitTimeStamp(m):
-                    m[6] = m[0].apply(lambda x: int(x))
-                    m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
-                    m[8] = ((m[1]==4) | (m[1]==5)).astype(int)
-                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns','ifTraded']
-                    return m
-                message = splitTimeStamp(message)
-                def selectTradingInterval(m, o):
-                    m = m[(m.time_s>=34200) & (m.time_s<=57600)]
-                    o = o.iloc[m.index.to_numpy(),:] # valid_index 
-                    return m.reset_index(drop=True), o.reset_index(drop=True)
-                message, orderbook = selectTradingInterval(message, orderbook)
-                def filterValid(message):
-                    message = message[message.type.isin([1,2,3,4])]
-                    valid_index = message.index.to_numpy()
-                    message.reset_index(inplace=True,drop=True)
-                    return message, valid_index
-                message, valid_index = filterValid(message)
-                def adjustExecutions(message):
-                    message.loc[message['type'] == 4, 'direction'] *= -1
-                    message.loc[message['type'] == 4, 'type'] = 1
-                    return message
-                message = adjustExecutions(message)
-                def removeDeletes(message):
-                    message.loc[message['type'] == 3, 'type'] = 2
-                    return message
-                message = removeDeletes(message)
-                def addTraderId(message):
-                    import warnings
-                    from pandas.errors import SettingWithCopyWarning
-                    warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-                    message['trader_id'] = message['order_id']
-                    return message
-
-                message = addTraderId(message)
-                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
-                return message,orderbook
-            pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
-            messages, orderbooks = zip(*pairs)
-            breakpoint()
-
-            def sliceWithoutOverlap(message, orderbook):
-                # max_horizon_of_message = message.shape[0]//100*100
-                # sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
-
-                print("data_type: ",self.data_type)
-                if self.data_type == "fixed_steps":
-                    def index_of_sliceWithoutOverlap_by_lines(start_time, end_time, interval):
-                        indices = list(range(start_time, end_time, interval))
-                        return indices
-                    indices = index_of_sliceWithoutOverlap_by_lines(0, message.shape[0]//100*100, 100*100)
-                
-                elif self.data_type == "fixed_time":
-                    def index_of_sliceWithoutOverlap_by_time(start_time, end_time, interval):
-                        indices = list(range(start_time, end_time, interval))
-                        return indices
-                    indices = index_of_sliceWithoutOverlap_by_time(start_time, end_time, sliceTimeWindow)
-                else: raise NotImplementedError
-                
-                def splitMessage(message, orderbook):
-                    sliced_parts = []
-                    init_OBs = []
-                    for i in range(len(indices) - 1):
-                        start_index = indices[i]
-                        end_index = indices[i + 1]
-                        if self.data_type == "fixed_steps":
-                            sliced_part = message[(message.index > start_index) & (message.index <= end_index)]
-                        elif self.data_type == "fixed_time":
-                            index_s, index_e = message[(message['time'] >= start_index) & (message['time'] < end_index)].index[[0, -1]].tolist()
-                            index_e = (index_e // stepLines + 10) * stepLines + index_s % stepLines
-                            assert (index_e - index_s) % stepLines == 0, 'wrong code 31'
-                            sliced_part = message.loc[np.arange(index_s, index_e)]
-                        sliced_parts.append(sliced_part)
-                        init_OBs.append(orderbook.iloc[start_index,:])
-                    for part in sliced_parts:
-                        if self.data_type == "fixed_steps":
-                            assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
-                        elif self.data_type == "fixed_time":
-                            assert part.time_s.iloc[-1] - part.time_s.iloc[0] >= sliceTimeWindow, f'wrong code 33, {part.time_s.iloc[-1] - part.time_s.iloc[0]}, {sliceTimeWindow}'
-                        assert part.shape[0] % stepLines == 0, 'wrong code 34'
-                    return sliced_parts, init_OBs
-                sliced_parts, init_OBs = splitMessage(message, orderbook)
-
-                def sliced2cude(sliced):
-                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns','ifTraded']
-                    cube = sliced[columns].to_numpy()
-                    cube = cube.reshape((-1, stepLines, 9))
-                    return cube
-                slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
-                # Cube: dynamic_horizon * stepLines * 9
-                slicedCubes_withOB = zip(slicedCubes, init_OBs)
-                return slicedCubes_withOB
-            
-            
-            
-            slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
-            # i = 6 ; message,orderbook = messages[i],orderbooks[i]
-            # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
-            def nestlist2flattenlist(nested_list):
-                flattened_list = list(itertools.chain.from_iterable(nested_list))
-                return flattened_list
-            Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
-            
-            taskSize_array = np.array([int((m[:,:,2]*m[:,:,8]).sum()*self.tradeVolumePercentage) for m,o in Cubes_withOB])
-            max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
-            
-            def get_start_idx_array_list():
-                def get_start_idx_array(idx):
-                    cube=Cubes_withOB[idx][0]
-                    print(f"cube{idx} shape:{cube.shape}")
-                    start_time_array = cube[:,0,[6,7]]
-                    start_time_stamp_array = np.arange(34200,57600,900)
-                    start_idx_list = [(0, 34200, 34200, 34200)]
-                    for start_time_stamp in start_time_stamp_array:
-                        for i in range(1, start_time_array.shape[0]):
-                            timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
-                            timestamp_before = timestamp(i-1)
-                            timestamp_current = timestamp(i)
-                            if timestamp_before< start_time_stamp <timestamp_current:
-                                start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
-                    start_idx_array = np.array(start_idx_list)
-                    start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr[idx]])
-                    return start_idx_array
-                return [get_start_idx_array(idx) for idx in range(len(Cubes_withOB))] # start_idx_array_list
-            start_idx_array_list = get_start_idx_array_list()
-            
-            Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded
-            
-            def Cubes_withOB_padding(Cubes_withOB):
-                max_m = max(m.shape[0] for m, o in Cubes_withOB)
-                new_Cubes_withOB = []
-                for cube, OB in Cubes_withOB:
-                    def padding(cube, target_shape):
-                        pad_width = np.zeros((100, 8))
-                        # Calculate the amount of padding required
-                        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-                        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-                        return padded_cube
-                    cube = padding(cube, max_m)
-                    new_Cubes_withOB.append((cube, OB))
-                return new_Cubes_withOB 
-            Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array
-        Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = load_LOBSTER(
-            self.sliceTimeWindow,
-            self.stepLines,
-            self.messagePath,
-            self.orderbookPath,
-            self.start_time,
-            self.end_time
-        )
-        self.start_idx_array_list = start_idx_array_list
-        self.taskSize_array = taskSize_array
-        self.max_steps_in_episode_arr = max_steps_in_episode_arr 
-        # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
-        # books:    2D Array: (n_windows x [4*n_depth])
-        # breakpoint()
-        self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
-        # breakpoint()
-        self.n_windows = len(self.books)
-        # jax.debug.breakpoint()
-        print(f"Num of data_window: {self.n_windows}")
-
+        
+        loader=LoadLOBSTER(".",10,"fixed_time",self.sliceTimeWindow,self.stepLines)
+        msgs,books,window_lengths,n_windows=loader.run_loading()
+        self.max_steps_in_episode_arr = window_lengths 
+        self.messages=msgs
+        self.books=books
+        self.n_windows = n_windows
 
 
     @property
