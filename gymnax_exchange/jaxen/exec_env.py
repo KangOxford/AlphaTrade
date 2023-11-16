@@ -319,20 +319,6 @@ class ExecutionEnv(BaseLOBEnv):
             
             def truncate_action(action, remainQuant):
                 action = jnp.round(action).astype(jnp.int32).clip(0,remainQuant)
-                # NOTE: didn't know this was already implemented? <= posted in channel 2 days(8th Nov) before your commit(10th Nov)
-                # NOTE: already add comments and variable names to make it readable
-                # NOTE: same thing with Peer's commit, and the logic from our discussion proposed by Sascha
-                #       but hamilton_apportionment_permuted_jax add permutation if two poistions shares the same probability
-                #       such as [2,1,0,1] and remain 2, in the utils.clip_by_sum_int 
-                #       implementation, the second position will always be added by 1
-                #       it will turns out to be [3,2,0,1]
-                #       but in reality we should permutate between the second and fourth position
-                #       it will turns out to be [3,2,0,1] or [3,1,0,2]
-                #       the name hamilton_apportionment means our interger split problem, a classical math problem
-                #       permuted in the name means randomly choose a position if two or more positions 
-                #       shares the same probability.
-                #       jax in the name means it is jittable
-                # TODO  delete this comment after read
                 scaledAction = jnp.where(action.sum() <= remainQuant, action, self.hamilton_apportionment_permuted_jax(action, remainQuant, key)) 
                 return scaledAction
             action = truncate_action(action_, state.task_to_execute - state.quant_executed)
@@ -614,23 +600,23 @@ class ExecutionEnv(BaseLOBEnv):
             return quants, jnp.asarray((price_levels[-1], -1, -1, -1), jnp.int32)
         
         def buy_task_prices(best_ask, best_bid):
-            NT = best_bid
+            FT = best_ask
             # mid defaults to one tick more passive if between ticks
             M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
-            FT = best_ask
+            NT = best_bid
             PP = best_bid - self.tick_size*self.n_ticks_in_book
             MKT = job.MAX_INT
-            return NT, M, FT, PP, MKT
+            return FT, M, NT, PP, MKT
 
         def sell_task_prices(best_ask, best_bid):
-            NT = best_ask
+            FT = best_bid
             # mid defaults to one tick more passive if between ticks
             M = (jnp.ceil((best_bid + best_ask) / 2 / self.tick_size)
                  * self.tick_size).astype(jnp.int32)
-            FT = best_bid
+            NT = best_ask
             PP = best_ask + self.tick_size*self.n_ticks_in_book
             MKT = 0
-            return NT, M, FT, PP, MKT
+            return FT, M, NT, PP, MKT
 
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
@@ -654,7 +640,7 @@ class ExecutionEnv(BaseLOBEnv):
         best_ask, best_bid = state.best_asks[-1, 0], state.best_bids[-1, 0]
         # jax.debug.print("ask - bid {}", best_ask - best_bid)
 
-        NT, M, FT, PP, MKT = jax.lax.cond(
+        price_levels = jax.lax.cond(
             params.is_sell_task,
             sell_task_prices,
             buy_task_prices,
@@ -664,9 +650,8 @@ class ExecutionEnv(BaseLOBEnv):
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
-        marketOrderTime = jnp.array(1, dtype=jnp.int32) 
+        marketOrderTime = jnp.array(1, dtype=jnp.int32)
 
-        price_levels = (FT, M, NT, PP, MKT)
         quants, prices = jax.lax.cond(
             (remainingTime <= marketOrderTime),
             market_quant_price,
@@ -679,9 +664,12 @@ class ExecutionEnv(BaseLOBEnv):
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
-    def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+    def get_obs_full(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
-        best_asks, best_bids=state.best_asks[:,0], state.best_bids[:,0]
+        # Note: uses entire observation history between steps
+        # TODO: if we want to use this, we need to roll forward the RNN state with every step
+
+        best_asks, best_bids = state.best_asks[:,0], state.best_bids[:,0]
         best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
         
         obs = {
@@ -702,19 +690,6 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
         }
-        obs = self.normalize_obs(obs)
-        # jax.debug.print("obs {}", obs)
-        obs, _ = jax.flatten_util.ravel_pytree(obs)
-        # jax.debug.breakpoint()
-        return obs
-
-    def normalize_obs(self, obs: Dict[str, jax.Array]):
-        """ normalized observation by substracting 'mean' and dividing by 'std'
-            (config values don't need to be actual mean and std)
-        """
-        # TODO: put this into config somewhere?
-        #       also check if we can get rid of manual normalization
-        #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
         p_mean = 3.5e7
         p_std = 1e6
         means = {
@@ -753,6 +728,82 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": 300,
             "max_steps": 300,
         }
+        obs = self.normalize_obs(obs, means, stds)
+        obs, _ = jax.flatten_util.ravel_pytree(obs)
+        return obs
+
+    def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+        """Return observation from raw state trafo."""
+        # NOTE: only uses most recent observation from state
+        quote_aggr, quote_pass = jax.lax.cond(
+            params.is_sell_task,
+            lambda: (state.best_bids[-1], state.best_asks[-1]),
+            lambda: (state.best_asks[-1], state.best_bids[-1]),
+        )
+        obs = {
+            "is_buy_task": params.is_sell_task,
+            "p_aggr": quote_aggr[0],
+            "p_pass": quote_pass[0],
+            "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
+            "q_aggr": quote_aggr[1],
+            "q_pass": quote_pass[1],
+            # TODO: add "q_pass2" as passive quantity to state in step_env and here
+            "time": state.time,
+            "episode_time": state.time - state.init_time,
+            "init_price": state.init_price,
+            "task_size": state.task_to_execute,
+            "executed_quant": state.quant_executed,
+            "step_counter": state.step_counter,
+            "max_steps": state.max_steps_in_episode,
+        }
+        # TODO: put this into config somewhere?
+        #       also check if we can get rid of manual normalization
+        #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
+        p_mean = 3.5e7
+        p_std = 1e6
+        means = {
+            "is_buy_task": 0,
+            "p_aggr": p_mean,
+            "p_pass": p_mean,
+            "spread": 0,
+            "q_aggr": 0,
+            "q_pass": 0,
+            "time": jnp.array([0, 0]),
+            "episode_time": jnp.array([0, 0]),
+            "init_price": p_mean,
+            "task_size": 0,
+            "executed_quant": 0,
+            "step_counter": 0,
+            "max_steps": 0,
+        }
+        stds = {
+            "is_buy_task": 1,
+            "p_aggr": p_std,
+            "p_pass": p_std,
+            "spread": 1e4,
+            "q_aggr": 100,
+            "q_pass": 100,
+            "time": jnp.array([1e5, 1e9]),
+            "episode_time": jnp.array([1e3, 1e9]),
+            "init_price": p_std,
+            "task_size": 500,
+            "executed_quant": 500,
+            "step_counter": 300,
+            "max_steps": 300,
+        }
+        obs = self.normalize_obs(obs, means, stds)
+        obs, _ = jax.flatten_util.ravel_pytree(obs)
+        return obs
+
+    def normalize_obs(
+            self,
+            obs: Dict[str, jax.Array],
+            means: Dict[str, jax.Array],
+            stds: Dict[str, jax.Array]
+        ) -> Dict[str, jax.Array]:
+        """ normalized observation by substracting 'mean' and dividing by 'std'
+            (config values don't need to be actual mean and std)
+        """
         obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
         return obs
 
@@ -760,20 +811,19 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """ Action space of the environment. """
-        # return spaces.Box(-100,100,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' else spaces.Box(0,500,(self.n_actions,),dtype=jnp.int32)
         if self.action_type == 'delta':
-            return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32)
-            # return spaces.Box(-100, 100, (self.n_actions,), dtype=jnp.int32)
+            # return spaces.Box(-5, 5, (self.n_actions,), dtype=jnp.int32)
+            return spaces.Box(-100, 100, (self.n_actions,), dtype=jnp.int32)
         else:
-            return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
-            # return spaces.Box(0, self.task_size, (self.n_actions,), dtype=jnp.int32)
+            # return spaces.Box(0, 100, (self.n_actions,), dtype=jnp.int32)
+            return spaces.Box(0, self.task_size, (self.n_actions,), dtype=jnp.int32)
           
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
-        # space = spaces.Box(-10,10,(15,),dtype=jnp.float32) 
+        #space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
+        space = spaces.Box(-10, 10, (15,), dtype=jnp.float32) 
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 
