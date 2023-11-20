@@ -153,10 +153,10 @@ class EnvState:
     init_price:int
     task_to_execute:int
     quant_executed:int
-    total_revenue:float
     step_counter: int
     max_steps_in_episode: int
     
+    total_revenue:float
     slippage_rm: float
     price_adv_rm: float
     price_drift_rm: float
@@ -168,9 +168,7 @@ class EnvParams:
     is_sell_task: int
     message_data: chex.Array
     book_data: chex.Array
-    stateArray_list: chex.Array
-    # obs_sell_list: chex.Array
-    # obs_buy_list: chex.Array
+    # stateArray_list: chex.Array
     episode_time: int = 60*10  # 60*10, 10 mins
     # max_steps_in_episode: int = 100 # TODO should be a variable, decied by the data_window
     # messages_per_step: int=1 # TODO never used, should be removed?
@@ -207,14 +205,19 @@ class ExecutionEnv(BaseLOBEnv):
         # ================= CAUTION NOT BELONG TO BASE ENV =================
         # ================= EPECIALLY SUPPORT FOR EXEC ENV =================
         print("START:  pre-reset in the initialization")
-        pkl_file_name = alphatradePath+'/state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
-        print("pre-reset will be saved to ",pkl_file_name)
+        pkl_file_name_state = alphatradePath+'/state_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        pkl_file_name_obs = alphatradePath+'/obs_arrays_'+alphatradePath.split("/")[-2]+'.pkl'
+        print("pre-reset will be saved to ",pkl_file_name_state)
+        print("pre-reset will be saved to ",pkl_file_name_obs)
         try:
-            import pickle
-            # Restore the list
-            with open(pkl_file_name, 'rb') as f:
-                self.stateArray_list = pickle.load(f)
-            print("LOAD FROM PKL")
+            # import pickle
+            # # Restore the list
+            # with open(pkl_file_name_state, 'rb') as f:
+            #     self.stateArray_list = pickle.load(f)
+            # with open(pkl_file_name_obs, 'rb') as f:
+            #     self.obs_list = pickle.load(f)
+            # print("LOAD FROM PKL")
+            raise NotImplementedError
         except:
             print("DO COMPUTATION")
             def get_state(message_data, book_data,max_steps_in_episode):
@@ -249,21 +252,27 @@ class ExecutionEnv(BaseLOBEnv):
                 state = (ordersides[0],ordersides[1],ordersides[2],
                          jnp.resize(best_ask,(self.stepLines,2)),
                          jnp.resize(best_bid,(self.stepLines,2)),
-                         time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
+                         time,time,0,-1,M,self.task_size,0,0,0,max_steps_in_episode,0,0,0,0,0)
                 return state
-            states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) 
+            states_ = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i])
                       for i in range(len(self.max_steps_in_episode_arr))]
-            
+            states = [EnvState(*[*state[:-6], *[jnp.zeros(1)]*5])
+                      for state in states_]
+            # jax.debug.breakpoint()
+            self.obs_list = jnp.array([self.get_obs(state, self.default_params) 
+                            for state in states])
             def state2stateArray(state):
                 state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
                 padded_state = jnp.pad(state_5, (0, 100 - state_5.shape[0]), constant_values=-1)[:,jnp.newaxis]
                 stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
                 return stateArray
-            self.stateArray_list = jnp.array([state2stateArray(state) for state in states])
+            self.stateArray_list = jnp.array([state2stateArray(state) for state in states_])
             import pickle
             # Save the list
-            with open(pkl_file_name, 'wb') as f:
+            with open(pkl_file_name_state, 'wb') as f:
                 pickle.dump(self.stateArray_list, f) 
+            with open(pkl_file_name_obs, 'wb') as f:
+                pickle.dump(self.obs_list, f) 
         print("FINISH: pre-reset in the initialization")
 
         #TODO Most of the state space should be exactly the same for the base and exec env, 
@@ -278,7 +287,7 @@ class ExecutionEnv(BaseLOBEnv):
     def default_params(self) -> EnvParams:
         # Default environment parameters
         is_sell_task = 0 if self.task == 'buy' else 1 # {("random","sell"): sell_task, ("buy",): buy_task}
-        return EnvParams(is_sell_task, self.messages,self.books,self.stateArray_list)
+        return EnvParams(is_sell_task, self.messages,self.books)
     
 
     def step_env(
@@ -439,8 +448,9 @@ class ExecutionEnv(BaseLOBEnv):
             asks, bids, trades, bestasks, bestbids,
             state.init_time, time, state.customIDcounter + self.n_actions, state.window_index,
             state.init_price, state.task_to_execute, state.quant_executed + agentQuant,
-            state.total_revenue + revenue, state.step_counter + 1,
+            state.step_counter + 1,
             state.max_steps_in_episode,
+            state.total_revenue + revenue,
             slippage_rm, price_adv_rm, price_drift_rm, vwap_rm)
             # state.max_steps_in_episode,state.twap_total_revenue+twapRevenue,state.twap_quant_arr)
 
@@ -553,13 +563,15 @@ class ExecutionEnv(BaseLOBEnv):
             state6 = stateArray[2:4,22:23].squeeze(axis=-1)
             state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
             return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,
-                    self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,
+                    self.task_size,0,0,
                     self.max_steps_in_episode_arr[idx_data_window],
+                    jnp.array(0.0,dtype=jnp.float32),
                     jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), 
                     jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
         
         
-        stateArray = params.stateArray_list[idx_data_window]
+        stateArray = self.stateArray_list[idx_data_window]
+        # stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
         state = EnvState(*state_)
         
@@ -849,7 +861,7 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
+        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
