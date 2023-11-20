@@ -127,17 +127,7 @@ def cancel_order(orderside, msg):
 
 ################ MATCHING FUNCTIONS ################
 
-@jax.jit
-def match_bid_order(data_tuple):
-    matching_tuple = match_order(data_tuple)
-    top_i = _get_top_bid_order_idx(matching_tuple[0])
-    return top_i, *matching_tuple
 
-@jax.jit
-def match_ask_order(data_tuple):
-    matching_tuple = match_order(data_tuple)
-    top_i = _get_top_ask_order_idx(matching_tuple[0])
-    return top_i, *matching_tuple
 
 
 
@@ -185,19 +175,23 @@ def match_order(data_tuple):
              price, trade, agrOID, time, time_ns)
 
 
-# @jax.jit
-# def _match_bid_order(data_tuple):
-#     """Wrapper to call the matching function and return the index of
-#       the next best bid order.
-#     """
-#     return _get_top_bid_order_idx(data_tuple[1]), *match_order(data_tuple)
+@jax.jit
+def _match_bid_order(data_tuple):
+    """Wrapper to call the matching function and return the index of
+      the next best bid order.
+    """
+    matching_tuple = match_order(data_tuple)
+    top_i = _get_top_bid_order_idx(matching_tuple[0])
+    return top_i, *matching_tuple
 
-# @jax.jit
-# def _match_ask_order(data_tuple):
-#     """Wrapper to call the matching function and return the index of
-#       the next best ask order.
-#     """
-#     return _get_top_ask_order_idx(data_tuple[1]), *match_order(data_tuple)
+@jax.jit
+def _match_ask_order(data_tuple):
+    """Wrapper to call the matching function and return the index of
+      the next best ask order.
+    """
+    matching_tuple = match_order(data_tuple)
+    top_i = _get_top_ask_order_idx(matching_tuple[0])
+    return top_i, *matching_tuple
 
 @jax.jit
 def _get_top_bid_order_idx(orderside):
@@ -253,7 +247,7 @@ def _match_against_bid_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
     top_order_idx=_get_top_bid_order_idx(orderside)
     (top_order_idx,orderside,
      qtm,price,trade,_,_,_)=jax.lax.while_loop(_check_before_matching_bid,
-                                               match_bid_order,
+                                               _match_bid_order,
                                                (top_order_idx,orderside,
                                                 qtm,price,trade,agrOID,
                                                 time,time_ns))
@@ -284,7 +278,7 @@ def _match_against_ask_orders(orderside,qtm,price,trade,agrOID,time,time_ns):
     top_order_idx=_get_top_ask_order_idx(orderside)
     (top_order_idx,orderside,
      qtm,price,trade,_,_,_)=jax.lax.while_loop(_check_before_matching_ask,
-                                               match_ask_order,
+                                               _match_ask_order,
                                                (top_order_idx,orderside,
                                                 qtm,price,trade,agrOID,
                                                 time,time_ns))
@@ -693,8 +687,8 @@ def remove_cnl_if_renewed(cancel_msgs,action_msg):
 
 ################ HELPER FUNCTIONS ################
 
-
-def get_volume_at_price(orderside,price):
+@jax.jit
+def get_volume_at_price(orderside, price):
     """Returns the total quantity in the book at a given price for the
     bid or ask side. 
         Parameters:
@@ -739,7 +733,7 @@ def get_best_bid_and_ask(askside,bidside):
                 best_ask (int): Price of best ask order
                 best_bid (int): Price of best ask order
     """
-    return get_best_ask(askside),get_best_bid(bidside)
+    return get_best_ask(askside), get_best_bid(bidside)
 
 def get_best_bid_and_ask_inclQuants(askside,bidside):
     """Returns the best bid and the best ask price and the volume at

@@ -2,7 +2,7 @@
 # config.update("jax_enable_x64",True)
 import os
 
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="true"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -30,14 +30,13 @@ print(xla_bridge.get_backend().platform)
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
+config.update("jax_check_tracer_leaks", False) #finds a whole assortment of leaks if true... bizarre.
 import datetime
 jax.numpy.set_printoptions(linewidth=250)
 
 
 
-# wandbOn = True
-wandbOn = False
+wandbOn = True # False
 if wandbOn:
     import wandb
 
@@ -182,15 +181,15 @@ def make_train(config):
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
         config["TASK_SIZE"],
-        config["REWARD_LAMBDA"]
+        config["REWARD_LAMBDA"],
+        config["DATA_TYPE"],
     )
     env_params = env.default_params
     env = LogWrapper(env)    
     
-    #FIXME : Uncomment normalisation.
     if config["NORMALIZE_ENV"]:
         env = NormalizeVecObservation(env)
-        # don't normalize reward for now
+        # NOTE: don't normalize reward for now
         # env = NormalizeVecReward(env, config["GAMMA"])
     
 
@@ -499,7 +498,7 @@ def make_train(config):
                     # for t in range(len(timesteps)):
                         if wandbOn:
                             wandb.log(
-                                {
+                                data={
                                     "global_step": timesteps[t],
                                     "episodic_return": return_values[t],
                                     "episodic_revenue": revenues[t],
@@ -511,7 +510,8 @@ def make_train(config):
                                     # "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
                                     # "advantage_reward":advantage_reward[t],
-                                }
+                                },
+                                commit=True
                             )        
                         else:
                             print(
@@ -552,19 +552,13 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        "ENT_COEF": 0.0, #0.1,
-        # "ENT_COEF": 0.01,
-        "NUM_ENVS": 128, #1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e8,  # 6.9h
-        # "TOTAL_TIMESTEPS": 1e7,
-        # "TOTAL_TIMESTEPS": 3.5e7,
-        "NUM_MINIBATCHES": 8, #8, #2,
-        # "NUM_MINIBATCHES": 4,
+        "LR": 5e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "ENT_COEF": 0.0, #0.1, 0.01
+        "NUM_ENVS": 1024, #1024, #128, #64, 1000,
+        "TOTAL_TIMESTEPS": 1e8,  #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "NUM_MINIBATCHES": 8, #8, 4, 2,
         "UPDATE_EPOCHS": 30, #5,
-        # "UPDATE_EPOCHS": 4,
         "NUM_STEPS": 1024, #500,
-        # "NUM_STEPS": 10,
         "CLIP_EPS": 0.2,
         
         "GAMMA": 0.99,
@@ -578,30 +572,19 @@ if __name__ == "__main__":
         "MAX_TASK_SIZE": 500,
         
         "ENV_NAME": "alphatradeExec-v0",
-        # "WINDOW_INDEX": 0,
-        "WINDOW_INDEX": -1, # 2 fix random episode #-1,
+        "WINDOW_INDEX": 2, # 2 fix random episode #-1,
         "DEBUG": True,
         
-        # "TASKSIDE": 'sell',
-        "RANDOMIZE_DIRECTION": True,
-        "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
-        "ACTION_TYPE": "pure",
-        # "ACTION_TYPE":"delta",
-        "TASK_SIZE": 500, #500,
+        "TASKSIDE": "sell",
+        "REWARD_LAMBDA": 1., #0.001,
+        "ACTION_TYPE": "pure", # "delta"
+        "TASK_SIZE": 500, # 500,
+        "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
       
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
-        # "ATFOLDER": ".",
-        # "ATFOLDER": "../AlphaTrade/",
-        "TASKSIDE":'sell',
-        "REWARD_LAMBDA": 0., #0.001,  # CAVE: currently not used
-        # "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
-        # "ACTION_TYPE":"pure",
-        "ACTION_TYPE":"delta",
-        "TASK_SIZE": 500, #500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
-        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
-        # "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",
-        # "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",
+        "ATFOLDER": "./training_oneDay", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        # "ATFOLDER": "./training_oneMonth", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
