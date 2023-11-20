@@ -289,8 +289,8 @@ class ExecutionEnv(BaseLOBEnv):
 
         done = self.is_terminal(state, params)
         # jax.debug.print("time {}",state.time)
-        l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
-        jax.debug.print("l2 state: \n {}",l2)
+        # l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
+        # jax.debug.print("l2 state: \n {}",l2)
         # jax.debug.breakpoint()
         # jax.debug.print("window_index {}, current_step {}, quant_executed {}, average_price {}", state.window_index, state.step_counter, state.quant_executed, state.total_revenue / state.quant_executed)
         return self.get_obs(state, params), state, reward, done, {
@@ -380,13 +380,13 @@ class ExecutionEnv(BaseLOBEnv):
         NT = best_ask if self.task=='sell' else best_bid #Near touch: passive
         PP = best_ask+self.tick_size*self.n_ticks_in_book if self.task=='sell' else best_bid-self.tick_size*self.n_ticks_in_book #Passive, N ticks deep in book
         MKT = 0 if self.task=='sell' else job.MAX_INT
-        jax.debug.print("best_ask {}",best_ask)
-        jax.debug.print("best_bid {}",best_bid)
-        jax.debug.print("FT {}",FT)
-        jax.debug.print("M {}",M)
-        jax.debug.print("NT {}",NT)
-        jax.debug.print("PP {}",PP)
-        jax.debug.print("MKT {}",MKT)
+        # jax.debug.print("best_ask {}",best_ask)
+        # jax.debug.print("best_bid {}",best_bid)
+        # jax.debug.print("FT {}",FT)
+        # jax.debug.print("M {}",M)
+        # jax.debug.print("NT {}",NT)
+        # jax.debug.print("PP {}",PP)
+        # jax.debug.print("MKT {}",MKT)
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------

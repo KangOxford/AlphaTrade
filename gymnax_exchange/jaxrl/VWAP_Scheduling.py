@@ -11,6 +11,7 @@ import gymnax
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 import optax
 from flax.linen.initializers import constant, orthogonal
 from flax.training.train_state import TrainState
@@ -51,26 +52,6 @@ def TWAP_Scheduling(state, env, key):
 
 def VWAP_Scheduling(state, env, forcasted_volume, key):
     print("VWAP_Scheduling")
-    best_asks, best_bids=state.best_asks[:,0], state.best_bids[:,0]
-    best_ask_qtys, best_bid_qtys = state.best_asks[:,1], state.best_bids[:,1]
-    obs = {
-        # "is_buy_task": params.is_buy_task,
-        "p_aggr": best_bids if env.task=='sell' else best_asks,
-        "q_aggr": best_bid_qtys if env.task=='sell' else best_ask_qtys, 
-        "p_pass": best_asks if env.task=='sell' else best_bids,
-        "q_pass": best_ask_qtys if env.task=='sell' else best_bid_qtys, 
-        "p_mid": (best_asks+best_bids)//2//env.tick_size*env.tick_size, 
-        "p_pass2": best_asks+env.tick_size*env.n_ticks_in_book if env.task=='sell' else best_bids-env.tick_size*env.n_ticks_in_book, # second_passives
-        "spread": best_asks - best_bids,
-        "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
-        "time": state.time,
-        "episode_time": state.time - state.init_time,
-        "init_price": state.init_price,
-        "task_size": state.task_to_execute,
-        "executed_quant": state.quant_executed,
-        "step_counter": state.step_counter,
-        "max_steps": state.max_steps_in_episode,
-    }    
     start_idx_array = env.start_idx_array_list[state.window_index]
     forcasted_volume = hamilton_apportionment_permuted_jax(forcasted_volume, env.task_size, key)
     print(forcasted_volume.sum(),env.task_size)
@@ -88,6 +69,17 @@ def VWAP_Scheduling(state, env, forcasted_volume, key):
     allocation_array_final = np.concatenate(lst)
     return allocation_array_final
 
+def load_forecasted_and_original_volume(date=None):
+    dir = '/homes/80/kang/cmem/output/0900_r_output_with_features_csv_fractional_shares_clipped_vwap/'
+    name = 'AAP.csv'
+    df = pd.read_csv(dir+name,index_col=0)
+    df[df.date==date]
+    return df[df.date==date]
+
+x = load_forecasted_and_original_volume('2017-07-20').x.to_numpy()
+qty = load_forecasted_and_original_volume('2017-07-20').qty.to_numpy()
+
+
 if __name__ == "__main__":
     try:
         ATFolder = sys.argv[1]
@@ -97,7 +89,8 @@ if __name__ == "__main__":
         # ATFolder = '/homes/80/kang/AlphaTrade'
         # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        ATFolder = "/homes/80/kang/aap2017"
+        # ATFolder = "/homes/80/kang/aap2017_half"
+        ATFolder = "/homes/80/kang/aap2017_07_20"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
         
     config = {
@@ -107,22 +100,17 @@ if __name__ == "__main__":
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "delta", # "pure",
         "REWARD_LAMBDA": 1.0,
+        # "FORECASTED_VOLUME": load_forecasted_and_original_volume('2017-07-20').qty.to_numpy(),
         "FORECASTED_VOLUME": jax.random.permutation(jax.random.PRNGKey(0),jnp.arange(1,27)),
         }
-    
-    
-    
-    
-    
-    
-    
-    
-        
+
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # env=ExecutionEnv(ATFolder,"sell",1)
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],
+                      config["WINDOW_INDEX"],config["ACTION_TYPE"],
+                      config["TASK_SIZE"],config["REWARD_LAMBDA"])
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 

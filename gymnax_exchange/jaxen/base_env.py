@@ -119,7 +119,7 @@ class BaseLOBEnv(environment.Environment):
                 return message,orderbook
             pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
             messages, orderbooks = zip(*pairs)
-            breakpoint()
+            # breakpoint()
 
             def sliceWithoutOverlap(message, orderbook):
                 max_horizon_of_message = message.shape[0]//100*100
