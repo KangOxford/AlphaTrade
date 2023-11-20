@@ -88,11 +88,8 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    # max_steps_in_episode: int = 100
-    time_per_step: int= 0
-    ##Going forward, assume that 0 implies not to use time step?
-    time_delay_obs_act: chex.Array = jnp.array([0, 0]) #0ns time delay.
+    #episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
+    time_delay_obs_act: chex.Array 
 
 
 class BaseLOBEnv(environment.Environment):
@@ -119,9 +116,52 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self, alphatradePath,data_type):
+
+
+    def _get_state_from_data(self,message_data,book_data,max_steps_in_episode)->EnvState:
+        time=jnp.array(message_data[0,0,-2:])
+        #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
+        def get_initial_orders(book_data,time):
+            orderbookLevels=10
+            initid=job.INITID
+            data=jnp.array(book_data).reshape(int(10*2),2)
+            newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
+            initOB = newarr \
+                .at[:,3].set(data[:,0]) \
+                .at[:,2].set(data[:,1]) \
+                .at[:,0].set(1) \
+                .at[0:orderbookLevels*4:2,1].set(-1) \
+                .at[1:orderbookLevels*4:2,1].set(1) \
+                .at[:,4].set(initid) \
+                .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
+                .at[:,6].set(time[0]) \
+                .at[:,7].set(time[1])
+            return initOB
+        init_orders=get_initial_orders(book_data,time)
+        #Initialise both sides of the book as being empty
+        asks_raw=job.init_orderside(self.nOrdersPerSide)
+        bids_raw=job.init_orderside(self.nOrdersPerSide)
+        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
+        #Process the initial messages through the orderbook
+        ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
+        return EnvState(ask_raw_orders=ordersides[0],
+                        bid_raw_orders=ordersides[1],
+                        trades=ordersides[2],
+                        init_time=time,
+                        time=time,
+                        customIDcounter=0,
+                        window_index=-1,
+                        step_counter=0,
+                        max_steps_in_episode=max_steps_in_episode)
+
+
+    def __init__(self, alphatradePath,window_index,data_type="fixed_time"):
 
         super().__init__()
+        self.window_index = window_index
+        self.data_type = data_type # fixed_steps, fixed_time
+
+
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         self.messagePath = alphatradePath+"/data/Flow_10/"
@@ -149,13 +189,7 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams(self.messages, self.books)
-        # return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
-    # @property
-    # def default_params(self) -> EnvParams:
-    #     # Default environment parameters
-    #     # return EnvParams(self.messages,self.books)
-    #     return EnvParams(self.messages,self.books,self.state_list,self.obs_sell_list,self.obs_buy_list)
+        return EnvParams(self.messages, self.books,jnp.array([0, 0]))
 
 
     def step_env(
