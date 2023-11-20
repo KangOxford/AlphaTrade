@@ -71,6 +71,7 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER
 
 
+
 @struct.dataclass
 class EnvState:
     ask_raw_orders: chex.Array
@@ -92,6 +93,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
+
     """The basic RL environment for the limit order book (LOB) using
     JAX-LOB functions for manipulating the orderbook.
 
@@ -114,6 +116,7 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
+
 
     def _get_state_from_data(self,message_data,book_data,max_steps_in_episode)->EnvState:
         time=jnp.array(message_data[0,0,-2:])
@@ -153,6 +156,7 @@ class BaseLOBEnv(environment.Environment):
 
 
     def __init__(self, alphatradePath,window_index,data_type="fixed_time"):
+
         super().__init__()
         self.window_index = window_index
         self.data_type = data_type # fixed_steps, fixed_time
@@ -174,7 +178,7 @@ class BaseLOBEnv(environment.Environment):
         self.tradeVolumePercentage = 0.01
         self.data_type = data_type
         
-        loader=LoadLOBSTER(".",10,"fixed_time",self.sliceTimeWindow,self.stepLines)
+        loader=LoadLOBSTER(alphatradePath,10,"fixed_time",self.sliceTimeWindow,self.stepLines)
         msgs,books,window_lengths,n_windows=loader.run_loading()
         self.max_steps_in_episode_arr = window_lengths 
         self.messages=msgs
@@ -182,7 +186,6 @@ class BaseLOBEnv(environment.Environment):
         self.n_windows = n_windows
 
 
-    
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters

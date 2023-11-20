@@ -2,7 +2,7 @@
 # config.update("jax_enable_x64",True)
 import os
 
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="true"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -30,14 +30,13 @@ print(xla_bridge.get_backend().platform)
 from jax import config
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
-config.update("jax_check_tracer_leaks",True) #finds a whole assortment of leaks if true... bizarre.
+config.update("jax_check_tracer_leaks", False) #finds a whole assortment of leaks if true... bizarre.
 import datetime
 jax.numpy.set_printoptions(linewidth=250)
 
 
 
-# wandbOn = True
-wandbOn = False
+wandbOn = True # False
 if wandbOn:
     import wandb
 
@@ -108,7 +107,6 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.Dense(
             128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
         )(obs)
-        # jax.debug.print("embedding shape {}", embedding.shape)
         embedding = nn.LayerNorm()(embedding)
         embedding = nn.relu(embedding)
 
@@ -123,18 +121,13 @@ class ActorCriticRNN(nn.Module):
         actor_net = nn.relu(actor_net)
         
         actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            # self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
         )(actor_net)
         max_action_logstd = -1.6  # exp -1.6 = 0.2
         actor_logtstd = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(max_action_logstd), name="log_std"
         )(actor_net)
-
-        #Changed bias to mu network output to center at 0.5 (unnormalised this will be half of max quant in act)
-
-        #pi = distrax.Categorical(logits=actor_mean)
-        #Old version^^
-
         # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
@@ -143,9 +136,6 @@ class ActorCriticRNN(nn.Module):
             jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'],
             jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE']
         )
-        
-        #New version ^^
-
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
@@ -153,7 +143,6 @@ class ActorCriticRNN(nn.Module):
         critic = nn.LayerNorm()(critic)
         critic = nn.relu(critic)
 
-        # try: add another critic layer
         critic = nn.Dense(64, kernel_init=orthogonal(1), bias_init=constant(0.0))(
             critic
         )
@@ -189,19 +178,18 @@ def make_train(config):
     env = ExecutionEnv(
         config["ATFOLDER"],
         config["TASKSIDE"],
-        # config["RANDOMIZE_DIRECTION"],
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
         config["TASK_SIZE"],
-        config["REWARD_LAMBDA"]
+        config["REWARD_LAMBDA"],
+        config["DATA_TYPE"],
     )
     env_params = env.default_params
     env = LogWrapper(env)    
     
-    #FIXME : Uncomment normalisation.
     if config["NORMALIZE_ENV"]:
         env = NormalizeVecObservation(env)
-        # don't normalize reward for now
+        # NOTE: don't normalize reward for now
         # env = NormalizeVecReward(env, config["GAMMA"])
     
 
@@ -452,7 +440,6 @@ def make_train(config):
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
-
             train_state = update_state[0]
             metric = (traj_batch.info,train_state.params)
             rng = update_state[-1]
@@ -486,13 +473,13 @@ def make_train(config):
                     quant_executed = info["quant_executed"][info["returned_episode"]]
                     average_price = info["average_price"][info["returned_episode"]]
                     
-                    slippage_rm = info["slippage_rm"][info["returned_episode"]]
-                    price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
-                    price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
-                    vwap_rm = info["vwap_rm"][info["returned_episode"]]
+                    # slippage_rm = info["slippage_rm"][info["returned_episode"]]
+                    # price_drift_rm = info["price_drift_rm"][info["returned_episode"]]
+                    # price_adv_rm = info["price_adv_rm"][info["returned_episode"]]
+                    # vwap_rm = info["vwap_rm"][info["returned_episode"]]
                     
                     current_step = info["current_step"][info["returned_episode"]]
-                    advantage_reward = info["advantage_reward"][info["returned_episode"]]
+                    # advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     '''
                     print(info["current_step"][0,0],info["total_revenue"][0,0],info["average_price"][0,0],info['quant_executed'][0,0],info['action'][0,0])  
@@ -506,10 +493,12 @@ def make_train(config):
                     '''
                     
                     # '''
-                    for t in range(len(timesteps)):
+                    # NOTE: only log every 100th timestep
+                    for t in range(0, len(timesteps), 100):
+                    # for t in range(len(timesteps)):
                         if wandbOn:
                             wandb.log(
-                                {
+                                data={
                                     "global_step": timesteps[t],
                                     "episodic_return": return_values[t],
                                     "episodic_revenue": revenues[t],
@@ -521,7 +510,8 @@ def make_train(config):
                                     # "vwap_rm":vwap_rm[t],
                                     "current_step":current_step[t],
                                     # "advantage_reward":advantage_reward[t],
-                                }
+                                },
+                                commit=True
                             )        
                         else:
                             print(
@@ -562,19 +552,13 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 1e-3, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        "ENT_COEF": 0.0, #0.1,
-        # "ENT_COEF": 0.01,
-        "NUM_ENVS": 128, #1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e8,  # 6.9h
-        # "TOTAL_TIMESTEPS": 1e7,
-        # "TOTAL_TIMESTEPS": 3.5e7,
-        "NUM_MINIBATCHES": 8, #8, #2,
-        # "NUM_MINIBATCHES": 4,
+        "LR": 5e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "ENT_COEF": 0.0, #0.1, 0.01
+        "NUM_ENVS": 1024, #1024, #128, #64, 1000,
+        "TOTAL_TIMESTEPS": 1e8,  #5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "NUM_MINIBATCHES": 8, #8, 4, 2,
         "UPDATE_EPOCHS": 30, #5,
-        # "UPDATE_EPOCHS": 4,
         "NUM_STEPS": 1024, #500,
-        # "NUM_STEPS": 10,
         "CLIP_EPS": 0.2,
         
         "GAMMA": 0.99,
@@ -584,24 +568,23 @@ if __name__ == "__main__":
         "ANNEAL_LR": True, #True,
         "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
-        "ACTOR_TYPE":"RNN",
+        "ACTOR_TYPE": "RNN",
         "MAX_TASK_SIZE": 500,
         
         "ENV_NAME": "alphatradeExec-v0",
-        # "WINDOW_INDEX": 0,
-        "WINDOW_INDEX": -1, # 2 fix random episode #-1,
+        "WINDOW_INDEX": 2, # 2 fix random episode #-1,
         "DEBUG": True,
-
-        "ATFOLDER": "/homes/80/kang/AlphaTrade/training_oneDay/",
-        # "ATFOLDER": "../AlphaTrade/",
-        "TASKSIDE":'sell',
-        "REWARD_LAMBDA": 0., #0.001,  # CAVE: currently not used
-        # "REWARD_LAMBDA": 1., #0.001,  # CAVE: currently not used
-        # "ACTION_TYPE":"pure",
-        "ACTION_TYPE":"delta",
-        "TASK_SIZE": 500, #500,
-        "RESULTS_FILE":"/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
-        "CHECKPOINT_DIR":"/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
+        
+        "TASKSIDE": "sell",
+        "REWARD_LAMBDA": 1., #0.001,
+        "ACTION_TYPE": "pure", # "delta"
+        "TASK_SIZE": 500, # 500,
+        "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
+      
+        "ATFOLDER": "./training_oneDay", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        # "ATFOLDER": "./training_oneMonth", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
+        "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
 
     if wandbOn:
@@ -614,11 +597,9 @@ if __name__ == "__main__":
         import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
     else:
         import datetime;params_file_name = f'params_file_{timestamp}'
+
     print(f"Results will be saved to {params_file_name}")
-
-
-
-
+    
     # +++++ Single GPU +++++
     rng = jax.random.PRNGKey(0)
     # rng = jax.random.PRNGKey(30)
