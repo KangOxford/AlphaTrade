@@ -142,6 +142,9 @@ class BaseLOBEnv(environment.Environment):
                 return flattened_list
             Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
             
+            # breakpoint(); Cubes_withOB[89][0].shape
+            
+            
             taskSize_array = np.array([int((m[:,:,2]*m[:,:,8]).sum()*self.tradeVolumePercentage) for m,o in Cubes_withOB])
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
             
@@ -161,6 +164,7 @@ class BaseLOBEnv(environment.Environment):
                                 start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
                     start_idx_array = np.array(start_idx_list)
                     start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr[idx]])
+                    assert start_idx_array.shape == (26, 4), f"Error code B10"
                     return start_idx_array
                 return [get_start_idx_array(idx) for idx in range(len(Cubes_withOB))] # start_idx_array_list
             start_idx_array_list = get_start_idx_array_list()

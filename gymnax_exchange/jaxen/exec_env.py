@@ -90,7 +90,7 @@ class EnvParams:
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
             self, alphatradePath, task, window_index, action_type,
-            task_size = 500, rewardLambda=0.0, Gamma=0.00
+            task_size = 100, rewardLambda=0.0, Gamma=0.00
         ):
         super().__init__(alphatradePath)
         #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
@@ -195,12 +195,12 @@ class ExecutionEnv(BaseLOBEnv):
         
         
         l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
-        jax.debug.print("l2 state: \n {}",l2)
+        # jax.debug.print("l2 state: \n {}",l2)
         
         
         # action = jnp.array([0,0,delta,0],dtype=jnp.int32)
         action = jnp.array([delta,0,0,0],dtype=jnp.int32)
-        jax.debug.print("action {}",action)
+        # jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
         
         
@@ -208,7 +208,7 @@ class ExecutionEnv(BaseLOBEnv):
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         
         action_msgs = self.getActionMsgs(action, state, params)
-        jax.debug.print("action_msgs \n{}",action_msgs)
+        # jax.debug.print("action_msgs \n{}",action_msgs)
         
         #Currently just naive cancellation of all agent orders in the book. #TODO avoid being sent to the back of the queue every time. 
         cnl_msgs=job.getCancelMsgs(state.ask_raw_orders if self.task=='sell' else state.bid_raw_orders,job.INITID+1,self.n_actions,-1 if self.task=='sell' else 1)
@@ -413,9 +413,9 @@ class ExecutionEnv(BaseLOBEnv):
         normal_quants, normal_prices = normal_order_logic(state, action)
         quants = jnp.where(ifMarketOrder, market_quants, normal_quants)
         prices = jnp.where(ifMarketOrder, market_prices, normal_prices)
-        jax.debug.print("ifMarketOrder {}",ifMarketOrder)
-        jax.debug.print("quants {}",quants)
-        jax.debug.print("prices {}",prices)
+        # jax.debug.print("ifMarketOrder {}",ifMarketOrder)
+        # jax.debug.print("quants {}",quants)
+        # jax.debug.print("prices {}",prices)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs,times],axis=1)
