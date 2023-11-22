@@ -1,6 +1,7 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
 
+import os
 import sys
 import time
 import jax
@@ -33,6 +34,7 @@ config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks",False) #finds a whole assortment of leaks if true... bizarre.
 np.set_printoptions(suppress=True)
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"  
 
 @jax.jit
 def hamilton_apportionment_permuted_jax(votes, seats, key):
@@ -145,6 +147,7 @@ def load_forecasted_and_original_volume_rolling_mean():
     dates = np.array(lst0)
     dates = np.array([f"{str(d)[:4]}-{str(d)[4:6]}-{str(d)[6:8]}" for d in dates])
     x = np.array(lst1)
+    # x = np.array(lst1,dtype=np.float32)
     qty = None
     return dates, x, qty
 
@@ -241,7 +244,7 @@ if __name__ == "__main__":
                 print(state.task_to_execute)
                 print(f"Sampled {i}th actions are: ",test_action)
                 obs,state,reward,done,info=env.step(key_step, state,test_action, env_params)
-                print("state.task_size")
+                print("state.task_to_execute",state.task_to_execute)
                 for key, value in info.items():
                     print(key, value)
                 if done:

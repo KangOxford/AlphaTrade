@@ -63,6 +63,7 @@ class BaseLOBEnv(environment.Environment):
         self.trader_unique_id=job.INITID+1
         self.tick_size=100
         self.tradeVolumePercentage = 0.01
+        self.tradeVolumePercentage = 0.05 # 0.01
 
 
 
@@ -147,7 +148,8 @@ class BaseLOBEnv(environment.Environment):
             # breakpoint(); Cubes_withOB[89][0].shape
             
             
-            taskSize_array = np.array([int((m[:,:,2]*m[:,:,8]).sum()*self.tradeVolumePercentage) for m,o in Cubes_withOB])
+            taskSize_array = jnp.array([int( (m[:,:,2]*m[:,:,8]).sum() * self.tradeVolumePercentage ) 
+                                       for m,o in Cubes_withOB])
             max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
             
             def get_start_idx_array_list():

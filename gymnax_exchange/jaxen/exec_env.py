@@ -1,5 +1,5 @@
-# from jax import config
 # config.update("jax_enable_x64",True)
+# from jax import config
 # ============== testing scripts ===============
 import os
 import sys
@@ -102,10 +102,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.action_type = action_type
         self.rewardLambda = rewardLambda
         self.Gamma = Gamma
-        # self.task_size = 5000 # num to sell or buy for the task
-        # self.task_size = 2000 # num to sell or buy for the task
-        self.task_size = task_size # num to sell or buy for the task
-        # self.task_size = 200 # num to sell or buy for the task
+
         self.n_fragment_max = 2
         self.n_ticks_in_book = 2 #TODO: Used to be 20, too large for stocks with dense LOBs
         # self.debug : bool = False
@@ -123,9 +120,13 @@ class ExecutionEnv(BaseLOBEnv):
             with open(pkl_file_name, 'rb') as f:
                 self.stateArray_list = pickle.load(f)
             print("LOAD FROM PKL")
+            raise NotImplementedError # NOTE delete this
         except:
             print("DO COMPUTATION")
-            def get_state(message_data, book_data,max_steps_in_episode):
+            def get_state(message_data, book_data,idx_data_window):
+                max_steps_in_episode = self.max_steps_in_episode_arr[idx_data_window]
+                variate_task_size = self.taskSize_array[idx_data_window]
+                # jax.debug.breakpoint()
                 time=jnp.array(message_data[0,0,-2:])
                 #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
                 def get_initial_orders(book_data,time):
@@ -155,9 +156,9 @@ class ExecutionEnv(BaseLOBEnv):
                 best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(ordersides[0],ordersides[1])
                 M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
                 state = (ordersides[0],ordersides[1],ordersides[2],jnp.resize(best_ask,(self.stepLines,2)),jnp.resize(best_bid,(self.stepLines,2)),\
-                    time,time,0,-1,M,self.task_size,0,0,0,0,max_steps_in_episode)
+                    time,time,0,-1,M,variate_task_size,0,0,0,0,max_steps_in_episode)
                 return state
-            states = [get_state(self.messages[i], self.books[i], self.max_steps_in_episode_arr[i]) for i in range(len(self.max_steps_in_episode_arr))]
+            states = [get_state(self.messages[idx], self.books[idx], idx) for idx in range(len(self.max_steps_in_episode_arr))]
             
             def state2stateArray(state):
                 state_5 = jnp.hstack((state[5],state[6],state[9],state[15]))
@@ -200,6 +201,7 @@ class ExecutionEnv(BaseLOBEnv):
         
         # action = jnp.array([0,0,delta,0],dtype=jnp.int32)
         action = jnp.array([delta,0,0,0],dtype=jnp.int32)
+        # jax.debug.breakpoint()
         # jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
         
@@ -278,6 +280,7 @@ class ExecutionEnv(BaseLOBEnv):
             mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2     
             return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
         bestasks, bestbids = bestPircesImpute(bestasks[-self.stepLines:],state.best_asks[-1,0]),bestPircesImpute(bestbids[-self.stepLines:],state.best_bids[-1,0])
+        
         state = EnvState(
             asks, bids, trades, bestasks, bestbids,
             state.init_time, time, state.customIDcounter + self.n_actions, state.window_index,
@@ -325,16 +328,19 @@ class ExecutionEnv(BaseLOBEnv):
             jnp.array(window_index, dtype=jnp.int32)
         )
 
-        
+        # jax.debug.breakpoint()
         def stateArray2state(stateArray):
             state0 = stateArray[:,0:6];state1 = stateArray[:,6:12];state2 = stateArray[:,12:18];state3 = stateArray[:,18:20];state4 = stateArray[:,20:22]
             state5 = stateArray[0:2,22:23].squeeze(axis=-1);state6 = stateArray[2:4,22:23].squeeze(axis=-1);state9= stateArray[4:5,22:23][0].squeeze(axis=-1)
-            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,jnp.array(0.0,dtype=jnp.float32),0,self.max_steps_in_episode_arr[idx_data_window],jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0.0, 0.0, 0.0, 0.0)
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window])
-            # return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,state9,self.task_size,0,0,0,self.max_steps_in_episode_arr[idx_data_window],0,twap_quant_arr)
+            return (state0,state1,state2,state3,state4,state5,state6,0,idx_data_window,
+                    # state9,0,0,jnp.array(0.0,dtype=jnp.float32),0,
+                    state9,self.taskSize_array[idx_data_window],0,jnp.array(0.0,dtype=jnp.float32),0,
+                    self.max_steps_in_episode_arr[idx_data_window],
+                    jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32), 
+                    jnp.array(0.0,dtype=jnp.float32), jnp.array(0.0,dtype=jnp.float32))
         stateArray = params.stateArray_list[idx_data_window]
         state_ = stateArray2state(stateArray)
+        # jax.debug.breakpoint()
         state = EnvState(*state_)
         obs = self.get_obs(state, params)
         return obs,state
@@ -397,7 +403,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ifMarketOrder = (remainingTime <= marketOrderTime)
         # ·········· ifMarketOrder determined by steps ··········
         remainingSteps = state.max_steps_in_episode - state.step_counter 
-        marketOrderSteps = jnp.array(1, dtype=jnp.int32) # in steps, means the last step was left for market order
+        marketOrderSteps = jnp.array(5, dtype=jnp.int32) # in steps, means the last step was left for market order
         ifMarketOrder = (remainingSteps <= marketOrderSteps)
         # ---------- ifMarketOrder END ----------
         def normal_order_logic(state: EnvState, action: jnp.ndarray):
@@ -553,7 +559,7 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
+        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
@@ -587,7 +593,8 @@ if __name__ == "__main__":
         key_policy, _ =  jax.random.split(key_policy, 2)
         key_step, _ =  jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action=env.action_space().sample(key_policy)
+        test_action=1
+        # test_action=env.action_space().sample(key_policy)
         # test_action=env.action_space().sample(key_policy)//10 # CAUTION not real action
         print(f"Sampled {i}th actions are: ",test_action)
         start=time.time()
