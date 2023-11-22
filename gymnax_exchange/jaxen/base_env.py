@@ -74,6 +74,8 @@ class BaseLOBEnv(environment.Environment):
                 from os import listdir; from os.path import isfile, join; import pandas as pd
                 readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
                 messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
+                # breakpoint()
+                # [m[4:14] for m in messageFiles]
                 dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
                 messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
                 orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
