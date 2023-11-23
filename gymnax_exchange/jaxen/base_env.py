@@ -156,8 +156,6 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.window_index = window_index
         self.data_type = data_type # fixed_steps, fixed_time
-
-
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         self.messagePath = alphatradePath+"/data/Flow_10/"
@@ -173,7 +171,6 @@ class BaseLOBEnv(environment.Environment):
         self.tick_size=100
         self.tradeVolumePercentage = 0.01
         self.data_type = data_type
-        
         loader=LoadLOBSTER(".",10,"fixed_time",self.sliceTimeWindow,self.stepLines)
         msgs,books,window_lengths,n_windows=loader.run_loading()
         self.max_steps_in_episode_arr = window_lengths 
@@ -194,7 +191,6 @@ class BaseLOBEnv(environment.Environment):
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=self._get_data_messages(params.message_data,state.window_index,state.step_counter)
-        #jax.debug.print("Data Messages to process \n: {}",data_messages)
 
         #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
         types=jnp.ones((self.n_actions,),jnp.int32)
@@ -232,31 +228,30 @@ class BaseLOBEnv(environment.Environment):
         self, key: chex.PRNGKey, params: EnvParams
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
-        idx_data_window = jax.random.randint(key, minval=0, maxval=self.n_windows, shape=())
+        idx_data_window = jnp.where(
+            self.window_index == -1,
+            jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
+            jnp.array(self.window_index, dtype=jnp.int32))
 
-        #Get the init time based on the first message to be processed in the first step. 
-        time=self._get_initial_time(params.message_data,idx_data_window) 
-        #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
-        init_orders=job.get_initial_orders(params.book_data,idx_data_window,time)
-        #Initialise both sides of the book as being empty
-        asks_raw=job.init_orderside(self.nOrdersPerSide)
-        bids_raw=job.init_orderside(self.nOrdersPerSide)
-        trades_init=(jnp.ones((self.nTradesLogged,6))*-1).astype(jnp.int32)
-        #Process the initial messages through the orderbook
-        ordersides=job.scan_through_entire_array(init_orders,(asks_raw,bids_raw,trades_init))
-
-        #Craft the first state
-        state = EnvState(*ordersides,time,time,0,idx_data_window,0,self.max_steps_in_episode_arr[idx_data_window])
-
-        return self.get_obs(state,params),state
+        #Dummy state for all but window index.
+        dummy_state = EnvState(bid_raw_orders=jnp.ones((1,1)),
+                               ask_raw_orders=jnp.ones((1,1)),
+                               trades=jnp.ones((1,1)),
+                               init_time=0,
+                               time=0,
+                               customIDcounter=0,
+                               window_index=idx_data_window,
+                               step_counter=0,
+                               max_steps_in_episode=0)
+        return 0,dummy_state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
         return (state.time-state.init_time)[0]>params.episode_time
 
-    def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
-        """Return observation from raw state trafo."""
-        return job.get_L2_state(self.book_depth,state.ask_raw_orders,state.bid_raw_orders)
+    def _get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+        """Return dummy observation."""
+        return 0
 
     @property
     def name(self) -> str:
