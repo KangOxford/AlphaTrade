@@ -16,6 +16,9 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from tqdm import tqdm
+import time
+from joblib import Parallel, delayed
     
 np.set_printoptions(linewidth=183)    
 jax.numpy.set_printoptions(linewidth=183)    
@@ -45,14 +48,212 @@ class EnvParams:
 
 
 
+# Load the data from LOBSTER
+def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time, dates):
+    def preProcessingData_csv2pkl():
+        return 0
+    def load_files():
+        from os import listdir; from os.path import isfile, join; import pandas as pd; import os
+        readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
+
+        # def list_subdirs_containing(dir_path, subdir_name):
+        #     """
+        #     List all subdirectories that end with a specific subdirectory name within each stock symbol directory.
+        #     """
+        #     subdirs = []
+        #     for root, dirs, files in os.walk(dir_path):
+        #         for d in dirs:
+        #             potential_dir = os.path.join(root, d, subdir_name)
+        #             if os.path.isdir(potential_dir):
+        #                 subdirs.append(potential_dir)
+        #     return subdirs
+        # trimmedPath = '/' + '/'.join(messagePath.strip('/').split('/')[:-1]) + '/'
+        # flow_dirs = list_subdirs_containing(trimmedPath, 'Flow_10')
+        # book_dirs = list_subdirs_containing(trimmedPath, 'Book_10')
+        # messageFiles = [file for flow_dir in flow_dirs for file in readFromPath(flow_dir) if (file[-3:] == "csv") and (file.split("_")[1] in dates)]
+        # orderbookFiles = [file for book_dir in book_dirs for file in readFromPath(book_dir) if (file[-3:] == "csv") and (file.split("_")[1] in dates)]
+        # dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
+        # read_flow_file = lambda file:pd.read_csv(trimmedPath + file.split("_")[0] + "_data/Flow_10/" + file, usecols=range(6), dtype=dtype, header=None)
+        # read_book_file = lambda file:pd.read_csv(trimmedPath + file.split("_")[0] + "_data/Book_10/" + file, usecols=range(6), dtype=dtype, header=None)
+        # start = time.time()
+        # messageCSVs = Parallel(n_jobs=64)(delayed(read_flow_file)(file) for file in tqdm(messageFiles))
+        # orderbookCSVs = Parallel(n_jobs=64)(delayed(read_book_file)(file) for file in tqdm(orderbookFiles))
+        # print(f"Time used: {time.time()-start}")
+        
+        messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
+        dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
+        messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) 
+                        for file in messageFiles if (file[-3:] == "csv") and (file.split("_")[1] in dates)]
+        orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) 
+                            for file in orderbookFiles if file[-3:] == "csv" and file.split("_")[1] in dates]
+        # messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
+        # orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
+        return messageCSVs, orderbookCSVs
+    messages, orderbooks = load_files()
+    print("Finish loading files")
+    # breakpoint()
+    def preProcessingMassegeOB(message, orderbook):
+        def splitTimeStamp(m):
+            m[6] = m[0].apply(lambda x: int(x))
+            m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
+            m[8] = ((m[1]==4) | (m[1]==5)).astype(int)
+            m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns','ifTraded']
+            return m
+        message = splitTimeStamp(message)
+        # breakpoint()
+        def selectTradingInterval(m, o):
+            m = m[(m.time_s>=34200) & (m.time_s<=57600)]
+            o = o.iloc[m.index.to_numpy(),:] # valid_index 
+            return m.reset_index(drop=True), o.reset_index(drop=True)
+        message, orderbook = selectTradingInterval(message, orderbook)
+        def filterValid(message):
+            message = message[message.type.isin([1,2,3,4])]
+            valid_index = message.index.to_numpy()
+            message.reset_index(inplace=True,drop=True)
+            return message, valid_index
+        message, valid_index = filterValid(message)
+        def adjustExecutions(message):
+            message.loc[message['type'] == 4, 'direction'] *= -1
+            message.loc[message['type'] == 4, 'type'] = 1
+            return message
+        message = adjustExecutions(message)
+        def removeDeletes(message):
+            message.loc[message['type'] == 3, 'type'] = 2
+            return message
+        message = removeDeletes(message)
+        def addTraderId(message):
+            import warnings
+            from pandas.errors import SettingWithCopyWarning
+            warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
+            message['trader_id'] = message['order_id']
+            return message
+
+        message = addTraderId(message)
+        orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+        return message,orderbook
+    print("PreProcessingMassegeOB")
+    pairs = Parallel(n_jobs=64)(delayed(preProcessingMassegeOB)(message, orderbook) for message, orderbook in tqdm(zip(messages, orderbooks), total=len(messages)))            
+    # pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages))]
+    # pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+    messages, orderbooks = zip(*pairs)
+    # breakpoint()
+    # jax.debug.breakpoint()
+
+    def sliceWithoutOverlap(message, orderbook):
+        max_horizon_of_message = message.shape[0]//100*100
+        sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
+        def sliced2cude(sliced):
+            columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns','ifTraded']
+            cube = sliced[columns].to_numpy()
+            cube = cube.reshape((-1, stepLines, 9))
+            return cube
+        # def initialOrderbook():
+        slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
+        # Cube: dynamic_horizon * stepLines * 9
+        slicedCubes_withOB = zip(slicedCubes, init_OBs)
+        return slicedCubes_withOB
+    print("SliceWithoutOverlap")
+    slicedCubes_withOB_list = Parallel(n_jobs=64)(delayed(sliceWithoutOverlap)(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages)))
+    del messages, orderbooks, pairs
+    # slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages))]
+    # slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
+    # i = 6 ; message,orderbook = messages[i],orderbooks[i]
+    # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
+    def nestlist2flattenlist(nested_list):
+        flattened_list = list(itertools.chain.from_iterable(nested_list))
+        return flattened_list
+    Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
+    del slicedCubes_withOB_list
+    # jax.debug.breakpoint()
+    
+    # breakpoint(); Cubes_withOB[89][0].shape
+    
+    
+    taskSize_array = jnp.array([int( (m[:,:,2]*m[:,:,8]).sum() * self.tradeVolumePercentage ) 
+                                for m,o in Cubes_withOB])
+    max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
+    
+    def get_start_idx_array_list():
+        def get_start_idx_array(idx):
+            cube=Cubes_withOB[idx][0]
+            # print(f"cube{idx} shape:{cube.shape}")
+            start_time_array = cube[:,0,[6,7]]
+            start_time_stamp_array = np.arange(34200,57600,900)
+            start_idx_list = [(0, 34200, 34200, 34200)]
+            for start_time_stamp in start_time_stamp_array:
+                for i in range(1, start_time_array.shape[0]):
+                    timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
+                    timestamp_before = timestamp(i-1)
+                    timestamp_current = timestamp(i)
+                    if timestamp_before< start_time_stamp <timestamp_current:
+                        start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
+            start_idx_array = np.array(start_idx_list)
+            start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr[idx]])
+            assert start_idx_array.shape == (26, 4), f"Error code B10"
+            return start_idx_array
+        print("Get_start_idx_array")
+        return Parallel(n_jobs=16)(delayed(get_start_idx_array)(idx) for idx in tqdm(range(len(Cubes_withOB)))) # start_idx_array_list
+        # return Parallel(n_jobs=4)(delayed(get_start_idx_array)(idx) for idx in tqdm(range(len(Cubes_withOB)))) # start_idx_array_list
+        # return [get_start_idx_array(idx) for idx in tqdm(range(len(Cubes_withOB)))] # start_idx_array_list
+    start_idx_array_list = get_start_idx_array_list()
+    
+    Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded
+    
+    import os
+    # Set JAX to use CPU
+    os.environ["JAX_PLATFORM_NAME"] = "cpu"
+    
+    def Cubes_withOB_padding(Cubes_withOB):
+        max_m = max(m.shape[0] for m, o in Cubes_withOB)
+        new_Cubes_withOB = []
+        print("Cubes_withOB_padding")
+        # breakpoint()
+        
+        def padding(cube, target_shape):
+            # Calculate the amount of padding required
+            padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+            padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+            return padded_cube
+        # Assuming max_m is defined and is the target shape for padding
+        new_Cubes_withOB = Parallel(n_jobs=1, backend = "multiprocessing")(delayed(lambda cube, OB: (padding(cube, max_m), OB))(cube, OB) for cube, OB in Cubes_withOB)
+        # new_Cubes_withOB = Parallel(n_jobs=64)(delayed(lambda cube, OB: (padding(cube, max_m), OB))(cube, OB) for cube, OB in Cubes_withOB)
+        return new_Cubes_withOB
+
+        # import sys
+        # # for cube, OB in tqdm(Cubes_withOB, total=len(Cubes_withOB)):
+        # for cube, OB in Cubes_withOB:
+        #     def padding(cube, target_shape):
+        #         pad_width = np.zeros((100, 8))
+        #         # Calculate the amount of padding required
+        #         padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
+        #         padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
+        #         return padded_cube
+        #     cube = padding(cube, max_m)
+        #     new_Cubes_withOB.append((cube, OB))
+        #     print(sys.getsizeof(new_Cubes_withOB))
+        #     del cube, OB
+        return new_Cubes_withOB 
+    Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
+    print("Finish Cubes_withOB_padding")
+    
+    # jax.debug.breakpoint()
+    os.environ["JAX_PLATFORM_NAME"] = "gpu"
+
+    return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array
+
+     
+
+
 
 class BaseLOBEnv(environment.Environment):
-    def __init__(self, alphatradePath):
+    def __init__(self, alphatradePath, dates, tradeVolumePercentage=0.01):
         super().__init__()
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
-        self.messagePath = alphatradePath+"/data/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data/Book_10/"
+        self.messagePath = alphatradePath+"/Flow_10/"
+        self.orderbookPath = alphatradePath+"/Flow_10/"
+        # self.messagePath = alphatradePath+"/data/Flow_10/"
+        # self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
         self.end_time = 57600  # 16:00
         self.nOrdersPerSide=100
@@ -62,149 +263,51 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id=job.INITID+1
         self.tick_size=100
-        self.tradeVolumePercentage = 0.01
-        self.tradeVolumePercentage = 0.05 # 0.01
+        # self.tradeVolumePercentage = 0.01 
+        # self.tradeVolumePercentage = 0.05 
+        self.tradeVolumePercentage = tradeVolumePercentage
+        self.dates = dates
 
 
 
-        # Load the data from LOBSTER
-        def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time):
-            def preProcessingData_csv2pkl():
-                return 0
-            def load_files():
-                from os import listdir; from os.path import isfile, join; import pandas as pd
-                readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-                messageFiles, orderbookFiles = readFromPath(messagePath), readFromPath(orderbookPath)
-                # breakpoint()
-                # [m[4:14] for m in messageFiles]
-                dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
-                messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
-                orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
-                return messageCSVs, orderbookCSVs
-            messages, orderbooks = load_files()
-            def preProcessingMassegeOB(message, orderbook):
-                def splitTimeStamp(m):
-                    m[6] = m[0].apply(lambda x: int(x))
-                    m[7] = ((m[0] - m[6]) * int(1e9)).astype(int)
-                    m[8] = ((m[1]==4) | (m[1]==5)).astype(int)
-                    m.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns','ifTraded']
-                    return m
-                message = splitTimeStamp(message)
-                def selectTradingInterval(m, o):
-                    m = m[(m.time_s>=34200) & (m.time_s<=57600)]
-                    o = o.iloc[m.index.to_numpy(),:] # valid_index 
-                    return m.reset_index(drop=True), o.reset_index(drop=True)
-                message, orderbook = selectTradingInterval(message, orderbook)
-                def filterValid(message):
-                    message = message[message.type.isin([1,2,3,4])]
-                    valid_index = message.index.to_numpy()
-                    message.reset_index(inplace=True,drop=True)
-                    return message, valid_index
-                message, valid_index = filterValid(message)
-                def adjustExecutions(message):
-                    message.loc[message['type'] == 4, 'direction'] *= -1
-                    message.loc[message['type'] == 4, 'type'] = 1
-                    return message
-                message = adjustExecutions(message)
-                def removeDeletes(message):
-                    message.loc[message['type'] == 3, 'type'] = 2
-                    return message
-                message = removeDeletes(message)
-                def addTraderId(message):
-                    import warnings
-                    from pandas.errors import SettingWithCopyWarning
-                    warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-                    message['trader_id'] = message['order_id']
-                    return message
-
-                message = addTraderId(message)
-                orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
-                return message,orderbook
-            pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
-            messages, orderbooks = zip(*pairs)
-            # breakpoint()
-
-            def sliceWithoutOverlap(message, orderbook):
-                max_horizon_of_message = message.shape[0]//100*100
-                sliced_parts, init_OBs = [message.iloc[:max_horizon_of_message,:]], [orderbook.iloc[0,:]]
-                def sliced2cude(sliced):
-                    columns = ['type','direction','qty','price','trader_id','order_id','time_s','time_ns','ifTraded']
-                    cube = sliced[columns].to_numpy()
-                    cube = cube.reshape((-1, stepLines, 9))
-                    return cube
-                # def initialOrderbook():
-                slicedCubes = [sliced2cude(sliced) for sliced in sliced_parts]
-                # Cube: dynamic_horizon * stepLines * 9
-                slicedCubes_withOB = zip(slicedCubes, init_OBs)
-                return slicedCubes_withOB
-            slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
-            # i = 6 ; message,orderbook = messages[i],orderbooks[i]
-            # slicedCubes_list(nested list), outer_layer : day, inter_later : time of the day
-            def nestlist2flattenlist(nested_list):
-                flattened_list = list(itertools.chain.from_iterable(nested_list))
-                return flattened_list
-            Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
-            
-            # breakpoint(); Cubes_withOB[89][0].shape
-            
-            
-            taskSize_array = jnp.array([int( (m[:,:,2]*m[:,:,8]).sum() * self.tradeVolumePercentage ) 
-                                       for m,o in Cubes_withOB])
-            max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
-            
-            def get_start_idx_array_list():
-                def get_start_idx_array(idx):
-                    cube=Cubes_withOB[idx][0]
-                    print(f"cube{idx} shape:{cube.shape}")
-                    start_time_array = cube[:,0,[6,7]]
-                    start_time_stamp_array = np.arange(34200,57600,900)
-                    start_idx_list = [(0, 34200, 34200, 34200)]
-                    for start_time_stamp in start_time_stamp_array:
-                        for i in range(1, start_time_array.shape[0]):
-                            timestamp = lambda i: float(str( start_time_array[i][0])+"."+str( start_time_array[i][1]))
-                            timestamp_before = timestamp(i-1)
-                            timestamp_current = timestamp(i)
-                            if timestamp_before< start_time_stamp <timestamp_current:
-                                start_idx_list.append((i,timestamp_before,start_time_stamp,timestamp_current))
-                    start_idx_array = np.array(start_idx_list)
-                    start_idx_array[:,0] = np.array(start_idx_array[1:,0].tolist()+[max_steps_in_episode_arr[idx]])
-                    assert start_idx_array.shape == (26, 4), f"Error code B10"
-                    return start_idx_array
-                return [get_start_idx_array(idx) for idx in range(len(Cubes_withOB))] # start_idx_array_list
-            start_idx_array_list = get_start_idx_array_list()
-            
-            Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded
-            
-            def Cubes_withOB_padding(Cubes_withOB):
-                max_m = max(m.shape[0] for m, o in Cubes_withOB)
-                new_Cubes_withOB = []
-                for cube, OB in Cubes_withOB:
-                    def padding(cube, target_shape):
-                        pad_width = np.zeros((100, 8))
-                        # Calculate the amount of padding required
-                        padding = [(0, target_shape - cube.shape[0]), (0, 0), (0, 0)]
-                        padded_cube = np.pad(cube, padding, mode='constant', constant_values=0)
-                        return padded_cube
-                    cube = padding(cube, max_m)
-                    new_Cubes_withOB.append((cube, OB))
-                return new_Cubes_withOB 
-            Cubes_withOB = Cubes_withOB_padding(Cubes_withOB)
-
-            return Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array
         Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
             self.orderbookPath,
             self.start_time,
-            self.end_time
+            self.end_time,
+            self.dates
         )
+        
+        # import pickle
+        # # Save to a pickle file
+        # with open('saved_objects.pkl', 'wb') as f:
+        #     pickle.dump((Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array), f)
+        
+        # breakpoint()
+            
+        # # Load from a pickle file
+        # with open('saved_objects.pkl', 'rb') as f:
+        #     Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = pickle.load(f)
+            
+        
+            # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time, dates = \
+            #     1800, 100, 
         self.start_idx_array_list = start_idx_array_list
         self.taskSize_array = taskSize_array
         self.max_steps_in_episode_arr = max_steps_in_episode_arr 
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
         # breakpoint()
+        import sys
+        print("sys.getsizeof(Cubes_withOB)",sys.getsizeof(Cubes_withOB))
+        # breakpoint()
+        import gc
+        gc.collect()
+        messages = [jnp.array(cube) for cube, ob in Cubes_withOB]
+        print(sys.getsizeof(messages))
+        books = [jnp.array(ob) for cube, ob in Cubes_withOB]
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
         # breakpoint()
         self.n_windows = len(self.books)

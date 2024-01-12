@@ -89,17 +89,17 @@ class EnvParams:
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, alphatradePath, task, window_index, action_type,
-            task_size = 100, rewardLambda=0.0, Gamma=0.00
+            self, alphatradePath, task, window_index,
+            dates,
+            task_size=0.01, rewardLambda=0.0, Gamma=0.00,
         ):
-        super().__init__(alphatradePath)
+        super().__init__(alphatradePath, dates, task_size)
         #self.n_actions = 2 # [A, MASKED, P, MASKED] Agressive, MidPrice, Passive, Second Passive
         # self.n_actions = 2 # [MASKED, MASKED, P, PP] Agressive, MidPrice, Passive, Second Passive
         self.n_actions = 4 # [FT, M, NT, PP] Agressive, MidPrice, Passive, Second Passive
         self.task = task
         # self.randomize_direction = randomize_direction
         self.window_index = window_index
-        self.action_type = action_type
         self.rewardLambda = rewardLambda
         self.Gamma = Gamma
 
@@ -119,7 +119,7 @@ class ExecutionEnv(BaseLOBEnv):
             # Restore the list
             with open(pkl_file_name, 'rb') as f:
                 self.stateArray_list = pickle.load(f)
-            print("LOAD FROM PKL")
+            # print("LOAD FROM PKL")
             raise NotImplementedError # NOTE delete this
         except:
             print("DO COMPUTATION")
@@ -198,9 +198,16 @@ class ExecutionEnv(BaseLOBEnv):
         l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
         # jax.debug.print("l2 state: \n {}",l2)
         
+        # Define the two actions
+        action_passive = jnp.array([0, 0, delta, 0], dtype=jnp.int32)
+        action_aggressive = jnp.array([delta, 0, 0, 0], dtype=jnp.int32)
+
+        # Randomly choose between the two actions
+        key, subkey = jax.random.split(key)
+        action = jax.random.choice(subkey, jnp.array([action_passive, action_aggressive]))
         
-        # action = jnp.array([0,0,delta,0],dtype=jnp.int32)
-        action = jnp.array([delta,0,0,0],dtype=jnp.int32)
+        # action = jnp.array([0,0,delta,0],dtype=jnp.int32) # passive
+        # action = jnp.array([delta,0,0,0],dtype=jnp.int32) # aggressive
         # jax.debug.breakpoint()
         # jax.debug.print("action {}",action)
         # TODO remains bugs in action and it wasn't caused by merging
@@ -513,8 +520,7 @@ class ExecutionEnv(BaseLOBEnv):
     ) -> spaces.Box:
         """Action space of the environment."""
 
-        return spaces.Box(-5,5,(self.n_actions,),dtype=jnp.int32) if self.action_type=='delta' \
-          else spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
+        return spaces.Box(0,100,(self.n_actions,),dtype=jnp.int32)
 
     
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
@@ -559,23 +565,33 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
+        ATFolder = "/homes/80/kang/SP500"
+        # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
+        
+    # pre setup the env
     config = {
         "ATFOLDER": ATFolder,
         "TASKSIDE": "sell",
-        "TASK_SIZE": 100, # 500,
+        "TASK_SIZE": 0.01, #1000, # 8000, #100, # 500,
         "WINDOW_INDEX": -1,
-        "ACTION_TYPE": "delta", # "pure",
         "REWARD_LAMBDA": 1.0,
-    }
+        "DATES":['2021-04-05', '2017-07-21'],
+        }
+
+
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # env=ExecutionEnv(ATFolder,"sell",1)
-    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],
+                    config["WINDOW_INDEX"],
+                    config["DATES"],
+                    config["TASK_SIZE"],config["REWARD_LAMBDA"],
+                    )
+    
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
