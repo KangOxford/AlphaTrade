@@ -53,6 +53,7 @@ _get_data_messages: Fetches an array of messages for a given step
 
 # from jax import config
 # config.update("jax_enable_x64",True)
+import sys
 from ast import Dict
 from contextlib import nullcontext
 from email import message
@@ -69,6 +70,8 @@ from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER
+from gymnax_exchange.utils import *
+import pickle
 
 
 @struct.dataclass
@@ -89,6 +92,7 @@ class EnvParams:
     book_data: chex.Array
     #episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
     time_delay_obs_act: chex.Array 
+    init_base_state_array: chex.Array
 
 
 class BaseLOBEnv(environment.Environment):
@@ -115,7 +119,7 @@ class BaseLOBEnv(environment.Environment):
         Prints the person's name and age.
     """
 
-    def _get_state_from_data(self,message_data,book_data,max_steps_in_episode)->EnvState:
+    def _get_state_from_data(self,message_data,book_data,max_steps_in_episode,window_index)->EnvState:
         time=jnp.array(message_data[0,0,-2:])
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         def get_initial_orders(book_data,time):
@@ -147,9 +151,33 @@ class BaseLOBEnv(environment.Environment):
                         init_time=time,
                         time=time,
                         customIDcounter=0,
-                        window_index=-1,
+                        window_index=window_index,
                         step_counter=0,
                         max_steps_in_episode=max_steps_in_episode)
+    
+    def _init_states(self,alphatradePath):
+        print("START:  pre-reset in the initialization")
+        pkl_file_name = (alphatradePath
+                         + 'stateArray_idx_'+ str(self.window_index)
+                         +'_dtype_"'+self.data_type
+                         +'"_depth_'+str(self.book_depth)
+                         +'.pkl')
+        print("pre-reset will be saved to ",pkl_file_name)
+        try:
+            with open(pkl_file_name, 'rb') as f:
+                self.init_base_states_array = pickle.load(f)
+            print("LOAD FROM PKL")
+        except:
+            print("DO COMPUTATION")
+            states = [self._get_state_from_data(self.messages[i],
+                                                self.books[i],
+                                                self.max_steps_in_episode_arr[i],
+                                                i) 
+                        for i in range(self.n_windows)]
+            self.init_base_states_array=tree_stack(states)
+            with open(pkl_file_name, 'wb') as f:
+                pickle.dump(self.init_base_states_array, f) 
+        print("FINISH: pre-reset in the initialization")
 
 
     def __init__(self, alphatradePath,window_index,data_type="fixed_time"):
@@ -171,19 +199,21 @@ class BaseLOBEnv(environment.Environment):
         self.tick_size=100
         self.tradeVolumePercentage = 0.01
         self.data_type = data_type
-        loader=LoadLOBSTER(".",10,"fixed_time",self.sliceTimeWindow,self.stepLines)
+        loader=LoadLOBSTER(alphatradePath,10,"fixed_time",self.sliceTimeWindow,self.stepLines)
         msgs,books,window_lengths,n_windows=loader.run_loading()
         self.max_steps_in_episode_arr = window_lengths 
         self.messages=msgs
         self.books=books
         self.n_windows = n_windows
 
+        self._init_states(alphatradePath)
+
 
     
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams(self.messages, self.books,jnp.array([0, 0]))
+        return EnvParams(self.messages, self.books,jnp.array([0, 0]),self.init_base_states_array)
 
 
     def step_env(
@@ -234,16 +264,11 @@ class BaseLOBEnv(environment.Environment):
             jnp.array(self.window_index, dtype=jnp.int32))
 
         #Dummy state for all but window index.
-        dummy_state = EnvState(bid_raw_orders=jnp.ones((1,1)),
-                               ask_raw_orders=jnp.ones((1,1)),
-                               trades=jnp.ones((1,1)),
-                               init_time=0,
-                               time=0,
-                               customIDcounter=0,
-                               window_index=idx_data_window,
-                               step_counter=0,
-                               max_steps_in_episode=0)
-        return 0,dummy_state
+        base_state = index_tree(params.init_base_state_array,
+                           idx_data_window)
+        
+        obs=self._get_obs(base_state,params=params)
+        return obs,base_state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
@@ -319,3 +344,34 @@ class BaseLOBEnv(environment.Environment):
         messages=messageData[idx_window,step_counter,:,:]
         return messages
     
+if __name__ == "__main__":
+    try:
+        ATFolder = sys.argv[1]
+        print("AlphaTrade folder:",ATFolder)
+    except:
+        # ATFolder = '/home/duser/AlphaTrade'
+        # ATFolder = '/homes/80/kang/AlphaTrade'
+        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
+        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
+        # ATFolder = "/homes/80/kang/AlphaTrade/testing"
+    config = {
+        "ATFOLDER": ATFolder,
+        "TASKSIDE": "random", # "sell",
+        "TASK_SIZE": 100, # 500,
+        "WINDOW_INDEX": -1,
+        "ACTION_TYPE": "pure", # "pure",
+        "REWARD_LAMBDA": 1.0,
+        "DTAT_TYPE":"fixed_time",
+    }
+        
+    rng = jax.random.PRNGKey(0)
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+    print(config["ATFOLDER"])
+    env= BaseLOBEnv(config["ATFOLDER"],config["WINDOW_INDEX"],config["DTAT_TYPE"])
+    env_params=env.default_params
+
+    obs,state=env.reset(key_reset,env_params)
+
+    print(state)
+    print(obs)
+    print(env.messages.shape)
