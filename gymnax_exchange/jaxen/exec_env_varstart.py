@@ -598,7 +598,7 @@ if __name__ == "__main__":
     
 
     # env=ExecutionEnv(ATFolder,"sell",1)
-    env= ExecutionEnvVarStart(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"],config["DTAT_TYPE"])
+    env= ExecutionEnv(config["ATFOLDER"],config["TASKSIDE"],config["WINDOW_INDEX"],config["ACTION_TYPE"],config["TASK_SIZE"],config["REWARD_LAMBDA"],config["DTAT_TYPE"])
     env_params=env.default_params
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
