@@ -24,7 +24,7 @@ sys.path.append('/homes/80/kang/AlphaTrade')
 #Code snippet to disable all jitting.
 from jax import config
 
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxen.exec_env_old import ExecutionEnv
 
 config.update("jax_disable_jit", False) 
 # config.update("jax_disable_jit", True)
