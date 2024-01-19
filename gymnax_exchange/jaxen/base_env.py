@@ -161,7 +161,7 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.window_selector= window_selector
         self.ep_type = ep_type # fixed_steps, fixed_time
-        self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
+        self.sliceTimeWindow = 30*60 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         self.day_start = 34200  # 09:30
         self.day_end = 57600  # 16:00
@@ -192,7 +192,11 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams(self.messages, self.books,self.sliceTimeWindow,jnp.array([0, 0]),self.init_states_array)
+        return EnvParams(message_data=self.messages,
+                         book_data=self.books,
+                         episode_time=self.sliceTimeWindow,
+                         time_delay_obs_act=jnp.array([0, 0]),
+                         init_states_array=self.init_states_array)
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
@@ -301,6 +305,7 @@ class BaseLOBEnv(environment.Environment):
                                                     i,
                                                     starts[i]) 
                         for i in range(self.n_windows)]
+            jax.debug.print("{}",states)
             self.init_states_array=tree_stack(states)
             with open(pkl_file_name, 'wb') as f:
                 pickle.dump(self.init_states_array, f) 
