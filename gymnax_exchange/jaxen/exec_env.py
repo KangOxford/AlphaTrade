@@ -808,7 +808,13 @@ class ExecutionEnv(BaseLOBEnv):
         obs, _ = jax.flatten_util.ravel_pytree(obs)
         return obs
 
-    def get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+    def get_obs(
+            self,
+            state: EnvState,
+            params:EnvParams,
+            normalize:bool = True,
+            flatten:bool = True,
+        ) -> chex.Array:
         """Return observation from raw state trafo."""
         # NOTE: only uses most recent observation from state
         quote_aggr, quote_pass = jax.lax.cond(
@@ -816,7 +822,8 @@ class ExecutionEnv(BaseLOBEnv):
             lambda: (state.best_bids[-1], state.best_asks[-1]),
             lambda: (state.best_asks[-1], state.best_bids[-1]),
         )
-        time_elapsed = (state.time[0] + state.time[1]/1e9) - (state.init_time[0] + state.init_time[1]/1e9)
+        time = state.time[0] + state.time[1]/1e9
+        time_elapsed = time - (state.init_time[0] + state.init_time[1]/1e9)
         obs = {
             "is_sell_task": state.is_sell_task,
             "p_aggr": quote_aggr[0],
@@ -825,7 +832,7 @@ class ExecutionEnv(BaseLOBEnv):
             "q_aggr": quote_aggr[1],
             "q_pass": quote_pass[1],
             # TODO: add "q_pass2" as passive quantity to state in step_env and here
-            "time": state.time,
+            "time": time,
             # "episode_time": state.time - state.init_time,
             "time_remaining": params.episode_time - time_elapsed,
             "init_price": state.init_price,
@@ -846,9 +853,9 @@ class ExecutionEnv(BaseLOBEnv):
             "spread": 0,
             "q_aggr": 0,
             "q_pass": 0,
-            "time": jnp.array([0, 0]),
+            "time": 0,
             # "episode_time": jnp.array([0, 0]),
-            "time_remaining": jnp.array([0, 0]),
+            "time_remaining": 0,
             "init_price": p_mean,
             "task_size": 0,
             "executed_quant": 0,
@@ -862,7 +869,7 @@ class ExecutionEnv(BaseLOBEnv):
             "spread": 1e4,
             "q_aggr": 100,
             "q_pass": 100,
-            "time": jnp.array([1e5, 1e9]),
+            "time": 1e5,
             # "episode_time": jnp.array([1e3, 1e9]),
             "time_remaining": 600, # 10 minutes = 600 seconds
             "init_price": p_std,
@@ -871,8 +878,10 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": 300,
             "max_steps": 300,
         }
-        obs = self.normalize_obs(obs, means, stds)
-        obs, _ = jax.flatten_util.ravel_pytree(obs)
+        if normalize:
+            obs = self.normalize_obs(obs, means, stds)
+        if flatten:
+            obs, _ = jax.flatten_util.ravel_pytree(obs)
         return obs
 
     def normalize_obs(
@@ -903,7 +912,7 @@ class ExecutionEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         #space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
-        space = spaces.Box(-10, 10, (15,), dtype=jnp.float32) 
+        space = spaces.Box(-10, 10, (13,), dtype=jnp.float32) 
         return space
 
     #FIXME:Currently this will sample absolute gibberish. Might need to subdivide the 6 (resp 5) 

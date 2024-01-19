@@ -33,6 +33,7 @@ config.update("jax_disable_jit", False)
 # config.update("jax_disable_jit", True)
 config.update("jax_check_tracer_leaks", False) #finds a whole assortment of leaks if true... bizarre.
 import datetime
+import gymnax_exchange.utils.colorednoise as cnoise
 jax.numpy.set_printoptions(linewidth=250)
 
 
@@ -85,15 +86,16 @@ class MultiVariateNormalDiagClipped(distrax.MultivariateNormalDiag):
             scale_diag: Optional[jax.Array] = None,
             max_scale_diag: Optional[jax.Array] = None,
         ):
-        super().__init__(loc, scale_diag)
         self.max_scale_diag = max_scale_diag
+        scale_diag = jnp.minimum(max_scale_diag, scale_diag)
+        super().__init__(loc, scale_diag)
 
     def __getitem__(self, index) -> distrax.MultivariateNormalDiag:
         """See `Distribution.__getitem__`."""
         index = distrax.distribution.to_batch_shape_index(self.batch_shape, index)
         return MultiVariateNormalDiagClipped(
             loc=self.loc[index],
-            scale_diag=jnp.min(self.max_scale_diag, self.scale_diag[index]),
+            scale_diag=self.scale_diag[index],
             max_scale_diag=self.max_scale_diag,
         )
 
@@ -134,9 +136,9 @@ class ActorCriticRNN(nn.Module):
         #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         pi = MultiVariateNormalDiagClipped(
-            actor_mean * self.config['MAX_TASK_SIZE'],
-            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'],
-            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE']
+            actor_mean * self.config['MAX_TASK_SIZE'],  # mean
+            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'] / 10,  # std
+            self.config['MAX_TASK_SIZE'] / 4,  # max std
         )
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -253,7 +255,7 @@ def make_train(config):
             """
 
             # COLLECT TRAJECTORIES
-            def _env_step(runner_state, unused):
+            def _env_step(runner_state, action_noise):
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
                 rng, _rng = jax.random.split(rng)
 
@@ -261,10 +263,16 @@ def make_train(config):
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
 
+                # action = pi.sample(seed=_rng)
+                # use pre-computed colored noise sample instead of sampling here
+                a_mean = pi._loc
+                a_std = pi._scale_diag
+                action = action_noise * a_std + a_mean
+                # jax.debug.print('a_mean {}, a_std {}, action_noise{}, action {}', a_mean, a_std, action_noise, action)
 
-                action = pi.sample(seed=_rng) # 4*1, should be (4*4: 4actions * 4envs)
-                # Guess to be 4 actions. caused by ppo_rnn is continuous. But our action space is discrete
                 log_prob = pi.log_prob(action)
+
+                # jax.debug.print('action {}, log_prob {}', action, log_prob)
 
                 # jax.debug.print('action std 1 {}', pi._scale_diag)
                 # jax.debug.print('action std 2 {}', pi.scale_diag)
@@ -290,8 +298,14 @@ def make_train(config):
 
             update_step = runner_state[-1]
             initial_hstate = runner_state[-3]
+            # generate colored noise sequence for correlated actions (lenght of NUM_STEPS)
+            rng, rng_ = jax.random.split(runner_state[-2])
+            # include new rng in runner_state
+            runner_state = runner_state[:-2] + (rng,) + runner_state[-1:]
+            # args: exponent, size, rng, fmin.  transpose to have first dimension correlated
+            col_noise = cnoise.powerlaw_psd_gaussian(config["ACTION_NOISE_COLOR"], (network.action_dim, len(runner_state[2]), config["NUM_STEPS"]), _rng, 0.).T
             runner_state, traj_batch = jax.lax.scan(
-                _env_step, runner_state[:-1], None, config["NUM_STEPS"]
+                _env_step, runner_state[:-1], col_noise, config["NUM_STEPS"]
             )
 
             # CALCULATE ADVANTAGE
@@ -355,7 +369,7 @@ def make_train(config):
                     
                     def _loss_fn(params, init_hstate, traj_batch, gae, targets):
                         def debug_log(metric):
-                            (update_step, info, dead_ratio, obs_norm, action_std) = metric
+                            (update_step, info, dead_ratio, obs_norm, action_mean, action_std) = metric
                             data = {
                                 "update_step": update_step,
                                 "global_step": info["timestep"][info["returned_episode"]] * config["NUM_ENVS"],
@@ -364,8 +378,10 @@ def make_train(config):
                             }
 
                             # mean over batch dimension --> shape (4,)
+                            action_mean = action_mean.mean(axis=0)
                             action_std = action_std.mean(axis=0)
                             for i in range(action_std.shape[0]):
+                                data[f"action_mean_{i}"] = action_mean[i]
                                 data[f"action_std_{i}"] = action_std[i]
                             wandb.log(
                                 data=data,
@@ -389,6 +405,7 @@ def make_train(config):
                             traj_batch.info,
                             dead_ratio,
                             obs_norm,
+                            pi._loc.squeeze()[-1],  # action mean for last state in sequence
                             pi._scale_diag.squeeze()[-1]  # action std for last state in sequence
                         )
                         if wandbOn:
@@ -635,7 +652,7 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 1e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        "ENT_COEF": 0.001, #0, 0.1, 0.01, 0.001
+        "ENT_COEF": 0.001, #0.001, 0, 0.1, 0.01, 0.001
         "NUM_ENVS": 1024, #1024, #128, #64, 1000,
         "TOTAL_TIMESTEPS": 1e8,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         "NUM_MINIBATCHES": 2, #8, 4, 2,
@@ -646,11 +663,12 @@ if __name__ == "__main__":
         "GAMMA": 0.99,
         "GAE_LAMBDA": 1.0, #0.95,
         "VF_COEF": 0.001, #1.0, 0.5,
-        "MAX_GRAD_NORM": 0.5,# 2.0,
+        "MAX_GRAD_NORM": 0.5,# 0.5, 2.0,
         "ANNEAL_LR": True, #True,
         "NORMALIZE_ENV": True,  # only norms observations (not reward)
         
         "ACTOR_TYPE": "RNN",
+        "ACTION_NOISE_COLOR": 2.,
         
         "ENV_NAME": "alphatradeExec-v0",
         "WINDOW_INDEX": 2, # 2 fix random episode #-1,
@@ -669,6 +687,14 @@ if __name__ == "__main__":
         "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
+
+    assert ppo_config["NUM_ENVS"] % ppo_config["NUM_MINIBATCHES"] == 0, "NUM_ENVS must be divisible by NUM_MINIBATCHES"
+    assert ppo_config["NUM_ENVS"] > ppo_config["NUM_MINIBATCHES"], "NUM_ENVS must be a multiple of NUM_MINIBATCHES"
+
+    # CAVE: DEBUG VALUES:
+    # ppo_config['TOTAL_TIMESTEPS'] = 1e6
+    # ppo_config['NUM_ENVS'] = 4
+    # ppo_config['NUM_STEPS'] = 100
 
     ppo_config["NUM_UPDATES"] = (
         ppo_config["TOTAL_TIMESTEPS"] // ppo_config["NUM_STEPS"] // ppo_config["NUM_ENVS"]
