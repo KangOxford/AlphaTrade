@@ -98,6 +98,7 @@ class EnvParams:
 
 
 class BaseLOBEnv(environment.Environment):
+
     """The basic RL environment for the limit order book (LOB) using
     JAX-LOB functions for manipulating the orderbook. 
     Inherits from gymnax base environment. 

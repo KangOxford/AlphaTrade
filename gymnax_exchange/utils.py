@@ -1,10 +1,18 @@
 import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
-
 """hamilton_apportionment_permuted_jax: A utility function using JAX, 
                                      implementing a Hamilton apportionment 
                                      method with randomized seat allocation."""
+
+
+def argsort_rev(arr):
+    """ 'arr' sorted in descending order (LTR priority tie-breaker) """
+    return (arr.shape[0] - 1 - jnp.argsort(arr[::-1]))[::-1]
+
+def rank_rev(arr):
+    """ Rank array in descending order, with ties having left-to-right priority. """
+    return jnp.argsort(argsort_rev(arr))
 
 @jax.jit
 def clip_by_sum_int(a: jax.Array, max_sum: int) -> jax.Array:
@@ -22,17 +30,9 @@ def clip_by_sum_int(a: jax.Array, max_sum: int) -> jax.Array:
         The clipped vector.
     """
     def clip(a: jax.Array, a_sum: int) -> jax.Array:
-        # print(a * max_sum / a_sum)
         a, remainders = jnp.divmod(a * max_sum, a_sum)
         rest = max_sum - jnp.sum(a)
-        # indices of 'a' sorted by remainders in descending order (LTR priority tie-breaker)
-        indices = (remainders.shape[0] - 1 - jnp.argsort(remainders[::-1]))[::-1]
-        # ranks of remainders, highest starts with 0 
-        ranks = jnp.argsort(indices)
-        
-        # print('remainders', remainders)
-        # print('indices', indices)
-        # print('ranks', ranks)
+        ranks = rank_rev(remainders)
         
         # add 1 to first 'rest' elements of original 'a' with highest remainder
         a = jnp.where(
@@ -48,7 +48,22 @@ def clip_by_sum_int(a: jax.Array, max_sum: int) -> jax.Array:
         lambda: clip(a, a_sum),
         lambda: a,
     )
+from functools import partial
+@partial(jax.vmap, in_axes=(0, None))
+def p_in_cnl(p, prices_cnl):
+    return jnp.where((prices_cnl == p) & (p != 0), True, False)
+def matching_masks(prices_a, prices_cnl):
+    res = p_in_cnl(prices_a, prices_cnl)
+    return jnp.any(res, axis=1), jnp.any(res, axis=0)
 
+#main
+if __name__ == '__main__':
+    print(
+        matching_masks(
+            jnp.array([1, 2, 100, 0]),
+            jnp.array([100, 4, 4, 4])
+        )
+    )
 
 def tree_stack(trees):
     return jtu.tree_map(lambda *v: jnp.stack(v), *trees)
