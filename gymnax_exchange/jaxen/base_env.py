@@ -69,7 +69,7 @@ from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
-from gymnax_exchange.utils import *
+from gymnax_exchange.utils.utils import *
 import pickle
 from jax.experimental import checkify
 
@@ -157,10 +157,10 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self, alphatradePath,window_selector,data_type="fixed_time"):
+    def __init__(self, alphatradePath,window_selector,ep_type="fixed_time"):
         super().__init__()
         self.window_selector= window_selector
-        self.data_type = data_type # fixed_steps, fixed_time
+        self.ep_type = ep_type # fixed_steps, fixed_time
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         self.day_start = 34200  # 09:30
@@ -176,7 +176,7 @@ class BaseLOBEnv(environment.Environment):
         self.start_resolution=60 #Interval in seconds at which eps start
         loader=LoadLOBSTER_resample(alphatradePath,
                                     self.book_depth,
-                                    "fixed_time",
+                                    ep_type,
                                     window_length=self.sliceTimeWindow,
                                     n_msg_per_step=self.stepLines,
                                     window_resolution=self.start_resolution) 
@@ -268,11 +268,10 @@ class BaseLOBEnv(environment.Environment):
         return EnvState(ask_raw_orders=ordersides[0],
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],
-                        init_time=jnp.where(self.data_type=="fixed_time",
-                                             jnp.array([(window_index*self.start_resolution)
+                        init_time=jnp.array([(window_index*self.start_resolution)
                                                         %(self.day_end-self.day_start-self.sliceTimeWindow+self.start_resolution)
-                                                        +self.day_start,0]),
-                                             time),
+                                                        +self.day_start,0])
+                                    if self.ep_type=="fixed_time" else time,
                         time=time,
                         customIDcounter=0,
                         window_index=window_index,
@@ -285,7 +284,7 @@ class BaseLOBEnv(environment.Environment):
         pkl_file_name = (alphatradePath
                          + '_' +type(self).__name__
                          + '_stateArray_idx_'+ str(self.window_selector)
-                         +'_dtype_"'+self.data_type
+                         +'_dtype_"'+self.ep_type
                          +'"_depth_'+str(self.book_depth)
                          +'.pkl')
         print("pre-reset will be saved to ",pkl_file_name)

@@ -130,7 +130,7 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
 from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
-from gymnax_exchange import utils
+from gymnax_exchange.utils import utils
 import dataclasses
 
 import jax.tree_util as jtu
@@ -158,7 +158,6 @@ class EnvState(BaseEnvState):
 @struct.dataclass
 class EnvParams:
     task_size: int 
-    episode_time: int
     reward_lambda: float = 1.0
     
 
@@ -166,7 +165,7 @@ class EnvParams:
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
             self, alphatradePath, task, window_index, action_type,
-            max_task_size = 500, rewardLambda=0.0,data_type="fixed_time"):
+            max_task_size = 500, rewardLambda=0.0,ep_type="fixed_time"):
         #Define Execution-specific attributes.
         self.task = task # "random", "buy", "sell"
         self.n_actions=4 #(FT, M, NT, PP)
@@ -175,13 +174,12 @@ class ExecutionEnv(BaseLOBEnv):
         self.max_task_size = max_task_size
         self.rewardLambda = rewardLambda
         #Call base-class init function
-        super().__init__(alphatradePath,window_index,data_type)
+        super().__init__(alphatradePath,window_index,ep_type)
         
 
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
         base_params=super().default_params
         flat_tree=jtu.tree_flatten(base_params)[0]
         base_vals=flat_tree[0:4] #Considers the base parameter values other than init state.
@@ -294,18 +292,20 @@ class ExecutionEnv(BaseLOBEnv):
         base_vals=jtu.tree_flatten(base_state)[0]
         best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(base_state.ask_raw_orders,base_state.bid_raw_orders)
         M = (best_bid[0] + best_ask[0])//2//self.tick_size*self.tick_size 
+        is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
+
         return EnvState(*base_vals,
                         best_asks=jnp.resize(best_ask,(self.stepLines,2)),
                         best_bids=jnp.resize(best_bid,(self.stepLines,2)),
                         init_price=M,
-                        task_to_execute=self.task_size,
+                        task_to_execute=self.max_task_size,
                         quant_executed=0,
                         total_revenue=0,
                         slippage_rm=0.,
                         price_adv_rm=0.,
                         price_drift_rm=0.,
                         vwap_rm=0.,
-                        is_sell_task=0)
+                        is_sell_task=is_sell_task)
 
     def _get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
@@ -655,11 +655,11 @@ if __name__ == "__main__":
     config = {
         "ATFOLDER": ATFolder,
         "TASKSIDE": "buy", # "random", # "buy",
-        "TASK_SIZE": 500, # 500,
+        "MAX_TASK_SIZE": 500, # 500,
         "WINDOW_INDEX": -1,
         "ACTION_TYPE": "pure", # "pure",
         "REWARD_LAMBDA": 1.0,
-        "DATA_TYPE": "fixed_time",
+        "EP_TYPE": "fixed_time",
     }
         
     rng = jax.random.PRNGKey(0)
@@ -676,7 +676,7 @@ if __name__ == "__main__":
         config["TASKSIDE"],
         config["WINDOW_INDEX"],
         config["ACTION_TYPE"],
-        config["DATA_TYPE"],
+        config["EP_TYPE"],
         config["MAX_TASK_SIZE"],
     )
     env_params=env.default_params
