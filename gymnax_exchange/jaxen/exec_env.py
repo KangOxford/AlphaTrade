@@ -123,9 +123,9 @@ import chex
 import pickle
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env_varstart import BaseLOBEnv
-from gymnax_exchange.jaxen.base_env_varstart import EnvParams as BaseEnvParams
-from gymnax_exchange.jaxen.base_env_varstart import EnvState as BaseEnvState
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
+from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
 from gymnax_exchange import utils
 import dataclasses
 

@@ -405,7 +405,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env= BaseLOBEnvVarStart(config["ATFOLDER"],config["WINDOW_INDEX"],config["DTAT_TYPE"])
+    env= BaseLOBEnv(config["ATFOLDER"],config["WINDOW_INDEX"],config["DTAT_TYPE"])
     env_params=env.default_params
 
     obs,state=env.reset(key_reset,env_params)
