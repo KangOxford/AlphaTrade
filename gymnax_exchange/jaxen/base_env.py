@@ -1,5 +1,5 @@
 """
-Base Environment 
+Base Environment with variable start time for episodes. 
 
 University of Oxford
 Corresponding Author: 
@@ -23,9 +23,9 @@ BaseLOBEnv: Main environment class inheriting from Gymnax's base environment,
             stepping through time steps, and resetting the environment. 
 
 Functionality Overview
-__init__:           Initializes the environment. Sets up paths for data, 
-                    time windows, order book depth, and other parameters. 
-                    It also loads and preprocesses the data from LOBSTER.
+__init__:           Sets up initial values and paths. Loads data from 
+                    LOBSTER and pre-calculates all initial states for 
+                    reset.
 default_params:     Returns the default environment parameters, 
                     including the preprocessed message and book data.
 step_env:           Advances the environment by one step. It processes both the
@@ -46,7 +46,6 @@ observation_space:  (Not implemented) Intended to define
                     the observation space of the environment.
 state_space:        Defines the state space of the environment, 
                     including bids, asks, trades, and time.
-_get_initial_time:  Retrieves the initial time of a data window.
 _get_data_messages: Fetches an array of messages for a given step 
                     within a data window.
 """
@@ -69,9 +68,10 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER
+from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
 from gymnax_exchange.utils import *
 import pickle
+from jax.experimental import checkify
 
 
 @struct.dataclass
@@ -85,42 +85,161 @@ class EnvState:
     window_index:int
     step_counter: int
     max_steps_in_episode: int
+    start_index: int
+
 
 @struct.dataclass
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    #episode_time: int =  60*30 #60seconds times 30 minutes = 1800seconds
-    time_delay_obs_act: chex.Array 
-    init_base_state_array: chex.Array
+    episode_time: int
+    time_delay_obs_act: chex.Array
+    init_states_array: chex.Array
 
 
 class BaseLOBEnv(environment.Environment):
     """The basic RL environment for the limit order book (LOB) using
-    JAX-LOB functions for manipulating the orderbook.
-
+    JAX-LOB functions for manipulating the orderbook. 
     Inherits from gymnax base environment. 
-
-    ...
     Attributes
     ----------
+    window_selector : int
+        -1 to randomly choose start times from all available.
+        int in range(0,n_starts) to choose a specific window for debug. 
+    data_type : str
+        "fixed_steps" and "fixed_time" to defn episode end crit.
     sliceTimeWindow : int
-        first name of the person
+        Length of episode in steps or seconds based on above.
     stepLines : int
-        family name of the person
-    messagePath : int
-        age of the person
-
-        ... #TODO Complete the class docstring once refactored. 
+        number of messages to process per step. 
+    day_start : int
+        Beginning time of day in seconds
+    day_end : int
+        End time of day in seconds
+    nOrdersPerSide : int
+        Maximum capacity of orders for JAXLOB
+    nTradesLogged : int
+        Maximum number of trades logged (in a step)
+    book_depth : int
+        Depth considered for LOBSTER data retrieval
+    n_actions : int
+        Number of actions. Dimension of act space
+    n_ticks_in_book : int
+        Depth of passive order in act space in ticks.
+    customIDCounter : int
+        Ensures unique IDs for orders submitted by agent.
+    trader_unique_id : int
+        Offset of unique ID that can be used.
+    tick_size : int
+        Price tick size. Lobster counts in hundreths of cents.
+    start_resolution: int
+        Interval, in seconds, at which episodes may start.
+    loader : LoadLOBSTER 
+        Object that deals with data-loading.
+    max_messages_in_episode_arr : jnp.Array 
+        Total messages for each possible window.
+    messages : jnp.Array  
+        Loaded message data.
+    books : jnp.Array  
+        Loaded book data for start-points
+    n_windows : int 
+        Number of start points
+    start_indeces : jnp.Array  
+        Ineces for start points
+    end_indeces : jnp.Array  
+        Indeces for ep end for each start-point. 
+    init_states_array : jnp.Array  
+        Initial state for each start point: for reset func. 
 
     Methods
     -------
     info(additional=""):
         Prints the person's name and age.
     """
+    def __init__(self, alphatradePath,window_selector,data_type="fixed_time"):
+        super().__init__()
+        self.window_selector= window_selector
+        self.data_type = data_type # fixed_steps, fixed_time
+        self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
+        self.stepLines = 100
+        self.day_start = 34200  # 09:30
+        self.day_end = 57600  # 16:00
+        self.nOrdersPerSide=100
+        self.nTradesLogged=100
+        self.book_depth=10
+        self.n_actions=4
+        self.n_ticks_in_book = 2 # Depth of PP actions
+        self.customIDCounter=0
+        self.trader_unique_id=job.INITID+1
+        self.tick_size=100
+        self.start_resolution=60 #Interval in seconds at which eps start
+        loader=LoadLOBSTER_resample(alphatradePath,
+                                    self.book_depth,
+                                    "fixed_time",
+                                    window_length=self.sliceTimeWindow,
+                                    n_msg_per_step=self.stepLines,
+                                    window_resolution=self.start_resolution) 
+        msgs,starts,ends,books,max_messages_arr=loader.run_loading()
+        self.max_messages_in_episode_arr = max_messages_arr
+        self.messages=msgs #Is different to trad. base: all msgs concat. 
+        self.books=books
+        self.n_windows = starts.shape[0]
+        self.start_indeces=starts
+        self.end_indeces=ends
+        self._init_states(alphatradePath,self.start_indeces)
+    
+    @property
+    def default_params(self) -> EnvParams:
+        # Default environment parameters
+        return EnvParams(self.messages, self.books,self.sliceTimeWindow,jnp.array([0, 0]),self.init_states_array)
 
-    def _get_state_from_data(self,message_data,book_data,max_steps_in_episode,window_index)->EnvState:
-        time=jnp.array(message_data[0,0,-2:])
+    def step_env(
+        self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
+    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        #Obtain the messages for the step from the message data
+        data_messages=self._get_data_messages(params.message_data,
+                                              state.start_index,
+                                              state.step_counter,
+                                              state.init_time[0]+params.episode_time)
+        
+        #Note: Action of the base environment should consitently be "DO NOTHING"
+
+        total_messages=data_messages
+
+        #Save time of final message to add to state
+        time=total_messages[-1:][0][-2:]
+        #Process messages of step (action+data) through the orderbook
+        
+        ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
+
+        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
+        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,\
+            state.window_index,state.step_counter+1,state.max_steps_in_episode,state.start_index)
+        done = self.is_terminal(state,params)
+        reward=0
+        #jax.debug.print("Final state after step: \n {}", state)
+        return self._get_obs(state,params),state,reward,done,{"info":0}
+
+    def reset_env(
+        self, key: chex.PRNGKey, params: EnvParams
+    ) -> Tuple[chex.Array, EnvState]:
+        """Reset environment state by sampling initial position in OB."""
+        idx_data_window = jnp.where(
+            self.window_selector == -1,
+            jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
+            jnp.array(self.window_selector, dtype=jnp.int32))
+        first_state = index_tree(params.init_states_array,
+                           idx_data_window)
+        obs=self._get_obs(first_state,params=params)
+        return obs,first_state
+
+    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
+        """Check whether state is terminal."""
+        jax.debug.print("Time: {} , Init time: {}, Difference: {}",state.time, state.init_time,(state.time-state.init_time)[0])
+        return (state.time-state.init_time)[0]>=params.episode_time
+
+    def _get_state_from_data(self,first_message,book_data,max_steps_in_episode,window_index,start_index)->EnvState:
+        time=jnp.array(first_message[-2:])
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         def get_initial_orders(book_data,time):
             orderbookLevels=10
@@ -148,136 +267,78 @@ class BaseLOBEnv(environment.Environment):
         return EnvState(ask_raw_orders=ordersides[0],
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],
-                        init_time=time,
+                        init_time=jnp.where(self.data_type=="fixed_time",
+                                             jnp.array([(window_index*self.start_resolution)
+                                                        %(self.day_end-self.day_start-self.sliceTimeWindow+self.start_resolution)
+                                                        +self.day_start,0]),
+                                             time),
                         time=time,
                         customIDcounter=0,
                         window_index=window_index,
                         step_counter=0,
-                        max_steps_in_episode=max_steps_in_episode)
-    
-    def _init_states(self,alphatradePath):
+                        max_steps_in_episode=max_steps_in_episode,
+                        start_index=start_index)
+
+    def _init_states(self,alphatradePath,starts):
         print("START:  pre-reset in the initialization")
         pkl_file_name = (alphatradePath
-                         + 'stateArray_idx_'+ str(self.window_index)
+                         + '_' +type(self).__name__
+                         + '_stateArray_idx_'+ str(self.window_selector)
                          +'_dtype_"'+self.data_type
                          +'"_depth_'+str(self.book_depth)
                          +'.pkl')
         print("pre-reset will be saved to ",pkl_file_name)
         try:
             with open(pkl_file_name, 'rb') as f:
-                self.init_base_states_array = pickle.load(f)
+                self.init_states_array = pickle.load(f)
             print("LOAD FROM PKL")
         except:
             print("DO COMPUTATION")
-            states = [self._get_state_from_data(self.messages[i],
+            states = [self._get_state_from_data(self.messages[starts[i]],
                                                 self.books[i],
-                                                self.max_steps_in_episode_arr[i],
-                                                i) 
+                                                self.max_messages_in_episode_arr[i]
+                                                    //self.stepLines+1,
+                                                    i,
+                                                    starts[i]) 
                         for i in range(self.n_windows)]
-            self.init_base_states_array=tree_stack(states)
+            self.init_states_array=tree_stack(states)
             with open(pkl_file_name, 'wb') as f:
-                pickle.dump(self.init_base_states_array, f) 
+                pickle.dump(self.init_states_array, f) 
         print("FINISH: pre-reset in the initialization")
-
-
-    def __init__(self, alphatradePath,window_index,data_type="fixed_time"):
-        super().__init__()
-        self.window_index = window_index
-        self.data_type = data_type # fixed_steps, fixed_time
-        self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
-        self.stepLines = 100
-        self.messagePath = alphatradePath+"/data/Flow_10/"
-        self.orderbookPath = alphatradePath+"/data/Book_10/"
-        self.start_time = 34200  # 09:30
-        self.end_time = 57600  # 16:00
-        self.nOrdersPerSide=100
-        self.nTradesLogged=100
-        self.book_depth=10
-        self.n_actions=3
-        self.customIDCounter=0
-        self.trader_unique_id=job.INITID+1
-        self.tick_size=100
-        self.tradeVolumePercentage = 0.01
-        self.data_type = data_type
-        loader=LoadLOBSTER(alphatradePath,10,"fixed_time",self.sliceTimeWindow,self.stepLines)
-        msgs,books,window_lengths,n_windows=loader.run_loading()
-        self.max_steps_in_episode_arr = window_lengths 
-        self.messages=msgs
-        self.books=books
-        self.n_windows = n_windows
-
-        self._init_states(alphatradePath)
-
-
-    
-    @property
-    def default_params(self) -> EnvParams:
-        # Default environment parameters
-        return EnvParams(self.messages, self.books,jnp.array([0, 0]),self.init_base_states_array)
-
-
-    def step_env(
-        self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
-        #Obtain the messages for the step from the message data
-        data_messages=self._get_data_messages(params.message_data,state.window_index,state.step_counter)
-
-        #Assumes that all actions are limit orders for the moment - get all 8 fields for each action message
-        types=jnp.ones((self.n_actions,),jnp.int32)
-        sides=((action["sides"]+1)/2).astype(jnp.int32)      #from action space
-        prices=action["prices"]     #from action space
-        quants=action["quantities"] #from action space
-        trader_ids=jnp.ones((self.n_actions,),jnp.int32)*self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids=jnp.ones((self.n_actions,),jnp.int32)*(self.trader_unique_id+state.customIDcounter)+jnp.arange(0,self.n_actions) #Each message has a unique ID
-        times=jnp.resize(state.time+params.time_delay_obs_act,(self.n_actions,2)) #time from last (data) message of prev. step + some delay
-        #Stack (Concatenate) the info into an array 
-        action_msgs=jnp.stack([types,sides,quants,prices,trader_ids,order_ids],axis=1)
-        action_msgs=jnp.concatenate([action_msgs,times],axis=1)
-
-        #Add to the top of the data messages 
-        total_messages=jnp.concatenate([action_msgs,data_messages],axis=0)
-        #jax.debug.print("Step messages to process are: \n {}", total_messages)
-
-        #Save time of final message to add to state
-        time=total_messages[-1:][0][-2:]
-
-        #Process messages of step (action+data) through the orderbook
-        ordersides=job.scan_through_entire_array(total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
-
-        #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,\
-            state.window_index,state.step_counter+1,state.max_steps_in_episode)
-        done = self.is_terminal(state,params)
-        reward=0
-        #jax.debug.print("Final state after step: \n {}", state)
-        return self.get_obs(state,params),state,reward,done,{"info":0}
-
-
-
-    def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
-        """Reset environment state by sampling initial position in OB."""
-        idx_data_window = jnp.where(
-            self.window_index == -1,
-            jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
-            jnp.array(self.window_index, dtype=jnp.int32))
-
-        #Dummy state for all but window index.
-        base_state = index_tree(params.init_base_state_array,
-                           idx_data_window)
-        
-        obs=self._get_obs(base_state,params=params)
-        return obs,base_state
-
-    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
-        """Check whether state is terminal."""
-        return (state.time-state.init_time)[0]>params.episode_time
 
     def _get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return dummy observation."""
         return 0
+    
+    def _get_data_messages(self,messageData,start,step_counter,end_time_s):
+        """Returns an array of messages for a given step. 
+            Parameters:
+                    messageData (Array): 2D array of all msgs with
+                                        dimensions: messages, features.
+                    start (int): Index of first message to in episode
+                    step_counter (int): desired step to consider
+                    end_time_s (int): End time of ep in seconds
+            Returns:
+                    Messages (Array): 2D array of messages for step 
+        """
+        index_offset=start+self.stepLines*step_counter
+        
+        messages=jax.lax.dynamic_slice_in_dim(messageData,index_offset,self.stepLines,axis=0)
+        #jax.debug.print("{}",messages)
+        #jax.debug.print("End time: {}",end_time_s)
+        #messages=messageData[index_offset:(index_offset+self.stepLines),:]
+        #Replace messages after the cutoff time with padded 0s (except time)
+        #jax.debug.print("m_wout_time {}",jnp.transpose(jnp.resize(messages[:,-2]>=end_time_s,messages[:,:-2].shape[::-1])))
+        m_wout_time=jnp.where(jnp.transpose(jnp.resize(
+                                messages[:,-2]>=end_time_s,
+                                messages[:,:-2].shape[::-1])),
+                              jnp.zeros_like(messages[:,:-2]),
+                              messages[:,:-2])
+        #jax.debug.print("m_wout_time {}",m_wout_time)
 
+        messages=jnp.concatenate((m_wout_time,messages[:,-2:]),axis=1,dtype=jnp.int32)
+        return messages
+    
     @property
     def name(self) -> str:
         """Environment name."""
@@ -287,7 +348,6 @@ class BaseLOBEnv(environment.Environment):
     def num_actions(self) -> int:
         """Number of actions possible in environment."""
         return self.n_actions
-
 
     def action_space(
         self, params: Optional[EnvParams] = None
@@ -319,30 +379,8 @@ class BaseLOBEnv(environment.Environment):
             }
         )
     
-    def _get_initial_time(self,messageData,idx_window):
-        """Obtain the arrival time of the first message in a given
-        data_window. Data window: pre-arranged 
-            Parameters:
-                    messageData (Array): 4D array with dimensions: windows,
-                                            steps, messages, features. 
-                    idx_window (int): Index of the window to consider.
-            Returns:
-                    Time (Array): Timestamp of first message [s, ns]
-        """
-        return messageData[idx_window,0,0,-2:]
 
-    def _get_data_messages(self,messageData,idx_window,step_counter):
-        """Returns an array of messages for a given step. 
-            Parameters:
-                    messageData (Array): 4D array with dimensions: windows,
-                                            steps, messages, features. 
-                    idx_window (int): Index of the window to consider.
-                    step_counter (int): desired step to consider. 
-            Returns:
-                    Time (Array): Timestamp of first message [s, ns]
-        """
-        messages=messageData[idx_window,step_counter,:,:]
-        return messages
+
     
 if __name__ == "__main__":
     try:
@@ -366,12 +404,18 @@ if __name__ == "__main__":
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-    print(config["ATFOLDER"])
-    env= BaseLOBEnv(config["ATFOLDER"],config["WINDOW_INDEX"],config["DTAT_TYPE"])
+
+    env= BaseLOBEnvVarStart(config["ATFOLDER"],config["WINDOW_INDEX"],config["DTAT_TYPE"])
     env_params=env.default_params
 
     obs,state=env.reset(key_reset,env_params)
+    done=False
+
+    while not done :
+        obs,state,rewards,done,info=env.step_env(key_step,state,{},env_params)
+        print(done)
+
+
 
     print(state)
     print(obs)
-    print(env.messages.shape)
