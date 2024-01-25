@@ -242,7 +242,7 @@ class BaseLOBEnv(environment.Environment):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
-        jax.debug.print("Time: {} , Init time: {}, Difference: {}",state.time, state.init_time,(state.time-state.init_time)[0])
+        #jax.debug.print("Time: {} , Init time: {}, Difference: {}",state.time, state.init_time,(state.time-state.init_time)[0])
         return (state.time-state.init_time)[0]>=params.episode_time
 
     def _get_state_from_data(self,first_message,book_data,max_steps_in_episode,window_index,start_index)->EnvState:
@@ -307,7 +307,7 @@ class BaseLOBEnv(environment.Environment):
                                                     i,
                                                     starts[i]) 
                         for i in range(self.n_windows)]
-            jax.debug.print("{}",states)
+            #jax.debug.print("{}",states)
             self.init_states_array=tree_stack(states)
             with open(pkl_file_name, 'wb') as f:
                 pickle.dump(self.init_states_array, f) 

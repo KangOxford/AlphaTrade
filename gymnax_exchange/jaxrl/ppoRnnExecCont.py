@@ -654,7 +654,7 @@ if __name__ == "__main__":
     ppo_config = {
         "LR": 1e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
         "ENT_COEF": 0.001, #0.001, 0, 0.1, 0.01, 0.001
-        "NUM_ENVS": 1024, #1024, #128, #64, 1000,
+        "NUM_ENVS": 16, #1024, #128, #64, 1000,
         "TOTAL_TIMESTEPS": 1e8,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         "NUM_MINIBATCHES": 2, #8, 4, 2,
         "UPDATE_EPOCHS": 30, #5,
