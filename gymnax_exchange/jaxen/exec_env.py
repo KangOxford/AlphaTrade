@@ -507,10 +507,17 @@ class ExecutionEnv(BaseLOBEnv):
         advantage = revenue - vwap * agentQuant # advantage_vwap
         drift = agentQuant * (vwap - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
-        #rewardValue = revenue 
-        rewardValue=revenue-(state.init_price // self.tick_size)*agentQuant
-        # if no value agentTrades then the reward is set to be zero
-        reward = jnp.sign(agentQuant) * rewardValue 
+        # rewardValue = revenue 
+        # rewardValue =  advantage
+        # rewardValue1 = advantage + params.reward_lambda * drift
+        # rewardValue1 = advantage + 1.0 * drift
+        # rewardValue2 = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = rewardValue1 - rewardValue2
+        # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
+
+        rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = advantage + params.reward_lambda * drift
+        reward = jnp.sign(state.is_sell_task * 2 - 1) * rewardValue # if no value agentTrades then the reward is set to be zero
         # ---------- normalize the reward ----------
         reward /= 10000
         # reward /= params.avg_twap_list[state.window_index]
