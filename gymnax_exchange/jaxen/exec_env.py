@@ -179,8 +179,9 @@ class ExecutionEnv(BaseLOBEnv):
         base_params=super().default_params
         flat_tree=jtu.tree_flatten(base_params)[0]
         #TODO: Clean this up to not have the magic number 4
-        base_vals=flat_tree[0:4] #Considers the base parameter values other than init state.
-        state_vals=flat_tree[4:] #Considers the state values
+        BaseEnvParams
+        base_vals=flat_tree[0:5] #Considers the base parameter values other than init state.
+        state_vals=flat_tree[5:] #Considers the state values
         return EnvParams(*base_vals,
                          EnvState(*state_vals),
                          self.max_task_size,
@@ -762,7 +763,7 @@ if __name__ == "__main__":
     print(state)
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,100000):
+    for i in range(1,100):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
@@ -787,7 +788,7 @@ if __name__ == "__main__":
 
     # # ####### Testing the vmap abilities ########
     
-    enable_vmap=False
+    enable_vmap=True
     if enable_vmap:
         # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))

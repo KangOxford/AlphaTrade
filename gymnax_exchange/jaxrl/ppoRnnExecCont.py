@@ -172,12 +172,13 @@ class Transition(NamedTuple):
 
 def make_train(config):
     env = ExecutionEnv(
-        config["ATFOLDER"],
-        config["TASKSIDE"],
-        config["WINDOW_INDEX"],
-        config["ACTION_TYPE"],
-        config["DATA_TYPE"],
-        config["MAX_TASK_SIZE"],
+        alphatradePath=config["ATFOLDER"],
+        task=config["TASKSIDE"],
+        window_index=config["WINDOW_INDEX"],
+        action_type=config["ACTION_TYPE"],
+        max_task_size=config["MAX_TASK_SIZE"],
+        rewardLambda=config["REWARD_LAMBDA"],
+        ep_type=config["DATA_TYPE"],
     )
     env_params = dataclasses.replace(
         env.default_params,
@@ -682,7 +683,7 @@ if __name__ == "__main__":
         "EPISODE_TIME": 60 * 1, # 1 minute
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
       
-        "ATFOLDER": "./training_oneDay", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        "ATFOLDER": "./data_small", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         # "ATFOLDER": "./training_oneMonth", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",

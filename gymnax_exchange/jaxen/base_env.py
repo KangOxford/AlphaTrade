@@ -94,6 +94,7 @@ class EnvParams:
     book_data: chex.Array
     episode_time: int
     time_delay_obs_act: chex.Array
+    window_selector : int
     init_states_array: chex.Array
 
 
@@ -196,6 +197,7 @@ class BaseLOBEnv(environment.Environment):
                          book_data=self.books,
                          episode_time=self.sliceTimeWindow,
                          time_delay_obs_act=jnp.array([0, 0]),
+                         window_selector=self.window_selector,
                          init_states_array=self.init_states_array)
 
     def step_env(
@@ -230,7 +232,7 @@ class BaseLOBEnv(environment.Environment):
     ) -> Tuple[chex.Array, EnvState]:
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jnp.where(
-            self.window_selector == -1,
+            params.window_selector == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(self.window_selector, dtype=jnp.int32))
         first_state = index_tree(params.init_states_array,
@@ -410,7 +412,9 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    env= BaseLOBEnv(config["ATFOLDER"],config["WINDOW_INDEX"],config["DTAT_TYPE"])
+    env= BaseLOBEnv(alphatradePath=config["ATFOLDER"],
+                    window_selector=config["WINDOW_INDEX"],
+                    ep_type=config["DTAT_TYPE"])
     env_params=env.default_params
 
     obs,state=env.reset(key_reset,env_params)
