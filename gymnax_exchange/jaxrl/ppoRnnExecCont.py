@@ -212,6 +212,7 @@ def make_train(config):
             ),
             jnp.zeros((1, config["NUM_ENVS"])),
         )
+
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
         network_params = network.init(_rng, init_hstate, init_x)
         
@@ -242,7 +243,6 @@ def make_train(config):
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
-
             """
             Pseudocode
             if i%50 ==0:
@@ -653,14 +653,13 @@ if __name__ == "__main__":
 
     ppo_config = {
         "LR": 1e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        "ENT_COEF": 0.001, #0.001, 0, 0.1, 0.01, 0.001
-        "NUM_ENVS": 16, #1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e8,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "ENT_COEF": 0.001, #0.001, 0, 0.1, 0.01, 0.001        "NUM_ENVS": 16, #1024, #128, #64, 1000,
+        "TOTAL_TIMESTEPS": 1e7,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         "NUM_MINIBATCHES": 2, #8, 4, 2,
         "UPDATE_EPOCHS": 30, #5,
         "NUM_STEPS": 512, #500,
         "CLIP_EPS": 0.2,
-        
+        "NUM_ENVS": 512,
         "GAMMA": 0.99,
         "GAE_LAMBDA": 1.0, #0.95,
         "VF_COEF": 0.001, #1.0, 0.5,
@@ -701,7 +700,7 @@ if __name__ == "__main__":
         ppo_config["TOTAL_TIMESTEPS"] // ppo_config["NUM_STEPS"] // ppo_config["NUM_ENVS"]
     )
     ppo_config["MINIBATCH_SIZE"] = (
-        # ppo_config["NUM_ENVS"] * ppo_config["NUM_STEPS"] // ppo_config["NUM_MINIBATCHES"]
+        #ppo_config["NUM_ENVS"] * ppo_config["NUM_STEPS"] // ppo_config["NUM_MINIBATCHES"]
         # sequences are kept together as one sample 
         ppo_config["NUM_ENVS"] // ppo_config["NUM_MINIBATCHES"]
     )
