@@ -688,6 +688,16 @@ def remove_cnl_if_renewed(cancel_msgs,action_msg):
 ################ HELPER FUNCTIONS ################
 
 @jax.jit
+def add_trade(trades, new_trade):
+    emptyidx = jnp.where(trades == -1, size=1, fill_value=-1)[0]
+    trades = trades.at[emptyidx, :].set(new_trade)
+    return trades
+    
+@jax.jit
+def create_trade(price, quant, agrOID, passOID, time, time_ns):
+    return jnp.array([price, quant, agrOID, passOID, time, time_ns], dtype=jnp.int32)
+
+@jax.jit
 def get_volume_at_price(orderside, price):
     """Returns the total quantity in the book at a given price for the
     bid or ask side. 

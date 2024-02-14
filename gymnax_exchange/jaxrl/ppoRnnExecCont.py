@@ -137,8 +137,8 @@ class ActorCriticRNN(nn.Module):
         # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
         pi = MultiVariateNormalDiagClipped(
             actor_mean * self.config['MAX_TASK_SIZE'],  # mean
-            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'] / 10,  # std
-            self.config['MAX_TASK_SIZE'] / 4,  # max std
+            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'] / 40,  # std
+            self.config['MAX_TASK_SIZE'] / 10,  # max std
         )
 
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -652,16 +652,16 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 1e-4, # 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "LR": 5e-5, # 5e-4, #5e-5, #1e-4,#2.5e-5,
         "ENT_COEF": 0.001, #0.001, 0, 0.1, 0.01, 0.001
-        "NUM_ENVS": 16, #1024, #128, #64, 1000,
+        "NUM_ENVS": 1024, #1024, #128, #64, 1000,
         "TOTAL_TIMESTEPS": 1e8,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
-        "NUM_MINIBATCHES": 2, #8, 4, 2,
+        "NUM_MINIBATCHES": 8, #8, 4, 2,
         "UPDATE_EPOCHS": 30, #5,
         "NUM_STEPS": 512, #500,
         "CLIP_EPS": 0.2,
         
-        "GAMMA": 0.99,
+        "GAMMA": 0.999,
         "GAE_LAMBDA": 1.0, #0.95,
         "VF_COEF": 0.001, #1.0, 0.5,
         "MAX_GRAD_NORM": 0.5,# 0.5, 2.0,
@@ -683,7 +683,7 @@ if __name__ == "__main__":
         "EPISODE_TIME": 60 * 1, # 1 minute
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
       
-        "ATFOLDER": "./data_small", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        "ATFOLDER": "./training_oneDay/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         # "ATFOLDER": "./training_oneMonth", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",

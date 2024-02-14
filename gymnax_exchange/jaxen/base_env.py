@@ -193,12 +193,14 @@ class BaseLOBEnv(environment.Environment):
     @property
     def default_params(self) -> EnvParams:
         # Default environment parameters
-        return EnvParams(message_data=self.messages,
-                         book_data=self.books,
-                         episode_time=self.sliceTimeWindow,
-                         time_delay_obs_act=jnp.array([0, 0]),
-                         window_selector=self.window_selector,
-                         init_states_array=self.init_states_array)
+        return EnvParams(
+            message_data=self.messages,
+            book_data=self.books,
+            episode_time=self.sliceTimeWindow,
+            time_delay_obs_act=jnp.array([0, 0]),
+            window_selector=self.window_selector,
+            init_states_array=self.init_states_array
+        )
 
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
@@ -209,7 +211,7 @@ class BaseLOBEnv(environment.Environment):
                                               state.step_counter,
                                               state.init_time[0]+params.episode_time)
         
-        #Note: Action of the base environment should consitently be "DO NOTHING"
+        #Note: Action of the base environment should consistently be "DO NOTHING"
 
         total_messages=data_messages
 
@@ -235,10 +237,9 @@ class BaseLOBEnv(environment.Environment):
             params.window_selector == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(self.window_selector, dtype=jnp.int32))
-        first_state = index_tree(params.init_states_array,
-                           idx_data_window)
-        obs=self._get_obs(first_state,params=params)
-        return obs,first_state
+        first_state = index_tree(params.init_states_array, idx_data_window)
+        obs = self._get_obs(first_state,params=params)
+        return obs, first_state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
