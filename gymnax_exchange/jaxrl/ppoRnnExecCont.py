@@ -212,6 +212,7 @@ def make_train(config):
             ),
             jnp.zeros((1, config["NUM_ENVS"])),
         )
+
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
         network_params = network.init(_rng, init_hstate, init_x)
         
@@ -242,7 +243,6 @@ def make_train(config):
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
-
             """
             Pseudocode
             if i%50 ==0:
@@ -701,7 +701,7 @@ if __name__ == "__main__":
         ppo_config["TOTAL_TIMESTEPS"] // ppo_config["NUM_STEPS"] // ppo_config["NUM_ENVS"]
     )
     ppo_config["MINIBATCH_SIZE"] = (
-        # ppo_config["NUM_ENVS"] * ppo_config["NUM_STEPS"] // ppo_config["NUM_MINIBATCHES"]
+        #ppo_config["NUM_ENVS"] * ppo_config["NUM_STEPS"] // ppo_config["NUM_MINIBATCHES"]
         # sequences are kept together as one sample 
         ppo_config["NUM_ENVS"] // ppo_config["NUM_MINIBATCHES"]
     )

@@ -1039,7 +1039,7 @@ if __name__ == "__main__":
         vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
         vmap_act_sample=jax.vmap(env.action_space().sample, in_axes=(0))
 
-        num_envs = 10
+        num_envs = 1024
         vmap_keys = jax.random.split(rng, num_envs)
 
         test_actions=vmap_act_sample(vmap_keys)
@@ -1048,6 +1048,9 @@ if __name__ == "__main__":
         start=time.time()
         obs, state = vmap_reset(vmap_keys, env_params)
         print("Time for vmap reset with,",num_envs, " environments : \n",time.time()-start)
+
+        n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
+
 
         start=time.time()
         n_obs, n_state, reward, done, _ = vmap_step(vmap_keys, state, test_actions, env_params)
