@@ -11,6 +11,7 @@ import pandas as pd
 from tqdm import tqdm
 from joblib import Parallel, delayed
 import datetime
+import gc
 
 import chex
 import flax
@@ -176,6 +177,10 @@ def data_alignment(ATFolder):
     VWAPs, ORACLEs, RMs = get_raw_VWAPs_ORACLEs_RMs()
     
     def get_common_dates():
+        
+        # 先解压到指定文件夹
+        
+        
         dates_vwap =  VWAPs[-1][-1].index.to_numpy()
         dates_rm =  RMs[-1][-1].index.to_numpy()
         message_dates = load_files(common_stocks[-1]) 
@@ -198,9 +203,14 @@ def data_alignment(ATFolder):
             
     return common_dates, common_stocks, VWAPs, ORACLEs, RMs, TWAPs
 
+symbol = 'BAC'
+
 
 def main1(symbol):
 # if __name__ == "__main__":
+
+
+
         
     ATFolder = f"/homes/80/kang/SP500/{symbol}_data"
     # ATFolder = f"/homes/80/kang/SP500/ABC_data"
@@ -246,12 +256,24 @@ def main1(symbol):
         
         assert len(allocation_array_final_oracle) == len(allocation_array_final_rm)
         print("allocation_array_final_oracle, num of arrays: ", len(allocation_array_final_oracle))
+        
+        def save_to_pickle(allocation_array_final_rm):
+            import pickle
+            variableName = f'{allocation_array_final_rm=}'.split('=')[0]
+            with open(symbol+"_"+variableName+'.pkl', 'wb') as f:
+                pickle.dump(variableName, f)
+        save_to_pickle(allocation_array_final_rm)
+        save_to_pickle(allocation_array_final_oracle)
+        save_to_pickle(allocation_array_final_vwap)
+        save_to_pickle(allocation_array_final_twap)
+        
     
         vwap_info_lst = []
         rm_info_lst = []
         oracle_info_lst = []
         twap_info_lst = []
         # for reset_window_index in tqdm(range(2)):
+        print("START RL PROCESS")
         for reset_window_index in tqdm(range(len(allocation_array_final_oracle))):
             # print(f"+++ reset_window_index idx {reset_window_index}")
             def get_final_info(strategy_type, reset_window_index, rng):
@@ -335,8 +357,22 @@ if __name__ == "__main__":
     # symbols = ["ABC"]
     # symbols = ["ACN"]
     # symbols = ["AAP"]
-    symbols = ["AAL", "ABT", "ADBE"  ,"ABBV" , "ABMD"]
-    for symbol in symbols:
+    top_symbols = ['BAC']
+    # top_symbols = ["AAPL", 'AMZN', 'BAC', 'SPY', 'NVDA', 'EEM', "F", 'MU', 'GOOGL', 'GOOG']
+    #  ABMD
+    #  IFF
+    #  AMG
+    #  HII
+    #  TFX
+    #  IEX
+    #  MKTX
+    #  MTD
+    #  NVR
+
+    #     bottom_symbols = ["JKHY", ]
+    # symbols = ["AAL", "ABT", "ADBE"  ,"ABBV" , "ABMD"]
+    for symbol in top_symbols:
+    # for symbol in symbols:
         try:
             main1(symbol)
         except:

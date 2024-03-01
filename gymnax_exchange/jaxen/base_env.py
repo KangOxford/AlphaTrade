@@ -19,6 +19,7 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from tqdm import tqdm
 import time
 from joblib import Parallel, delayed
+import gc
     
 np.set_printoptions(linewidth=183)    
 jax.numpy.set_printoptions(linewidth=183)    
@@ -49,7 +50,7 @@ class EnvParams:
 
 
 # Load the data from LOBSTER
-def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time, dates):
+def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time, dates, tradeVolumePercentage):
     def preProcessingData_csv2pkl():
         return 0
     def load_files():
@@ -86,6 +87,7 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
                         for file in messageFiles if (file[-3:] == "csv") and (file.split("_")[1] in dates)]
         orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) 
                             for file in orderbookFiles if file[-3:] == "csv" and file.split("_")[1] in dates]
+        # breakpoint()
         # messageCSVs = [pd.read_csv(messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
         # orderbookCSVs = [pd.read_csv(orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
         return messageCSVs, orderbookCSVs
@@ -169,7 +171,7 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
     # breakpoint(); Cubes_withOB[89][0].shape
     
     
-    taskSize_array = jnp.array([int( (m[:,:,2]*m[:,:,8]).sum() * self.tradeVolumePercentage ) 
+    taskSize_array = jnp.array([int( (m[:,:,2]*m[:,:,8]).sum() * tradeVolumePercentage ) 
                                 for m,o in Cubes_withOB])
     max_steps_in_episode_arr = jnp.array([m.shape[0] for m,o in Cubes_withOB],jnp.int32)
     
@@ -251,7 +253,7 @@ class BaseLOBEnv(environment.Environment):
         self.sliceTimeWindow = 1800 # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         self.messagePath = alphatradePath+"/Flow_10/"
-        self.orderbookPath = alphatradePath+"/Flow_10/"
+        self.orderbookPath = alphatradePath+"/Book_10/"
         # self.messagePath = alphatradePath+"/data/Flow_10/"
         # self.orderbookPath = alphatradePath+"/data/Book_10/"
         self.start_time = 34200  # 09:30
@@ -277,7 +279,8 @@ class BaseLOBEnv(environment.Environment):
             self.orderbookPath,
             self.start_time,
             self.end_time,
-            self.dates
+            self.dates,
+            self.tradeVolumePercentage
         )
         
         # import pickle
@@ -303,10 +306,13 @@ class BaseLOBEnv(environment.Environment):
         import sys
         print("sys.getsizeof(Cubes_withOB)",sys.getsizeof(Cubes_withOB))
         # breakpoint()
-        import gc
+        del start_idx_array_list, taskSize_array, max_steps_in_episode_arr
         gc.collect()
+        
+        # breakpoint()
         messages = [jnp.array(cube) for cube, ob in Cubes_withOB]
         print(sys.getsizeof(messages))
+        Cubes_withOB[1][1]
         books = [jnp.array(ob) for cube, ob in Cubes_withOB]
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
         # breakpoint()

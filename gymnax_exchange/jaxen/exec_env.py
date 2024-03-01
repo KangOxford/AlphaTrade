@@ -119,7 +119,7 @@ class ExecutionEnv(BaseLOBEnv):
             # Restore the list
             with open(pkl_file_name, 'rb') as f:
                 self.stateArray_list = pickle.load(f)
-            # print("LOAD FROM PKL")
+            print("LOAD FROM PKL")
             raise NotImplementedError # NOTE delete this
         except:
             print("DO COMPUTATION")
