@@ -158,7 +158,7 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self, alphatradePath,window_selector,ep_type="fixed_time"):
+    def __init__(self, alphatradePath, window_selector, ep_type="fixed_time"):
         super().__init__()
         self.window_selector= window_selector
         self.ep_type = ep_type # fixed_steps, fixed_time
@@ -169,7 +169,7 @@ class BaseLOBEnv(environment.Environment):
         self.nOrdersPerSide=100
         self.nTradesLogged=100
         self.book_depth=10
-        self.n_actions=4
+        self.n_actions=2
         self.n_ticks_in_book = 2 # Depth of PP actions
         self.customIDCounter=0
         self.trader_unique_id=job.INITID+1

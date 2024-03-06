@@ -7,13 +7,12 @@ import os
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
-import numpy as np
+# import numpy as np
 import optax
 import time
-from flax.linen.initializers import constant, orthogonal
+# from flax.linen.initializers import constant, orthogonal
 from typing import Optional, Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
-import distrax
 import gymnax
 import functools
 from gymnax.environments import spaces
@@ -23,6 +22,7 @@ sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxrl.actorCritic import ActorCriticRNN, ScannedRNN
 import os
 import flax
 from jax.lib import xla_bridge 
@@ -48,118 +48,6 @@ def save_checkpoint(params, filename):
         print(f"Checkpoint saved to {filename}")
 
 
-class ScannedRNN(nn.Module):
-    @functools.partial(
-        nn.scan,
-        variable_broadcast="params",
-        in_axes=0,
-        out_axes=0,
-        split_rngs={"params": False},
-    )
-    @nn.compact
-    def __call__(self, carry, x):
-        """Applies the module."""
-        rnn_state = carry
-        ins, resets = x
-        
-        rnn_state = jnp.where(
-            resets[:, np.newaxis],
-            self.initialize_carry(ins.shape[0], ins.shape[1]),
-            rnn_state,
-        )
-        new_rnn_state, y = nn.GRUCell(gate_fn=lambda x: nn.sigmoid(nn.LayerNorm()(x)))(rnn_state, ins)
-        # new_rnn_state, y = nn.LayerNorm()(new_rnn_state), nn.LayerNorm()(y)
-        new_rnn_state, y = nn.GRUCell(gate_fn=lambda x: nn.sigmoid(nn.LayerNorm()(x)))(new_rnn_state, y)
-        return new_rnn_state, y
-
-    @staticmethod
-    def initialize_carry(batch_size, hidden_size):
-        # Use a dummy key since the default state init fn is just zeros.
-        return nn.GRUCell.initialize_carry(
-            jax.random.PRNGKey(0), (batch_size,), hidden_size
-        )
-
-class MultiVariateNormalDiagClipped(distrax.MultivariateNormalDiag):
-    def __init__(
-            self,
-            loc: Optional[jax.Array] = None,
-            scale_diag: Optional[jax.Array] = None,
-            max_scale_diag: Optional[jax.Array] = None,
-        ):
-        self.max_scale_diag = max_scale_diag
-        scale_diag = jnp.minimum(max_scale_diag, scale_diag)
-        super().__init__(loc, scale_diag)
-
-    def __getitem__(self, index) -> distrax.MultivariateNormalDiag:
-        """See `Distribution.__getitem__`."""
-        index = distrax.distribution.to_batch_shape_index(self.batch_shape, index)
-        return MultiVariateNormalDiagClipped(
-            loc=self.loc[index],
-            scale_diag=self.scale_diag[index],
-            max_scale_diag=self.max_scale_diag,
-        )
-
-
-class ActorCriticRNN(nn.Module):
-    action_dim: Sequence[int]
-    config: Dict
-
-    @nn.compact
-    def __call__(self, hidden, x):
-        obs, dones = x
-        embedding = nn.Dense(
-            128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
-        )(obs)
-        embedding = nn.LayerNorm()(embedding)
-        embedding = nn.relu(embedding)
-
-        rnn_in = (embedding, dones)
-        hidden, embedding = ScannedRNN(name="rnn")(hidden, rnn_in)
-        # embedding = nn.LayerNorm()(embedding)
-        self.sow("intermediates", "embedding", embedding)
-
-        actor_net = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
-            embedding
-        )
-        actor_net = nn.LayerNorm()(actor_net)
-        actor_net = nn.relu(actor_net)
-        
-        actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
-            # self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.5)
-        )(actor_net)
-        max_action_logstd = -1.6  # exp -1.6 = 0.2
-        actor_logtstd = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(max_action_logstd), name="log_std"
-        )(actor_net)
-        # actor_logtstd = self.param("log_std", nn.initializers.constant(-1.6), (self.action_dim,))
-        #Trying to get an initial std_dev of 0.2 (log(0.2)~=-0.7)
-        # pi = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_logtstd))
-        pi = MultiVariateNormalDiagClipped(
-            actor_mean * self.config['MAX_TASK_SIZE'],  # mean
-            jnp.exp(actor_logtstd) * self.config['MAX_TASK_SIZE'] / 40,  # std
-            self.config['MAX_TASK_SIZE'] / 10,  # max std
-        )
-
-        critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
-            embedding
-        )
-        critic = nn.LayerNorm()(critic)
-        critic = nn.relu(critic)
-
-        critic = nn.Dense(64, kernel_init=orthogonal(1), bias_init=constant(0.0))(
-            critic
-        )
-        critic = nn.LayerNorm()(critic)
-        critic = nn.relu(critic)
-
-        critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
-            critic
-        )
-
-        return hidden, pi, jnp.squeeze(critic, axis=-1)
-
-
 class Transition(NamedTuple):
     done: jnp.ndarray
     action: jnp.ndarray
@@ -169,6 +57,17 @@ class Transition(NamedTuple):
     obs: jnp.ndarray
     info: jnp.ndarray
 
+def reset_adam(train_state, reset_type="count"):
+    inner_state = train_state.opt_state[1].inner_state
+    if reset_type == "count":
+        inner_state = (inner_state[0]._replace(count=0), inner_state[1])
+    elif reset_type == "all":
+        inner_state = jax.tree_map(jnp.zeros_like, inner_state)
+    opt_state = (
+        train_state.opt_state[0],
+        train_state.opt_state[1]._replace(inner_state=inner_state),
+    )
+    return train_state.replace(opt_state=opt_state)
 
 def make_train(config):
     env = ExecutionEnv(
@@ -202,6 +101,23 @@ def make_train(config):
         )
         return config["LR"] * frac
 
+    @jax.jit
+    def cosine_lr(count):
+        count = count // (config["NUM_MINIBATCHES"] * config["UPDATE_EPOCHS"])
+        n_cycles = config["LR_COS_CYCLES"]
+        T_i = config["NUM_UPDATES"] / n_cycles / 2
+        lr_min = config["LR"] / 10
+        lr_max = config["LR"]
+        return lr_min + 0.5 * (lr_max - lr_min) * (1 + jnp.cos(jnp.pi * count / T_i))
+
+    @jax.jit
+    def lin_cos_lr(step):
+        cos = cosine_lr(step)
+        frac = (
+            1.0 - (step // (config["NUM_MINIBATCHES"] * config["UPDATE_EPOCHS"])) / config["NUM_UPDATES"]
+        )
+        return cos * frac
+
     def train(rng):
         # INIT NETWORK
         network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
@@ -213,21 +129,26 @@ def make_train(config):
             jnp.zeros((1, config["NUM_ENVS"])),
         )
 
-        init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+        if config['JOINT_ACTOR_CRITIC_NET']:
+            init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+        else:
+            init_hstate = (
+                ScannedRNN.initialize_carry(config["NUM_ENVS"], 128),
+                ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+            )
+
         network_params = network.init(_rng, init_hstate, init_x)
         
-        if config["ANNEAL_LR"]:
-            tx = optax.chain(
-                optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule, b1=0.9, b2=0.99, eps=1e-5),
-                # optax.adam(learning_rate=linear_schedule, b1=0.9, b2=0.99, eps=1e-5),
-            )
+        if config["ANNEAL_LR"] == "linear":
+            lr = linear_schedule
+        elif config["ANNEAL_LR"] == "cosine":
+            lr = lin_cos_lr
         else:
-            tx = optax.chain(
-                optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                optax.inject_hyperparams(optax.adam)(learning_rate=config["LR"], b1=0.9, b2=0.99, eps=1e-5),
-                # optax.adam(config["LR"], b1=0.9, b2=0.99, eps=1e-5),
-            )
+            lr = config["LR"]
+        tx = optax.chain(
+            optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+            optax.inject_hyperparams(optax.adam)(learning_rate=lr, b1=config["ADAM_B1"], b2=config["ADAM_B2"], eps=config["ADAM_EPS"]),
+        )
         train_state = TrainState.create(
             apply_fn=network.apply,
             params=network_params,
@@ -239,7 +160,13 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
-        init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+        if config['JOINT_ACTOR_CRITIC_NET']:
+            init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+        else:
+            init_hstate = (
+                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
+                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+            )
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
@@ -261,22 +188,22 @@ def make_train(config):
                 rng, _rng = jax.random.split(rng)
 
                 # SELECT ACTION
-                ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+                ac_in = (last_obs[jnp.newaxis, :], last_done[jnp.newaxis, :])
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
 
-                # action = pi.sample(seed=_rng)
-                # use pre-computed colored noise sample instead of sampling here
-                a_mean = pi._loc
-                a_std = pi._scale_diag
-                action = action_noise * a_std + a_mean
-                # jax.debug.print('a_mean {}, a_std {}, action_noise{}, action {}', a_mean, a_std, action_noise, action)
+                if config["CONT_ACTIONS"]:
+                    # use pre-computed colored noise sample instead of sampling here
+                    a_mean = pi._loc
+                    a_std = pi._scale_diag
+                    action = action_noise * a_std + a_mean
+                    # jax.debug.print('a_mean {}, a_std {}, action_noise{}, action {}', a_mean, a_std, action_noise, action)
+                else:
+                    action = pi.sample(seed=_rng)
 
                 log_prob = pi.log_prob(action)
 
+                # print('action {}, log_prob {}', action.shape, log_prob.shape)
                 # jax.debug.print('action {}, log_prob {}', action, log_prob)
-
-                # jax.debug.print('action std 1 {}', pi._scale_diag)
-                # jax.debug.print('action std 2 {}', pi.scale_diag)
 
                 value, action, log_prob = (
                     value.squeeze(0),
@@ -311,7 +238,7 @@ def make_train(config):
 
             # CALCULATE ADVANTAGE
             train_state, env_state, last_obs, last_done, hstate, rng = runner_state
-            ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+            ac_in = (last_obs[jnp.newaxis, :], last_done[jnp.newaxis, :])
             _, _, last_val = network.apply(train_state.params, hstate, ac_in)
             last_val = last_val.squeeze(0)
             last_val = jnp.where(last_done, jnp.zeros_like(last_val), last_val)
@@ -380,10 +307,16 @@ def make_train(config):
 
                             # mean over batch dimension --> shape (4,)
                             action_mean = action_mean.mean(axis=0)
-                            action_std = action_std.mean(axis=0)
-                            for i in range(action_std.shape[0]):
-                                data[f"action_mean_{i}"] = action_mean[i]
-                                data[f"action_std_{i}"] = action_std[i]
+                            if (config["ACTOR_STD"] == "state_dependent") or (not config["CONT_ACTIONS"]):
+                                action_std = action_std.mean(axis=0)
+                                for i in range(action_mean.shape[0]):
+                                    data[f"action_mean_{i}"] = action_mean[i]
+                                    data[f"action_std_{i}"] = action_std[i]
+                            else:
+                                data[f"action_std_0"] = action_std
+                                for i in range(action_mean.shape[0]):
+                                    data[f"action_mean_{i}"] = action_mean[i]
+                                    
                             wandb.log(
                                 data=data,
                                 commit=False
@@ -391,8 +324,13 @@ def make_train(config):
                         
                         # RERUN NETWORK
                         filter_neurons = lambda mdl, method_name: isinstance(mdl, nn.LayerNorm)
+
+                        if config['JOINT_ACTOR_CRITIC_NET']:
+                            init_hstate = init_hstate[0]
+                        else:
+                            init_hstate = (init_hstate[0][0], init_hstate[1][0])
                         (_, pi, value), network_state = network.apply(
-                            params, init_hstate[0], (traj_batch.obs, traj_batch.done),
+                            params, init_hstate, (traj_batch.obs, traj_batch.done),
                             capture_intermediates=filter_neurons, mutable=["intermediates"]
                         )
                         log_prob = pi.log_prob(traj_batch.action)
@@ -401,13 +339,61 @@ def make_train(config):
                         # norm of trajectory batch observation
                         obs_norm = jnp.sqrt((traj_batch.obs**2).sum(axis=-1)).mean()
                         # jax.debug.print('_scale_diag {}', pi._scale_diag.squeeze()[-1].shape)
+                        # jax.debug.print('obs_norm: {}', obs_norm)
+                        
+                        # action_mean = (
+                        #     pi._loc.squeeze()[-1] if config["CONT_ACTIONS"]
+                        #     else pi.distribution.probs @ jnp.arange(config["MAX_TASK_SIZE"] + 1))
+                        
+                        # action_std = (
+                        #     pi._scale_diag.squeeze()[-1] if config["CONT_ACTIONS"]
+                        #     else jnp.sqrt(
+                        #         pi.distribution.probs @ (jnp.arange(config["MAX_TASK_SIZE"] + 1) - action_mean[-1, -1])**2)
+                        #     )
+
+                        # continuous actions (mean variance mutlivar. normal):
+                        if config["CONT_ACTIONS"]:
+                            # shape: (bsz, action_dim)
+                            action_mean = pi._loc.squeeze()[-1]
+                            action_std = pi._scale_diag.squeeze()[-1]
+                        # discrete actions:
+                        else:
+
+                            action_mean = pi.distribution.probs[-1] @ jnp.arange(config["MAX_TASK_SIZE"] + 1)
+                            # print('action_mean: ', action_mean.shape)
+
+                            # (seq_len, bsz, num_actions, action_dim) @ ((action_dim, num_actions) - (num_actions,))
+                            action_std = jnp.sqrt(
+                                jnp.dot(
+                                    pi.distribution.probs[-1],
+                                    (
+                                        jnp.tile(
+                                            jnp.arange(config["MAX_TASK_SIZE"] + 1),
+                                            pi.event_shape + (1,),
+                                        ).T - action_mean[-1]
+                                    ) ** 2
+                                )
+                            )
+                            action_std = jnp.diagonal(action_std.T)
+
+                            # TODO: benchmark this alternative way to calc std
+                            #       reduced number of matmul operations but for loop over num_actions
+                            # action_std = jnp.sqrt(jnp.array([
+                            #     # (bsz, action_dim) @ (action_dim)  e.g. (128, 501,) @ (501,)
+                            #     pi.distribution.probs[-1, :, i] @ (jnp.arange(config["MAX_TASK_SIZE"] + 1) - action_mean[-1, i]) ** 2
+                            #     for i in range(pi.event_shape[0])
+                            # ])).T  # (bsz, num_actions)
+                        
+                            # print('action_std: ', action_std.shape)
+                            # jax.debug.print('std arrays equal {} {} {}', jnp.array_equal(action_std[-1], action_std_1[-1]), action_std[-1], action_std_1[-1])
+
                         metric = (
                             update_step,
                             traj_batch.info,
                             dead_ratio,
                             obs_norm,
-                            pi._loc.squeeze()[-1],  # action mean for last state in sequence
-                            pi._scale_diag.squeeze()[-1]  # action std for last state in sequence
+                            action_mean,
+                            action_std,
                         )
                         if wandbOn:
                             jax.debug.callback(debug_log, metric)
@@ -440,17 +426,34 @@ def make_train(config):
                         loss_actor = loss_actor.mean()
                         entropy = pi.entropy().mean()
 
-                        total_loss = (
-                            loss_actor
-                            + config["VF_COEF"] * value_loss
+                        # total_loss = (
+                        #     loss_actor
+                        #     + config["VF_COEF"] * value_loss
+                        #     - config["ENT_COEF"] * entropy
+                        # )
+                        # return total_loss, (value_loss, loss_actor, entropy)
+                        losses = (
+                            config["VF_COEF"] * value_loss,
+                            loss_actor,
                             - config["ENT_COEF"] * entropy
                         )
-                        return total_loss, (value_loss, loss_actor, entropy)
+                        losses = (losses[0] + losses[1] + losses[2], *losses)
+                        return losses, (value_loss, loss_actor, entropy)
 
-                    grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-                    total_loss, grads = grad_fn(
-                        train_state.params, init_hstate, traj_batch, advantages, targets
-                    )
+                    # grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
+                    # total_loss, grads = grad_fn(
+                    #     train_state.params, init_hstate, traj_batch, advantages, targets
+                    # )
+
+                    # NOTE: only for debugging. might have negative impact on performance
+                    # to do forward pass and jacobian separately
+                    total_loss = _loss_fn(train_state.params, init_hstate, traj_batch, advantages, targets)[0][0]
+                    jac = jax.jacrev(_loss_fn, has_aux=True)(train_state.params, init_hstate, traj_batch, advantages, targets)
+                    # (jac, (value_loss, loss_actor, entropy)): [0][0] for gradient
+                    grads = jac[0][0]
+
+                    # HERE TODO: figure out why this isn't working
+
                     # jax.debug.print("grads: {}", grads['params']['log_std'])
                     # jax.debug.print("grads: {}", grads)
                     # print(jax.tree_util.tree_structure(grads))
@@ -462,8 +465,19 @@ def make_train(config):
                     #         -1.6 * jnp.ones_like(train_state.params["log_std"]),
                     #     )
                     # })
-                    grad_norm = optax.global_norm(grads)
-                    return (train_state, grad_norm), total_loss
+
+                    # grad_norm = optax.global_norm(grads)
+                    # jax.debug.print("grad_norm: {}", grad_norm)
+                    # jax.debug.print("grads: {}", grads)
+
+                    # TODO: calculate gradient norm for each loss component
+                    #       handle this in the scan function (4 instead of 1 gradient norm)
+                    grad_parts_norm = jnp.array([
+                        optax.global_norm(g) for g in jac[0]
+                    ])
+
+                    # return (train_state, grad_norm), total_loss
+                    return (train_state, grad_parts_norm), total_loss
 
                 (
                     train_state,
@@ -500,7 +514,7 @@ def make_train(config):
                 # jax.debug.print('minibatches {}', minibatches[1].obs.shape)
 
                 (train_state, grad_norm), total_loss = jax.lax.scan(
-                    _update_minbatch, (train_state, jnp.array(0.)), minibatches
+                    _update_minbatch, (train_state, jnp.zeros(4,)), minibatches
                 )
                 update_state = (
                     train_state,
@@ -513,7 +527,17 @@ def make_train(config):
                 )
                 return update_state, total_loss
 
-            init_hstate = initial_hstate[None, :]  # TBH
+            if config["JOINT_ACTOR_CRITIC_NET"]:
+                init_hstate = initial_hstate[None, :]  # TBH
+            else:
+                init_hstate = (
+                    initial_hstate[0][None, :],
+                    initial_hstate[1][None, :]
+                )
+
+            if config["RESET_ADAM_COUNT"]:
+                train_state = reset_adam(train_state)
+
             update_state = (
                 train_state,
                 init_hstate,
@@ -521,7 +545,7 @@ def make_train(config):
                 advantages,
                 targets,
                 rng,
-                jnp.array(0.)  # grad_norm
+                jnp.zeros((4,))  # grad_norm
             )
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
@@ -529,7 +553,10 @@ def make_train(config):
             train_state = update_state[0]
             trainstate_logs = {
                 "learning_rate": train_state.opt_state[1].hyperparams["learning_rate"],
-                "grad_norm": update_state[6],
+                "grad_norm": update_state[6][0],
+                "v_grad_norm": update_state[6][1],
+                "a_grad_norm": update_state[6][2],
+                "ent_grad_norm": update_state[6][3],
                 "mean_loss": jnp.mean(loss_info[0]),
                 "mean_value_loss": jnp.mean(loss_info[1][0]),
                 "mean_actor_loss": jnp.mean(loss_info[1][1]),
@@ -574,6 +601,9 @@ def make_train(config):
                     # vwap_rm = info["vwap_rm"][info["returned_episode"]]
                     
                     current_step = info["current_step"][info["returned_episode"]]
+                    mkt_forced_quant = info["mkt_forced_quant"][info["returned_episode"]]
+                    doom_quant = info["doom_quant"][info["returned_episode"]]
+                    trade_duration = info["trade_duration"][info["returned_episode"]]
                     # advantage_reward = info["advantage_reward"][info["returned_episode"]]
                     
                     '''
@@ -598,14 +628,17 @@ def make_train(config):
                                     "global_step": timesteps[t],
                                     "episodic_return": return_values[t],
                                     "episodic_revenue": revenues[t],
-                                    "quant_executed":quant_executed[t],
-                                    "average_price":average_price[t],
+                                    "quant_executed": quant_executed[t],
+                                    "average_price": average_price[t],
                                     # "slippage_rm":slippage_rm[t],
                                     # "price_adv_rm":price_adv_rm[t],
                                     # "price_drift_rm":price_drift_rm[t],
                                     # "vwap_rm":vwap_rm[t],
-                                    "current_step":current_step[t],
+                                    "current_step": current_step[t],
                                     # "advantage_reward":advantage_reward[t],
+                                    "mkt_forced_quant": mkt_forced_quant[t],
+                                    "doom_quant": doom_quant[t],
+                                    "trade_duration": trade_duration[t],
                                     **trainstate_logs,
                                     # "learning_rate": trainstate_info['learning_rate'],
                                     # "grad_norm": trainstate_info['grad_norm'],
@@ -652,39 +685,49 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 5e-5, # 5e-4, #5e-5, #1e-4,#2.5e-5,
-        "ENT_COEF": 0.001, #0.001, 0, 0.1, 0.01, 0.001
+        "LR": 1e-5, # 1e-4, 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "LR_COS_CYCLES": 8,  # only relevant if ANNEAL_LR == "cosine"
+        "ENT_COEF": 0.001, # 0., 0.001, 0, 0.1, 0.01, 0.001
         "NUM_ENVS": 1024, #1024, #128, #64, 1000,
-        "TOTAL_TIMESTEPS": 1e8,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
+        "TOTAL_TIMESTEPS": 5e7,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         "NUM_MINIBATCHES": 8, #8, 4, 2,
-        "UPDATE_EPOCHS": 30, #5,
-        "NUM_STEPS": 512, #500,
-        "CLIP_EPS": 0.2,
+        "UPDATE_EPOCHS": 10, #30, 5,
+        "NUM_STEPS": 20, #20, 512, 500,
+        "CLIP_EPS": 0.2,  # TODO: should we change this to a different value? 
         
         "GAMMA": 0.999,
-        "GAE_LAMBDA": 1.0, #0.95,
-        "VF_COEF": 0.001, #1.0, 0.5,
-        "MAX_GRAD_NORM": 0.5,# 0.5, 2.0,
-        "ANNEAL_LR": True, #True,
-        "NORMALIZE_ENV": True,  # only norms observations (not reward)
+        "GAE_LAMBDA": 0.99, #0.95,
+        "VF_COEF": 0.1, #1., 0.01, 0.001, 1.0, 0.5,
+        "MAX_GRAD_NORM": 10, # 0.5, 2.0,
+        "ANNEAL_LR": 'cosine', # 'linear', 'cosine', False
+        "NORMALIZE_ENV": False,  # only norms observations (not reward)
         
         "ACTOR_TYPE": "RNN",
-        "ACTION_NOISE_COLOR": 2.,
+        "HIDDEN_SIZE": 256,  # 128
+        "ACTION_NOISE_COLOR": 2.,  # 2  # only relevant if CONT_ACTIONS == True
+
+        "RESET_ADAM_COUNT": True,  # resets Adam's t (count) every update
+        "ADAM_B1": 0.99,
+        "ADAM_B2": 0.99,
+        "ADAM_EPS": 1e-5,  # 1e-4, 1e-6
         
         "ENV_NAME": "alphatradeExec-v0",
-        "WINDOW_INDEX": 2, # 2 fix random episode #-1,
+        "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
         
-        "TASKSIDE": "random", # "random", "buy", "sell"
+        "TASKSIDE": "sell", # "random", "buy", "sell"
         "REWARD_LAMBDA": 1., #0.001,
         "ACTION_TYPE": "pure", # "delta"
         "MAX_TASK_SIZE": 500,
         "TASK_SIZE": 500, # 500,
-        "EPISODE_TIME": 60 * 1, # 1 minute
+        "EPISODE_TIME": 60 * 1, # 60 * 1 --> 1 minute
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
+        "CONT_ACTIONS": False,  # True
+        "JOINT_ACTOR_CRITIC_NET": False,  # True
+        "ACTOR_STD": "state_dependent",  # 'state_dependent', 'param', 'fixed'
       
-        "ATFOLDER": "./training_oneDay/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
-        # "ATFOLDER": "./training_oneMonth", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        # "ATFOLDER": "./training_oneDay/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
+        "ATFOLDER": "./training_oneMonth/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         "RESULTS_FILE": "training_runs/results_file_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/results_file_"+f"{timestamp}",
         "CHECKPOINT_DIR": "training_runs/checkpoints_"+f"{timestamp}",  # "/homes/80/kang/AlphaTrade/checkpoints_"+f"{timestamp}",
     }
