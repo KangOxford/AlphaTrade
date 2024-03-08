@@ -130,11 +130,11 @@ def make_train(config):
         )
 
         if config['JOINT_ACTOR_CRITIC_NET']:
-            init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+            init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
         else:
             init_hstate = (
-                ScannedRNN.initialize_carry(config["NUM_ENVS"], 128),
-                ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
+                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
             )
 
         network_params = network.init(_rng, init_hstate, init_x)
@@ -160,13 +160,13 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
-        if config['JOINT_ACTOR_CRITIC_NET']:
-            init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
-        else:
-            init_hstate = (
-                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
-                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
-            )
+        # if config['JOINT_ACTOR_CRITIC_NET']:
+        #     init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+        # else:
+        #     init_hstate = (
+        #         ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
+        #         ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+        #     )
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
@@ -230,8 +230,11 @@ def make_train(config):
             rng, rng_ = jax.random.split(runner_state[-2])
             # include new rng in runner_state
             runner_state = runner_state[:-2] + (rng,) + runner_state[-1:]
-            # args: exponent, size, rng, fmin.  transpose to have first dimension correlated
-            col_noise = cnoise.powerlaw_psd_gaussian(config["ACTION_NOISE_COLOR"], (network.action_dim, len(runner_state[2]), config["NUM_STEPS"]), _rng, 0.).T
+            if config["CONT_ACTIONS"]:
+                # args: exponent, size, rng, fmin.  transpose to have first dimension correlated
+                col_noise = cnoise.powerlaw_psd_gaussian(config["ACTION_NOISE_COLOR"], (network.action_dim, len(runner_state[2]), config["NUM_STEPS"]), _rng, 0.).T
+            else:
+                col_noise = None
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state[:-1], col_noise, config["NUM_STEPS"]
             )
@@ -275,20 +278,35 @@ def make_train(config):
                     train_state, _ = train_state
                     init_hstate, traj_batch, advantages, targets = batch_info
 
+                    # TODO: currently only captures output of ScannedRNN instead of both GRU layers
                     def _dead_neuron_ratio(activations):
+                        # print('activations keys: ', activations.keys())
+                        # print("activations['embedding']", activations['embedding'].keys())
+                        # print("activations['actor_embedding']", activations['actor_embedding'].keys())
+                        # print("activations['actor']", activations['actor'].keys())
+                        # print("activations['critic']", activations['critic'].keys())
+                        # for el in activations['actor_embedding_rnn']:
+                        #     print(type(el))
+                        #     print('actor_embedding_rnn', el.shape)
+                        # for el in activations['embedding_rnn']:
+                        #     print('embedding_rnncle', el.shape)
+
+                        # print("activations['actor_embedding_rnn']", activations['actor_embedding_rnn'])
+                        # print("activations['embedding_rnn']", activations['embedding_rnn'])
                         # jax.tree_util.tree_map(lambda x: jax.debug.print('{}', x.shape), activations)
                         # num_activations = jax.tree_util.tree_reduce(
                         #     lambda x, y: x + y,
                         #     jax.tree_util.tree_map(jnp.size, activations)
                         # )
-                        num_activations = len(jax.tree_util.tree_leaves(activations))
-                        # num_dead = jax.tree_util.tree_reduce(
-                        #     lambda x, y: x + y,
-                        #     jax.tree_util.tree_map(lambda x: (x<=0).sum(), activations)
-                        # )
+                        # num_activations = len(jax.tree_util.tree_leaves(activations))
+                        # sum over number of neurons
+                        num_activations = jax.tree_util.tree_reduce(
+                            lambda x, y: x + y,
+                            jax.tree_util.tree_map(lambda x: x.shape[-1], activations)
+                        )
                         num_dead = jax.tree_util.tree_reduce(
                             lambda x, y: x + y,
-                            jax.tree_util.tree_map(lambda x: (x < 0).all().astype(int), activations)
+                            jax.tree_util.tree_map(lambda x: (x <= 0).all(axis=(0,1)).sum(), activations)
                         )
                         dead_ratio = num_dead / num_activations
                         # jax.debug.print('size: {}, num_dead {}, dead_ratio: {}', num_activations, num_dead, dead_ratio)
@@ -323,7 +341,7 @@ def make_train(config):
                             )
                         
                         # RERUN NETWORK
-                        filter_neurons = lambda mdl, method_name: isinstance(mdl, nn.LayerNorm)
+                        filter_neurons = lambda mdl, method_name: isinstance(mdl, nn.LayerNorm) #or (mdl.name in {'rnn_0', 'rnn_1'})
 
                         if config['JOINT_ACTOR_CRITIC_NET']:
                             init_hstate = init_hstate[0]
@@ -351,7 +369,7 @@ def make_train(config):
                         #         pi.distribution.probs @ (jnp.arange(config["MAX_TASK_SIZE"] + 1) - action_mean[-1, -1])**2)
                         #     )
 
-                        # continuous actions (mean variance mutlivar. normal):
+                        # continuous actions (mean variance multivar. normal):
                         if config["CONT_ACTIONS"]:
                             # shape: (bsz, action_dim)
                             action_mean = pi._loc.squeeze()[-1]
@@ -359,22 +377,29 @@ def make_train(config):
                         # discrete actions:
                         else:
 
+                            # calculate action mean and std for last step in each sequence only to save computation
+
+                            # (bsz, num_actions, action_dim) @ ((action_dim, ) ---> (bsz, num_actions)
                             action_mean = pi.distribution.probs[-1] @ jnp.arange(config["MAX_TASK_SIZE"] + 1)
                             # print('action_mean: ', action_mean.shape)
+                            # jax.debug.print('action_mean: {}', action_mean.mean(axis=0))
 
                             # (seq_len, bsz, num_actions, action_dim) @ ((action_dim, num_actions) - (num_actions,))
+                            # NEW:
+                            # (bsz, num_actions, action_dim) @ ((action_dim, bsz, num_actions) - (bsz, num_actions,)) --> (bsz, num_actions)
                             action_std = jnp.sqrt(
-                                jnp.dot(
-                                    pi.distribution.probs[-1],
-                                    (
-                                        jnp.tile(
-                                            jnp.arange(config["MAX_TASK_SIZE"] + 1),
-                                            pi.event_shape + (1,),
-                                        ).T - action_mean[-1]
-                                    ) ** 2
-                                )
+                                pi.distribution.probs[-1].T \
+                                @ (
+                                    jnp.tile(
+                                        jnp.arange(config["MAX_TASK_SIZE"] + 1),
+                                        # pi.event_shape + (1,),
+                                        pi.event_shape + (action_mean.shape[0], 1),
+                                    ).T - action_mean
+                                ) ** 2
                             )
+                            # (bsz, n_actions)
                             action_std = jnp.diagonal(action_std.T)
+                            # jax.debug.print('action_std: {}', action_std.mean(axis=0))
 
                             # TODO: benchmark this alternative way to calc std
                             #       reduced number of matmul operations but for loop over num_actions
@@ -688,26 +713,26 @@ if __name__ == "__main__":
         "LR": 1e-5, # 1e-4, 5e-4, #5e-5, #1e-4,#2.5e-5,
         "LR_COS_CYCLES": 8,  # only relevant if ANNEAL_LR == "cosine"
         "ENT_COEF": 0.001, # 0., 0.001, 0, 0.1, 0.01, 0.001
-        "NUM_ENVS": 1024, #1024, #128, #64, 1000,
+        "NUM_ENVS": 512, #1024, #128, #64, 1000,
         "TOTAL_TIMESTEPS": 5e7,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
-        "NUM_MINIBATCHES": 8, #8, 4, 2,
-        "UPDATE_EPOCHS": 10, #30, 5,
+        "NUM_MINIBATCHES": 4, #8, 4, 2,
+        "UPDATE_EPOCHS": 3, #10, 30, 5,
         "NUM_STEPS": 20, #20, 512, 500,
         "CLIP_EPS": 0.2,  # TODO: should we change this to a different value? 
         
         "GAMMA": 0.999,
         "GAE_LAMBDA": 0.99, #0.95,
-        "VF_COEF": 0.1, #1., 0.01, 0.001, 1.0, 0.5,
-        "MAX_GRAD_NORM": 10, # 0.5, 2.0,
+        "VF_COEF": 0.5, #1., 0.01, 0.001, 1.0, 0.5,
+        "MAX_GRAD_NORM": 5, # 0.5, 2.0,
         "ANNEAL_LR": 'cosine', # 'linear', 'cosine', False
         "NORMALIZE_ENV": False,  # only norms observations (not reward)
         
         "ACTOR_TYPE": "RNN",
-        "HIDDEN_SIZE": 256,  # 128
+        "HIDDEN_SIZE": 128,  # 128
         "ACTION_NOISE_COLOR": 2.,  # 2  # only relevant if CONT_ACTIONS == True
 
         "RESET_ADAM_COUNT": True,  # resets Adam's t (count) every update
-        "ADAM_B1": 0.99,
+        "ADAM_B1": 0.99,  # 0.9
         "ADAM_B2": 0.99,
         "ADAM_EPS": 1e-5,  # 1e-4, 1e-6
         
@@ -715,11 +740,11 @@ if __name__ == "__main__":
         "WINDOW_INDEX": -1, # 2 fix random episode #-1,
         "DEBUG": True,
         
-        "TASKSIDE": "sell", # "random", "buy", "sell"
+        "TASKSIDE": "random", # "random", "buy", "sell"
         "REWARD_LAMBDA": 1., #0.001,
         "ACTION_TYPE": "pure", # "delta"
-        "MAX_TASK_SIZE": 500,
-        "TASK_SIZE": 500, # 500,
+        "MAX_TASK_SIZE": 100,
+        "TASK_SIZE": 100, # 500,
         "EPISODE_TIME": 60 * 1, # 60 * 1 --> 1 minute
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
         "CONT_ACTIONS": False,  # True

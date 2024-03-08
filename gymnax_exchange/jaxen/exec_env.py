@@ -173,7 +173,7 @@ class ExecutionEnv(BaseLOBEnv):
         self.max_task_size = max_task_size
         self.rewardLambda = rewardLambda
         # TODO: fix!! this can be overwritten in the base class
-        self.n_actions = 2 # 4: (FT, M, NT, PP), 3: (FT, NT, PP), 2 (FT, NT)
+        self.n_actions = 2 # 4: (FT, M, NT, PP), 3: (FT, NT, PP), 2 (FT, NT), 1 (FT)
 
         #Call base-class init function
         super().__init__(alphatradePath, window_index, ep_type)
@@ -592,13 +592,16 @@ class ExecutionEnv(BaseLOBEnv):
 
             quants = action.astype(jnp.int32)
             prices = jnp.array(price_levels[:-1])
-            # if mid_price == near_touch_price: combine orders into one
-            return jax.lax.cond(
-                price_levels[1] == price_levels[2],
-                combine_mid_nt,
-                lambda q, p: (q, p),
-                quants, prices
-            )
+            if self.n_actions == 4:
+                # if mid_price == near_touch_price: combine orders into one
+                return jax.lax.cond(
+                    price_levels[1] == price_levels[2],
+                    combine_mid_nt,
+                    lambda q, p: (q, p),
+                    quants, prices
+                )
+            else:
+                return quants, prices
         
         # def market_quant_price(price_levels: jax.Array, state: EnvState, action: jax.Array):
         #     mkt_quant = state.task_to_execute - state.quant_executed
