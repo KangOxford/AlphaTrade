@@ -62,8 +62,8 @@ if __name__ == "__main__":
             "TASKSIDE":'buy'
         }
     import flax
-    from gymnax_exchange.jaxrl.ppoRnnExecCont import ActorCriticRNN
-    from gymnax_exchange.jaxrl.ppoRnnExecCont import ScannedRNN
+    from gymnax_exchange.jaxrl.ppo import ActorCriticRNN
+    from gymnax_exchange.jaxrl.ppo import ScannedRNN
     with open('/homes/80/kang/AlphaTrade/params_file_smooth-paper-19_09-23_04-30', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_prime-armadillo-72_07-17_11-02', 'rb') as f:
     # with open('/homes/80/kang/AlphaTrade/params_file_firm-fire-68_07-17_09-53', 'rb') as f:
