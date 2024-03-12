@@ -158,11 +158,11 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self, alphatradePath, window_selector, ep_type="fixed_time"):
+    def __init__(self, alphatradePath, window_selector, sliceTimeWindow, ep_type="fixed_time"):
         super().__init__()
-        self.window_selector= window_selector
+        self.window_selector = window_selector
         self.ep_type = ep_type # fixed_steps, fixed_time
-        self.sliceTimeWindow = 30*60 # counted by seconds, 1800s=0.5h
+        self.sliceTimeWindow = sliceTimeWindow # counted by seconds, 1800s=0.5h
         self.stepLines = 100
         self.day_start = 34200  # 09:30
         self.day_end = 57600  # 16:00
@@ -298,9 +298,9 @@ class BaseLOBEnv(environment.Environment):
         try:
             with open(pkl_file_name, 'rb') as f:
                 self.init_states_array = pickle.load(f)
-            print("LOAD FROM PKL")
+                print("LOADING STATES FROM PKL...")
         except:
-            print("DO COMPUTATION")
+            print("COMPUTING INIT STATES...")
             states = [self._get_state_from_data(self.messages[starts[i]],
                                                 self.books[i],
                                                 self.max_messages_in_episode_arr[i]
@@ -310,9 +310,10 @@ class BaseLOBEnv(environment.Environment):
                         for i in range(self.n_windows)]
             #jax.debug.print("{}",states)
             self.init_states_array=tree_stack(states)
+            print("SAVING STATES TO PKL...")
             with open(pkl_file_name, 'wb') as f:
-                pickle.dump(self.init_states_array, f) 
-        print("FINISH: pre-reset in the initialization")
+                pickle.dump(self.init_states_array, f)
+        print("DONE: pre-reset in the initialization")
 
     def _get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
         """Return dummy observation."""

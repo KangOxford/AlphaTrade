@@ -1,5 +1,5 @@
 import functools
-from typing import Optional, Sequence, NamedTuple, Any, Dict
+from typing import Callable, Optional, Sequence, NamedTuple, Any, Dict
 import jax
 import jax.numpy as jnp
 from jax._src import dtypes
@@ -53,10 +53,10 @@ class ScannedRNN(nn.Module):
             jax.random.PRNGKey(0), (batch_size,), hidden_size
         )
 
-
 class Encoder(nn.Module):
     name: str = "encoder"
     config: Dict
+    act_fn: Callable
 
     def setup(self):
         self.dense_0 = nn.Dense(
@@ -66,17 +66,22 @@ class Encoder(nn.Module):
         self.rnn = ScannedRNN(name=self.name + "_rnn")
 
     def __call__(self, hidden, obs, dones):
+        # jax.debug.print('encoder obs: {}, hidden {}', obs, hidden)
         x = self.dense_0(obs)
         x = self.ln_0(x)
-        x = nn.relu(x)
+        # jax.debug.print('bef {}', x)
+        x = self.act_fn(x)
+        # jax.debug.print('aft {}', x)
         rnn_in = (x, dones)
         hidden, embedding = self.rnn(hidden, rnn_in)
+        print('hidden', hidden.shape, 'embedding', embedding.shape)
         return hidden, embedding
     
 
 class ActorCont(nn.Module):
     action_dim: Sequence[int]
     config: Dict
+    act_fn: Callable
 
     def setup(self):
         self.dense_0 = nn.Dense(self.config["HIDDEN_SIZE"], kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0.0))
@@ -97,7 +102,7 @@ class ActorCont(nn.Module):
     def __call__(self, actor_embedding):
         actor_net = self.dense_0(actor_embedding)
         actor_net = self.ln_0(actor_net)
-        actor_net = nn.relu(actor_net)
+        actor_net = self.act_fn(actor_net)
         
         actor_mean = self.dense_mean(actor_net)
         # make sure the action mean is within the bounds (but allow slightly negative values)
@@ -128,6 +133,7 @@ class ActorCont(nn.Module):
 class ActorDisc(nn.Module):
     action_dim: Sequence[int]
     config: Dict
+    act_fn: Callable
 
     def setup(self):
         self.dense_0 = nn.Dense(self.config["HIDDEN_SIZE"], kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0.0))
@@ -135,7 +141,7 @@ class ActorDisc(nn.Module):
 
         self.action_outs = [
             nn.Dense(
-                self.config['MAX_TASK_SIZE'] + 1,  # +1 for the 0 action
+                int(self.config['MAX_TASK_SIZE'] // self.config['REDUCE_ACTION_SPACE_BY']) + 1,  # +1 for the 0 action
                 kernel_init=orthogonal(0.01),
                 bias_init=constant(0.0)
                 # bias_init=biased_constant(0.0, 10.0)  # bias for 0 action is 10
@@ -145,14 +151,14 @@ class ActorDisc(nn.Module):
     def __call__(self, actor_embedding):
         actor_net = self.dense_0(actor_embedding)
         actor_net = self.ln_0(actor_net)
-        actor_net = nn.relu(actor_net)
-        # print('actor_net', actor_net.shape, actor_net.dtype)
+        actor_net = self.act_fn(actor_net)
+        print('actor_net', actor_net.shape, actor_net.dtype)
 
         action_logits = jnp.moveaxis(
             jnp.array([out(actor_net) for out in self.action_outs]),
             0, -2
         )
-        # print('action_logits', action_logits.shape, action_logits.dtype)
+        print('action_logits', action_logits.shape, action_logits.dtype)
         pi = distrax.Independent(
             distrax.Categorical(logits=action_logits),
             1
@@ -162,6 +168,7 @@ class ActorDisc(nn.Module):
 
 class Critic(nn.Module):
     config: Dict
+    act_fn: Callable
 
     def setup(self):
         self.dense_0 = nn.Dense(self.config["HIDDEN_SIZE"], kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0.0))
@@ -177,7 +184,7 @@ class Critic(nn.Module):
     def __call__(self, embedding):
         critic = self.dense_0(embedding)
         critic = self.ln_0(critic)
-        critic = nn.relu(critic)
+        critic = self.act_fn(critic)
 
         # critic = self.dense_1(critic)
         # critic = self.ln_1(critic)
@@ -190,21 +197,38 @@ class Critic(nn.Module):
 class ActorCriticRNN(nn.Module):
     action_dim: Sequence[int]
     config: Dict
+    activation_fn_str: str = "relu"
 
     def setup(self):
-        self.encoder = Encoder(name='embedding', config=self.config)
-        self.critic = Critic(self.config)
-        if self.config['CONT_ACTIONS']:
-            self.actor = ActorCont(self.action_dim, self.config)
+        if self.activation_fn_str == "relu":
+            self.act_fn = nn.relu
+        elif self.activation_fn_str == "leaky_relu":
+            self.act_fn = nn.leaky_relu
+        elif self.activation_fn_str == "swish":
+            self.act_fn = nn.swish
+        elif self.activation_fn_str == "tanh":
+            self.act_fn = nn.tanh
+        elif self.activation_fn_str == "sigmoid":
+            self.act_fn = nn.sigmoid
         else:
-            self.actor = ActorDisc(self.action_dim, self.config)
+            raise ValueError(f"Invalid activation_fn_str: {self.activation_fn_str}")
+
+        self.encoder = Encoder(name='embedding', config=self.config, act_fn=self.act_fn)
+        self.critic = Critic(self.config, act_fn=self.act_fn)
+        if self.config['CONT_ACTIONS']:
+            self.actor = ActorCont(self.action_dim, self.config, act_fn=self.act_fn)
+        else:
+            self.actor = ActorDisc(self.action_dim, self.config, act_fn=self.act_fn)
         if not self.config['JOINT_ACTOR_CRITIC_NET']:
-            self.actor_embedding = Encoder(name='actor_embedding', config=self.config)
+            self.actor_embedding = Encoder(name='actor_embedding', config=self.config, act_fn=self.act_fn)
 
     def __call__(self, hidden, x):
         obs, dones = x
         if not self.config['JOINT_ACTOR_CRITIC_NET']:
             hidden, hidden_actor = hidden
+
+        # jax.debug.print('obs {}', obs)
+        # jax.debug.print('hidden {}', hidden)
 
         hidden, embedding = self.encoder(hidden, obs, dones)
         self.sow("intermediates", "embedding_rnn", embedding)
@@ -223,6 +247,8 @@ class ActorCriticRNN(nn.Module):
 
         if not self.config['JOINT_ACTOR_CRITIC_NET']:
             hidden = (hidden, hidden_actor)
+
+        # jax.debug.print('pi {}', pi.sample(seed=1))
 
         return hidden, pi, value
 

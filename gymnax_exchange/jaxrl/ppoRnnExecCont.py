@@ -21,8 +21,10 @@ import chex
 sys.path.append('../purejaxrl')
 sys.path.append('../AlphaTrade')
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper,ClipAction, VecEnv,NormalizeVecObservation,NormalizeVecReward
+from purejaxrl.experimental.s5.s5 import StackedEncoderModel#, init_S5SSM, make_DPLR_HiPPO
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxrl.actorCritic import ActorCriticRNN, ScannedRNN
+from gymnax_exchange.jaxrl import actorCriticS5
 import os
 import flax
 from jax.lib import xla_bridge 
@@ -75,6 +77,7 @@ def make_train(config):
         task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
         action_type=config["ACTION_TYPE"],
+        episode_time=config["EPISODE_TIME"],
         max_task_size=config["MAX_TASK_SIZE"],
         rewardLambda=config["REWARD_LAMBDA"],
         ep_type=config["DATA_TYPE"],
@@ -120,7 +123,7 @@ def make_train(config):
 
     def train(rng):
         # INIT NETWORK
-        network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
+        
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -129,13 +132,26 @@ def make_train(config):
             jnp.zeros((1, config["NUM_ENVS"])),
         )
 
-        if config['JOINT_ACTOR_CRITIC_NET']:
-            init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+        if config['RNN_TYPE'] == "GRU":
+            network = ActorCriticRNN(env.action_space(env_params).shape[0], config=config)
+
+            if config['JOINT_ACTOR_CRITIC_NET']:
+                init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+            else:
+                init_hstate = (
+                    ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
+                    ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
+                )
+        elif config['RNN_TYPE'] == "S5":
+            network = actorCriticS5.ActorCriticS5(env.action_space(env_params).shape[0], config=config)
+
+            if config['JOINT_ACTOR_CRITIC_NET']:
+                init_hstate = actorCriticS5.ActorCriticS5.initialize_carry(
+                    config["NUM_ENVS"], actorCriticS5.ssm_size, actorCriticS5.n_layers)
+            else:
+                raise NotImplementedError('Separate actor critic nets not supported for S5 yet.')
         else:
-            init_hstate = (
-                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
-                ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
-            )
+            raise NotImplementedError('Only GRU and S5 RNN types supported for now.')
 
         network_params = network.init(_rng, init_hstate, init_x)
         
@@ -160,13 +176,6 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
-        # if config['JOINT_ACTOR_CRITIC_NET']:
-        #     init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
-        # else:
-        #     init_hstate = (
-        #         ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"]),
-        #         ScannedRNN.initialize_carry(config["NUM_ENVS"], config["HIDDEN_SIZE"])
-        #     )
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
@@ -198,9 +207,9 @@ def make_train(config):
                     action = action_noise * a_std + a_mean
                     # jax.debug.print('a_mean {}, a_std {}, action_noise{}, action {}', a_mean, a_std, action_noise, action)
                 else:
-                    action = pi.sample(seed=_rng)
+                    action = pi.sample(seed=_rng) * config["REDUCE_ACTION_SPACE_BY"]
 
-                log_prob = pi.log_prob(action)
+                log_prob = pi.log_prob(action // config["REDUCE_ACTION_SPACE_BY"])
 
                 # print('action {}, log_prob {}', action.shape, log_prob.shape)
                 # jax.debug.print('action {}, log_prob {}', action, log_prob)
@@ -254,6 +263,7 @@ def make_train(config):
                         transition.value,
                         transition.reward,
                     )
+                    # jax.debug.print('value {} reward {}', value, reward)
                     delta = reward + config["GAMMA"] * next_value * (1 - done) - value
                     gae = (
                         delta
@@ -343,15 +353,16 @@ def make_train(config):
                         # RERUN NETWORK
                         filter_neurons = lambda mdl, method_name: isinstance(mdl, nn.LayerNorm) #or (mdl.name in {'rnn_0', 'rnn_1'})
 
-                        if config['JOINT_ACTOR_CRITIC_NET']:
-                            init_hstate = init_hstate[0]
-                        else:
-                            init_hstate = (init_hstate[0][0], init_hstate[1][0])
+                        if config['RNN_TYPE'] == "GRU":
+                            if config['JOINT_ACTOR_CRITIC_NET']:
+                                init_hstate = init_hstate[0]
+                            else:
+                                init_hstate = (init_hstate[0][0], init_hstate[1][0])
                         (_, pi, value), network_state = network.apply(
                             params, init_hstate, (traj_batch.obs, traj_batch.done),
                             capture_intermediates=filter_neurons, mutable=["intermediates"]
                         )
-                        log_prob = pi.log_prob(traj_batch.action)
+                        log_prob = pi.log_prob(traj_batch.action // config["REDUCE_ACTION_SPACE_BY"])
                         activations = network_state["intermediates"]
                         dead_ratio = _dead_neuron_ratio(activations)
                         # norm of trajectory batch observation
@@ -380,7 +391,7 @@ def make_train(config):
                             # calculate action mean and std for last step in each sequence only to save computation
 
                             # (bsz, num_actions, action_dim) @ ((action_dim, ) ---> (bsz, num_actions)
-                            action_mean = pi.distribution.probs[-1] @ jnp.arange(config["MAX_TASK_SIZE"] + 1)
+                            action_mean = pi.distribution.probs[-1] @ jnp.arange(0, config["MAX_TASK_SIZE"] + 1, config["REDUCE_ACTION_SPACE_BY"])
                             # print('action_mean: ', action_mean.shape)
                             # jax.debug.print('action_mean: {}', action_mean.mean(axis=0))
 
@@ -391,7 +402,7 @@ def make_train(config):
                                 pi.distribution.probs[-1].T \
                                 @ (
                                     jnp.tile(
-                                        jnp.arange(config["MAX_TASK_SIZE"] + 1),
+                                        jnp.arange(0, config["MAX_TASK_SIZE"] + 1, config["REDUCE_ACTION_SPACE_BY"]),
                                         # pi.event_shape + (1,),
                                         pi.event_shape + (action_mean.shape[0], 1),
                                     ).T - action_mean
@@ -552,13 +563,16 @@ def make_train(config):
                 )
                 return update_state, total_loss
 
-            if config["JOINT_ACTOR_CRITIC_NET"]:
-                init_hstate = initial_hstate[None, :]  # TBH
+            if config["RNN_TYPE"] == "GRU":
+                if config["JOINT_ACTOR_CRITIC_NET"]:
+                    init_hstate = initial_hstate[None, :]  # TBH
+                else:
+                    init_hstate = (
+                        initial_hstate[0][None, :],
+                        initial_hstate[1][None, :]
+                    )
             else:
-                init_hstate = (
-                    initial_hstate[0][None, :],
-                    initial_hstate[1][None, :]
-                )
+                init_hstate = initial_hstate
 
             if config["RESET_ADAM_COUNT"]:
                 train_state = reset_adam(train_state)
@@ -710,25 +724,26 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     ppo_config = {
-        "LR": 1e-5, # 1e-4, 5e-4, #5e-5, #1e-4,#2.5e-5,
+        "LR": 1e-4, # 1e-4, 5e-4, #5e-5, #1e-4,#2.5e-5,
         "LR_COS_CYCLES": 8,  # only relevant if ANNEAL_LR == "cosine"
         "ENT_COEF": 0.001, # 0., 0.001, 0, 0.1, 0.01, 0.001
-        "NUM_ENVS": 512, #1024, #128, #64, 1000,
+        "NUM_ENVS": 256, #512, 1024, #128, #64, 1000,
         "TOTAL_TIMESTEPS": 5e7,  # 1e8, 5e7, # 50MIL for single data window convergence #,1e8,  # 6.9h
         "NUM_MINIBATCHES": 4, #8, 4, 2,
-        "UPDATE_EPOCHS": 3, #10, 30, 5,
-        "NUM_STEPS": 20, #20, 512, 500,
+        "UPDATE_EPOCHS": 10, #10, 30, 5,
+        "NUM_STEPS": 10, #20, 512, 500,
         "CLIP_EPS": 0.2,  # TODO: should we change this to a different value? 
         
         "GAMMA": 0.999,
         "GAE_LAMBDA": 0.99, #0.95,
-        "VF_COEF": 0.5, #1., 0.01, 0.001, 1.0, 0.5,
+        "VF_COEF": 1.0, #1., 0.01, 0.001, 1.0, 0.5,
         "MAX_GRAD_NORM": 5, # 0.5, 2.0,
         "ANNEAL_LR": 'cosine', # 'linear', 'cosine', False
         "NORMALIZE_ENV": False,  # only norms observations (not reward)
         
-        "ACTOR_TYPE": "RNN",
-        "HIDDEN_SIZE": 128,  # 128
+        "RNN_TYPE": "S5",  # "GRU", "S5"
+        "HIDDEN_SIZE": 64,  # 128
+        "ACTIVATION_FN": "relu", # "tanh", "relu", "leaky_relu", "sigmoid", "swish"
         "ACTION_NOISE_COLOR": 2.,  # 2  # only relevant if CONT_ACTIONS == True
 
         "RESET_ADAM_COUNT": True,  # resets Adam's t (count) every update
@@ -745,11 +760,12 @@ if __name__ == "__main__":
         "ACTION_TYPE": "pure", # "delta"
         "MAX_TASK_SIZE": 100,
         "TASK_SIZE": 100, # 500,
-        "EPISODE_TIME": 60 * 1, # 60 * 1 --> 1 minute
+        "EPISODE_TIME": 60 * 5, # time in seconds
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
         "CONT_ACTIONS": False,  # True
-        "JOINT_ACTOR_CRITIC_NET": False,  # True
+        "JOINT_ACTOR_CRITIC_NET": True,  # True, False
         "ACTOR_STD": "state_dependent",  # 'state_dependent', 'param', 'fixed'
+        "REDUCE_ACTION_SPACE_BY": 10,
       
         # "ATFOLDER": "./training_oneDay/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
         "ATFOLDER": "./training_oneMonth/", #"/homes/80/kang/AlphaTrade/training_oneDay/",
