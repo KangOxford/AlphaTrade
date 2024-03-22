@@ -238,6 +238,7 @@ class ActorCriticRNN(nn.Module):
             actor_embedding = embedding
         else:
             hidden_actor, actor_embedding = self.actor_embedding(hidden_actor, obs, dones)
+            # manually save intermediate values as the layer norm inside the module isn't recorded automatically
             self.sow("intermediates", "actor_embedding_rnn", actor_embedding)
 
         pi = self.actor(actor_embedding)

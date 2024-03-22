@@ -76,7 +76,7 @@ class ActorCriticS5(nn.Module):
         # jax.debug.print('hidden {}', hidden)
 
         hidden_enc, embedding = self.encoder(hidden_enc, obs, dones)
-        self.sow("intermediates", "embedding_s5", embedding)
+        # self.sow("intermediates", "embedding_s5", embedding)
 
         ## ACTOR
         if self.config['JOINT_ACTOR_CRITIC_NET']:

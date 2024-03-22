@@ -156,6 +156,7 @@ class EnvState(BaseEnvState):
     trade_duration: float
     quant_passive_2: int
     price_passive_2: int
+    delta_time: float
 
 @struct.dataclass
 class EnvParams(BaseEnvParams):
@@ -303,7 +304,7 @@ class ExecutionEnv(BaseLOBEnv):
         # TODO: consider adding quantity before (in priority) to each price / level
 
         # TODO: use the agent quant identification from the separate function _get_executed_by_level instead of _get_reward
-        reward, extras = self._get_reward(state, trades)
+        reward, extras = self._get_reward(state, params, trades)
         quant_executed = state.quant_executed + extras["agentQuant"]
         # CAVE: uses seconds only (not ns)
         trade_duration_step = (agent_trades[:, 1] / state.task_to_execute * (agent_trades[:, -2] - state.init_time[0])).sum()
@@ -339,7 +340,8 @@ class ExecutionEnv(BaseLOBEnv):
             is_sell_task = state.is_sell_task,
             trade_duration = trade_duration,
             price_passive_2 = price_passive_2,
-            quant_passive_2 = quant_passive_2
+            quant_passive_2 = quant_passive_2,
+            delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
         info = {
@@ -356,6 +358,7 @@ class ExecutionEnv(BaseLOBEnv):
             "price_drift_rm": state.price_drift_rm,
             "vwap_rm": state.vwap_rm,
             "advantage_reward": extras["advantage"],
+            "drift_reward": extras["drift"],
             "trade_duration": state.trade_duration,
             "mkt_forced_quant": mkt_exec_quant + doom_quant,
             "doom_quant": doom_quant, 
@@ -442,7 +445,7 @@ class ExecutionEnv(BaseLOBEnv):
             init_price=M,
             task_to_execute=self.max_task_size,
             quant_executed=0,
-            total_revenue=0,
+            total_revenue=0.,
             slippage_rm=0.,
             price_adv_rm=0.,
             price_drift_rm=0.,
@@ -451,7 +454,8 @@ class ExecutionEnv(BaseLOBEnv):
             trade_duration=0.,
             # updated on reset:
             quant_passive_2=0,
-            price_passive_2=0
+            price_passive_2=0,
+            delta_time=0.,
         )
 
     def _reshape_action(self, action : jax.Array, state: EnvState, params : EnvParams, key:chex.PRNGKey) -> jax.Array:
@@ -659,7 +663,9 @@ class ExecutionEnv(BaseLOBEnv):
         #     return quants, jnp.asarray((price_levels[-1], -1, -1, -1), jnp.int32)
         
         def buy_task_prices(best_ask, best_bid):
-            FT = best_ask
+            # FT = best_ask
+            # essentially convert to market order (20% higher price than best ask)
+            FT = ((best_ask * 1.2) // self.tick_size * self.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
             M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
             NT = best_bid
@@ -675,7 +681,9 @@ class ExecutionEnv(BaseLOBEnv):
                 return FT, MKT
 
         def sell_task_prices(best_ask, best_bid):
-            FT = best_bid
+            # FT = best_bid
+            # essentially convert to market order (20% lower price than best bid)
+            FT = ((best_bid * 0.8) // self.tick_size * self.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
             M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
                  * self.tick_size).astype(jnp.int32)
@@ -846,7 +854,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, quant_still_left
 
-    def _get_reward(self, state:EnvState, trades:chex.Array) -> jnp.int32:
+    def _get_reward(self, state: EnvState, params: EnvParams, trades: chex.Array) -> jnp.int32:
         # ========== get reward and revenue ==========
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -855,11 +863,16 @@ class ExecutionEnv(BaseLOBEnv):
         mask2 = ((self.trader_unique_id < executed[:, 2]) & (executed[:, 2] < 0)) \
               | ((self.trader_unique_id < executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
+        otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
         # jax.debug.print('agentTrades\n {}', agentTrades[:30])
         agentQuant = agentTrades[:,1].sum() # new_execution quants
         # ---------- used for vwap, revenue ----------
-        vwapFunc = lambda executed: jnp.nan_to_num((executed[:,0]//self.tick_size* executed[:,1]).sum()/(executed[:,1]).sum(),0.0) # caution: this value can be zero (executed[:,1]).sum()
-        vwap = vwapFunc(executed) # average_price of all the tradings, from the varaible executed
+        vwapFunc = lambda tr: jnp.nan_to_num(
+            (tr[:,0] // self.tick_size * tr[:,1]).sum() / (tr[:,1]).sum(),
+            state.init_price  # if no trades happened, use init price
+        ) # caution: this value can be zero (executed[:,1]).sum()
+        # only use other traders' trades for value weighted price
+        vwap = vwapFunc(otherTrades) # average_price of all the tradings, from the varaible executed
         revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_val,new_val:(average_val*state.step_counter+new_val)/(state.step_counter+1)
@@ -868,8 +881,10 @@ class ExecutionEnv(BaseLOBEnv):
         slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         # ---------- used for advantage and drift ----------
-        advantage = revenue - vwap * agentQuant # advantage_vwap
-        drift = agentQuant * (vwap - state.init_price//self.tick_size)
+        # switch sign for buy task
+        direction_switch = jnp.sign(state.is_sell_task * 2 - 1)
+        advantage = direction_switch * (revenue - vwap * agentQuant) # advantage_vwap
+        drift = direction_switch * agentQuant * (vwap - state.init_price//self.tick_size)
         # ---------- compute the final reward ----------
         # rewardValue = revenue 
         # rewardValue =  advantage
@@ -879,28 +894,35 @@ class ExecutionEnv(BaseLOBEnv):
         # rewardValue = rewardValue1 - rewardValue2
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
 
-        rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
-        # rewardValue = advantage + params.reward_lambda * drift
-        reward = jnp.sign(state.is_sell_task * 2 - 1) * rewardValue # if no value agentTrades then the reward is set to be zero
+        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        reward = advantage + params.reward_lambda * drift
+        reward_lam1 = direction_switch * (
+            revenue - (state.init_price // self.tick_size) * agentQuant
+        )
+        
+        # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {}', reward, reward_lam1, state.is_sell_task, advantage, drift)
+        
         # ---------- normalize the reward ----------
         # reward /= 10_000
-        reward /= 100_000
+        reward_scaled = reward / 100_000
         # reward /= params.avg_twap_list[state.window_index]
-        return reward,{"agentQuant":agentQuant,
-                       "revenue":revenue,
-                       "slippage_rm":slippage_rm,
-                       "price_adv_rm":price_adv_rm,
-                       "price_drift_rm":price_drift_rm,
-                       "vwap_rm":vwap_rm,
-                       "advantage":advantage,
-                       "drift":drift}
+        return reward_scaled, {
+            "agentQuant": agentQuant,
+            "revenue": reward_lam1 / 100_000,  # revenue is not informative if direction is random
+            "slippage_rm": slippage_rm,
+            "price_adv_rm": price_adv_rm,
+            "price_drift_rm": price_drift_rm,
+            "vwap_rm": vwap_rm,
+            "advantage": advantage,
+            "drift": drift
+        }
 
     def _get_obs(
             self,
             state: EnvState,
-            params:EnvParams,
-            normalize:bool = True,
-            flatten:bool = True,
+            params: EnvParams,
+            normalize: bool = True,
+            flatten: bool = True,
         ) -> chex.Array:
         """ Return observation from raw state trafo. """
         # NOTE: only uses most recent observation from state
@@ -912,16 +934,18 @@ class ExecutionEnv(BaseLOBEnv):
         time = state.time[0] + state.time[1]/1e9
         time_elapsed = time - (state.init_time[0] + state.init_time[1]/1e9)
         # print('prev_action_shape', state.prev_action.shape)
+        sign_switch = 2 * state.is_sell_task - 1
         obs = {
             "is_sell_task": state.is_sell_task,
-            "p_aggr": quote_aggr[0],
-            "p_pass": quote_pass[0],
+            "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task
+            "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
             "q_aggr": quote_aggr[1],
             "q_pass": quote_pass[1],
             "q_pass2": state.quant_passive_2,
             # "q_before2": None, # how much quantity lies above this price level
             "time": time,
+            "delta_time": state.delta_time,
             # "episode_time": state.time - state.init_time,
             "time_remaining": params.episode_time - time_elapsed,
             "init_price": state.init_price,
@@ -946,13 +970,14 @@ class ExecutionEnv(BaseLOBEnv):
         p_std = 1e6
         means = {
             "is_sell_task": 0,
-            "p_aggr": state.init_price, #p_mean,
-            "p_pass": state.init_price, #p_mean,
+            "p_aggr": state.init_price * sign_switch, #p_mean,
+            "p_pass": state.init_price * sign_switch, #p_mean,
             "spread": 0,
             "q_aggr": 0,
             "q_pass": 0,
             "q_pass2": 0,
             "time": 0,
+            "delta_time": 0,
             # "episode_time": jnp.array([0, 0]),
             "time_remaining": 0,
             "init_price": 0, #p_mean,
@@ -975,6 +1000,7 @@ class ExecutionEnv(BaseLOBEnv):
             "q_pass": 100,
             "q_pass2": 100,
             "time": 1e5,
+            "delta_time": 10,
             # "episode_time": jnp.array([1e3, 1e9]),
             "time_remaining": self.sliceTimeWindow, # 10 minutes = 600 seconds
             "init_price": 1e7, #p_std,
@@ -1093,7 +1119,7 @@ class ExecutionEnv(BaseLOBEnv):
         """Observation space of the environment."""
         #space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
         # space = spaces.Box(-10, 10, (21,), dtype=jnp.float32) 
-        space = spaces.Box(-10, 10, (22,), dtype=jnp.float32) 
+        space = spaces.Box(-10, 10, (23,), dtype=jnp.float32) 
         return space
 
     def state_space(self, params: EnvParams) -> spaces.Dict:
