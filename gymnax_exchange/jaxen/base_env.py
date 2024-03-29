@@ -124,9 +124,9 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
             return message
         message = removeDeletes(message)
         def addTraderId(message):
-            import warnings
-            from pandas.errors import SettingWithCopyWarning
-            warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
+            # import warnings
+            # from pandas.errors import SettingWithCopyWarning
+            # warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
             message['trader_id'] = message['order_id']
             return message
 
@@ -134,8 +134,8 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
         orderbook.iloc[valid_index,:].reset_index(inplace=True, drop=True)
         return message,orderbook
     print("PreProcessingMassegeOB")
-    pairs = Parallel(n_jobs=64)(delayed(preProcessingMassegeOB)(message, orderbook) for message, orderbook in tqdm(zip(messages, orderbooks), total=len(messages)))            
-    # pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages))]
+    # pairs = Parallel(n_jobs=64)(delayed(preProcessingMassegeOB)(message, orderbook) for message, orderbook in tqdm(zip(messages, orderbooks), total=len(messages)))            
+    pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages))]
     # pairs = [preProcessingMassegeOB(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
     messages, orderbooks = zip(*pairs)
     # breakpoint()
@@ -155,7 +155,8 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
         slicedCubes_withOB = zip(slicedCubes, init_OBs)
         return slicedCubes_withOB
     print("SliceWithoutOverlap")
-    slicedCubes_withOB_list = Parallel(n_jobs=64)(delayed(sliceWithoutOverlap)(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages)))
+    # slicedCubes_withOB_list = Parallel(n_jobs=64)(delayed(sliceWithoutOverlap)(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages)))
+    slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages))]
     del messages, orderbooks, pairs
     # slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in tqdm(zip(messages, orderbooks), total=len(messages))]
     # slicedCubes_withOB_list = [sliceWithoutOverlap(message, orderbook) for message,orderbook in zip(messages,orderbooks)]
@@ -167,7 +168,7 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
     Cubes_withOB = nestlist2flattenlist(slicedCubes_withOB_list)
     del slicedCubes_withOB_list
     # jax.debug.breakpoint()
-    
+    gc.collect()
     # breakpoint(); Cubes_withOB[89][0].shape
     
     
@@ -194,9 +195,9 @@ def load_LOBSTER(sliceTimeWindow, stepLines, messagePath, orderbookPath, start_t
             assert start_idx_array.shape == (26, 4), f"Error code B10"
             return start_idx_array
         print("Get_start_idx_array")
-        return Parallel(n_jobs=16)(delayed(get_start_idx_array)(idx) for idx in tqdm(range(len(Cubes_withOB)))) # start_idx_array_list
+        # return Parallel(n_jobs=16)(delayed(get_start_idx_array)(idx) for idx in tqdm(range(len(Cubes_withOB)))) # start_idx_array_list
         # return Parallel(n_jobs=4)(delayed(get_start_idx_array)(idx) for idx in tqdm(range(len(Cubes_withOB)))) # start_idx_array_list
-        # return [get_start_idx_array(idx) for idx in tqdm(range(len(Cubes_withOB)))] # start_idx_array_list
+        return [get_start_idx_array(idx) for idx in tqdm(range(len(Cubes_withOB)))] # start_idx_array_list
     start_idx_array_list = get_start_idx_array_list()
     
     Cubes_withOB = [(cube[:,:,:-1], OB) for cube, OB in Cubes_withOB] # remove_ifTraded

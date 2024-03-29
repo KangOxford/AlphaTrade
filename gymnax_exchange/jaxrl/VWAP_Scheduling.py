@@ -1,5 +1,9 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
+import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"   
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"   
+
 
 import os
 import sys
@@ -9,7 +13,7 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
 import datetime
 import gc
 
@@ -212,6 +216,7 @@ def main1(symbol):
 
 
         
+    # ATFolder = f"/scratch/local/kang/SP500/{symbol}_data"
     ATFolder = f"/homes/80/kang/SP500/{symbol}_data"
     # ATFolder = f"/homes/80/kang/SP500/ABC_data"
     # ATFolder = f"/homes/80/kang/SP500/ACN_data"
@@ -354,10 +359,20 @@ def main1(symbol):
     
 
 if __name__ == "__main__":
+
+    # ATFolder = f"/homes/80/kang/SP500/{symbol}_data"
+    # ATFolder = f"/scratch/local/kang/SP500/{symbol}_data"
+    # AAPL_data  AEP_data  GS_allocation_array_final_rm.pkl  HP_data  KLAC_data  MGM_data  MPC_data  ROK_data
+ 
     # symbols = ["ABC"]
     # symbols = ["ACN"]
     # symbols = ["AAP"]
-    top_symbols = ['BAC']
+    # top_symbols = ['BAC']
+    # top_symbols = ['HP']
+    top_symbols = ['AEP']
+    # top_symbols = ['FITB']
+    # top_symbols = ['GPN']
+    # top_symbols = ['GS']
     # top_symbols = ["AAPL", 'AMZN', 'BAC', 'SPY', 'NVDA', 'EEM', "F", 'MU', 'GOOGL', 'GOOG']
     #  ABMD
     #  IFF
@@ -373,7 +388,14 @@ if __name__ == "__main__":
     # symbols = ["AAL", "ABT", "ADBE"  ,"ABBV" , "ABMD"]
     for symbol in top_symbols:
     # for symbol in symbols:
-        try:
-            main1(symbol)
-        except:
-            print(f"*** No {symbol} ***")
+        main1(symbol)
+        # try:
+        #     main1(symbol)
+        # except:
+        #     print(f"*** No {symbol} ***")
+        # /homes/80/kang/SP500/GS_data/Flow_10/
+
+# %% 
+# mv /scratch/local/kang/SP500/GS_data /homes/80/kang/SP500
+
+

@@ -24,7 +24,7 @@ faulthandler.enable()
 # from jax import config
 # config.update('jax_platform_name', 'cpu')
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
-chex.assert_gpu_available(backend=None)
+# chex.assert_gpu_available(backend=None)
 
 # #Code snippet to disable all jitting.
 from jax import config
@@ -195,7 +195,7 @@ class ExecutionEnv(BaseLOBEnv):
         # '''
         
         
-        l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
+        # l2 = job.get_L2_state(state.ask_raw_orders, state.bid_raw_orders, 10)
         # jax.debug.print("l2 state: \n {}",l2)
         
         # Define the two actions
