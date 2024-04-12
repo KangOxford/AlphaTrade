@@ -148,6 +148,8 @@ class EnvState(BaseEnvState):
     quant_executed: int
     # Execution specific rewards. 
     total_revenue: float
+    drift_return: float
+    advantage_return: float
     slippage_rm: float
     price_adv_rm: float
     price_drift_rm: float
@@ -226,7 +228,7 @@ class ExecutionEnv(BaseLOBEnv):
         cnl_msgs = job.getCancelMsgs(
             raw_order_side,
             job.INITID + 1,
-            self.n_actions,
+            self.n_actions,  # max number of orders to cancel
             1 - state.is_sell_task * 2
         )
         
@@ -260,16 +262,20 @@ class ExecutionEnv(BaseLOBEnv):
                 state.best_bids[-1, 0]
             )
         )
-
-        # jax.debug.print("bestasks\n {}", bestasks)
-        # jax.debug.print("bestbids\n {}", bestbids)
-
+        # jax.debug.print('agent_id {}, trades {}', self.trader_unique_id, trades)
         # filter to trades by our agent (rest are 0s)
-        agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
 
-        executions = self._get_executed_by_level(agent_trades, action, state.is_sell_task)
-        quant_executed_this_step = executions[:, 1].sum()
+        agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+        # executions = self._get_executed_by_level(agent_trades, action, state)
+        executions = self._get_executed_by_action(agent_trades, action, state)
+        quant_executed_this_step = executions.sum()
         quant_left = state.task_to_execute - (state.quant_executed + quant_executed_this_step)
+        
+        # jax.debug.print('agent_trades\n {}', agent_trades[:30])
+        # jax.debug.print('executions: {}', executions)
+        # jax.debug.print(
+        #     "quant_executed_this_step: {}, quant_left: {}, quant_executed_this_step {}",
+        #     quant_executed_this_step, quant_left, quant_executed_this_step)
 
         # TODO: check if episode time is over and force market order if necessary
         (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
@@ -281,24 +287,6 @@ class ExecutionEnv(BaseLOBEnv):
 
         # jax.debug.print("bestasks\n {}", bestasks)
         
-        #Error correction on the best prices.
-        # (bestasks, bestbids) = (
-        #     self._best_prices_impute(
-        #         bestasks[-self.stepLines:],
-        #         state.best_asks[-1,0]
-        #     ),
-        #     self._best_prices_impute(
-        #         bestbids[-self.stepLines:],
-        #         state.best_bids[-1,0]
-        #     )
-        # )
-
-        # price_passive_2, quant_passive_2 = self._get_pass_price_quant(
-        #     raw_order_side_pass,
-        #     bestasks[-1, 0],
-        #     bestbids[-1, 0],
-        #     state.is_sell_task
-        # )
         price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
         # jax.debug.print('price_passive_2: {}, quant_passive_2: {}', price_passive_2, quant_passive_2)
         # TODO: consider adding quantity before (in priority) to each price / level
@@ -333,6 +321,8 @@ class ExecutionEnv(BaseLOBEnv):
             task_to_execute = state.task_to_execute,
             quant_executed = quant_executed,
             total_revenue = state.total_revenue + extras["revenue"],
+            drift_return = state.drift_return + extras["drift"],
+            advantage_return = state.advantage_return + extras["advantage"],
             slippage_rm = extras["slippage_rm"],
             price_adv_rm = extras["price_adv_rm"],
             price_drift_rm = extras["price_drift_rm"],
@@ -357,8 +347,8 @@ class ExecutionEnv(BaseLOBEnv):
             "price_adv_rm": state.price_adv_rm,
             "price_drift_rm": state.price_drift_rm,
             "vwap_rm": state.vwap_rm,
-            "advantage_reward": extras["advantage"],
-            "drift_reward": extras["drift"],
+            "advantage_reward": state.advantage_return,
+            "drift_reward": state.drift_return,
             "trade_duration": state.trade_duration,
             "mkt_forced_quant": mkt_exec_quant + doom_quant,
             "doom_quant": doom_quant, 
@@ -439,13 +429,15 @@ class ExecutionEnv(BaseLOBEnv):
         return EnvState(
             *base_vals,
             prev_action=jnp.zeros((self.n_actions, 2), jnp.int32),
-            prev_executed=jnp.zeros((self.n_actions, 2), jnp.int32),
+            prev_executed=jnp.zeros((self.n_actions, ), jnp.int32),
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
             init_price=M,
             task_to_execute=self.max_task_size,
             quant_executed=0,
             total_revenue=0.,
+            drift_return=0.,
+            advantage_return=0.,
             slippage_rm=0.,
             price_adv_rm=0.,
             price_drift_rm=0.,
@@ -558,21 +550,6 @@ class ExecutionEnv(BaseLOBEnv):
 
         return action_msgs, cnl_msgs
 
-    # def _best_prices_impute(self, bestprices, lastBestPrice):
-    #     def replace_values(prev, curr):
-    #         last_non_999999999_values = jnp.where(curr != 999999999, curr, prev) #non_999999999_mask
-    #         replaced_curr = jnp.where(curr == 999999999, last_non_999999999_values, curr)
-    #         return last_non_999999999_values, replaced_curr
-    #     def forward_fill_999999999_int(arr):
-    #         last_non_999999999_values, replaced = jax.lax.scan(replace_values, arr[0], arr[1:])
-    #         return jnp.concatenate([arr[:1], replaced])
-    #     def forward_fill(arr):
-    #         index = jnp.argmax(arr[:, 0] != 999999999)
-    #         return forward_fill_999999999_int(arr.at[0, 0].set(jnp.where(index == 0, arr[0, 0], arr[index][0])))
-    #     back_fill = lambda arr: jnp.flip(forward_fill(jnp.flip(arr, axis=0)), axis=0)
-    #     mean_forward_back_fill = lambda arr: (forward_fill(arr)+back_fill(arr))//2     
-    #     return jnp.where((bestprices[:,0] == 999999999).all(),jnp.tile(jnp.array([lastBestPrice, 0]), (bestprices.shape[0],1)),mean_forward_back_fill(bestprices))
-
     def _ffill_best_prices(self, prices_quants, last_valid_price):
         def ffill(arr, inval=-1):
             """ Forward fill array values `inval` with previous value """
@@ -602,25 +579,25 @@ class ExecutionEnv(BaseLOBEnv):
         return prices_quants
 
     def _get_executed_by_price(self, agent_trades: jax.Array) -> jax.Array:
-        """ Get executed quantity by price from trades. Results are sorted by increasing price. """
-        # # jax.debug.print("trades\n {}", trades)
-        # # Gather the 'trades' that are nonempty, make the rest 0
-        # executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
-        # # Mask to keep only the trades where the RL agent is involved, apply mask.
-        # mask2 = ((self.trader_unique_id < executed[:, 2]) & (executed[:, 2] < 0)) \
-        #       | ((self.trader_unique_id < executed[:, 3]) & (executed[:, 3] < 0))
-        # agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
-
-        price_levels, r_idx = jnp.unique(agent_trades[:, 0], return_inverse=True, size=self.n_actions+1, fill_value=0)
+        """ 
+        Get executed quantity by price from trades. Results are sorted by increasing price. 
+        NOTE: this will not work for aggressive orders eating through the book (size limited by actions)
+        TODO: make this more general for aggressive actions?
+        """
+        price_levels, r_idx = jnp.unique(
+            agent_trades[:, 0], return_inverse=True, size=self.n_actions+1, fill_value=0)
         quant_by_price = jax.ops.segment_sum(agent_trades[:, 1], r_idx, num_segments=self.n_actions+1)
         price_quants = jnp.vstack((price_levels[1:], quant_by_price[1:])).T
         # jax.debug.print("_get_executed_by_level\n {}", price_quants)
         return price_quants
     
-    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, is_sell_task) -> jax.Array:
+    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
+            NOTE: this will not work for aggressive orders eating through the book (size limited by actions)
+            TODO: make this more general for aggressive actions?
         """
+        is_sell_task = state.is_sell_task
         price_quants = self._get_executed_by_price(agent_trades)
         # sort from aggr to passive
         price_quants = jax.lax.cond(
@@ -628,11 +605,56 @@ class ExecutionEnv(BaseLOBEnv):
             lambda: price_quants,
             lambda: price_quants[::-1],  # for buy task, most aggressive is highest price
         )
-        # jax.debug.print('execution before {}', price_quants)
         # put executions in non-zero action places (keeping the order)
         price_quants = price_quants[jnp.argsort(jnp.argsort(actions <= 0))]
-        # jax.debug.print("actions {} \n executions {} \n", actions, price_quants)
         return price_quants
+    
+    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+        """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
+            using previous actions. (0 actions are skipped)
+            Aggressive quantities at FT and more passive are summed as the first quantity.
+        """
+        best_price = jax.lax.cond(
+            state.is_sell_task,
+            lambda: state.best_bids[-1, 0],
+            lambda: state.best_asks[-1, 0]
+        )
+        aggr_trades_mask = jax.lax.cond(
+            state.is_sell_task,
+            lambda: agent_trades[:, 0] <= best_price,
+            lambda: agent_trades[:, 0] >= best_price
+        )
+        exec_quant_aggr = jnp.where(
+            aggr_trades_mask,
+            agent_trades[:, 1],
+            0
+        ).sum()
+        # jax.debug.print('best_price\n {}', best_price)
+        # jax.debug.print('exec_quant_aggr\n {}', exec_quant_aggr)
+        
+        price_quants_pass = self._get_executed_by_price(
+            # agent_trades[~aggr_trades_mask]
+            jnp.where(
+                jnp.expand_dims(aggr_trades_mask, axis=1),
+                0,
+                agent_trades
+            )
+        )
+        # jax.debug.print('price_quants_pass\n {}', price_quants_pass)
+        # sort from aggr to passive
+        price_quants = jax.lax.cond(
+            state.is_sell_task,
+            lambda: price_quants_pass,
+            lambda: price_quants_pass[::-1],  # for buy task, most aggressive is highest price
+        )
+        # put executions in non-zero action places (keeping the order)
+        price_quants = price_quants[jnp.argsort(jnp.argsort(actions[1:] <= 0))]
+        price_quants = jnp.concatenate(
+            (jnp.array([[best_price, exec_quant_aggr]]), price_quants),
+        )
+        # jax.debug.print("actions {} \n price_quants {} \n", actions, price_quants)
+        # return quants only (aggressive prices could be multiple)
+        return price_quants[:, 1]
     
     def _getActionMsgs(self, action: jax.Array, state: EnvState, params: EnvParams):
 
@@ -832,14 +854,15 @@ class ExecutionEnv(BaseLOBEnv):
         # create artificial trades for this
         quant_still_left = quant_left - mkt_exec_quant
         # jax.debug.print('quant_still_left: {}', quant_still_left)
-        # assume doom price with 10% extra cost
+        # assume doom price with 25% extra cost
         doom_price = jax.lax.cond(
             state.is_sell_task,
-            lambda: ((0.9 * bestbid[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: ((1.1 * bestask[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: ((0.75 * bestbid[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: ((1.25 * bestask[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
         )
         # jax.debug.print('doom_price: {}', doom_price)
         # jax.debug.print('best_ask: {}; best_bid {}', bestask, bestbid)
+        # jax.debug.print('ep_is_over: {}; quant_still_left: {}; remainingTime: {}', ep_is_over, quant_still_left, remainingTime)
         trades = jax.lax.cond(
             ep_is_over & (quant_still_left > 0),
             place_doom_trade,
@@ -847,12 +870,13 @@ class ExecutionEnv(BaseLOBEnv):
             trades, doom_price, quant_still_left, time
         )
         # jax.debug.print('trades after doom\n {}', trades[:20])
-        agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+        # agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
         # jax.debug.print('agent_trades\n {}', agent_trades[:20])
-        price_quants = self._get_executed_by_price(agent_trades)
+        # price_quants = self._get_executed_by_price(agent_trades)
         # jax.debug.print('price_quants\n {}', price_quants)
+        doom_quant = ep_is_over * quant_still_left
 
-        return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, quant_still_left
+        return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
     def _get_reward(self, state: EnvState, params: EnvParams, trades: chex.Array) -> jnp.int32:
         # ========== get reward and revenue ==========
@@ -860,31 +884,43 @@ class ExecutionEnv(BaseLOBEnv):
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         # Mask to keep only the trades where the RL agent is involved, apply mask.
         # mask2 = ((job.INITID < executed[:, 2]) & (executed[:, 2] < 0)) | ((job.INITID < executed[:, 3]) & (executed[:, 3] < 0))
-        mask2 = ((self.trader_unique_id < executed[:, 2]) & (executed[:, 2] < 0)) \
-              | ((self.trader_unique_id < executed[:, 3]) & (executed[:, 3] < 0))
+        mask2 = ((self.trader_unique_id <= executed[:, 2]) & (executed[:, 2] < 0)) \
+              | ((self.trader_unique_id <= executed[:, 3]) & (executed[:, 3] < 0))
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
         # jax.debug.print('agentTrades\n {}', agentTrades[:30])
         agentQuant = agentTrades[:,1].sum() # new_execution quants
+        
         # ---------- used for vwap, revenue ----------
-        vwapFunc = lambda tr: jnp.nan_to_num(
-            (tr[:,0] // self.tick_size * tr[:,1]).sum() / (tr[:,1]).sum(),
-            state.init_price  # if no trades happened, use init price
-        ) # caution: this value can be zero (executed[:,1]).sum()
+        # vwapFunc = lambda tr: jnp.nan_to_num(
+        #     (tr[:,0] // self.tick_size * tr[:,1]).sum() / (tr[:,1]).sum(),
+        #     state.init_price  # if no trades happened, use init price
+        # ) # caution: this value can be zero (executed[:,1]).sum()
         # only use other traders' trades for value weighted price
-        vwap = vwapFunc(otherTrades) # average_price of all the tradings, from the varaible executed
-        revenue = (agentTrades[:,0]//self.tick_size * agentTrades[:,1]).sum()
+        # vwap = vwapFunc(otherTrades) # average_price of all other trades
+
+        other_exec_quants = otherTrades[:, 1].sum()
+        vwap = jax.lax.cond(
+            other_exec_quants == 0,
+            lambda: state.init_price / self.tick_size,
+            lambda: (otherTrades[:, 0] // self.tick_size * otherTrades[:, 1]).sum() / other_exec_quants
+        )
+        
+        revenue = (agentTrades[:,0] // self.tick_size * agentTrades[:,1]).sum()
+        
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_val,new_val:(average_val*state.step_counter+new_val)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
         price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
         slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        
         # ---------- used for advantage and drift ----------
         # switch sign for buy task
         direction_switch = jnp.sign(state.is_sell_task * 2 - 1)
         advantage = direction_switch * (revenue - vwap * agentQuant) # advantage_vwap
         drift = direction_switch * agentQuant * (vwap - state.init_price//self.tick_size)
+        
         # ---------- compute the final reward ----------
         # rewardValue = revenue 
         # rewardValue =  advantage
@@ -900,7 +936,8 @@ class ExecutionEnv(BaseLOBEnv):
             revenue - (state.init_price // self.tick_size) * agentQuant
         )
         
-        # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {}', reward, reward_lam1, state.is_sell_task, advantage, drift)
+        # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {} vwap {} init_price {}', 
+        #                 reward, reward_lam1, state.is_sell_task, advantage, drift, vwap, state.init_price)
         
         # ---------- normalize the reward ----------
         # reward /= 10_000
@@ -908,7 +945,7 @@ class ExecutionEnv(BaseLOBEnv):
         # reward /= params.avg_twap_list[state.window_index]
         return reward_scaled, {
             "agentQuant": agentQuant,
-            "revenue": reward_lam1 / 100_000,  # revenue is not informative if direction is random
+            "revenue": reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
             "slippage_rm": slippage_rm,
             "price_adv_rm": price_adv_rm,
             "price_drift_rm": price_drift_rm,
@@ -957,8 +994,8 @@ class ExecutionEnv(BaseLOBEnv):
             # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
             "remaining_ratio": jnp.where(state.max_steps_in_episode==0, 0., 1. - state.step_counter / state.max_steps_in_episode),
             "prev_action": state.prev_action[:, 1],  # use quants only
-            "prev_executed": state.prev_executed[:, 1],  # use quants only
-            "prev_executed_ratio": jnp.where(state.prev_action[:, 1]==0., 0., state.prev_executed[:, 1] / state.prev_action[:, 1]),
+            "prev_executed": state.prev_executed,  # use quants only
+            "prev_executed_ratio": jnp.where(state.prev_action[:, 1]==0., 0., state.prev_executed / state.prev_action[:, 1]),
         }
         # jax.debug.print('prev_action {}', state.prev_action)
         # jax.debug.print('prev_executed {}', state.prev_executed)
@@ -1151,9 +1188,9 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "TASKSIDE": "random", # "random", # "buy",
+        "TASKSIDE": "sell", # "random", # "buy",
         "MAX_TASK_SIZE": 100, # 500,
-        "WINDOW_INDEX": -1,
+        "WINDOW_INDEX": 1,
         "ACTION_TYPE": "pure", # "pure",
         "REWARD_LAMBDA": 1.0,
         "EP_TYPE": "fixed_time",
@@ -1197,9 +1234,11 @@ if __name__ == "__main__":
         key_step, _ = jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
         test_action = env.action_space().sample(key_policy) // 10
+        # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
-        obs,state,reward,done,info=env.step(key_step, state, test_action, env_params)
+        obs, state, reward, done, info = env.step(
+            key_step, state, test_action, env_params)
         # for key, value in info.items():
         #     print(key, value)
         #     print('is_sell_task', state.is_sell_task)

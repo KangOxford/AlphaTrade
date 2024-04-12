@@ -9,7 +9,7 @@ from gymnax_exchange.jaxrl.ppo import Transition
 from purejaxrl.wrappers import FlattenObservationWrapper, LogWrapper, ClipAction, VecEnv, NormalizeVecObservation, NormalizeVecReward
 
 
-wandbOn = True # False
+wandbOn = False # False
 if wandbOn:
     import wandb
 

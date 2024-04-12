@@ -702,8 +702,8 @@ def get_agent_trades(trades, agent_id):
     # Gather the 'trades' that are nonempty, make the rest 0
     executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
     # Mask to keep only the trades where the RL agent is involved, apply mask.
-    mask2 = ((agent_id < executed[:, 2]) & (executed[:, 2] < 0)) \
-          | ((agent_id < executed[:, 3]) & (executed[:, 3] < 0))
+    mask2 = ((agent_id <= executed[:, 2]) & (executed[:, 2] < 0)) \
+          | ((agent_id <= executed[:, 3]) & (executed[:, 3] < 0))
     agent_trades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
     return agent_trades
 
