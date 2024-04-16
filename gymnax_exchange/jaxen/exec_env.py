@@ -366,11 +366,16 @@ class ExecutionEnv(BaseLOBEnv):
         _, state = super().reset_env(key, params)
         if self.task == 'random':
             direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
-            state = dataclasses.replace(state, is_sell_task=direction)
+        else:
+            direction = 0 if self.task == 'buy' else 1
+            
+        state = dataclasses.replace(state, is_sell_task=direction)
 
-            # update passive prices and quants depending on task direction
-            price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
-            state = dataclasses.replace(state, price_passive_2=price_passive_2, quant_passive_2=quant_passive_2)
+        # update passive prices and quants depending on task direction
+        # (other features are independent)
+        # TODO: save passive prices and quants on both sides and handle this in _get_obs
+        price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
+        state = dataclasses.replace(state, price_passive_2=price_passive_2, quant_passive_2=quant_passive_2)
 
         obs = self._get_obs(state, params)
         return obs, state
@@ -1188,7 +1193,7 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "TASKSIDE": "sell", # "random", # "buy",
+        "TASKSIDE": "buy", # "random", # "buy",
         "MAX_TASK_SIZE": 100, # 500,
         "WINDOW_INDEX": 1,
         "ACTION_TYPE": "pure", # "pure",
@@ -1239,9 +1244,9 @@ if __name__ == "__main__":
         start=time.time()
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
-        # for key, value in info.items():
-        #     print(key, value)
-        #     print('is_sell_task', state.is_sell_task)
+        for key, value in info.items():
+            print(key, value)
+            print('is_sell_task', state.is_sell_task)
         # print(f"State after {i} step: \n",state,done,file=open('output.txt','a'))
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
