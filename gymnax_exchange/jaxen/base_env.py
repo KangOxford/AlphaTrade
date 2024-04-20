@@ -236,9 +236,9 @@ class BaseLOBEnv(environment.Environment):
         idx_data_window = jnp.where(
             params.window_selector == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
-            jnp.array(self.window_selector, dtype=jnp.int32))
+            jnp.array(params.window_selector, dtype=jnp.int32))
         first_state = index_tree(params.init_states_array, idx_data_window)
-        obs = self._get_obs(first_state,params=params)
+        obs = self._get_obs(first_state, params=params)
         return obs, first_state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -289,12 +289,12 @@ class BaseLOBEnv(environment.Environment):
     def _init_states(self,alphatradePath,starts):
         print("START:  pre-reset in the initialization")
         pkl_file_name = (alphatradePath
-                         + '_' +type(self).__name__
-                         + '_stateArray_idx_'+ str(self.window_selector)
-                         +'_dtype_"'+self.ep_type
-                         +'"_depth_'+str(self.book_depth)
-                         +'.pkl')
-        print("pre-reset will be saved to ",pkl_file_name)
+                         + '_' + type(self).__name__
+                         + '_stateArray_idx_' + str(self.window_selector)
+                         + '_dtype_"' + self.ep_type
+                         + '"_depth_' + str(self.book_depth)
+                         + '.pkl')
+        print("pre-reset will be saved to ", pkl_file_name)
         try:
             with open(pkl_file_name, 'rb') as f:
                 self.init_states_array = pickle.load(f)

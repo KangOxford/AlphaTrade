@@ -13,6 +13,44 @@ wandbOn = False # False
 if wandbOn:
     import wandb
 
+####### HEURISTIC POLICY FUNCTIONS #######
+
+def random_policy(env, obs, rng):
+    rng, _rng = jax.random.split(rng)
+    return env.action_space().sample(_rng)
+
+def twap_aggr(env, obs, rng):
+    frontloading = 0.1
+    steps_left = calc_steps_left(env, obs, frontloading)
+    step_quant = obs['remaining_quant'] // steps_left
+    action = jnp.zeros((env.n_actions,)).at[0].set(step_quant)
+    return action
+
+def twap_pass(env, obs, rng):
+    frontloading = 0.1
+    overstuff_factor = 2
+    steps_left = calc_steps_left(env, obs, frontloading)
+    step_quant = (obs['remaining_quant'] // steps_left) * overstuff_factor
+    action = jnp.zeros((env.n_actions,)).at[-1].set(step_quant)
+    return action
+
+def all_passive(env, obs, rng):
+    return jnp.zeros((env.n_actions,)).at[-1].set(obs['remaining_quant'])
+
+def calc_steps_left(env, obs, frontloading):
+    if env.ep_type == "fixed_steps":
+        steps_left = obs["max_steps"] - obs["step_counter"]
+    elif env.ep_type == "fixed_time":
+        steps_left = jax.lax.cond(
+            obs['delta_time'] == 0,
+            lambda: obs["max_steps"] - obs["step_counter"],
+            lambda: (obs["time_remaining"] // obs['delta_time']).astype(jnp.int32),
+        )
+    steps_left = jnp.clip((steps_left * (1-frontloading)).astype(jnp.int32), 1, None)
+    return steps_left
+
+##########################################
+
 def make_run(config, rng):
     env = ExecutionEnv(
         alphatradePath=config["ATFOLDER"],
@@ -31,52 +69,14 @@ def make_run(config, rng):
         episode_time=config["EPISODE_TIME"],
     )
 
-    ####### HEURISTIC POLICY FUNCTIONS #######
-    
-    def random_policy(obs, rng):
-        rng, _rng = jax.random.split(rng)
-        return env.action_space().sample(_rng)
-
-    def twap_aggr(obs, rng):
-        frontloading = 0.1
-        steps_left = calc_steps_left(obs, frontloading)
-        step_quant = obs['remaining_quant'] // steps_left
-        action = jnp.zeros((env.n_actions,)).at[0].set(step_quant)
-        return action
-    
-    def twap_pass(obs, rng):
-        frontloading = 0.1
-        overstuff_factor = 2
-        steps_left = calc_steps_left(obs, frontloading)
-        step_quant = (obs['remaining_quant'] // steps_left) * overstuff_factor
-        action = jnp.zeros((env.n_actions,)).at[-1].set(step_quant)
-        return action
-    
-    def all_passive(obs, rng):
-        return jnp.zeros((env.n_actions,)).at[-1].set(obs['remaining_quant'])
-    
-    def calc_steps_left(obs, frontloading):
-        if env.ep_type == "fixed_steps":
-            steps_left = obs["max_steps"] - obs["step_counter"]
-        elif env.ep_type == "fixed_time":
-            steps_left = jax.lax.cond(
-                obs['delta_time'] == 0,
-                lambda: obs["max_steps"] - obs["step_counter"],
-                lambda: (obs["time_remaining"] // obs['delta_time']).astype(jnp.int32),
-            )
-        steps_left = jnp.clip((steps_left * (1-frontloading)).astype(jnp.int32), 1, None)
-        return steps_left
-    
-    ##########################################
-
     if config["POLICY"] == "random":
-        policy_fn = random_policy
+        policy_fn = lambda obs, rng: random_policy(env, obs, rng)
     elif config["POLICY"] == "twap_aggr":
-        policy_fn = twap_aggr
+        policy_fn = lambda obs, rng: twap_aggr(env, obs, rng)
     elif config["POLICY"] == "twap_pass":
-        policy_fn = twap_pass
+        policy_fn = lambda obs, rng: twap_pass(env, obs, rng)
     elif config["POLICY"] == "all_passive":
-        policy_fn = all_passive
+        policy_fn = lambda obs, rng: all_passive(env, obs, rng)
     else:
         raise ValueError("Invalid policy function " + str(config["POLICY"]))
 

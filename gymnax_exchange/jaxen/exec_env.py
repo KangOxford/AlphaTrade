@@ -351,7 +351,8 @@ class ExecutionEnv(BaseLOBEnv):
             "drift_reward": state.drift_return,
             "trade_duration": state.trade_duration,
             "mkt_forced_quant": mkt_exec_quant + doom_quant,
-            "doom_quant": doom_quant, 
+            "doom_quant": doom_quant,
+            "is_sell_task": state.is_sell_task,
         }
         return self._get_obs(state, params), state, reward, done, info
     
