@@ -214,6 +214,19 @@ class OrderBook():
             return job.get_order_by_id(side_array, order_id)
         
     @partial(jax.jit, static_argnums=(2,))
+    def get_order_at_time(
+            self: 'OrderBook',
+            state: LobState,
+            side: int,
+            time_s: int,
+            time_ns: int,
+        ) -> jax.Array:
+        ''' '''
+        side_array = state.asks if side == 0 else state.bids
+        return job.get_order_by_time(side_array, time_s, time_ns)
+
+        
+    @partial(jax.jit, static_argnums=(2,))
     def get_next_executable_order(
             self: 'OrderBook',
             state: LobState,
