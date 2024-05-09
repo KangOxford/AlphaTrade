@@ -62,7 +62,7 @@ for epoch in range(num_epochs):
         discriminator_gene = discriminator(generated).view(-1)
         # >>> 06.01.02 Loss of Discriminator <<<
         loss_discriminator_data = criterion(discriminator_data, torch.ones_like(discriminator_data))
-        loss_discriminator_gene = criterion(discriminator_gene, torch.ones_like(discriminator_gene))
+        loss_discriminator_gene = criterion(discriminator_gene, torch.zeros_like(discriminator_gene))
         loss_discriminator = (loss_discriminator_data + loss_discriminator_gene) / 2.0
         # >>> 06.01.03 Gradient of Discriminator <<<
         discriminator.zero_grad()
