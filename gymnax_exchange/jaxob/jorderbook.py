@@ -5,10 +5,12 @@ from readline import remove_history_item
 from typing import Dict, NamedTuple, Optional, Tuple
 from unicodedata import bidirectional
 import gymnax_exchange.jaxob.JaxOrderBookArrays as job
+from gymnax_exchange.jaxob.jaxob_config import Configuration
 job = importlib.reload(job)
 import jax
 from jax import numpy as jnp
 from jax import lax
+import chex
 
 
 
@@ -18,21 +20,21 @@ class LobState(NamedTuple):
     trades: jnp.ndarray
 
 
+
 class OrderBook():
     def __init__(
             self: 'OrderBook',
-            nOrders: int = 100,
-            nTrades: int = 100
+            cfg: Configuration = None,
         ) -> None:
-        self.nOrders = nOrders
-        self.nTrades = nTrades
+        self.cfg = Configuration()
 
     @jax.jit
     def init(self: 'OrderBook') -> LobState:
-        asks = (jnp.ones((self.nOrders, 6)) * -1).astype(jnp.int32)
-        bids = (jnp.ones((self.nOrders, 6)) * -1).astype(jnp.int32)
-        trades = (jnp.ones((self.nTrades, 6)) * -1).astype(jnp.int32)
-        return LobState(asks, bids, trades)
+        asks = (jnp.ones((self.cfg.nOrders, 6)) * -1).astype(jnp.int32)
+        bids = (jnp.ones((self.cfg.nOrders, 6)) * -1).astype(jnp.int32)
+        trades = (jnp.ones((self.cfg.nTrades, 6)) * -1).astype(jnp.int32)
+        key=jax.random.PRNGKey(self.cfg.seed)
+        return LobState(asks, bids, trades),key
 
     @jax.jit
     def reset(
@@ -40,11 +42,11 @@ class OrderBook():
             l2_book: Optional[jnp.ndarray] = None,
         ) -> LobState:
         """"""
-        state = self.init()
+        state,key = self.init()
         if l2_book is not None:
-            msgs = job.init_msgs_from_l2(l2_book)
-            state = self.process_orders_array(state, msgs)
-        return state
+            msgs = job.init_msgs_from_l2(l2_book,time=jnp.array([0,0]),cfg=self.cfg)
+            state = self.process_orders_array(state, msgs,key)
+        return state,key
 
     @jax.jit
     def process_order(
@@ -72,6 +74,8 @@ class OrderBook():
             inttype = 1
             intside = intside * -1
 
+        #TODO: Config so that a type 4 market order is seen as a near touch order. 
+
         msg = jnp.array([
             inttype,
             intside,
@@ -82,30 +86,35 @@ class OrderBook():
             int(quote['timestamp'].split('.')[0]),
             int(quote['timestamp'].split('.')[1])
         ], dtype=jnp.int32)
-
-        ordersides, _ = job.cond_type_side(state, msg)
-        return LobState(*ordersides)
+        
+        key,split_key =jax.random.split(key)
+        ordersides, _ = job.cond_type_side(self.cfg,split_key,state, msg)
+        return LobState(*ordersides),key
 
     @jax.jit
     def process_order_array(
             self: 'OrderBook',
             state: LobState,
             quote: jax.Array,
+            key:chex.PRNGKey,
             from_data: bool = False,
-            verbose: bool = False
+            verbose: bool = False,
         ) -> LobState:
         '''Same as process_order but quote is an array.'''
-        ordersides, _ = job.cond_type_side(state, quote)
-        return LobState(*ordersides)
+        key,split_key =jax.random.split(key)
+        ordersides, _ = job.cond_type_side(self.cfg,split_key,state, quote)
+        return LobState(*ordersides),key
 
     @jax.jit
     def process_orders_array(
         self: 'OrderBook',
         state: LobState,
         msgs: jax.Array,
+        key:chex.PRNGKey
     ) -> LobState:
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
-        return LobState(*job.scan_through_entire_array(msgs, tuple(state)))
+        key,split_key =jax.random.split(key)
+        return LobState(*job.scan_through_entire_array(self.cfg,split_key,msgs, tuple(state))),key
 
     @partial(jax.jit, static_argnums=(3,))
     def process_orders_array_l2(
@@ -243,7 +252,7 @@ class OrderBook():
     #Flatten and Unflatten functions so that methods can be appropriately jitted. 
     def _tree_flatten(self: 'OrderBook'):
         children = ()  # arrays / dynamic values
-        aux_data = {'nOrders': self.nOrders, 'nTrades':self.nTrades}  # static values
+        aux_data = {'cfg': self.cfg,}  # static values
         return (children, aux_data)
 
     @classmethod
@@ -256,3 +265,18 @@ jax.tree_util.register_pytree_node(
     OrderBook._tree_flatten,
     OrderBook._tree_unflatten
 )
+
+
+if __name__ == "__main__":
+    print("""Testing functionality of the jax OrderBook object in jorderbook.py 
+                acts as an object wrapper around the JaxOrderBookArrays functions""")
+    
+    import typing
+
+    ob=OrderBook()
+
+    print(isinstance(ob.cfg, typing.Hashable))
+    
+
+    l2init=jnp.array([354200,452,350100,89,361200,100,344000,400,362900,100,343100,100,364000,400,338700,100,371900,1100,337100,1000,372200,100,336400,1000,372300,200,336000,300,372800,1000,333600,1000,374600,1000,332500,100,376700,100,331600,100])
+    print(ob.reset(l2init))

@@ -1,10 +1,14 @@
 import gymnax_exchange.jaxob.jaxob_constants as cst
 import jax
+from typing import Tuple
 
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
 class Configuration:
-    
-    def __init__(self,):
-        self.maxint= cst.MaxInt._64_Bit_Signed
-        self.init_id = cst.INITID
-        self.cancel_mode= cst.CancelMode.CANCEL_UNIFORM
-        self.mainkey=jax.random.PRNGKey(cst.SEED)
+    maxint : int = cst.MaxInt._64_Bit_Signed.value
+    init_id :int = cst.INITID
+    cancel_mode: int= cst.CancelMode.CANCEL_UNIFORM.value
+    seed: int =cst.SEED
+    nTrades : int=cst.NTRADE_CAP
+    nOrders : int =cst.NORDER_CAP
