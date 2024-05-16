@@ -106,7 +106,7 @@ def cancel_order(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
         Returns:
                 orderside (Array): Orderbook side with cancelled order
     """
-    jax.debug.print("orderside[:,2] {}\n msg['orderid'] {}",orderside,msg)
+    # jax.debug.print("orderside[:,2] {}\n msg['orderid'] {}",orderside,msg)
     oid_match = (orderside[:, 2] == msg['orderid'])
     idx = jnp.where(oid_match, size=1, fill_value=-1)[0][0]
     idx = jax.lax.cond(idx == -1,

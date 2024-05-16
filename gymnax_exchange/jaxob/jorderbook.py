@@ -152,20 +152,18 @@ class OrderBook():
         else:
             return job.get_volume_at_price(side_array, price)
 
-    @partial(jax.jit, static_argnums=(2,))
+    @jax.jit
     def get_best_price(
             self: 'OrderBook',
             state: LobState,
             side: int
         ) -> int:
-        # sell / asks
-        if side == 0:
-            return self.get_best_ask(state)
-        # buy / bids
-        elif side == 1:
-            return self.get_best_bid(state)
-        else:
-            raise ValueError('Side must be 0 or 1')
+        return jax.lax.cond(
+            side == 1,
+            lambda s: self.get_best_bid(s),
+            lambda s: self.get_best_ask(s),
+            state
+        )
     
     @jax.jit
     def get_best_bid(
@@ -196,20 +194,20 @@ class OrderBook():
         ) -> jax.Array:
         return job.get_L2_state(state.asks, state.bids, n_levels,self.cfg)
     
-    @partial(jax.jit, static_argnums=(2,))
+    @jax.jit
     def get_side_ids(
             self: 'OrderBook',
             state: LobState,
             side: int
         ) -> jax.Array:
-        if side == 0:
-            return job.get_order_ids(state.asks)
-        elif side == 1:
-            return job.get_order_ids(state.bids)
-        else:
-            raise ValueError('Side must be 0 or 1')
+        side_array = jax.lax.cond(
+            side == 1,
+            lambda: state.bids,
+            lambda: state.asks,
+        )
+        return job.get_order_ids(side_array)
 
-    @partial(jax.jit, static_argnums=(2,))
+    @jax.jit
     def get_order(
             self: 'OrderBook',
             state: LobState,
@@ -218,13 +216,17 @@ class OrderBook():
             price: Optional[int] = None,
         ) -> jax.Array:
         ''' '''
-        side_array = state.asks if side == 0 else state.bids
+        side_array = jax.lax.cond(
+            side == 0,
+            lambda: state.asks,
+            lambda: state.bids,
+        )
         if price is not None:
             return job.get_order_by_id_and_price(side_array, order_id, price)
         else:
             return job.get_order_by_id(side_array, order_id)
         
-    @partial(jax.jit, static_argnums=(2,))
+    @jax.jit
     def get_order_at_time(
             self: 'OrderBook',
             state: LobState,
@@ -233,22 +235,25 @@ class OrderBook():
             time_ns: int,
         ) -> jax.Array:
         ''' '''
-        side_array = state.asks if side == 0 else state.bids
+        side_array = jax.lax.cond(
+            side == 0,
+            lambda: state.asks,
+            lambda: state.bids,
+        )
         return job.get_order_by_time(side_array, time_s, time_ns)
 
         
-    @partial(jax.jit, static_argnums=(2,))
+    @jax.jit
     def get_next_executable_order(
             self: 'OrderBook',
             state: LobState,
             side: int
         ):
-        if side == 0:
-            side_array = state.asks
-        elif side == 1:
-            side_array = state.bids
-        else:
-            raise ValueError('Side must be 0 or 1')
+        side_array = jax.lax.cond(
+            side == 1,
+            lambda: state.bids,
+            lambda: state.asks,
+        )
         return job.get_next_executable_order(self.cfg,side, side_array)
     
     #Flatten and Unflatten functions so that methods can be appropriately jitted. 
