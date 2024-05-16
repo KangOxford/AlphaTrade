@@ -25,9 +25,9 @@ class LobState(NamedTuple):
 class OrderBook():
     def __init__(
             self: 'OrderBook',
-            cfg: Configuration = None,
+            cfg: Optional[Configuration] = None,
         ) -> None:
-        self.cfg = Configuration()
+        self.cfg = cfg if cfg is not None else Configuration()
 
     @jax.jit
     def init(self: 'OrderBook') -> LobState:
