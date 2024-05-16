@@ -18,6 +18,7 @@ class LobState(NamedTuple):
     asks: jnp.ndarray
     bids: jnp.ndarray
     trades: jnp.ndarray
+    key : chex.PRNGKey
 
 
 
@@ -34,7 +35,7 @@ class OrderBook():
         bids = (jnp.ones((self.cfg.nOrders, 6)) * -1).astype(jnp.int32)
         trades = (jnp.ones((self.cfg.nTrades, 6)) * -1).astype(jnp.int32)
         key=jax.random.PRNGKey(self.cfg.seed)
-        return LobState(asks, bids, trades),key
+        return LobState(asks, bids, trades,key)
 
     @jax.jit
     def reset(
@@ -42,13 +43,12 @@ class OrderBook():
             l2_book: Optional[jnp.ndarray] = None,
         ) -> LobState:
         """"""
-        state,key = self.init()
+        state = self.init()
         if l2_book is not None:
-            msgs = job.init_msgs_from_l2(l2_book,time=jnp.array([0,0]),cfg=self.cfg)
-            state = self.process_orders_array(state, msgs,key)
-        return state,key
+            msgs = job.init_msgs_from_l2(self.cfg,l2_book,time=jnp.array([0,0]))
+            state = self.process_orders_array(state, msgs)
+        return state
 
-    @jax.jit
     def process_order(
             self: 'OrderBook',
             state: LobState,
@@ -86,35 +86,35 @@ class OrderBook():
             int(quote['timestamp'].split('.')[0]),
             int(quote['timestamp'].split('.')[1])
         ], dtype=jnp.int32)
-        
+        (*ordersides,key)=state
         key,split_key =jax.random.split(key)
-        ordersides, _ = job.cond_type_side(self.cfg,split_key,state, msg)
-        return LobState(*ordersides),key
+        ordersides, _ = job.cond_type_side(self.cfg,ordersides,(split_key,msg))
+        return LobState(*ordersides,key)
 
     @jax.jit
     def process_order_array(
             self: 'OrderBook',
             state: LobState,
             quote: jax.Array,
-            key:chex.PRNGKey,
             from_data: bool = False,
             verbose: bool = False,
         ) -> LobState:
         '''Same as process_order but quote is an array.'''
+        (*ordersides,key)=state
         key,split_key =jax.random.split(key)
-        ordersides, _ = job.cond_type_side(self.cfg,split_key,state, quote)
-        return LobState(*ordersides),key
+        ordersides, _ = job.cond_type_side(self.cfg,ordersides, (split_key,quote))
+        return LobState(*ordersides,key)
 
     @jax.jit
     def process_orders_array(
         self: 'OrderBook',
         state: LobState,
         msgs: jax.Array,
-        key:chex.PRNGKey
     ) -> LobState:
         '''Wrapper function for the object class that takes a JNP Array of messages (Shape=Nx8), and applies them, in sequence, to the orderbook'''
+        (*ordersides,key)=state
         key,split_key =jax.random.split(key)
-        return LobState(*job.scan_through_entire_array(self.cfg,split_key,msgs, tuple(state))),key
+        return LobState(*job.scan_through_entire_array(self.cfg,split_key,msgs, tuple(ordersides)),key)
 
     @partial(jax.jit, static_argnums=(3,))
     def process_orders_array_l2(
@@ -123,10 +123,12 @@ class OrderBook():
             msgs: jax.Array,
             n_levels: int
         ) -> Tuple[LobState, jax.Array]:
-        all_asks, all_bids, trades = job.scan_through_entire_array_save_states(msgs, tuple(state), msgs.shape[0])
-        state = LobState(all_asks[-1], all_bids[-1], trades)
+        (*ordersides,key)=state
+        key,split_key =jax.random.split(key)
+        all_asks, all_bids, trades = job.scan_through_entire_array_save_states(self.cfg,split_key,msgs, tuple(ordersides), msgs.shape[0])
+        state = LobState(all_asks[-1], all_bids[-1], trades,key)
         # calculate l2 states
-        l2_states = jax.vmap(job.get_L2_state, (0, 0, None), 0)(all_asks, all_bids, n_levels)
+        l2_states = jax.vmap(job.get_L2_state, (0, 0, None,None), 0)(all_asks, all_bids, n_levels,self.cfg)
         return state, l2_states
 
     @partial(jax.jit, static_argnums=(2,4))
@@ -146,7 +148,7 @@ class OrderBook():
             raise ValueError('Side must be 0 or 1')
 
         if init_only:
-            return job.get_init_volume_at_price(side_array, price)
+            return job.get_init_volume_at_price(side_array, price,self.cfg)
         else:
             return job.get_volume_at_price(side_array, price)
 
@@ -170,21 +172,21 @@ class OrderBook():
             self: 'OrderBook',
             state: LobState
         ) -> int:
-        return job.get_best_bid(state.bids)
+        return job.get_best_bid(self.cfg,state.bids)
 
     @jax.jit
     def get_best_ask(
             self: 'OrderBook',
             state: LobState
         ) -> int:
-        return job.get_best_ask(state.asks)
+        return job.get_best_ask(self.cfg,state.asks)
 
     @jax.jit
     def get_best_bid_and_ask_inclQuants(
             self: 'OrderBook',
             state: LobState
         ) -> Tuple[jax.Array, jax.Array]:
-        return job.get_best_bid_and_ask_inclQuants(state.asks, state.bids)
+        return job.get_best_bid_and_ask_inclQuants(self.cfg,state.asks, state.bids)
 
     @partial(jax.jit, static_argnums=(2,))
     def get_L2_state(
@@ -192,7 +194,7 @@ class OrderBook():
             state: LobState,
             n_levels: int
         ) -> jax.Array:
-        return job.get_L2_state(state.asks, state.bids, n_levels)
+        return job.get_L2_state(state.asks, state.bids, n_levels,self.cfg)
     
     @partial(jax.jit, static_argnums=(2,))
     def get_side_ids(
@@ -247,7 +249,7 @@ class OrderBook():
             side_array = state.bids
         else:
             raise ValueError('Side must be 0 or 1')
-        return job.get_next_executable_order(side, side_array)
+        return job.get_next_executable_order(self.cfg,side, side_array)
     
     #Flatten and Unflatten functions so that methods can be appropriately jitted. 
     def _tree_flatten(self: 'OrderBook'):
@@ -274,9 +276,28 @@ if __name__ == "__main__":
     import typing
 
     ob=OrderBook()
-
-    print(isinstance(ob.cfg, typing.Hashable))
     
+    dict_quote={'type':'limit','side':'bid','quantity':99,'price':346000,'trade_id':8888,'order_id':8888,'timestamp':'3400.005000000'}
 
     l2init=jnp.array([354200,452,350100,89,361200,100,344000,400,362900,100,343100,100,364000,400,338700,100,371900,1100,337100,1000,372200,100,336400,1000,372300,200,336000,300,372800,1000,333600,1000,374600,1000,332500,100,376700,100,331600,100])
-    print(ob.reset(l2init))
+    state=ob.reset(l2init)
+    print(state)
+    print("Message dict quote processing",ob.process_order(state,dict_quote))
+    msg_array=jnp.array([1,1,99,346000,8888,8888,3400,5000000])
+    msgs_array=jnp.array([[1,1,99,346000,8888,8888,3400,5000000],
+                          [1,-1,2,346000,8777,8777,3401,5060000]])
+
+    print("Message array processing",ob.process_order_array(state,msg_array))
+
+    print("Process array of messages and return N_levels of L2 state",ob.process_orders_array_l2(state,msgs_array,10))
+
+    print("Volume at price test:",ob.get_volume_at_price(state,1,346000,True))
+
+    print("Next executable order test:", ob.get_next_executable_order(state,1))
+
+    print("Best bid price:", ob.get_best_price(state,1))
+
+    print("Best ask price:", ob.get_best_price(state,0))
+
+    print("Best bid and ask prices + quants:", ob.get_best_bid_and_ask_inclQuants(state))
+

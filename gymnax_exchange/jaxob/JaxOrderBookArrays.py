@@ -449,7 +449,7 @@ def ask_cancel(cfg:Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
 
 ################  BRANCHING FUNCTIONS ################
 @partial(jax.jit,static_argnums=(0,))
-def cond_type_side(config : Configuration,key:chex.PRNGKey,book_state, data):
+def cond_type_side(config : Configuration,book_state, it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. 
@@ -466,6 +466,7 @@ def cond_type_side(config : Configuration,key:chex.PRNGKey,book_state, data):
                     the message in data
                 book_state_to_save (Int): 0, nothing saved in lax.scan
     """
+    (key,data)=it_data
     askside,bidside,trades=book_state
     msg={'side':data[1],
          'type':data[0],
@@ -494,8 +495,8 @@ def cond_type_side(config : Configuration,key:chex.PRNGKey,book_state, data):
                                      trades)
     return (ask, bid, trade), 0
 
-@jax.jit
-def cond_type_side_save_states(cfg:Configuration,key:chex.PRNGKey,book_state,data):
+@partial(jax.jit,static_argnums=0)
+def cond_type_side_save_states(cfg:Configuration,book_state,it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. Addtionally, returns the order 
@@ -514,6 +515,7 @@ def cond_type_side_save_states(cfg:Configuration,key:chex.PRNGKey,book_state,dat
                     the message in data
                 book_state_to_save (Int): book_state
     """
+    (key,data)=it_data
     askside,bidside,trades=book_state
     msg={'side':data[1],
          'type':data[0],
@@ -531,7 +533,7 @@ def cond_type_side_save_states(cfg:Configuration,key:chex.PRNGKey,book_state,dat
              + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
              + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3)
     ask, bid, trade = jax.lax.switch(index,
-                                     (ask_lim, bid_lim,
+                                     (partial(ask_lim,cfg), partial(bid_lim,cfg),
                                        partial(ask_cancel,cfg,key), partial(bid_cancel,cfg,key)),
                                      msg,
                                      askside,
@@ -539,8 +541,8 @@ def cond_type_side_save_states(cfg:Configuration,key:chex.PRNGKey,book_state,dat
                                      trades)
     return (ask,bid,trade),(ask,bid,trade)
 
-@jax.jit
-def cond_type_side_save_bidask(cfg:Configuration,key:chex.PRNGKey,book_state,data):
+@partial(jax.jit,static_argnums=0)
+def cond_type_side_save_bidask(cfg:Configuration,book_state,it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. Addtionally, returns the order 
@@ -559,6 +561,7 @@ def cond_type_side_save_bidask(cfg:Configuration,key:chex.PRNGKey,book_state,dat
                     the message in data
                 book_state_to_save (Int): best bid/ask price & quant
     """
+    (key,data)=it_data
     askside,bidside,trades=book_state
     msg={'side':data[1],
          'type':data[0],
@@ -603,8 +606,9 @@ def scan_through_entire_array(cfg:Configuration,
                 book_state (Tuple): Same as parameter after processing
                     the messages in msg_array.
     """
-    func=partial(cond_type_side,cfg,key)
-    book_state,_=jax.lax.scan(func,book_state,msg_array)
+    keys=jax.random.split(key,msg_array.shape[0])
+    func=partial(cond_type_side,cfg)
+    book_state,_=jax.lax.scan(func,book_state,(keys,msg_array))
     return book_state
 
 def scan_through_entire_array_save_states(cfg:Configuration,
@@ -632,10 +636,11 @@ def scan_through_entire_array_save_states(cfg:Configuration,
                                     for the last N_steps
                     trades (Array): All trades which have occured
     """
-    func=partial(cond_type_side_save_states,cfg,key)
+    keys=jax.random.split(key,msg_array.shape[0])
+    func=partial(cond_type_side_save_states,cfg)
     last_state,all_states=jax.lax.scan(func,
                                        book_state,
-                                       msg_array)
+                                       (keys,msg_array))
     return (all_states[0][-N_steps:],all_states[1][-N_steps:],last_state[2])
 
 def scan_through_entire_array_save_bidask(cfg:Configuration,
@@ -661,11 +666,12 @@ def scan_through_entire_array_save_bidask(cfg:Configuration,
                 best_bid_ask (Tuple): Two arrays of the best bid and
                                         best ask prices respectively.
     """
-    func=partial(cond_type_side_save_bidask,cfg,key)
+    func=partial(cond_type_side_save_bidask,cfg)
+    keys=jax.random.split(key,msg_array.shape[0])
     #FIXME: Uses same key for every message, so won't add any randomness...
     last_state,all_bid_asks=jax.lax.scan(func,
                                          book_state,
-                                         msg_array)
+                                         (keys,msg_array))
     
     return (last_state[0],last_state[1],last_state[2]),\
             (all_bid_asks[0][-N_steps:],all_bid_asks[1][-N_steps:])
@@ -759,6 +765,7 @@ def get_volume_at_price(orderside, price):
     """
     return jnp.sum(jnp.where(orderside[:,0]==price,orderside[:,1],0))
 
+@partial(jax.jit,static_argnums=0)
 def get_best_ask(cfg:Configuration,asks):
     """Returns the best (lowest) ask price. If there is no ask, return -1. 
         Parameters:
@@ -769,8 +776,8 @@ def get_best_ask(cfg:Configuration,asks):
     min = jnp.min(jnp.where(asks[:, 0] == -1, cfg.maxint, asks[:, 0]))
     return jnp.where(min == cfg.maxint, -1, min)
 
-@jax.jit
-def get_best_bid(bids):
+@partial(jax.jit,static_argnums=0)
+def get_best_bid(cfg:Configuration,bids):
     """Returns the best (lowest) bid price. If there is no bid, return -1. 
         Parameters:
                 bids (Array): All bid orders in book.
@@ -779,8 +786,8 @@ def get_best_bid(bids):
     """
     return jnp.max(bids[:, 0])
 
-@jax.jit
-def get_best_bid_and_ask(askside,bidside):
+@partial(jax.jit,static_argnums=0)
+def get_best_bid_and_ask(cfg:Configuration,askside,bidside):
     """Returns the best bid and the best ask price given the bid
     side and the ask side. 
         Parameters:
@@ -791,9 +798,10 @@ def get_best_bid_and_ask(askside,bidside):
                 best_ask (int): Price of best ask order
                 best_bid (int): Price of best ask order
     """
-    return get_best_ask(askside), get_best_bid(bidside)
+    return get_best_ask(cfg,askside), get_best_bid(cfg,bidside)
 
-def get_best_bid_and_ask_inclQuants(askside,bidside):
+@partial(jax.jit,static_argnums=0)
+def get_best_bid_and_ask_inclQuants(cfg:Configuration,askside,bidside):
     """Returns the best bid and the best ask price and the volume at
     that price,given the bid side and the ask side. 
         Parameters:
@@ -804,12 +812,12 @@ def get_best_bid_and_ask_inclQuants(askside,bidside):
                 best_ask (Array): Price and volume of best ask order
                 best_bid (Array): Price and volume of best ask order
     """
-    best_ask,best_bid=get_best_bid_and_ask(askside,bidside)
+    best_ask,best_bid=get_best_bid_and_ask(cfg,askside,bidside)
     best_ask_Q=get_volume_at_price(askside,best_ask)
     best_bid_Q=get_volume_at_price(bidside,best_bid)
     best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)
     best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)    
-    return best_ask,best_bid
+    return best_bid,best_ask
 
 
 @partial(jax.jit,static_argnums=0)
@@ -824,10 +832,10 @@ def init_orderside(nOrders=100):
     """
     return (jnp.ones((nOrders,6))*-1).astype(jnp.int32)
 
-@partial(jax.jit,static_argnums=(2,))
-def init_msgs_from_l2(book_l2: jnp.array,
-                      time: Optional[jax.Array] = None,
-                      cfg : Configuration= None,) -> jax.Array:
+@partial(jax.jit,static_argnums=(0,))
+def init_msgs_from_l2(cfg : Configuration,
+                      book_l2: jnp.array,
+                      time: Optional[jax.Array] = None,) -> jax.Array:
     """Creates a set of messages, limit orders, to initialise an empty
     order book based on a single initial state of the orderbook from data.
         Parameters:
@@ -965,7 +973,7 @@ def get_order_ids(orderside: jax.Array,) -> jax.Array:
     """
     return jnp.unique(orderside[:, 2], size=orderside.shape[0], fill_value=1)
 
-@partial(jax.jit, static_argnums=0)
+@partial(jax.jit, static_argnums=(0,1))
 def get_next_executable_order(config:Configuration,side, side_array):   
     """Gets the the best ask/bid order in the book.
         Parameters:
@@ -977,10 +985,10 @@ def get_next_executable_order(config:Configuration,side, side_array):
     """
     # best sell order / ask
     if side == 0:
-        idx = _get_top_ask_order_idx(side_array)
+        idx = _get_top_ask_order_idx(config,side_array)
     # best buy order / bid
     elif side == 1:
-        idx = _get_top_bid_order_idx(side_array)
+        idx = _get_top_bid_order_idx(config,side_array)
     else:
         raise ValueError("Side must be 0 (bid) or 1 (ask).")
     return side_array[idx].squeeze()
