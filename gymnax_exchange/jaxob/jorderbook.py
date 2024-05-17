@@ -202,8 +202,9 @@ class OrderBook():
         ) -> jax.Array:
         side_array = jax.lax.cond(
             side == 1,
-            lambda: state.bids,
-            lambda: state.asks,
+            lambda a, b: b,
+            lambda a, b: a,
+            state.asks, state.bids
         )
         return job.get_order_ids(side_array)
 
@@ -217,9 +218,10 @@ class OrderBook():
         ) -> jax.Array:
         ''' '''
         side_array = jax.lax.cond(
-            side == 0,
-            lambda: state.asks,
-            lambda: state.bids,
+            side == 1,
+            lambda a, b: b,
+            lambda a, b: a,
+            state.asks, state.bids
         )
         if price is not None:
             return job.get_order_by_id_and_price(side_array, order_id, price)
@@ -236,9 +238,10 @@ class OrderBook():
         ) -> jax.Array:
         ''' '''
         side_array = jax.lax.cond(
-            side == 0,
-            lambda: state.asks,
-            lambda: state.bids,
+            side == 1,
+            lambda a, b: b,
+            lambda a, b: a,
+            state.asks, state.bids
         )
         return job.get_order_by_time(side_array, time_s, time_ns)
 
@@ -251,8 +254,9 @@ class OrderBook():
         ):
         side_array = jax.lax.cond(
             side == 1,
-            lambda: state.bids,
-            lambda: state.asks,
+            lambda a, b: b,
+            lambda a, b: a,
+            state.asks, state.bids
         )
         return job.get_next_executable_order(self.cfg,side, side_array)
     
