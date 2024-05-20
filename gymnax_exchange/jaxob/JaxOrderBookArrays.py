@@ -1005,14 +1005,15 @@ def get_order_by_time(
                                  Returns an empty array (-1 dummy 
                                  values) if not found.
     """
+    # NOTE: jnp.where without x, y returns a tuple
     idx = jnp.where(((side_array[..., 4] == time_s) &
                      (side_array[..., 5] == time_ns)),
                     size=1,
-                    fill_value=-1,)
+                    fill_value=-1,)[0][0]
     # return vector of -1 if not found
     return jax.lax.cond(idx == -1,
                         lambda i: -2 * jnp.ones((6,), dtype=jnp.int32),
-                        lambda i: side_array[i][0],
+                        lambda i: side_array[i],
                         idx)
 
 @jax.jit
