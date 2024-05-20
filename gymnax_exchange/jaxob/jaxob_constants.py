@@ -6,8 +6,10 @@ class MaxInt(Enum):
     _32_Bit_Signed=32_767
 
 INITID=-900000
+EMPTY_SLOT=-1
 NTRADE_CAP=100
 NORDER_CAP=100
+
 
 #Define as static...? Might solve 
 class CancelMode(Enum):

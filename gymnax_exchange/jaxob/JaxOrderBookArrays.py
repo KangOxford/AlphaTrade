@@ -106,7 +106,6 @@ def cancel_order(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
         Returns:
                 orderside (Array): Orderbook side with cancelled order
     """
-    jax.debug.print("orderside[:,2] {}\n msg['orderid'] {}",orderside,msg)
     oid_match = (orderside[:, 2] == msg['orderid'])
     idx = jnp.where(oid_match, size=1, fill_value=-1)[0][0]
     idx = jax.lax.cond(idx == -1,
@@ -447,6 +446,25 @@ def ask_cancel(cfg:Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
     """
     return cancel_order(cfg,key,askside,msg),bidside,trades
 
+partial(jax.jit,staticargnums=(0,1))
+def match_top_order_if_pricematch(cfg:Configuration,side,msg,askside,bidside,trades):
+    if side==0:
+        idx = _get_top_ask_order_idx(cfg,askside)
+        best_order=askside[idx].squeeze()
+        match_tuple=(idx, askside, msg['quantity'], msg['price'],
+            trades, msg['order_id'], msg['time'], msg['time_ns'])
+        (top_order_idx,orderside,
+        qtm,price,trade,_,_,_)=_match_ask_order(cfg,match_tuple)
+    if side==1:
+        idx = _get_top_bid_order_idx(cfg,bidside)
+        best_order=bidside[idx].squeeze()
+        match_tuple=(idx, askside, msg['quantity'], msg['price'],
+            trades, msg['order_id'], msg['time'], msg['time_ns'])
+        (top_order_idx,orderside,
+        qtm,price,trade,_,_,_)=_match_ask_order(cfg,match_tuple)
+
+                                            
+
 ################  BRANCHING FUNCTIONS ################
 @partial(jax.jit,static_argnums=(0,))
 def cond_type_side(config : Configuration,book_state, it_data):
@@ -476,23 +494,43 @@ def cond_type_side(config : Configuration,book_state, it_data):
          'traderid':data[4],
          'time':data[6],
          'time_ns':data[7]}
-    
-
-    
     s = msg["side"]
     t = msg["type"]
-    index = ((((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0 
-             + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1
-             + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 
-             + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3)
 
-    ask, bid, trade = jax.lax.switch(index,
-                                     (partial(ask_lim,config), partial(bid_lim,config),
-                                       partial(ask_cancel,config,key), partial(bid_cancel,config,key)),
-                                     msg,
-                                     askside,
-                                     bidside,
-                                     trades)
+    if config.simulator_mode == cst.SimulatorMode.GENERAL_EXCHANGE.value:
+        #Means the match orders (4) will be treated as limit orders of opposite side
+        # and delete orders (3) will just be treated as cancel orders.
+        index = ((((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0 
+                + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1
+                + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 
+                + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3)
+
+        ask, bid, trade = jax.lax.switch(index,
+                                        (partial(ask_lim,config), partial(bid_lim,config),
+                                        partial(ask_cancel,config,key), partial(bid_cancel,config,key)),
+                                        msg,
+                                        askside,
+                                        bidside,
+                                        trades)
+    elif config.simulator_mode == cst.SimulatorMode.LOBSTER_INTERPRETER.value:
+        print("This config option is not yet fully implemented, ignore any result, change simulator_mode config.")
+        index= ((((s == -1) & (t == 1))   ) * 0 
+                + (((s ==  1) & (t == 1)) ) * 1
+                + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 
+                + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
+                + ((s ==  1) & (t == 4)) * 4
+                + ((s ==  -1) & (t == 4)) * 5)
+        # 1: add lim (cfg turns off matching) 2/3: cancel, 4:remove liq and match (limit to one order and only if price right)
+        ask, bid, trade = jax.lax.switch(index,
+                                (partial(ask_lim,config), partial(bid_lim,config),
+                                partial(ask_cancel,config,key), partial(bid_cancel,config,key),
+                                partial(match_top_order_if_pricematch,config)),
+                                msg,
+                                askside,
+                                bidside,
+                                trades)
+    else: 
+        raise ValueError("The simulator mode does not match an expected value.")
     return (ask, bid, trade), 0
 
 @partial(jax.jit,static_argnums=0)
@@ -958,7 +996,7 @@ def get_order_by_time(
                     fill_value=-1,)
     # return vector of -1 if not found
     return jax.lax.cond(idx == -1,
-                        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: -2 * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i][0],
                         idx)
 

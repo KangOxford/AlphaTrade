@@ -12,3 +12,5 @@ class Configuration:
     seed: int =cst.SEED
     nTrades : int=cst.NTRADE_CAP
     nOrders : int =cst.NORDER_CAP
+    simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
+    empty_slot_val=cst.EMPTY_SLOT
