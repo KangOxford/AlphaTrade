@@ -127,7 +127,7 @@ def get_init_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
                         & (orderside[:, 2] <= cfg.init_id)
                         & (orderside[:,1]>=msg['quantity']))
     idx = jnp.where(init_id_match, size=1, fill_value=-1)[0][0]
-    if cfg.cancel_mode==2:
+    if cfg.cancel_mode==2 or cfg.cancel_mode==3:
         idx = jax.lax.cond((idx == -1 ),
                         partial(get_random_id_match,cfg,key),
                         lambda a, b: idx,
@@ -141,6 +141,21 @@ def get_init_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
 def get_random_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
     price_match=((orderside[:, 0] == msg['price'])
                     & (orderside[:,1]>=msg['quantity']))
+    order_ids=jnp.where(price_match,orderside[:,2],jnp.zeros_like(orderside[:,2]))
+    key,_=jax.random.split(key, num=2)
+    chosen_id=jax.random.choice(key, order_ids,p=jnp.abs(jnp.sign(order_ids)))
+    idx=jnp.where(orderside[:,2]==chosen_id,size=1,fill_value=-1)[0][0]
+    if cfg.cancel_mode==3:
+        idx = jax.lax.cond((idx == -1 ),
+                        partial(get_random_large_id_match,cfg,key),
+                        lambda a, b: idx,
+                        orderside,
+                        msg,)
+    return idx
+
+@partial(jax.jit, static_argnums=(0,))
+def get_random_large_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
+    price_match=(orderside[:, 0] == msg['price'])
     order_ids=jnp.where(price_match,orderside[:,2],jnp.zeros_like(orderside[:,2]))
     key,_=jax.random.split(key, num=2)
     chosen_id=jax.random.choice(key, order_ids,p=jnp.abs(jnp.sign(order_ids)))

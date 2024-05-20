@@ -8,7 +8,7 @@ from dataclasses import dataclass
 class Configuration:
     maxint : int = cst.MaxInt._64_Bit_Signed.value
     init_id :int = cst.INITID
-    cancel_mode: int= cst.CancelMode.CANCEL_UNIFORM.value
+    cancel_mode: int= cst.CancelMode.CANCEL_UNIFORM_AND_LARGE.value
     seed: int =cst.SEED
     nTrades : int=cst.NTRADE_CAP
     nOrders : int =cst.NORDER_CAP
