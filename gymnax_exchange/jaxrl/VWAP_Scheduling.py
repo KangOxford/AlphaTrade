@@ -15,18 +15,6 @@ import pandas as pd
 from tqdm import tqdm
 # from joblib import Parallel, delayed
 import datetime
-import gc
-
-import chex
-import flax
-import flax.linen as nn
-import gymnax
-import optax
-from flax.linen.initializers import constant, orthogonal
-from flax.training.train_state import TrainState
-from typing import Any, Dict, NamedTuple, Sequence
-import distrax
-from gymnax.environments import spaces
 
 
 sys.path.append('../purejaxrl')
@@ -95,6 +83,9 @@ def VWAP_Scheduling(state, env, forcasted_volume_, key):
 def ORACLE_Scheduling(state, env, oracles, key):
     return VWAP_Scheduling(state, env, oracles, key)
 
+def CMEM_Scheduling(state, env, twaps, key):
+    return VWAP_Scheduling(state, env, twaps, key)
+
 def TWAP_Scheduling(state, env, twaps, key):
     return VWAP_Scheduling(state, env, twaps, key)
 
@@ -145,6 +136,21 @@ def data_alignment(ATFolder):
         d = df[['date', 'timeHMs', 'x_rm']].pivot(index = 'date', columns = 'timeHMs')
         d = d.fillna(method = "ffill")
         return d # x
+    
+
+    def load_forecasted_volume_CMEM(symbol):
+        import pandas as pd
+        import numpy as np
+        dir = '/homes/80/kang/cmem/output/0400_r_kl_output_raw_data_fractional/'
+        df = pd.read_csv(dir+f'{symbol}.csv')
+        df.date = df.date.apply(lambda d: str(d)[1:5]+'-'+str(d)[6:8]+'-'+str(d)[9:11]) 
+        d=df[['date', 'bins', 'forecast_signal']].pivot(index = 'date', columns = 'bins')
+        # d.T.reset_index(drop=True)
+        # d.reset_index().T.reset_index(drop=True).T
+        d.columns = [ 930.0,  945.0, 1000.0, 1015.0, 1030.0, 1045.0, 1100.0, 1115.0, 1130.0,
+            1145.0, 1200.0, 1215.0, 1230.0, 1245.0, 1300.0, 1315.0, 1330.0, 1345.0,
+            1400.0, 1415.0, 1430.0, 1445.0, 1500.0, 1515.0, 1530.0, 1545.0]
+        return d # x
 
     def load_files(symbol):
         alphatradePath = ATFolder
@@ -177,8 +183,9 @@ def data_alignment(ATFolder):
         VWAPs = [(d[0], d[1]) for d in ds]
         ORACLEs = [(d[0], d[2]) for d in ds]
         RMs = [(symbol, load_forecasted_volume_RM(symbol)) for symbol in common_stocks]
-        return VWAPs, ORACLEs, RMs
-    VWAPs, ORACLEs, RMs = get_raw_VWAPs_ORACLEs_RMs()
+        CMEMs = [(symbol, load_forecasted_volume_CMEM(symbol)) for symbol in common_stocks]
+        return VWAPs, ORACLEs, RMs, CMEMs
+    VWAPs, ORACLEs, RMs, CMEMs = get_raw_VWAPs_ORACLEs_RMs()
     
     def get_common_dates():
         
@@ -195,7 +202,7 @@ def data_alignment(ATFolder):
     def align_dates(Xs):
         Xs = {d[0]: d[1].loc[common_dates] for d in Xs}
         return Xs
-    VWAPs, ORACLEs, RMs = list(map(align_dates, [VWAPs, ORACLEs, RMs]))
+    VWAPs, ORACLEs, RMs, CMEMs = list(map(align_dates, [VWAPs, ORACLEs, RMs, CMEMs]))
 
     def generate_TWAPs(RMs):
         def f(df):
@@ -205,9 +212,9 @@ def data_alignment(ATFolder):
         return {symbol: f(df) for symbol, df in RMs.items()}
     TWAPs = generate_TWAPs(RMs)
             
-    return common_dates, common_stocks, VWAPs, ORACLEs, RMs, TWAPs
+    return common_dates, common_stocks, VWAPs, ORACLEs, RMs, TWAPs, CMEMs
 
-symbol = 'BAC'
+# symbol = 'BAC'
 
 
 def main1(symbol):
@@ -217,11 +224,12 @@ def main1(symbol):
 
         
     # ATFolder = f"/scratch/local/kang/SP500/{symbol}_data"
-    ATFolder = f"/homes/80/kang/SP500/{symbol}_data"
+    ATFolder = f"/homes/80/kang/AlphaTrade/{symbol}_data"
+    # ATFolder = f"/homes/80/kang/SP500/{symbol}_data"
     # ATFolder = f"/homes/80/kang/SP500/ABC_data"
     # ATFolder = f"/homes/80/kang/SP500/ACN_data"
     # ATFolder = f"/homes/80/kang/SP500/AAP_data"
-    common_dates, common_stocks, VWAPs, ORACLEs, RMs, TWAPs = data_alignment(ATFolder)
+    common_dates, common_stocks, VWAPs, ORACLEs, RMs, TWAPs, CMEMs = data_alignment(ATFolder)
 
     # pre setup the env
     config = {
@@ -246,6 +254,11 @@ def main1(symbol):
 
     for symbol in common_stocks:
         print("+++ symbol : ", symbol)
+        
+        allocation_array_final_cmem = CMEM_Scheduling(state, env, CMEMs[symbol], key_reset)
+        print("allocation_array_final_cmem finished")
+        print(f"Size of the allocation_array_final_cmem in MB: {sys.getsizeof(allocation_array_final_cmem) / (1024 ** 2)}")
+        
         allocation_array_final_rm = RM_Scheduling(state, env, RMs[symbol], key_reset)
         print("allocation_array_final_rm finished")
         print(f"Size of the allocation_array_final_rm in MB: {sys.getsizeof(allocation_array_final_rm) / (1024 ** 2)}")
@@ -258,6 +271,7 @@ def main1(symbol):
         allocation_array_final_twap = TWAP_Scheduling(state, env, TWAPs[symbol], key_reset)
         print("allocation_array_final_twap finished")
         print(f"Size of the allocation_array_final_twap in MB: {sys.getsizeof(allocation_array_final_twap) / (1024 ** 2)}")
+
         
         assert len(allocation_array_final_oracle) == len(allocation_array_final_rm)
         print("allocation_array_final_oracle, num of arrays: ", len(allocation_array_final_oracle))
@@ -369,7 +383,8 @@ if __name__ == "__main__":
     # symbols = ["AAP"]
     # top_symbols = ['BAC']
     # top_symbols = ['HP']
-    top_symbols = ['AEP']
+    top_symbols = ['GS']
+    # top_symbols = ['AEP']
     # top_symbols = ['FITB']
     # top_symbols = ['GPN']
     # top_symbols = ['GS']

@@ -273,7 +273,7 @@ class BaseLOBEnv(environment.Environment):
 
 
 
-        Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = load_LOBSTER(
+        Cubes_withOB, self.max_steps_in_episode_arr, self.start_idx_array_list, self.taskSize_array = load_LOBSTER(
             self.sliceTimeWindow,
             self.stepLines,
             self.messagePath,
@@ -284,37 +284,12 @@ class BaseLOBEnv(environment.Environment):
             self.tradeVolumePercentage
         )
         
-        # import pickle
-        # # Save to a pickle file
-        # with open('saved_objects.pkl', 'wb') as f:
-        #     pickle.dump((Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array), f)
-        
-        # breakpoint()
-            
-        # # Load from a pickle file
-        # with open('saved_objects.pkl', 'rb') as f:
-        #     Cubes_withOB, max_steps_in_episode_arr, start_idx_array_list, taskSize_array = pickle.load(f)
-            
-        
-            # sliceTimeWindow, stepLines, messagePath, orderbookPath, start_time, end_time, dates = \
-            #     1800, 100, 
-        self.start_idx_array_list = start_idx_array_list
-        self.taskSize_array = taskSize_array
-        self.max_steps_in_episode_arr = max_steps_in_episode_arr 
         # messages: 4D Array: (n_windows x n_steps (max) x n_messages x n_features)
         # books:    2D Array: (n_windows x [4*n_depth])
         # breakpoint()
-        import sys
-        print("sys.getsizeof(Cubes_withOB)",sys.getsizeof(Cubes_withOB))
-        # breakpoint()
-        del start_idx_array_list, taskSize_array, max_steps_in_episode_arr
-        gc.collect()
         
-        # breakpoint()
-        messages = [jnp.array(cube) for cube, ob in Cubes_withOB]
-        print(sys.getsizeof(messages))
-        Cubes_withOB[1][1]
-        books = [jnp.array(ob) for cube, ob in Cubes_withOB]
+        # messages = [jnp.array(cube) for cube, ob in Cubes_withOB]
+        # books = [jnp.array(ob) for cube, ob in Cubes_withOB]
         self.messages, self.books = map(jnp.array, zip(*Cubes_withOB))
         # breakpoint()
         self.n_windows = len(self.books)

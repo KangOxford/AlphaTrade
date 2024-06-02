@@ -39,15 +39,15 @@ from contextlib import nullcontext
 from email import message
 from random import sample
 from re import L
-import jax
-import jax.numpy as jnp
+
+
 import numpy as np
 from jax import lax, flatten_util
 from gymnax.environments import environment, spaces
 from typing import Tuple, Optional, Dict
-import chex
+
 from flax import struct
-from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 
 @struct.dataclass
@@ -166,7 +166,7 @@ class ExecutionEnv(BaseLOBEnv):
                 stateArray = jnp.hstack((state[0],state[1],state[2],state[3],state[4],padded_state))
                 return stateArray
             self.stateArray_list = jnp.array([state2stateArray(state) for state in states])
-            import pickle
+
             # Save the list
             with open(pkl_file_name, 'wb') as f:
                 pickle.dump(self.stateArray_list, f) 
@@ -200,11 +200,15 @@ class ExecutionEnv(BaseLOBEnv):
         
         # Define the two actions
         action_passive = jnp.array([0, 0, delta, 0], dtype=jnp.int32)
-        action_aggressive = jnp.array([delta, 0, 0, 0], dtype=jnp.int32)
+        # action_aggressive = jnp.array([delta, 0, 0, 0], dtype=jnp.int32)
 
-        # Randomly choose between the two actions
-        key, subkey = jax.random.split(key)
-        action = jax.random.choice(subkey, jnp.array([action_passive, action_aggressive]))
+        # # Randomly choose between the two actions
+        # key, subkey = jax.random.split(key)
+        # action = jax.random.choice(subkey, jnp.array([action_passive, action_aggressive]))
+        
+        
+        action = action_passive
+        
         
         # action = jnp.array([0,0,delta,0],dtype=jnp.int32) # passive
         # action = jnp.array([delta,0,0,0],dtype=jnp.int32) # aggressive
@@ -565,7 +569,9 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/SP500"
+        ATFolder = "/homes/80/kang/AlphaTrade/GS_data"
+        # ATFolder = "/homes/80/kang/GS_data"
+        # ATFolder = "/homes/80/kang/SP500"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
