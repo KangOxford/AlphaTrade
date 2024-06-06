@@ -1,8 +1,8 @@
 # from jax import config
 # config.update("jax_enable_x64",True)
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"   
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"   
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"   
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"   
 
 
 import os
@@ -188,10 +188,7 @@ def data_alignment(ATFolder):
     VWAPs, ORACLEs, RMs, CMEMs = get_raw_VWAPs_ORACLEs_RMs()
     
     def get_common_dates():
-        
-        # 先解压到指定文件夹
-        
-        
+        # Unzip to the specified folder first
         dates_vwap =  VWAPs[-1][-1].index.to_numpy()
         dates_rm =  RMs[-1][-1].index.to_numpy()
         message_dates = load_files(common_stocks[-1]) 
@@ -285,15 +282,18 @@ def main1(symbol):
         save_to_pickle(allocation_array_final_oracle)
         save_to_pickle(allocation_array_final_vwap)
         save_to_pickle(allocation_array_final_twap)
+        save_to_pickle(allocation_array_final_cmem)
         
     
         vwap_info_lst = []
         rm_info_lst = []
         oracle_info_lst = []
         twap_info_lst = []
+        cmem_info_lst = []
         # for reset_window_index in tqdm(range(2)):
         print("START RL PROCESS")
-        for reset_window_index in tqdm(range(len(allocation_array_final_oracle))):
+        for reset_window_index in tqdm(range(len(allocation_array_final_cmem))):
+        # for reset_window_index in tqdm(range(len(allocation_array_final_oracle))):
             # print(f"+++ reset_window_index idx {reset_window_index}")
             def get_final_info(strategy_type, reset_window_index, rng):
                 rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -306,6 +306,7 @@ def main1(symbol):
                     key_step, _ =  jax.random.split(key_step, 2)
                     # print("window_index: ",state.window_index)
                     if  strategy_type == "vwap":
+                        pass
                         test_action=allocation_array_final_vwap[state.window_index][state.step_counter-1] 
                     elif strategy_type == "rm":
                         test_action=allocation_array_final_rm[state.window_index][state.step_counter-1]
@@ -313,6 +314,8 @@ def main1(symbol):
                         test_action=allocation_array_final_oracle[state.window_index][state.step_counter-1]
                     elif strategy_type == "twap":
                         test_action=allocation_array_final_twap[state.window_index][state.step_counter-1]
+                    elif strategy_type == "cmem":
+                        test_action=allocation_array_final_cmem[state.window_index][state.step_counter-1]
                     else: raise NotImplementedError
                     # print(state.task_to_execute)
                     # print(f"Sampled {i}th actions are: ",test_action)
@@ -326,18 +329,41 @@ def main1(symbol):
                 return info
             
             
-            vwap_info = get_final_info("vwap", reset_window_index, rng= jax.random.PRNGKey(0))
-            vwap_info_lst.append((vwap_info['window_index'],vwap_info['average_price']))
-            print(">>> vwap_info:",vwap_info)
-            rm_info = get_final_info("rm", reset_window_index, rng= jax.random.PRNGKey(0))
-            rm_info_lst.append((rm_info['window_index'],rm_info['average_price']))
-            print(">>> rm_info:",rm_info)
-            oracle_info = get_final_info("oracle", reset_window_index, rng= jax.random.PRNGKey(0))
-            oracle_info_lst.append((oracle_info['window_index'],oracle_info['average_price']))
-            print(">>> oracle_info:",oracle_info)
-            twap_info = get_final_info("twap", reset_window_index, rng= jax.random.PRNGKey(0))
-            twap_info_lst.append((twap_info['window_index'],twap_info['average_price']))
-            print(">>> twap_info:",twap_info)
+            # vwap_info = get_final_info("vwap", reset_window_index, rng= jax.random.PRNGKey(0))
+            # vwap_info_lst.append((vwap_info['window_index'],vwap_info['average_price']))
+            # print(">>> vwap_info:",vwap_info)
+            # rm_info = get_final_info("rm", reset_window_index, rng= jax.random.PRNGKey(0))
+            # rm_info_lst.append((rm_info['window_index'],rm_info['average_price']))
+            # print(">>> rm_info:",rm_info)
+            # oracle_info = get_final_info("oracle", reset_window_index, rng= jax.random.PRNGKey(0))
+            # oracle_info_lst.append((oracle_info['window_index'],oracle_info['average_price']))
+            # print(">>> oracle_info:",oracle_info)
+            # twap_info = get_final_info("twap", reset_window_index, rng= jax.random.PRNGKey(0))
+            # twap_info_lst.append((twap_info['window_index'],twap_info['average_price']))
+            # print(">>> twap_info:",twap_info)
+            # cmem_info = get_final_info("cmem", reset_window_index, rng= jax.random.PRNGKey(0))
+            # cmem_info_lst.append((cmem_info['window_index'],cmem_info['average_price']))
+            # print(">>> cmem_info:",cmem_info)
+            # print(
+            #     f">>> cmem_info:{cmem_info}",\
+            #     file=open(f"/homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/{symbol}_vwap_scheduling.csv",'a')
+            # )           
+            
+            def get_and_append_info(info_type, reset_window_index, rng, info_list):
+                info = get_final_info(info_type, reset_window_index, rng)
+                info_list.append((info['window_index'], info['average_price']))
+                print(f">>> {info_type}_info:", info)
+                print(
+                    f">>> {info_type}_info:{info}",\
+                    file=open(f"/homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/{symbol}_vwap_scheduling.csv",'a')
+                )     
+            rng = jax.random.PRNGKey(0)
+            # Call the function for each type of information
+            get_and_append_info("vwap", reset_window_index, rng, vwap_info_lst)
+            get_and_append_info("rm", reset_window_index, rng, rm_info_lst)
+            get_and_append_info("oracle", reset_window_index, rng, oracle_info_lst)
+            get_and_append_info("twap", reset_window_index, rng, twap_info_lst)
+            get_and_append_info("cmem", reset_window_index, rng, cmem_info_lst)
 
             
 
@@ -347,15 +373,15 @@ def main1(symbol):
             # results = Parallel(n_jobs=3)(delayed(process_info)(method, reset_window_index, rng_key_num = 0) for method in ["vwap", "rm", "oracle"])
             # vwap_info_lst, rm_info_lst, oracle_info_lst = results
             
-        r = pd.DataFrame(jnp.array(rm_info_lst), columns = ['window_index', 'average_price_RM'])
-        v = pd.DataFrame(jnp.array(vwap_info_lst), columns = ['window_index', 'average_price_VWAP'])
-        o = pd.DataFrame(jnp.array(oracle_info_lst), columns = ['window_index', 'average_price_ORACLE'])
-        t = pd.DataFrame(jnp.array(twap_info_lst), columns = ['window_index', 'average_price_TWAP'])
-        merged_df = pd.merge(r, v, on='window_index', how='inner')
-        merged_df = pd.merge(merged_df, t, on='window_index', how='inner')
-        df = pd.merge(merged_df, o, on='window_index', how='inner')
-        timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
-        df.to_csv(f"VWAP_Scheduling_{symbol}_{timestamp}.csv")
+        # r = pd.DataFrame(jnp.array(rm_info_lst), columns = ['window_index', 'average_price_RM'])
+        # v = pd.DataFrame(jnp.array(vwap_info_lst), columns = ['window_index', 'average_price_VWAP'])
+        # o = pd.DataFrame(jnp.array(oracle_info_lst), columns = ['window_index', 'average_price_ORACLE'])
+        # t = pd.DataFrame(jnp.array(twap_info_lst), columns = ['window_index', 'average_price_TWAP'])
+        # merged_df = pd.merge(r, v, on='window_index', how='inner')
+        # merged_df = pd.merge(merged_df, t, on='window_index', how='inner')
+        # df = pd.merge(merged_df, o, on='window_index', how='inner')
+        # timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
+        # df.to_csv(f"VWAP_Scheduling_{symbol}_{timestamp}.csv")
         
 
         
@@ -383,7 +409,9 @@ if __name__ == "__main__":
     # symbols = ["AAP"]
     # top_symbols = ['BAC']
     # top_symbols = ['HP']
-    top_symbols = ['GS']
+    top_symbols = ['MPC','ROK']
+    # top_symbols = ['AEP','FITB','MPC','ROK']
+    # top_symbols = ['GS']
     # top_symbols = ['AEP']
     # top_symbols = ['FITB']
     # top_symbols = ['GPN']
