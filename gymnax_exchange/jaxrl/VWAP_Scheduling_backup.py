@@ -44,6 +44,18 @@ def hamilton_apportionment_permuted_jax(votes, seats, key):
     (key,init_seats,remainders), x = jax.lax.scan(f,(key,init_seats,remainders),xs=jnp.arange(votes.shape[0]))
     return init_seats.astype(jnp.int32)
 
+# def TWAP_Scheduling(state, env, key):
+#     allocation_array_final_lst = []
+#     for idx in range(env.taskSize_array.shape[0]): # TODO not sure
+#         print(f"TWAP_Scheduling idx {idx}")
+#         allocation_array_final = hamilton_apportionment_permuted_jax(
+#                                  jnp.ones(env.max_steps_in_episode_arr[idx]), 
+#                                  env.taskSize_array[idx], key)
+#         allocation_array_final_lst.append(allocation_array_final)
+#     return allocation_array_final_lst
+
+
+
 
 def VWAP_Scheduling(state, env, forcasted_volume_, key):
     allocation_array_final_lst = []
@@ -112,13 +124,18 @@ def data_alignment(ATFolder):
         and `f`. `d` contains the columns 'date', 'timeHMs', and 'x' pivoted based on 'date' and 'timeHMs'.
         `f` contains the columns 'date', 'timeHMs', and 'qty' pivoted based on '
         """
-        dir = '/homes/80/kang/cmem/data_allValues_universalXGB_1158_bf28.csv'
-        df = pd.read_csv(dir,names=['date', 'x', 'qty', 'symbol'])
-        df = df[df['symbol'] == symbol].reset_index(drop=True)
+
+
+        dir = '/homes/80/kang/cmem/output/NEW15JUNE_0702_single_fractional_shares_clipped/'
+        # dir = '/homes/80/kang/cmem/output/NEW15JUNE_0702_single_fractional_shares_clipped/'
+        # dir = '/homes/80/kang/cmem/output/0900_r_output_with_features_csv_fractional_shares_clipped_vwap/'
+        df = pd.read_csv(dir+f'{symbol}.csv',index_col=0)
+        df['symbol'] = symbol
         from datetime import datetime, timedelta
         timeHMs = np.array([int((datetime(2023, 1, 1, 9, 30) + i * timedelta(minutes=15)).strftime('%H%M')) for i in range(26)])
         timeHMs = np.tile(timeHMs, (1, int(df.shape[0]/timeHMs.shape[0]))).squeeze()
         df['timeHMs'] = timeHMs
+        df.reset_index(inplace=True)
         df.date = df.date.apply(lambda x: str(x)[:4]+'-'+str(x)[4:6]+'-'+str(x)[6:8])
         df = df[['date', 'timeHMs', 'x', 'qty', 'symbol']]
         d = df[['date', 'timeHMs', 'x']].pivot(index = 'date', columns = 'timeHMs')
@@ -126,6 +143,7 @@ def data_alignment(ATFolder):
         return d, f # x, qty
 
     def load_forecasted_volume_RM(symbol):
+
 
         dir = '/homes/80/kang/cmem/data/01_raw_rolling_mean_15min_bin/'
         df = pd.read_csv(dir+f'{symbol}.csv',index_col=0)
@@ -137,11 +155,14 @@ def data_alignment(ATFolder):
     
 
     def load_forecasted_volume_CMEM(symbol):
-        dir = '/homes/80/kang/cmem/output/NEW15JUNE_0702_single_fractional_shares_clipped_NaNremoved_MinmaxClipped/'
-        df = pd.read_csv(dir+f'{symbol}.csv')[['date','timeHMs','x_clipped']]
-        df.rename(columns={'timeHMs':'bins','x_clipped':'forecast_signal'}, inplace=True)
-        df.date = df.date.apply(lambda d: str(d)[0:4]+'-'+str(d)[4:6]+'-'+str(d)[6:8]) 
+
+
+        dir = '/homes/80/kang/cmem/output/0400_r_kl_output_raw_data_fractional/'
+        df = pd.read_csv(dir+f'{symbol}.csv')
+        df.date = df.date.apply(lambda d: str(d)[1:5]+'-'+str(d)[6:8]+'-'+str(d)[9:11]) 
         d=df[['date', 'bins', 'forecast_signal']].pivot(index = 'date', columns = 'bins')
+        # d.T.reset_index(drop=True)
+        # d.reset_index().T.reset_index(drop=True).T
         d.columns = [ 930.0,  945.0, 1000.0, 1015.0, 1030.0, 1045.0, 1100.0, 1115.0, 1130.0,
             1145.0, 1200.0, 1215.0, 1230.0, 1245.0, 1300.0, 1315.0, 1330.0, 1345.0,
             1400.0, 1415.0, 1430.0, 1445.0, 1500.0, 1515.0, 1530.0, 1545.0]
@@ -412,5 +433,3 @@ if __name__ == "__main__":
         main1(symbol)
 
 # /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/VWAP_Scheduling.py --symbols GS MGM FITB KLAC
-# /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/VWAP_Scheduling.py --symbols ROK
-# /bin/python3 /homes/80/kang/AlphaTrade/gymnax_exchange/jaxrl/VWAP_Scheduling.py --symbols MPC 
