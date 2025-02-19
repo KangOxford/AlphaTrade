@@ -108,7 +108,7 @@ config = {
     "WANDB": True,
 
      "TASKSIDE": "random", # "random", "buy", "sell"
-        "REWARD_LAMBDA": 0.1, #0.001,
+        "REWARD_LAMBDA": 0, #0.001,
         "ACTION_TYPE": "pure", # "delta"
         "WINDOW_INDEX": 200, # 2 fix random episode #-1,
         "MAX_TASK_SIZE": 100,
@@ -167,6 +167,13 @@ if wandbOn:
         reward = info["reward"]
         other_exec_quants = info["other_exec_quants"]
 
+        # Extract the last PnL per finished episode for all environments
+        final_PnL_per_env = PnL[info["returned_episode"]] if PnL.size > 0 and info["returned_episode"].size > 0 else jnp.array([])
+
+        # Compute the average final PnL across environments
+        avg_final_PnL = jnp.mean(final_PnL_per_env) if final_PnL_per_env.size > 0 else 0
+
+        # Log all existing metrics + final PnL
         wandb.log(
             {
                 "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0,
@@ -177,13 +184,12 @@ if wandbOn:
                 "buyQuant": jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
                 "sellQuant": jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
                 "other_exec_quants": jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
+                "avg_final_PnL": avg_final_PnL,  # NEW: Log average final PnL across envs
             },
             commit=True,  # Ensures immediate update in wandb
         )
 
-        for t in range(len(timesteps)):
-            print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
-
+        
 
     
 env = FlattenObservationWrapper(env)
@@ -191,7 +197,7 @@ env = LogWrapper(env)
 
 num_tokens = 1 + env.action_space(env_params).n + 256
 config["MIN_ACTION_TOK"] = 1
-config["MAX_ACTION_TOK"] = 3
+config["MAX_ACTION_TOK"] = 8
 
 RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
 forward, params = get_ppo_agent(RWKV, params, seed=1)
