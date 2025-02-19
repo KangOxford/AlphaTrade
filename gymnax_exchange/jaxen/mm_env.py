@@ -167,7 +167,7 @@ class EnvParams(BaseEnvParams):
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
             self,key, alphatradePath, window_index, action_type, episode_time,
-            max_task_size = 500, rewardLambda=0.0001, ep_type="fixed_time"):
+            max_task_size = 500, rewardLambda=0, ep_type="fixed_time"):
         
         #Define Execution-specific attributes.
         self.n_ticks_in_book = 5 # Depth of PP actions
@@ -223,19 +223,9 @@ class MarketMakingEnv(BaseLOBEnv):
         #=======================================#
         #======Process agent actions ===========#
         #=======================================#
-        #jax.debug.print("action :{}",input_action)
-        #def one_hot_action(action: int, n_actions: int):
-         #   return jnp.full((n_actions,), action, dtype=jnp.int32)  # Fill the array with the action value
-
-
-        #jax.debug.print("input_action.shape[0]:{}",input_action.shape[0])
-        #input_action = one_hot_action(input_action, self.n_actions)
-        #input_action=jnp.array([input_action])
         action = self._reshape_action(input_action, state, params,key)
-        #jax.debug.print("action:{}",action)
         action_msgs = self._getActionMsgsV2(action, state, params)
         action_prices = action_msgs[:, 3]
-        #jax.debug.print("action_msgs:{}",action_msgs)
 
         #Cancel all previous agent orders each step, send fresh
         cnl_msg_bid = job.getCancelMsgs(
@@ -297,12 +287,12 @@ class MarketMakingEnv(BaseLOBEnv):
        # (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
         #    self._force_market_order_if_done(key,
         #         bestasks[-1], bestbids[-1], time, asks, bids, trades, state, params)
-        #(asks, bids, trades), new_id_counter, new_time=self._trade_at_midprice(
-        #    bestasks[-1], bestbids[-1], time, asks, bids, trades, state, params)
+        (asks, bids, trades), new_id_counter, new_time=self._trade_at_midprice(
+            bestasks, bestbids, time, asks, bids, trades, state, params)
         bestasks = jnp.concatenate([bestasks,bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
         bestbids = jnp.concatenate([bestbids, bestbids[-1:,:]], axis=0, dtype=jnp.int32)
-        new_id_counter = state.customIDcounter + self.n_actions + 1
-        new_time = time + params.time_delay_obs_act
+        #new_id_counter = state.customIDcounter + self.n_actions + 1
+        #new_time = time + params.time_delay_obs_act
 
         bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2 = self._get_pass_price_quant(state)
         # TODO: consider adding quantity before (in priority) to each price / level
@@ -339,17 +329,9 @@ class MarketMakingEnv(BaseLOBEnv):
             quant_ask_passive_2=quant_ask_passive_2,            
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
-        #jax.debug.print("state.inv :{}",state.inventory)
-        #jax.debug.print("reward:{}",reward)
         done = self.is_terminal(state, params)
-        #jax.debug.print("inventory:{}",state.inventory)
-        #jax.debug.print("reward :{}",reward)
-        #jax.debug.print("done:{}",done)
         average_best_bid= jnp.int32((state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        #jax.debug.print("average_best_bid:{}",average_best_bid)
-        #jax.debug.print("average_best_ask:{}",average_best_ask)
-
         info = {
             "reward":reward,
             "window_index": state.window_index,
@@ -358,6 +340,9 @@ class MarketMakingEnv(BaseLOBEnv):
             "done": done,
             "inventory": state.inventory,
             "market_share":extras["market_share"],
+            "buyPnL":extras["buyPnL"],
+            "scaledInventoryPnL":extras["scaledInventoryPnL"],
+            "sellPnL":extras["sellPnL"],
             "buyQuant":extras["buyQuant"],
             "sellQuant":extras["sellQuant"],
             "other_exec_quants":extras["other_exec_quants"],
@@ -370,10 +355,8 @@ class MarketMakingEnv(BaseLOBEnv):
             "approx_realized_pnl":extras["approx_realized_pnl"],
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
         }
-       
         return self._get_obs(state, params), state, reward, done, info
     
-
     def reset_env(
             self,
             key : chex.PRNGKey,
@@ -683,30 +666,18 @@ class MarketMakingEnv(BaseLOBEnv):
     def _getActionMsgsV2(self, action: jax.Array, state: EnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Compute best_ask and best_bid using a rolling average to reduce variance
-        best_ask = jnp.int32((state.best_asks[-5:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-5:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((state.best_asks[-30:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-30:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         
         # Convert action to integer scalar (assuming action is a single-element array)
         #action = jax.lax.convert_element_type(action[0], jnp.int32)  # Ensure it's a scalar
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 0, 0, 0, -1, 1, -1, -5], dtype=jnp.int32)
-        ask_offsets = jnp.array([0, 0, 0, 0, -1, 1, 1, 5], dtype=jnp.int32)
+        bid_offsets = jnp.array([0, 0, 0, 0, -1, 1, -5, -20], dtype=jnp.int32)
+        ask_offsets = jnp.array([0, 0, 0, 0, -1, 1, 5, 20], dtype=jnp.int32)
         bid_quants = jnp.array([0, 10, 0, 10, 10, 10, 10, 10], dtype=jnp.int32)
-        ask_quants = jnp.array([0, 0, 10, 10, 10, 10, 10, 10], dtype=jnp.int32)
-
-        #Testing aggr
-        #bid_offsets = jnp.array([0, 0, 10, -1, -1, 1, 0, 0], dtype=jnp.int32)
-        #ask_offsets = jnp.array([0, -10, 0, 1, -1, 1, 0, 0], dtype=jnp.int32)
-        #bid_quants = jnp.array([0, 0, 10, 1, 1, 1, 0, 1], dtype=jnp.int32)
-        #ask_quants = jnp.array([0, 10, 0, 1, 1, 1, 1, 0], dtype=jnp.int32)
-
-        #Testing aggr
-        #bid_offsets = jnp.array([0, 0, 10, -1, -1, 1, 0, 0], dtype=jnp.int32)
-        #ask_offsets = jnp.array([0, -10, 0, 1, -1, 1, 0, 0], dtype=jnp.int32)
-        #bid_quants = jnp.array([0, 0, 10, 1, 1, 1, 0, 1], dtype=jnp.int32)
-        #ask_quants = jnp.array([0, 10, 0, 1, 1, 1, 1, 0], dtype=jnp.int32)
-        
+        ask_quants = jnp.array([0, 10, 10, 0, 10, 10, 10, 10], dtype=jnp.int32)
+       
         tick_offset = self.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
         # Get parameters for current action
@@ -721,7 +692,7 @@ class MarketMakingEnv(BaseLOBEnv):
         bid_price = jnp.maximum(bid_price, 0)  # Prevent negative prices
         ask_price = jnp.maximum(ask_price, 0)
         
-        # --------------- Construct messages ---------------
+        # --------------- Construct messages ---------------#
         # Message components (2 messages: bid then ask)
         types = jnp.array([1, 1], dtype=jnp.int32)  # 1=limit order
         sides = jnp.array([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
@@ -860,8 +831,8 @@ class MarketMakingEnv(BaseLOBEnv):
         # ============================== Get Action_msgs ==============================
     def _trade_at_midprice(self,
             #quant_left: jax.Array,
-            bestask: jax.Array,
-            bestbid: jax.Array,
+            bestasks: jax.Array,
+            bestbids: jax.Array,
             time: jax.Array,
             asks: jax.Array,
             bids: jax.Array,
@@ -869,7 +840,7 @@ class MarketMakingEnv(BaseLOBEnv):
             state: EnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
-        """WIP; WILL MAKE IT SO THE AGENT JUST SELLS ALL AT MID PRICE. NEEDS SOME WORK!!"""
+
       
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
              
@@ -902,17 +873,17 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
-        mid_price= (bestbid[0]+bestask[0])//(2*self.tick_size)* self.tick_size
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() // self.tick_size * self.tick_size
         #jax.debug.print("mid_price:{}",mid_price)
         
         new_time = time + params.time_delay_obs_act
 
         is_sell_task = jnp.where(new_inventory > 0, 1, 0)
-        doom_price = jax.lax.cond(
-            is_sell_task,
-            lambda: ((bestbid[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: (( bestask[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-        )
+       # doom_price = jax.lax.cond(
+       #     is_sell_task,
+       #     lambda: ((bestbids[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
+       #     lambda: (( bestasks[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
+       # )
 
         def place_midprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
@@ -926,9 +897,9 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, mid_price, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
+            trades, averageMidprice, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
         )
-        #jax.debug.print("trades :{}",trades)
+        #jax.debug.print("averageMidprice :{}",averageMidprice)
 
         next_id = state.customIDcounter + self.n_actions + 1
         id_counter=next_id
@@ -1148,10 +1119,9 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #Find the new obsvered mid price at the end of the step.
         #Note: to make integer of tick_size // is integer division.
-        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) // 2 // self.tick_size * self.tick_size
-           
+        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) //( 2 * self.tick_size) * self.tick_size
         #Inventory PnL: 
-        InventoryPnL= state.inventory*(mid_price_end-state.mid_price) / self.tick_size 
+        InventoryPnL= state.inventory*(mid_price_end-state.mid_price) // self.tick_size 
     
         #Market Making PNL:     
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() // self.tick_size * self.tick_size
@@ -1162,7 +1132,8 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #Lamda weighted, non directional#
         # Multiply PnL from inventory with small lambda to dampen the effect
-        # reward=buyPnL+sellPnL + self.rewardLambda * InventoryPnL # Symmetrically dampened PnL
+        #reward=buyPnL+sellPnL +  InventoryPnL
+        #reward=buyPnL+sellPnL + self.rewardLambda * InventoryPnL # Symmetrically dampened PnL
 
        
 
@@ -1170,10 +1141,10 @@ class MarketMakingEnv(BaseLOBEnv):
         #reward=buyPnL+sellPnL
         #reward=buyPnL+sellPnL -jnp.abs(state.inventory)
         undamped_reward=buyPnL+sellPnL+InventoryPnL
-        scaledInventoryPnL=InventoryPnL//(new_inventory+1)
+        scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1.03)
         #reward=buyPnL+sellPnL-jnp.abs(state.inventory//10)
-        #reward= buyPnL + sellPnL + scaledInventoryPnL - (1-self.rewardLambda)*jnp.maximum(0,scaledInventoryPnL) # Asymmetrically dampened PnL
-        #jax.debug.print("reward:{}",reward)
+        reward= buyPnL + sellPnL + InventoryPnL - (1-self.rewardLambda)*jnp.maximum(0,InventoryPnL) # Asymmetrically dampened PnL
+        
         #More complex reward function (should be added as part of the env if we actually use them):
         inventoryPnL_lambda = 0.002
         unrealizedPnL_lambda = 0
@@ -1188,10 +1159,8 @@ class MarketMakingEnv(BaseLOBEnv):
         )
   
         #reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
-       
-        reward= -jnp.abs(new_inventory)
-        
-
+        #reward= -jnp.abs(new_inventory)
+    
         #Define a penalty if he exceeds a certain inventory
        # penalty_threshold = 100.0
        # penalty_amount = 500.0 
@@ -1203,12 +1172,9 @@ class MarketMakingEnv(BaseLOBEnv):
         outgoing=(agent_buys[:, 0] / self.tick_size* jnp.abs(agent_buys[:, 1])).sum() 
              
         PnL=(income-outgoing)/self.tick_size
-
-           
         #calculate a fraction of total market activity attributable to us.
         other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
         market_share = TradedVolume / (TradedVolume + other_exec_quants)
-
         # ---------- normalize the reward ----------#
         # reward /= 10_000
         reward_scaled = reward / 1000
@@ -1218,6 +1184,8 @@ class MarketMakingEnv(BaseLOBEnv):
         return reward, {
             "market_share": market_share,
             "undamped_reward":undamped_reward,
+            "buyPnL":buyPnL,
+            "sellPnL":sellPnL,
             "PnL": PnL, 
             "end_inventory":new_inventory,
             "mid_price":mid_price_end,
@@ -1227,6 +1195,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "approx_realized_pnl":approx_realized_pnl,
             "approx_unrealized_pnl" : approx_unrealized_pnl,
             "InventoryPnL":InventoryPnL,
+            "scaledInventoryPnL":scaledInventoryPnL,
             "other_exec_quants":other_exec_quants,
             "averageMidprice": averageMidprice
         }
