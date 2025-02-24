@@ -174,7 +174,7 @@ class BaseLOBEnv(environment.Environment):
         self.nTradesLogged=100
         self.book_depth=10
         self.n_actions=8
-        self.n_ticks_in_book = 10 # Depth of PP actions
+        self.n_ticks_in_book = 10# Depth of PP actions
         self.customIDCounter=0
         self.trader_unique_id=10
         self.tick_size=100

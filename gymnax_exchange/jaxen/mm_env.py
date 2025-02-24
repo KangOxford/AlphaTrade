@@ -167,8 +167,8 @@ class EnvParams(BaseEnvParams):
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
             self,key, alphatradePath, window_index, action_type, episode_time,
-            max_task_size = 500, rewardLambda=0, ep_type="fixed_time"):
-        
+            max_task_size = 500, rewardLambda=0.2, ep_type="fixed_time"):
+    
         #Define Execution-specific attributes.
         self.n_ticks_in_book = 5 # Depth of PP actions
         self.action_type = action_type # 'delta' or 'pure'
@@ -217,9 +217,7 @@ class MarketMakingEnv(BaseLOBEnv):
             state.step_counter,
             state.init_time[0] + params.episode_time
         )
-        
-        #data_messages=self._get_generative_messages(params.message_data,100)
-       # jax.debug.print("data_messages :{}",data_messages)
+    
         #=======================================#
         #======Process agent actions ===========#
         #=======================================#
@@ -342,9 +340,11 @@ class MarketMakingEnv(BaseLOBEnv):
             "market_share":extras["market_share"],
             "buyPnL":extras["buyPnL"],
             "scaledInventoryPnL":extras["scaledInventoryPnL"],
+            "netWorth":extras["netWorth"],
             "sellPnL":extras["sellPnL"],
             "buyQuant":extras["buyQuant"],
             "sellQuant":extras["sellQuant"],
+            "inventoryValue":extras["inventoryValue"],
             "other_exec_quants":extras["other_exec_quants"],
             "averageMidprice":extras["averageMidprice"],
             "Step_PnL":extras["PnL"],
@@ -666,15 +666,12 @@ class MarketMakingEnv(BaseLOBEnv):
     def _getActionMsgsV2(self, action: jax.Array, state: EnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Compute best_ask and best_bid using a rolling average to reduce variance
-        best_ask = jnp.int32((state.best_asks[-30:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-30:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        
-        # Convert action to integer scalar (assuming action is a single-element array)
-        #action = jax.lax.convert_element_type(action[0], jnp.int32)  # Ensure it's a scalar
+        best_ask = jnp.int32((state.best_asks[-20:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-20:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 0, 0, 0, -1, 1, -5, -20], dtype=jnp.int32)
-        ask_offsets = jnp.array([0, 0, 0, 0, -1, 1, 5, 20], dtype=jnp.int32)
+        bid_offsets = jnp.array([0, 0, 0, 1, -1, 1, -5, -10], dtype=jnp.int32)
+        ask_offsets = jnp.array([0, 0, -1, 0, -1, 1, 5, 10], dtype=jnp.int32)
         bid_quants = jnp.array([0, 10, 0, 10, 10, 10, 10, 10], dtype=jnp.int32)
         ask_quants = jnp.array([0, 10, 10, 0, 10, 10, 10, 10], dtype=jnp.int32)
        
@@ -689,8 +686,9 @@ class MarketMakingEnv(BaseLOBEnv):
         # Calculate prices with bounds checking
         bid_price = best_bid + bid_offset * tick_offset
         ask_price = best_ask + ask_offset * tick_offset
-        bid_price = jnp.maximum(bid_price, 0)  # Prevent negative prices
-        ask_price = jnp.maximum(ask_price, 0)
+        bid_price = jnp.maximum(bid_price, 0) 
+        ask_price = jnp.maximum(bid_price+self.n_ticks_in_book * self.tick_size, ask_price)
+        
         
         # --------------- Construct messages ---------------#
         # Message components (2 messages: bid then ask)
@@ -879,11 +877,11 @@ class MarketMakingEnv(BaseLOBEnv):
         new_time = time + params.time_delay_obs_act
 
         is_sell_task = jnp.where(new_inventory > 0, 1, 0)
-       # doom_price = jax.lax.cond(
-       #     is_sell_task,
-       #     lambda: ((bestbids[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-       #     lambda: (( bestasks[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-       # )
+        doom_price = jax.lax.cond(
+            is_sell_task,
+            lambda: ((bestbids[-1, 0])*0.98 // self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: (( bestasks[-1, 0])*1.02 // self.tick_size * self.tick_size).astype(jnp.int32),
+        )
 
         def place_midprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
@@ -897,7 +895,7 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, averageMidprice, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
+            trades, doom_price, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
         )
         #jax.debug.print("averageMidprice :{}",averageMidprice)
 
@@ -1141,9 +1139,9 @@ class MarketMakingEnv(BaseLOBEnv):
         #reward=buyPnL+sellPnL
         #reward=buyPnL+sellPnL -jnp.abs(state.inventory)
         undamped_reward=buyPnL+sellPnL+InventoryPnL
-        scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1.03)
+        scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1)
         #reward=buyPnL+sellPnL-jnp.abs(state.inventory//10)
-        reward= buyPnL + sellPnL + InventoryPnL - (1-self.rewardLambda)*jnp.maximum(0,InventoryPnL) # Asymmetrically dampened PnL
+        reward = buyPnL + sellPnL + scaledInventoryPnL - (1-self.rewardLambda)*jnp.maximum(0,scaledInventoryPnL) # Asymmetrically dampened PnL
         
         #More complex reward function (should be added as part of the env if we actually use them):
         inventoryPnL_lambda = 0.002
@@ -1171,7 +1169,10 @@ class MarketMakingEnv(BaseLOBEnv):
         income=(agent_sells[:, 0]/ self.tick_size* jnp.abs(agent_sells[:, 1])).sum() 
         outgoing=(agent_buys[:, 0] / self.tick_size* jnp.abs(agent_buys[:, 1])).sum() 
              
-        PnL=(income-outgoing)/self.tick_size
+        PnL=(income-outgoing)//self.tick_size
+        inventoryValue=new_inventory*(mid_price_end//self.tick_size)
+        netWorth=PnL+inventoryValue     
+
         #calculate a fraction of total market activity attributable to us.
         other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
         market_share = TradedVolume / (TradedVolume + other_exec_quants)
@@ -1184,9 +1185,11 @@ class MarketMakingEnv(BaseLOBEnv):
         return reward, {
             "market_share": market_share,
             "undamped_reward":undamped_reward,
+            "inventoryValue":inventoryValue,
             "buyPnL":buyPnL,
             "sellPnL":sellPnL,
             "PnL": PnL, 
+            "netWorth":netWorth,
             "end_inventory":new_inventory,
             "mid_price":mid_price_end,
             "agentQuant":inventory_delta,

@@ -91,24 +91,24 @@ except:
 
 config = {
     "LR": 1e-3,
-    "NUM_ENVS": 64,
+    "NUM_ENVS": 128,
     "NUM_STEPS": 10,#128,
     "TOTAL_TIMESTEPS": 5e6,
     "UPDATE_EPOCHS": 4,
-    "NUM_MINIBATCHES": 1,
+    "NUM_MINIBATCHES": 4,
     "GAMMA": 0.99 ** (1/5),
     "GAE_LAMBDA": 0.95 ** (1/5),
     "CLIP_EPS": 0.2,
-    "ENT_COEF": 0.01,
+    "ENT_COEF": 0.1,
     "VF_COEF": 0.5,
     "MAX_GRAD_NORM": 0.5,
     "ACTIVATION": "relu",
-    "ANNEAL_LR": True,
+    "ANNEAL_LR": False,
     "DEBUG": True,
     "WANDB": True,
 
      "TASKSIDE": "random", # "random", "buy", "sell"
-        "REWARD_LAMBDA": 0, #0.001,
+        "REWARD_LAMBDA": 0.2, #0.001,
         "ACTION_TYPE": "pure", # "delta"
         "WINDOW_INDEX": 200, # 2 fix random episode #-1,
         "MAX_TASK_SIZE": 100,
@@ -165,7 +165,9 @@ if wandbOn:
         buyQuant = info["buyQuant"]
         sellQuant = info["sellQuant"]
         reward = info["reward"]
+        netWorth = info["netWorth"]
         other_exec_quants = info["other_exec_quants"]
+        inventoryValue=info["inventoryValue"]
 
         # Extract the last PnL per finished episode for all environments
         final_PnL_per_env = PnL[info["returned_episode"]] if PnL.size > 0 and info["returned_episode"].size > 0 else jnp.array([])
@@ -185,6 +187,8 @@ if wandbOn:
                 "sellQuant": jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
                 "other_exec_quants": jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
                 "avg_final_PnL": avg_final_PnL,  # NEW: Log average final PnL across envs
+                "netWorth":jnp.mean(netWorth)if netWorth.size>0 else 0,
+                "inventoryValue":jnp.mean(inventoryValue) if inventoryValue.size>0 else 0
             },
             commit=True,  # Ensures immediate update in wandb
         )

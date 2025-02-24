@@ -32,11 +32,11 @@ if __name__ == "__main__":
         #"TASKSIDE": "buy",
 
         "MAX_TASK_SIZE": 100,
-        "WINDOW_INDEX": 2,
+        "WINDOW_INDEX": 200,
         "ACTION_TYPE": "pure",
         "REWARD_LAMBDA": 0,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*60,  # 
+        "EPISODE_TIME": 60*5,  # 
     }
         
 
@@ -88,6 +88,7 @@ if __name__ == "__main__":
     sellQuant = np.zeros((test_steps, 1), dtype=int)
     bid_price = np.zeros((test_steps, 1), dtype=int)
     ask_price = np.zeros((test_steps, 1), dtype=int)
+    netWorth = np.zeros((test_steps, 1), dtype=int)
     
 
     averageMidprice = np.zeros((test_steps, 1), dtype=int)
@@ -117,9 +118,9 @@ if __name__ == "__main__":
         # ==================== ACTION ====================
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
-        test_action = env.action_space().sample(key_policy) 
+        #test_action = env.action_space().sample(key_policy) 
         #jax.debug.print("action{}",test_action)
-        #test_action=7
+        test_action=7
         
         start = time.time()
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
@@ -146,6 +147,7 @@ if __name__ == "__main__":
         buyPnL[i] =info["buyPnL"] 
         sellPnL[i] = info["sellPnL"]
         scaledInventoryPnL[i]=info["scaledInventoryPnL"]
+        netWorth[i]=info["netWorth"]
         
         # Increment valid steps
         valid_steps += 1
@@ -177,6 +179,7 @@ if __name__ == "__main__":
     #unrealized_pnl = unrealized_pnl[:plot_until_step]
     buyPnL = buyPnL[:plot_until_step]
     sellPnL = sellPnL[:plot_until_step]
+    netWorth=netWorth[:plot_until_step]
     scaledInventoryPnL=scaledInventoryPnL[:plot_until_step]
     #bid_price_PP =  bid_price_PP[:plot_until_step]
     #ask_price_PP =  ask_price_PP[:plot_until_step]
@@ -189,10 +192,10 @@ if __name__ == "__main__":
     # Save all data to CSV
     # ============================
     # Combine all data into a single 2D array (each column is one metric)
-    data = np.hstack([rewards, inventory, total_PnL, buyQuant, sellQuant, bid_price, ask_price, averageMidprice,buyPnL,sellPnL,scaledInventoryPnL])
+    data = np.hstack([rewards, inventory, total_PnL, buyQuant, sellQuant, bid_price, ask_price, averageMidprice,buyPnL,sellPnL,netWorth])
     
     # Add column headers
-    column_names = ['Reward', 'Inventory', 'Total PnL', 'Buy Quantity', 'Sell Quantity', 'Bid Price', 'Ask Price', 'averageMidprice','buy pnl','sell pnl','scaled inv pnl']
+    column_names = ['Reward', 'Inventory', 'Total PnL', 'Buy Quantity', 'Sell Quantity', 'Bid Price', 'Ask Price', 'averageMidprice','buy pnl','sell pnl','netWorth']
     
     # Save data using pandas to handle CSV easily
     df = pd.DataFrame(data, columns=column_names)
@@ -245,10 +248,10 @@ if __name__ == "__main__":
     axes[1, 2].set_title("Bid, Ask, Mid,Agr, and PP Prices Over Steps")
     axes[1, 2].legend()
 
-    axes[2, 0].plot(range(plot_until_step), scaledInventoryPnL, label="Scaled Inventory PnL", color='gold')
+    axes[2, 0].plot(range(plot_until_step), netWorth, label="netWorth", color='gold')
     axes[2, 0].set_xlabel("Steps")
-    axes[2, 0].set_ylabel("Inventory PnL")
-    axes[2, 0].set_title("Inventory PnL Over Steps")
+    axes[2, 0].set_ylabel("Net Worth ")
+    axes[2, 0].set_title("Net Worth  Over Steps")
 
     axes[2, 1].plot(range(plot_until_step), buyPnL, label="Buy PnL", color='orange')
     axes[2, 1].set_xlabel("Steps")
