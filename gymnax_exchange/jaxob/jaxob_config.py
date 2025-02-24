@@ -16,4 +16,6 @@ class Configuration:
     empty_slot_val=cst.EMPTY_SLOT
 
     
+
+    
     
