@@ -192,7 +192,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         ##Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
-            self.observation_fn = self._get_obs
+            self.observation_fn = self._get_obs_engineered
         elif self.cfg.observation_space == "messages":
             self.observation_fn = self._get_obs_msg
         else:
@@ -389,7 +389,8 @@ class MarketMakingEnv(BaseLOBEnv):
         _, state = super().reset_env(key, params)
         bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2 = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, bid_passive_2=bid_passive_2, quant_bid_passive_2=quant_bid_passive_2,ask_passive_2=ask_passive_2,quant_ask_passive_2=quant_ask_passive_2)
-        obs = self._get_obs(state, params)
+        blank_messages = jnp.zeros((100, 8), dtype=jnp.int32) 
+        obs = self.get_observation(state, params,blank_messages)
         return obs, state
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -1255,7 +1256,7 @@ class MarketMakingEnv(BaseLOBEnv):
         obs=total_msgs
         return obs
     
-    def _get_obs(
+    def _get_obs_engineered(
             self,
             state: EnvState,
             params: EnvParams,
