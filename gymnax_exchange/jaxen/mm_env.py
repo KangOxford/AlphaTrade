@@ -287,7 +287,6 @@ class MarketMakingEnv(BaseLOBEnv):
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
         
-        
         #=======================================#
         #===Process all messages through book===#
         #=======================================#
@@ -320,8 +319,6 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
         executions = self._get_executed_by_action(agent_trades, action, state,action_prices)
-        #jax.debug.print("agent_trades:{}",agent_trades)
-        #jax.debug.print("executions:{}",executions)
         #=======================================#
         #===force inventory sale at episode end=#
         #=======================================#
@@ -889,7 +886,13 @@ class MarketMakingEnv(BaseLOBEnv):
             state: EnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
-        id_counter = state.customIDcounter + self.n_actions + 1
+        #FIXME, DO SOME LOGIC...
+        if self.cfg.action_space=="fixed_quants":
+            id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
+        elif self.cfg.action_space=="fixed_prices":
+            id_counter = state.customIDcounter + self.n_actions + 1 ## we send n_messages here
+        else:
+            raise ValueError("Action space not implemented yet")
         time = time + params.time_delay_obs_act
         return (asks, bids, trades),  id_counter, time
 
