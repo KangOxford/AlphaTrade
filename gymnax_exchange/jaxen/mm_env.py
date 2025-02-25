@@ -311,9 +311,6 @@ class MarketMakingEnv(BaseLOBEnv):
         #=======================================#
         #===force inventory sale at episode end=#
         #=======================================#
-       # (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
-        #    self._force_market_order_if_done(key,
-        #         bestasks[-1], bestbids[-1], time, asks, bids, trades, state, params)
         (asks, bids, trades), new_id_counter, new_time=self.get_episode_end_fn(key,
             bestasks, bestbids, time, asks, bids, trades, state, params)
         bestasks = jnp.concatenate([bestasks,bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
@@ -384,7 +381,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "approx_realized_pnl":extras["approx_realized_pnl"],
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
         }                      
-    
+
         return self.get_observation(state, params, total_messages), state, reward, done, info
     
     def reset_env(
@@ -397,7 +394,8 @@ class MarketMakingEnv(BaseLOBEnv):
         _, state = super().reset_env(key, params)
         bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2 = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, bid_passive_2=bid_passive_2, quant_bid_passive_2=quant_bid_passive_2,ask_passive_2=ask_passive_2,quant_ask_passive_2=quant_ask_passive_2)
-        blank_messages = jnp.zeros((100, 8), dtype=jnp.int32) ##Reset for the message based obs space.
+        blank_messages = jnp.zeros((104, 8), dtype=jnp.int32) ##Reset for the message based obs space.
+        ##FIXME: The size here needs to be size of messages sent, could change.
         obs = self.get_observation(state, params,blank_messages)
         return obs, state
     
@@ -870,7 +868,7 @@ class MarketMakingEnv(BaseLOBEnv):
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         id_counter = state.customIDcounter + self.n_actions + 1
         time = time + params.time_delay_obs_act
-        (asks, bids, trades),  id_counter, time
+        return (asks, bids, trades),  id_counter, time
 
     def unwind_mid_price(self,
             #quant_left: jax.Array,
@@ -1283,11 +1281,11 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.end_fn == "force_market_order":
             return self.end_fn(key,bestasks, bestbids, time, asks, bids, trades, state, params)
         elif self.cfg.end_fn =="do_nothing":
-            return self.end_fn( time, asks, bids, trades, state, params)
+            return self.end_fn(time, asks, bids, trades, state, params)
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, state, params, total_messages=None):
+    def get_observation(self, state, params, total_messages):
         """
         Wrapper function to call the appropriate observation function.
         """
