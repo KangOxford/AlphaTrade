@@ -135,7 +135,7 @@ env = MarketMakingEnv(
         alphatradePath=config["ATFOLDER"],
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
-        ep_type=config["EP_TYPE"],
+        ep_type=config["DATA_TYPE"],
     )
 
 env_params = dataclasses.replace(
