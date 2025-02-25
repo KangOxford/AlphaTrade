@@ -449,7 +449,7 @@ class MarketMakingEnv(BaseLOBEnv):
         return EnvState(
             *base_vals,
            # prev_action=jnp.zeros((self.n_actions, 2), jnp.int32),
-            prev_executed=jnp.zeros((self.n_actions,2 ), jnp.int32),
+            prev_executed=jnp.zeros((2, 2), jnp.int32), # jnp.zeros((self.n_actions,2 ), jnp.int32),
             prev_action=jnp.zeros((2), jnp.int32),#jnp.zeros((2 ,2), jnp.int32),
            # prev_executed=jnp.zeros((2,2 ), jnp.int32),
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
@@ -1240,14 +1240,27 @@ class MarketMakingEnv(BaseLOBEnv):
              
         PnL=(income-outgoing)//self.tick_size
 
+
+
+        # Compute a reference price based on the config
+        if self.cfg.reference_price_portfolio_value == "mid":
+            reference_price = mid_price_end
+        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
+            # For a long position, use the best bid; for a short, the best ask.
+            reference_price = jax.lax.cond(new_inventory > 0,
+                                        lambda: bestbids[-1][0],
+                                        lambda: bestasks[-1][0])
+        else:
+            raise ValueError("Invalid reference price type.")
+        
         # Keep track of overall cash balance (same as overall PnL)
-        cash_balance = cash_balance + PnL
-        inventoryValue=new_inventory*(mid_price_end//self.tick_size)
+        new_cash_balance = state.cash_balance + PnL
+        inventoryValue=new_inventory*(reference_price//self.tick_size)
         netWorth=PnL+inventoryValue  
 
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
-            raise NotImplementedError("The 'portfolio_value' reward function has not been implemented yet.")
+            reward = (new_inventory * reference_price) + new_cash_balance
         elif self.cfg.reward_space == "revenue":
             reward = PnL
         elif self.cfg.reward_space == "complex":
@@ -1284,7 +1297,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "buyPnL":buyPnL,
             "sellPnL":sellPnL,
             "PnL": PnL, 
-            "cash_balance" : cash_balance,
+            "cash_balance" : new_cash_balance,
             "netWorth":netWorth,
             "end_inventory":new_inventory,
             "mid_price":mid_price_end,
@@ -1596,7 +1609,7 @@ if __name__ == "__main__":
         "ACTION_TYPE": "pure",
         "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*8,  # 
+        "EPISODE_TIME": 60*12,  # 
     }
         
     rng = jax.random.PRNGKey(0)
