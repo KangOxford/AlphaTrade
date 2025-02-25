@@ -1216,7 +1216,30 @@ class MarketMakingEnv(BaseLOBEnv):
              
         PnL=(income-outgoing)//self.tick_size
         inventoryValue=new_inventory*(mid_price_end//self.tick_size)
-        netWorth=PnL+inventoryValue     
+        netWorth=PnL+inventoryValue  
+
+        # Set reward based on config file
+        if self.cfg.reward_space == "portfolio_value":
+            raise NotImplementedError("The 'portfolio_value' reward function has not been implemented yet.")
+        elif self.cfg.reward_space == "revenue":
+            reward = PnL
+        elif self.cfg.reward_space == "complex":
+            reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl + inventoryPnL_lambda * jnp.minimum(InventoryPnL, InventoryPnL * asymmetrically_dampened_lambda)
+        elif self.cfg.reward_space == "zero_inv":
+            reward = -jnp.abs(new_inventory)
+        else:
+            raise ValueError("Invalid reward_space specified.")
+        
+        # Set inventory penalty based on config file
+        if self.cfg.inv_penalty == "none":
+            inv_pen = 0.0
+        elif self.cfg.inv_penalty == "linear":
+            inv_pen = (-1) * jnp.abs(new_inventory)
+        elif self.cfg.inv_penalty == "quadratic":
+            inv_pen = (-1) * (new_inventory ** 2)
+        else:
+            raise ValueError("Invalid inventory penalty specified.")
+        reward = reward - inv_pen
 
         #calculate a fraction of total market activity attributable to us.
         other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
@@ -1247,6 +1270,9 @@ class MarketMakingEnv(BaseLOBEnv):
             "other_exec_quants":other_exec_quants,
             "averageMidprice": averageMidprice
         }
+
+
+
     
     def get_episode_end_fn(self,key,bestasks, bestbids, time, asks, bids, trades, state, params):
         """

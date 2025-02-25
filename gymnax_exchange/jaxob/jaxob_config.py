@@ -19,10 +19,12 @@ class Configuration:
 @dataclass(frozen=True)
 class EnvironmentConfig(Configuration):
     action_space: Literal["fixed_prices", "fixed_quants", "parameterised"] =env_cst.action_space
-    reward_space: Literal["zero_inv", "complex", "portfolio_value"] =env_cst.reward_space
+    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
     observation_space: Literal["engineered", "messages"] = env_cst.observation_space
     end_fn: Literal["force_market_order", "unwind_mid_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
+    inv_penalty: Literal["none", "linear", "quadratic"] = "none"
+
 
 
 
