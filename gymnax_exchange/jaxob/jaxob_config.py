@@ -1,6 +1,7 @@
 import gymnax_exchange.jaxob.jaxob_constants as cst
+import gymnax_exchange.jaxob.jaxenv_constants as env_cst
 import jax
-from typing import Tuple
+from typing import Tuple,  Literal,Union,List
 
 from dataclasses import dataclass
 
@@ -15,7 +16,15 @@ class Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
 
-    
+@dataclass(frozen=True)
+class EnvironmentConfig(Configuration):
+    action_space: Literal["fixed_prices", "fixed_quants", "parameterised"] =env_cst.action_space
+    reward_space: Literal["zero_inv", "complex", "portfolio_value"] =env_cst.reward_space
+    observation_space: Literal["engineered", "messages"] = env_cst.observation_space
+
+
+
+
 
     
     

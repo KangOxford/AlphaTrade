@@ -139,6 +139,8 @@ import dataclasses
 import jax.tree_util as jtu
 
 
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+
 
 
 @struct.dataclass
@@ -175,7 +177,9 @@ class MarketMakingEnv(BaseLOBEnv):
         self.max_task_size = max_task_size #Functions as max trade size for us
         self.inventory=0
         self.market_share=0.
-        self.rewardLambda = rewardLambda #
+        self.rewardLambda = rewardLambda 
+      
+
         # TODO: fix!! this can be overwritten in the base class
         self.n_actions = 4 # 4: (FT, M, NT, PP), 3: (FT, NT, PP), 2 (FT, NT), 1 (FT   
         super().__init__(
@@ -185,6 +189,7 @@ class MarketMakingEnv(BaseLOBEnv):
             episode_time,
             ep_type,
         )
+        self.cfg=EnvironmentConfig()
       
 
     @property
@@ -222,7 +227,16 @@ class MarketMakingEnv(BaseLOBEnv):
         #======Process agent actions ===========#
         #=======================================#
         action = self._reshape_action(input_action, state, params,key)
-        action_msgs = self._getActionMsgsV2(action, state, params)
+
+        #Choose an action space
+        if self.cfg.action_space == "fixed_quants":
+            action_fn = self._getActionMsgsV2
+        elif self.cfg.action_space == "fixed_prices":
+            action_fn = self._getActionMsgs
+        else:
+            raise ValueError("Invalid action_space specified.")
+        
+        action_msgs = action_fn(action, state, params)
         action_prices = action_msgs[:, 3]
 
         #Cancel all previous agent orders each step, send fresh
@@ -663,6 +677,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # jax.debug.print("actions {} \n price_quants {} \n", actions, price_quants)
         # return quants only (aggressive prices could be multiple)
        # return price_quants
+    
     def _getActionMsgsV2(self, action: jax.Array, state: EnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Compute best_ask and best_bid using a rolling average to reduce variance
