@@ -206,6 +206,14 @@ class MarketMakingEnv(BaseLOBEnv):
             self.action_fn = self._getActionMsgs_fixedPrice
         else:
             raise ValueError("Invalid action_space specified.")
+        
+        ##Choose an end function from theconfig
+        if self.cfg.end_fn=="force_market_order":
+            self.end_fn =self._force_market_order_if_done
+        elif self.cfg.end_fn=="unwind_mid_price":
+            self.end_fn=self.unwind_mid_price
+        elif self.cfg.end_fn=="do_nothing":
+            self.end_fn=self.end_fn_pass
       
 
     @property
@@ -306,7 +314,7 @@ class MarketMakingEnv(BaseLOBEnv):
        # (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
         #    self._force_market_order_if_done(key,
         #         bestasks[-1], bestbids[-1], time, asks, bids, trades, state, params)
-        (asks, bids, trades), new_id_counter, new_time=self._trade_at_midprice(
+        (asks, bids, trades), new_id_counter, new_time=self.get_episode_end_fn(key,
             bestasks, bestbids, time, asks, bids, trades, state, params)
         bestasks = jnp.concatenate([bestasks,bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
         bestbids = jnp.concatenate([bestbids, bestbids[-1:,:]], axis=0, dtype=jnp.int32)
@@ -389,7 +397,7 @@ class MarketMakingEnv(BaseLOBEnv):
         _, state = super().reset_env(key, params)
         bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2 = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, bid_passive_2=bid_passive_2, quant_bid_passive_2=quant_bid_passive_2,ask_passive_2=ask_passive_2,quant_ask_passive_2=quant_ask_passive_2)
-        blank_messages = jnp.zeros((100, 8), dtype=jnp.int32) 
+        blank_messages = jnp.zeros((100, 8), dtype=jnp.int32) ##Reset for the message based obs space.
         obs = self.get_observation(state, params,blank_messages)
         return obs, state
     
@@ -851,7 +859,20 @@ class MarketMakingEnv(BaseLOBEnv):
         #jax.debug.print('action_msgs\n {}', action_msgs)
         return action_msgs
         # ============================== Get Action_msgs ==============================
-    def _trade_at_midprice(self,
+
+    def end_fn_pass(self,
+            time: jax.Array,
+            asks: jax.Array,
+            bids: jax.Array,
+            trades: jax.Array,
+            state: EnvState,
+            params: EnvParams,
+        ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
+        id_counter = state.customIDcounter + self.n_actions + 1
+        time = time + params.time_delay_obs_act
+        (asks, bids, trades),  id_counter, time
+
+    def unwind_mid_price(self,
             #quant_left: jax.Array,
             bestasks: jax.Array,
             bestbids: jax.Array,
@@ -863,7 +884,7 @@ class MarketMakingEnv(BaseLOBEnv):
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
 
-      
+    
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
@@ -1227,6 +1248,19 @@ class MarketMakingEnv(BaseLOBEnv):
             "averageMidprice": averageMidprice
         }
     
+    def get_episode_end_fn(self,key,bestasks, bestbids, time, asks, bids, trades, state, params):
+        """
+        Wrapper function to call the appropriate episode end function.
+        """
+        if self.cfg.end_fn == "unwind_mid_price":
+            return self.end_fn(bestasks, bestbids, time, asks, bids, trades, state, params)
+        elif self.cfg.end_fn == "force_market_order":
+            return self.end_fn(key,bestasks, bestbids, time, asks, bids, trades, state, params)
+        elif self.cfg.end_fn =="do_nothing":
+            return self.end_fn( time, asks, bids, trades, state, params)
+        else:
+            raise ValueError("Invalid end_fn specified.")
+
     def get_observation(self, state, params, total_messages=None):
         """
         Wrapper function to call the appropriate observation function.
@@ -1240,7 +1274,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
     def get_action(self,action, state, params):
         """
-        Wrapper function to call the appropriate observation function.
+        Wrapper function to call the appropriate action function.
         """
         if self.cfg.action_space == "fixed_quants":
             return self.action_fn(action, state, params)
