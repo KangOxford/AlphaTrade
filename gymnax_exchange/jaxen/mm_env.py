@@ -170,7 +170,6 @@ class MarketMakingEnv(BaseLOBEnv):
     def __init__(
             self,key, alphatradePath, window_index, action_type, episode_time,
             max_task_size = 500, rewardLambda=0.2, ep_type="fixed_time"):
-    
         #Define Execution-specific attributes.
         self.n_ticks_in_book = 5 # Depth of PP actions
         self.action_type = action_type # 'delta' or 'pure'
@@ -190,6 +189,23 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_type,
         )
         self.cfg=EnvironmentConfig()
+
+        ##Choose observation space based on config.
+        if self.cfg.observation_space == "engineered":
+            self.observation_fn = self._get_obs
+        elif self.cfg.observation_space == "messages":
+            self.observation_fn = self._get_obs_msg
+        else:
+            raise ValueError("Invalid observation_space specified.")
+        
+        ##Choose get action message function based on config
+         #Choose an action space
+        if self.cfg.action_space == "fixed_quants":
+            self.action_fn = self._getActionMsgs_fixedQuant
+        elif self.cfg.action_space == "fixed_prices":
+            self.action_fn = self._getActionMsgs_fixedPrice
+        else:
+            raise ValueError("Invalid action_space specified.")
       
 
     @property
@@ -227,16 +243,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #======Process agent actions ===========#
         #=======================================#
         action = self._reshape_action(input_action, state, params,key)
-
-        #Choose an action space
-        if self.cfg.action_space == "fixed_quants":
-            action_fn = self._getActionMsgsV2
-        elif self.cfg.action_space == "fixed_prices":
-            action_fn = self._getActionMsgs
-        else:
-            raise ValueError("Invalid action_space specified.")
-        
-        action_msgs = action_fn(action, state, params)
+        action_msgs = self.get_action(action, state, params)
         action_prices = action_msgs[:, 3]
 
         #Cancel all previous agent orders each step, send fresh
@@ -368,8 +375,9 @@ class MarketMakingEnv(BaseLOBEnv):
             "InventoryPnL":extras["InventoryPnL"],
             "approx_realized_pnl":extras["approx_realized_pnl"],
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
-        }
-        return self._get_obs(state, params), state, reward, done, info
+        }                      
+    
+        return self.get_observation(state, params, total_messages), state, reward, done, info
     
     def reset_env(
             self,
@@ -405,8 +413,8 @@ class MarketMakingEnv(BaseLOBEnv):
    
     def _get_pass_price_quant(self, state):
         """Get price and quanitity n_ticks into books"""
-        bid_passive_2=state.best_bids[-1, 0] - self.tick_size * self.n_ticks_in_book
-        ask_passive_2=state.best_asks[-1, 0] + self.tick_size * self.n_ticks_in_book
+        bid_passive_2=state.best_bids[-1, 0] - self.tick_size * self.cfg.n_ticks_in_book
+        ask_passive_2=state.best_asks[-1, 0] + self.tick_size * self.cfg.n_ticks_in_book
         quant_bid_passive_2 = job.get_volume_at_price(state.bid_raw_orders, bid_passive_2)
         quant_ask_passive_2 = job.get_volume_at_price(state.ask_raw_orders, ask_passive_2)
         return bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2
@@ -678,7 +686,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # return quants only (aggressive prices could be multiple)
        # return price_quants
     
-    def _getActionMsgsV2(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Compute best_ask and best_bid using a rolling average to reduce variance
         best_ask = jnp.int32((state.best_asks[-20:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
@@ -690,7 +698,7 @@ class MarketMakingEnv(BaseLOBEnv):
         bid_quants = jnp.array([0, 10, 0, 10, 10, 10, 10, 10], dtype=jnp.int32)
         ask_quants = jnp.array([0, 10, 10, 0, 10, 10, 10, 10], dtype=jnp.int32)
        
-        tick_offset = self.n_ticks_in_book * self.tick_size  # Total price offset per direction
+        tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
         # Get parameters for current action
         bid_offset = bid_offsets[action]
@@ -702,7 +710,7 @@ class MarketMakingEnv(BaseLOBEnv):
         bid_price = best_bid + bid_offset * tick_offset
         ask_price = best_ask + ask_offset * tick_offset
         bid_price = jnp.maximum(bid_price, 0) 
-        ask_price = jnp.maximum(bid_price+self.n_ticks_in_book * self.tick_size, ask_price)
+        ask_price = jnp.maximum(bid_price+self.cfg.n_ticks_in_book * self.tick_size, ask_price)
         
         
         # --------------- Construct messages ---------------#
@@ -729,7 +737,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         return action_msgs
     
-    def _getActionMsgs(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
         '''Shape the action quantities in to messages sent the order book at the 
         prices levels determined from the orderbook'''
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
@@ -763,9 +771,9 @@ class MarketMakingEnv(BaseLOBEnv):
             # mid defaults to one tick more passive if between ticks
             M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
                  * self.tick_size).astype(jnp.int32)
-            BI = best_bid + self.tick_size*self.n_ticks_in_book #BID inside, slightly more aggresive buying
+            BI = best_bid + self.tick_size*self.cfg.n_ticks_in_book #BID inside, slightly more aggresive buying
             NT = best_bid
-            PP = best_bid - self.tick_size*self.n_ticks_in_book
+            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
             MKT = self.cfg.maxint
             if action.shape[0]//2 == 4:
                 return FT, M, NT, PP, MKT
@@ -783,9 +791,9 @@ class MarketMakingEnv(BaseLOBEnv):
             # mid defaults to one tick more passive if between ticks
             M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
                  * self.tick_size).astype(jnp.int32)
-            AI = best_ask - self.tick_size*self.n_ticks_in_book #Ask inside, slightly more aggresive selling
+            AI = best_ask - self.tick_size*self.cfg.n_ticks_in_book #Ask inside, slightly more aggresive selling
             NT = best_ask
-            PP = best_ask + self.tick_size*self.n_ticks_in_book
+            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
             MKT = 0
             if action.shape[0]//2 == 4:
                 return FT, M, NT, PP, MKT
@@ -1217,7 +1225,36 @@ class MarketMakingEnv(BaseLOBEnv):
             "other_exec_quants":other_exec_quants,
             "averageMidprice": averageMidprice
         }
-
+    
+    def get_observation(self, state, params, total_messages=None):
+        """
+        Wrapper function to call the appropriate observation function.
+        """
+        if self.cfg.observation_space == "engineered":
+            return self.observation_fn(state, params)
+        elif self.cfg.observation_space == "messages":
+            return self.observation_fn(total_messages)
+        else:
+            raise ValueError("Invalid observation_space specified.")
+        
+    def get_action(self,action, state, params):
+        """
+        Wrapper function to call the appropriate observation function.
+        """
+        if self.cfg.action_space == "fixed_quants":
+            return self.action_fn(action, state, params)
+        elif self.cfg.action_space == "fixed_prices":
+            return self.action_fn(action, state, params)
+        elif self.cfg.action_space == "parameterised":
+            raise ValueError("Not yet implemented")
+        else:
+            raise ValueError("Invalid action sspace specified.")
+        
+    def _get_obs_msg(self,total_msgs)-> chex.Array:
+        """ Return observation from raw state trafo. """
+        obs=total_msgs
+        return obs
+    
     def _get_obs(
             self,
             state: EnvState,
@@ -1345,7 +1382,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "p_pass": jnp.where(state.is_sell_task, best_asks, best_bids),
             "q_pass": jnp.where(state.is_sell_task, best_ask_qtys, best_bid_qtys), 
             "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
-            "p_pass2": jnp.where(state.is_sell_task, best_asks+self.tick_size*self.n_ticks_in_book, best_bids-self.tick_size*self.n_ticks_in_book), # second_passives
+            "p_pass2": jnp.where(state.is_sell_task, best_asks+self.tick_size*self.cfg.n_ticks_in_book, best_bids-self.tick_size*self.cfg.n_ticks_in_book), # second_passives
             "spread": best_asks - best_bids,
             "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,
