@@ -43,5 +43,5 @@ RUN pip3 install -r requirements.txt
 RUN echo 'export PATH=$PATH:/home/duser/.local/bin' >> ~/.bashrc
 
 # Configure git
-RUN git config --global user.email "reuben@robots.ox.ac.uk" && \
-    git config --global user.name "reuben"
+RUN git config --global user.email "Valentinm@hotmail.de" && \
+    git config --global user.name "Valentin"
