@@ -110,9 +110,8 @@ config = {
      "TASKSIDE": "random", # "random", "buy", "sell"
         "REWARD_LAMBDA": 0.2, #0.001,
         "ACTION_TYPE": "pure", # "delta"
-        "WINDOW_INDEX": 200, # 2 fix random episode #-1,
-        "MAX_TASK_SIZE": 100,
-        "EPISODE_TIME": 60*5,  # 
+        "WINDOW_INDEX": 43, # 2 fix random episode #-1,
+        "EPISODE_TIME": 60*8,  # 
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
         "ATFOLDER": ATFolder
     }
@@ -134,14 +133,11 @@ rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 env = MarketMakingEnv(
         key_reset,
         alphatradePath=config["ATFOLDER"],
-        #task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
-        action_type=config["ACTION_TYPE"],
         episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
-        rewardLambda=config["REWARD_LAMBDA"],
-       ep_type=config["DATA_TYPE"],
+        ep_type=config["EP_TYPE"],
     )
+
 env_params = dataclasses.replace(
         env.default_params,
         reward_lambda=config["REWARD_LAMBDA"],

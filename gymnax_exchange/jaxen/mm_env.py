@@ -165,16 +165,8 @@ class EnvParams(BaseEnvParams):
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
             self,key, alphatradePath, window_index,  episode_time,
-            max_task_size = 500, rewardLambda=0.2, ep_type="fixed_time"):
-        #Define Execution-specific attributes.
-        self.max_task_size = max_task_size #Functions as max trade size for us
-        self.inventory=0
-        self.market_share=0.
+             rewardLambda=0.2, ep_type="fixed_time"):
         self.rewardLambda = rewardLambda 
-      
-
-        # TODO: fix!! this can be overwritten in the base class
-        self.n_actions = 4 # 4: (FT, M, NT, PP), 3: (FT, NT, PP), 2 (FT, NT), 1 (FT   
         super().__init__(
             key,
             alphatradePath,
@@ -221,7 +213,6 @@ class MarketMakingEnv(BaseLOBEnv):
         return EnvParams(
             *base_vals,
             EnvState(*state_vals),
-            #self.max_task_size,
             reward_lambda=self.rewardLambda
         )
 
@@ -250,30 +241,23 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #Cancel all previous agent orders each step, send fresh
         if self.cfg.action_space=="fixed_quants":
-            cnl_msg_bid = job.getCancelMsgs(
-                state.bid_raw_orders,
-                self.trader_unique_id,
-                1,
-                1  # bid
-            )
-            cnl_msg_ask = job.getCancelMsgs(
-                state.ask_raw_orders,
-                self.trader_unique_id,
-                1,
-                -1  # ask
-            )
+            num_messages_over_two=1
         elif self.cfg.action_space=="fixed_prices":
-            cnl_msg_bid = job.getCancelMsgs(
+            num_messages_over_two=self.cfg.n_actions//2,
+        else:
+            raise ValueError("Other Spaces not done..")
+        
+        cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                self.n_actions//2, 
+                num_messages_over_two,
                 1  # bid
             )
-            cnl_msg_ask = job.getCancelMsgs(
+        cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                self.n_actions//2,
-                -1  # ask 
+                num_messages_over_two,
+                -1  # ask
             )
         
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
@@ -319,7 +303,6 @@ class MarketMakingEnv(BaseLOBEnv):
         bestasks = jnp.concatenate([bestasks,bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
         bestbids = jnp.concatenate([bestbids, bestbids[-1:,:]], axis=0, dtype=jnp.int32)
     
-
         price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         # TODO: consider adding quantity before (in priority) to each price / level
 
@@ -398,8 +381,8 @@ class MarketMakingEnv(BaseLOBEnv):
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades
             exections=jnp.zeros((2,2),dtype=jnp.int32)
         elif self.cfg.action_space=="fixed_prices":
-            action_prices=jnp.zeros((self.n_actions,1),dtype=jnp.int32) #2 trades
-            exections=jnp.zeros((self.n_actions,2),dtype=jnp.int32)
+            action_prices=jnp.zeros((self.cfg.n_actions,1),dtype=jnp.int32) #2 trades
+            exections=jnp.zeros((self.cfg.n_actions,2),dtype=jnp.int32)
         else:
             raise ValueError("Other action spaces not finished")
         obs = self.get_observation(state, params,blank_messages,action_prices,exections)
@@ -553,9 +536,15 @@ class MarketMakingEnv(BaseLOBEnv):
         NOTE: this will not work for aggressive orders eating through the book (size limited by actions)
         TODO: make this more general for aggressive actions?
         """
+        if self.cfg.action_type=="fixed_quants":
+            num_trades=2
+        elif self.cfg.action_type =="fixed_price":
+            num_trades=self.cfg.n_actions+1
+        else:
+            raise ValueError("Other Action spaces not yet implemented")
         price_levels, r_idx = jnp.unique(
-            agent_trades[:, 0], return_inverse=True, size=3, fill_value=0)#self.n_actions+1
-        quant_by_price = jax.ops.segment_sum(jnp.abs(agent_trades[:, 1]), r_idx, num_segments=3)#self.n_actions+1
+            agent_trades[:, 0], return_inverse=True, size=num_trades+1, fill_value=0)
+        quant_by_price = jax.ops.segment_sum(jnp.abs(agent_trades[:, 1]), r_idx, num_segments=num_trades+1)
         price_quants = jnp.vstack((price_levels[1:], quant_by_price[1:])).T
         return price_quants
     
@@ -605,7 +594,7 @@ class MarketMakingEnv(BaseLOBEnv):
         if self.cfg.action_space == "fixed_quants":
             num_prices = 2 #2 trades for this setup.
         elif self.cfg.action_space=="fixed_prices":
-            num_prices=self.n_actions
+            num_prices=self.cfg.n_actions
 
         # Mask trades and indices instead of boolean indexing
         valid_trades = jnp.where(valid_indices, agent_trades[:, 1], 0)
@@ -687,7 +676,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
             quants = action.astype(jnp.int32)          
 
-            if self.n_actions == 4:
+            if self.cfg.n_actions == 4:
                 # if mid_price == near_touch_price: combine orders into one
                 return jax.lax.cond(
                     price_levels[1] == price_levels[2],
@@ -738,17 +727,17 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
-        types = jnp.ones((self.n_actions,), jnp.int32)
-        sides_bids = jnp.ones((self.n_actions // 2,), jnp.int32)  # Use integer division to ensure result is an int
-        sides_asks = (-1) * jnp.ones((self.n_actions // 2,), jnp.int32)
+        types = jnp.ones((self.cfg.n_actions,), jnp.int32)
+        sides_bids = jnp.ones((self.cfg.n_actions // 2,), jnp.int32)  # Use integer division to ensure result is an int
+        sides_asks = (-1) * jnp.ones((self.cfg.n_actions // 2,), jnp.int32)
         sides = jnp.concatenate([sides_bids, sides_asks])
-        trader_ids = jnp.ones((self.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((self.n_actions,), jnp.int32) *
+        trader_ids = jnp.ones((self.cfg.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids = (jnp.ones((self.cfg.n_actions,), jnp.int32) *
                     (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, self.n_actions) #Each message has a unique ID
+                    + jnp.arange(0, self.cfg.n_actions) #Each message has a unique ID
         times = jnp.resize(
             state.time + params.time_delay_obs_act,
-            (self.n_actions, 2)
+            (self.cfg.n_actions, 2)
         )
         # --------------- 01 rest info for deciding action_msgs ---------------
         
@@ -793,7 +782,7 @@ class MarketMakingEnv(BaseLOBEnv):
         if self.cfg.action_space=="fixed_quants":
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
         elif self.cfg.action_space=="fixed_prices":
-            id_counter = state.customIDcounter + self.n_actions + 1 ## we send n_messages here
+            id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
         else:
             raise ValueError("Action space not implemented yet")
         time = time + params.time_delay_obs_act
@@ -852,7 +841,7 @@ class MarketMakingEnv(BaseLOBEnv):
         def place_midprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
             mid_trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.n_actions, *time, -666666, self.trader_unique_id)
+                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
             trades = job.add_trade(trades, mid_trade)
             #jax.debug.print("called?")
             return trades
@@ -868,7 +857,7 @@ class MarketMakingEnv(BaseLOBEnv):
         if self.cfg.action_space=="fixed_quants":
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
         elif self.cfg.action_space=="fixed_prices":
-            id_counter = state.customIDcounter + self.n_actions + 1 ## we send n_messages here
+            id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
         else:
             raise ValueError("Action space not implemented yet")
         
@@ -906,13 +895,13 @@ class MarketMakingEnv(BaseLOBEnv):
                 #NOTE: MAKING ZERO TO TEST SELL AT MID PRICE jnp.abs(state.inventory)
                 1, side, 0 , mkt_p,
                 self.trader_unique_id,
-                self.trader_unique_id + state.customIDcounter + self.n_actions,  # unique order ID for market order
+                self.trader_unique_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
                 *new_time,  # time of message
             ])
             if self.cfg.action_space=="fixed_quants":
                 id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
             elif self.cfg.action_space=="fixed_prices":
-                id_counter = state.customIDcounter + self.n_actions + 1 ## we send n_messages here
+                id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
             else:
                 raise ValueError("Action space not implemented yet")
             return mkt_msg, id_counter, new_time
@@ -920,7 +909,7 @@ class MarketMakingEnv(BaseLOBEnv):
         def create_dummy_order():
             '''To comply with fixed array constraints, 
             create a dummy trade when the episode is not over'''
-            next_id = state.customIDcounter + self.n_actions
+            next_id = state.customIDcounter + self.cfg.n_actions
             return jnp.zeros((8,), dtype=jnp.int32), next_id, time 
         
 
@@ -928,7 +917,7 @@ class MarketMakingEnv(BaseLOBEnv):
             '''Place a doom trade at a punishment price for any unmatched
             market order. If this is placed, the orderbook will be completly drained.'''
             doom_trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.n_actions, *time, -666666, self.trader_unique_id)
+                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
             trades = job.add_trade(trades, doom_trade)
             return trades
          
@@ -950,13 +939,13 @@ class MarketMakingEnv(BaseLOBEnv):
         cnl_msg_bid = job.getCancelMsgs(
             bids,
             self.trader_unique_id,
-            self.n_actions//2, 
+            self.cfg.n_actions//2, 
             1  # bids
         )
         cnl_msg_ask = job.getCancelMsgs(
             asks,
             self.trader_unique_id,
-            self.n_actions//2,
+            self.cfg.n_actions//2,
             -1  # ask side
         )
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
@@ -1272,7 +1261,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
             "prev_action": action_prices,  # use quants only
-            "prev_executed":executions,  # use quants only
+            "prev_executed":executions,  # 
             "prev_executed_ratio": jnp.where(executions==0., 0., executions /10)# state.prev_action[:, 1]), Hard code size of normal trade
             
         }
@@ -1352,9 +1341,9 @@ class MarketMakingEnv(BaseLOBEnv):
     ) -> spaces.Box:
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
-             return spaces.Box(0, 100, (self.n_actions,), dtype=jnp.int32)
+             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space =="fixed_quants":
-            return spaces.Discrete(self.n_actions)
+            return spaces.Discrete(self.cfg.n_actions)
         else:
             raise ValueError("Invalid action_space specified.")
        
@@ -1396,14 +1385,10 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        #"TASKSIDE": "buy",
-
-        "MAX_TASK_SIZE": 100,
         "WINDOW_INDEX": 43,
-        #"ACTION_TYPE": "pure",
         "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*8,  # 
+        "EPISODE_TIME": 60*8,  
     }
         
     rng = jax.random.PRNGKey(0)
@@ -1414,18 +1399,14 @@ if __name__ == "__main__":
     env = MarketMakingEnv(
         key_reset,
         alphatradePath=config["ATFOLDER"],
-       # task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
-        #action_type=config["ACTION_TYPE"],
         episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
         ep_type=config["EP_TYPE"],
     )
     # env_params=env.default_params
     env_params = dataclasses.replace(
         env.default_params,
         reward_lambda=0.00001,
-        #task_size=config["MAX_TASK_SIZE"],
         episode_time=config["EPISODE_TIME"],  # in seconds
     )
     # print(env_params.message_data.shape, env_params.book_data.shape)
