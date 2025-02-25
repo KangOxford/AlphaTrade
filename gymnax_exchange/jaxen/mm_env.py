@@ -1189,9 +1189,9 @@ class MarketMakingEnv(BaseLOBEnv):
         reward = buyPnL + sellPnL + scaledInventoryPnL - (1-self.rewardLambda)*jnp.maximum(0,scaledInventoryPnL) # Asymmetrically dampened PnL
         
         #More complex reward function (should be added as part of the env if we actually use them):
-        inventoryPnL_lambda = 0.002
-        unrealizedPnL_lambda = 0
-        asymmetrically_dampened_lambda = 0.05
+        inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
+        unrealizedPnL_lambda = self.cfg.unrealizedPnL_lambda
+        asymmetrically_dampened_lambda = self.cfg.asymmetrically_dampened_lambda
         avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0] / buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
         avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum() , 0)
         approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) / self.tick_size

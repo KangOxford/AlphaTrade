@@ -19,11 +19,17 @@ class Configuration:
 @dataclass(frozen=True)
 class EnvironmentConfig(Configuration):
     action_space: Literal["fixed_prices", "fixed_quants", "parameterised"] =env_cst.action_space
-    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
     observation_space: Literal["engineered", "messages"] = env_cst.observation_space
     end_fn: Literal["force_market_order", "unwind_mid_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
+    # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = "none"
+    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
+    reference_price_portfolio_value: Literal["mid", "best_bid_ask"] = "mid"
+    # Weights for complex reward function:
+    inventoryPnL_lambda: float = 0.002
+    unrealizedPnL_lambda: float = 0.0
+    asymmetrically_dampened_lambda: float = 0.05
 
 
 
