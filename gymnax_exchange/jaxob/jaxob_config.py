@@ -26,6 +26,7 @@ class EnvironmentConfig(Configuration):
     inv_penalty: Literal["none", "linear", "quadratic"] = "none"
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
     reference_price_portfolio_value: Literal["mid", "best_bid_ask"] = "mid"
+    n_actions:int=env_cst.n_actions
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.002
     unrealizedPnL_lambda: float = 0.0
