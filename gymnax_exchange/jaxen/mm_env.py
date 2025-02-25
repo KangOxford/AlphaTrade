@@ -199,7 +199,6 @@ class MarketMakingEnv(BaseLOBEnv):
             raise ValueError("Invalid observation_space specified.")
         
         ##Choose get action message function based on config
-         #Choose an action space
         if self.cfg.action_space == "fixed_quants":
             self.action_fn = self._getActionMsgs_fixedQuant
         elif self.cfg.action_space == "fixed_prices":
@@ -255,21 +254,35 @@ class MarketMakingEnv(BaseLOBEnv):
         action_prices = action_msgs[:, 3]
 
         #Cancel all previous agent orders each step, send fresh
-        cnl_msg_bid = job.getCancelMsgs(
-            state.bid_raw_orders,
-            self.trader_unique_id,
-            1,#self.n_actions//2, 
-            1  # bids
-        )
-        cnl_msg_ask = job.getCancelMsgs(
-            state.ask_raw_orders,
-            self.trader_unique_id,
-            1,#self.n_actions//2,
-            -1  # ask side
-        )
-        cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
-             
+        if self.cfg.action_space=="fixed_quants":
+            cnl_msg_bid = job.getCancelMsgs(
+                state.bid_raw_orders,
+                self.trader_unique_id,
+                1,#self.n_actions//2, 
+                1  # bids
+            )
+            cnl_msg_ask = job.getCancelMsgs(
+                state.ask_raw_orders,
+                self.trader_unique_id,
+                1,#self.n_actions//2,
+                -1  # ask side
+            )
+        elif self.cfg.action_space=="fixed_prices":
+            cnl_msg_bid = job.getCancelMsgs(
+                state.bid_raw_orders,
+                self.trader_unique_id,
+                self.n_actions//2, 
+                1  # bids
+            )
+            cnl_msg_ask = job.getCancelMsgs(
+                state.ask_raw_orders,
+                self.trader_unique_id,
+                self.n_actions//2,
+                -1  # ask side
+            )
         
+        cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
+
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
         
@@ -436,9 +449,9 @@ class MarketMakingEnv(BaseLOBEnv):
         return EnvState(
             *base_vals,
            # prev_action=jnp.zeros((self.n_actions, 2), jnp.int32),
-            #prev_executed=jnp.zeros((self.n_actions,2 ), jnp.int32),
+            prev_executed=jnp.zeros((self.n_actions,2 ), jnp.int32),
             prev_action=jnp.zeros((2), jnp.int32),#jnp.zeros((2 ,2), jnp.int32),
-            prev_executed=jnp.zeros((2,2 ), jnp.int32),
+           # prev_executed=jnp.zeros((2,2 ), jnp.int32),
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
             init_price=M,
@@ -635,7 +648,11 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Create masks for valid indices
         valid_indices = price_to_index >= 0
-        num_prices = 2#self.n_actions
+        if self.cfg.action_space == "fixed_quants":
+            num_prices = 2
+        elif self.cfg.action_space=="fixed_prices":
+            num_prices=self.n_actions
+
 
         # Mask trades and indices instead of boolean indexing
         valid_trades = jnp.where(valid_indices, agent_trades[:, 1], 0)
@@ -858,6 +875,8 @@ class MarketMakingEnv(BaseLOBEnv):
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
+
+    #===================End Episode Functions=============================================#
     def end_fn_pass(self,
             time: jax.Array,
             asks: jax.Array,
@@ -1271,7 +1290,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
 
 
-    
+    #======================Wrappers to choose funcitons=========================================#    
     def get_episode_end_fn(self,key,bestasks, bestbids, time, asks, bids, trades, state, params):
         """
         Wrapper function to call the appropriate episode end function.
@@ -1308,7 +1327,8 @@ class MarketMakingEnv(BaseLOBEnv):
             raise ValueError("Not yet implemented")
         else:
             raise ValueError("Invalid action sspace specified.")
-        
+
+    #=================observation functions========================#    
     def _get_obs_msg(self,total_msgs)-> chex.Array:
         """ Return observation from raw state trafo. """
         obs=total_msgs
@@ -1513,30 +1533,27 @@ class MarketMakingEnv(BaseLOBEnv):
         if self.action_type == 'delta':
             # return spaces.Box(-5, 5, (self.n_actions,), dtype=jnp.int32)
             return spaces.Box(-100, 100, (self.n_actions,), dtype=jnp.int32)
-        else:
-            # return spaces.Box(0, 100, (self.n_actions,), dtype=jnp.int32)
-            
+        elif self.cfg.action_space=="fixed_prices":
+             return spaces.Box(0, 100, (self.n_actions,), dtype=jnp.int32)
+        elif self.cfg.action_space =="fixed_quants":
             return spaces.Discrete(self.n_actions)
-            #return spaces.Box(0, 2, (self.n_actions,), dtype=jnp.int32)
-    
+        else:
+            raise ValueError("Invalid action_space specified.")
        
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        #space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
-        # space = spaces.Box(-10, 10, (21,), dtype=jnp.float32) 
-        space = spaces.Box(-10, 10, (23,), dtype=jnp.float32) 
-        return space
+        if self.cfg.observation_space =="engineered":
+             return spaces.Box(-10, 10, (23,), dtype=jnp.float32) 
+        elif self.cfg.observation_space =="messages":
+            return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(104, 8), dtype=jnp.int32)
+        else:
+            raise ValueError("Invalid observation_space specified.")
 
     def state_space(self, params: EnvParams) -> spaces.Dict:
         """State space of the environment."""
         return NotImplementedError
-
-
-
-    
-    
 
 # ============================================================================= #
 # ============================================================================= #
@@ -1612,15 +1629,14 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         #test_action=env.action_space().sample(key_policy)
-        #test_action = env.action_space().sample(key_policy) 
-        test_action=0
+        test_action = env.action_space().sample(key_policy) 
+        #test_action=0
         jax.debug.print("test_action :{}",test_action)
         #test_action=0
-        #env.action_space().sample(key_policy) // 10
+        env.action_space().sample(key_policy) // 10
         # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
-        
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
         
