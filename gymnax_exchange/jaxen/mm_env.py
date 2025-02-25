@@ -161,6 +161,7 @@ class EnvState(BaseEnvState):
     ask_passive_2:int
     quant_ask_passive_2:int
     delta_time: float
+    cash_balance: float
 
 @struct.dataclass
 class EnvParams(BaseEnvParams):
@@ -360,6 +361,7 @@ class MarketMakingEnv(BaseLOBEnv):
             #######
             inventory=extras["end_inventory"],
             total_PnL = state.total_PnL + extras["PnL"],
+            cash_balance= extras["cash_balance"],
             bid_passive_2 = bid_passive_2,
             quant_bid_passive_2 = quant_bid_passive_2,
             ask_passive_2=ask_passive_2,
@@ -405,6 +407,7 @@ class MarketMakingEnv(BaseLOBEnv):
         """ Reset the environment to init state (pre computed from data)."""
         key_, key = jax.random.split(key)
         _, state = super().reset_env(key, params)
+        state = dataclasses.replace(state, cash_balance=0.0)
         bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2 = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, bid_passive_2=bid_passive_2, quant_bid_passive_2=quant_bid_passive_2,ask_passive_2=ask_passive_2,quant_ask_passive_2=quant_ask_passive_2)
         blank_messages = jnp.zeros((104, 8), dtype=jnp.int32) ##Reset for the message based obs space.
@@ -464,6 +467,7 @@ class MarketMakingEnv(BaseLOBEnv):
             ask_passive_2=0,
             quant_ask_passive_2=0,
             delta_time=0.,
+            cash_balance=0.0
         )
 
     def _reshape_action(self, action : jax.Array, state: EnvState, params : EnvParams, key:chex.PRNGKey) -> jax.Array:
@@ -1232,6 +1236,9 @@ class MarketMakingEnv(BaseLOBEnv):
         outgoing=(agent_buys[:, 0] / self.tick_size* jnp.abs(agent_buys[:, 1])).sum() 
              
         PnL=(income-outgoing)//self.tick_size
+
+        # Keep track of overall cash balance (same as overall PnL)
+        cash_balance = cash_balance + PnL
         inventoryValue=new_inventory*(mid_price_end//self.tick_size)
         netWorth=PnL+inventoryValue  
 
@@ -1274,6 +1281,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "buyPnL":buyPnL,
             "sellPnL":sellPnL,
             "PnL": PnL, 
+            "cash_balance" : cash_balance,
             "netWorth":netWorth,
             "end_inventory":new_inventory,
             "mid_price":mid_price_end,
@@ -1581,11 +1589,11 @@ if __name__ == "__main__":
         #"TASKSIDE": "buy",
 
         "MAX_TASK_SIZE": 100,
-        "WINDOW_INDEX": 2,
+        "WINDOW_INDEX": 43,
         "ACTION_TYPE": "pure",
         "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*60,  # 
+        "EPISODE_TIME": 60*8,  # 
     }
         
     rng = jax.random.PRNGKey(0)
