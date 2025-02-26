@@ -12,10 +12,12 @@ import numpy as np
 import optax
 import time
 from dataclasses import dataclass
+import pickle
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 
 from typing import Sequence, NamedTuple, Any, Dict, Callable, Optional
+from transformers import PreTrainedTokenizerFast
 
 import distrax
 import gymnax
@@ -189,17 +191,28 @@ if wandbOn:
             commit=True,  # Ensures immediate update in wandb
         )
 
-        
 
-    
+tokenizer = PreTrainedTokenizerFast(
+    tokenizer_file="/app/scripts/lob_tok.json",
+    clean_up_tokenization_spaces=False
+)
+
+ 
 env = FlattenObservationWrapper(env)
 env = LogWrapper(env)
 
-num_tokens = 1 + env.action_space(env_params).n + 256
+num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size #TODO change this to actual vocab size of old tokenizer
 config["MIN_ACTION_TOK"] = 1
-config["MAX_ACTION_TOK"] = 8
+config["MAX_ACTION_TOK"] = 8 # TODO Set that based on environment
 
-RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+with open("pre_trained_weights/goog2022_rwkv_6g0.1B.model", "rb") as f:
+    pretrained_params = pickle.load(f)
+
+#TODO load tokenizer, change vocab size
+# Do we have to change vocab size?
+#
+RWKV, _ = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+params = pretrained_params 
 forward, params = get_ppo_agent(RWKV, params, seed=1)
 v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
 init_state = RWKV.default_state(params)
@@ -231,7 +244,7 @@ v_env_step = jax.jit(jax.vmap(
     env.step, in_axes=(0, 0, 0, None)
 ))
 
-def compute_true_length(tokens, pad_token=0):
+def compute_true_length(tokens, pad_token=3): # Padding token is 3 for this tokenizer
     return jnp.sum(tokens != pad_token, axis=1)
 
 
@@ -250,7 +263,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     update_returns = []
     for t in range(config["NUM_STEPS"]):
         rng, _rng = jax.random.split(rng)
-        tokenized = handle_continuous(obsv)
+        tokenized = tokenizer.encode(obsv)
         token_lengths = compute_true_length(tokenized, pad_token=0)
         pi, value, state = v_forward_jit(tokenized, state, params, token_lengths)
         pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
