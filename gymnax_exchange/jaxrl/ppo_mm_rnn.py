@@ -157,13 +157,9 @@ def make_train(config):
     env = MarketMakingEnv(
         key_reset,
         alphatradePath=config["ATFOLDER"],
-        #task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
-        action_type=config["ACTION_TYPE"],
         episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
-        rewardLambda=config["REWARD_LAMBDA"],
-       ep_type=config["DATA_TYPE"],
+        ep_type=config["DATA_TYPE"],
     )
     env_params = dataclasses.replace(
         env.default_params,
@@ -455,15 +451,13 @@ if __name__ == "__main__":
         "ENV_NAME": "AlphaTradeMM",
         "ANNEAL_LR": True,
         "DEBUG": True,
-        
-       "TASKSIDE": "random", # "random", "buy", "sell"
+
         "REWARD_LAMBDA": 0.1, #0.001,
-        "ACTION_TYPE": "pure", # "delta"
-        "WINDOW_INDEX": 200, # 2 fix random episode #-1,
-        "MAX_TASK_SIZE": 100,
-        "EPISODE_TIME": 60*5,  # 
-        "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
-        "ATFOLDER": ATFolder
+         "ATFOLDER": ATFolder,
+        "WINDOW_INDEX": 43,
+        "REWARD_LAMBDA": 0.1,
+        "DATA_TYPE": "fixed_time",
+        "EPISODE_TIME": 60*8, 
     }
     config2 = {
         "LR": 2.5e-4,

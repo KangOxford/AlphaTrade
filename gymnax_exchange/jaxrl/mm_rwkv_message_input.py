@@ -15,6 +15,13 @@ from dataclasses import dataclass
 import pickle
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
+os.environ['XLA_FLAGS'] = (
+    '--xla_gpu_enable_triton_softmax_fusion=true '
+    '--xla_gpu_triton_gemm_any=True '
+    # '--xla_gpu_enable_async_collectives=true '
+    # '--xla_gpu_enable_latency_hiding_scheduler=true '
+    # '--xla_gpu_enable_highest_priority_async_stream=true '
+)
 
 from typing import Sequence, NamedTuple, Any, Dict, Callable, Optional
 from transformers import PreTrainedTokenizerFast
@@ -42,7 +49,7 @@ import jax
 import jax.numpy as jnp
 #import optax
 import distrax
-
+import re
 
 from jax_rwkv.src.auto import get_rand_model
 from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, get_jit_ppo, PAD_FLAG, OBS_FLAG, ACT_FLAG
@@ -53,7 +60,7 @@ j_calculate_gae = jax.jit(jax.vmap(calculate_gae, in_axes=(0, 0, 0, 0, 0, None, 
 import wandb
 
 
-wandbOn = True # False
+wandbOn =  False
 if wandbOn:
     import wandb
 
@@ -67,7 +74,7 @@ class JString:
         self.tokens = jnp.array(tokens)
         self.length = (
             length if length is not None
-            else compute_true_length(tokens, pad_token=0)
+            else compute_true_length(tokens, pad_token=pad_token_id)
         )
 
     def tree_flatten(self):
@@ -93,11 +100,11 @@ except:
 
 config = {
     "LR": 1e-3,
-    "NUM_ENVS": 128,
+    "NUM_ENVS": 1,
     "NUM_STEPS": 10,#128,
-    "TOTAL_TIMESTEPS": 5e6,
+    "TOTAL_TIMESTEPS": 4e5,
     "UPDATE_EPOCHS": 4,
-    "NUM_MINIBATCHES": 4,
+    "NUM_MINIBATCHES": 1,
     "GAMMA": 0.99 ** (1/5),
     "GAE_LAMBDA": 0.95 ** (1/5),
     "CLIP_EPS": 0.2,
@@ -128,6 +135,11 @@ jit_ppo_update = get_jit_ppo(config)
 
 def handle_continuous(observation):
     return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
+
+def tokenize_observation(observation):
+    observation_str = [str(obs) for obs in observation]  
+    return jnp.array([tokenizer.encode(obs) for obs in observation_str], dtype=jnp.int32)
+
 
 rng = jax.random.key(0)
 rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -191,31 +203,67 @@ if wandbOn:
             commit=True,  # Ensures immediate update in wandb
         )
 
-
+# Load the tokenizer
 tokenizer = PreTrainedTokenizerFast(
-    tokenizer_file="/app/scripts/lob_tok.json",
+    tokenizer_file="gymnax_exchange/jaxlobster/lob_tok.json",
     clean_up_tokenization_spaces=False
 )
 
- 
+# Explicitly set padding token ID
+pad_token_id = 3
+print("Padding token ID:", pad_token_id)
+
+# Load the pretrained model
+with open("gymnax_exchange/jaxrl/pre_trained_weights/goog2022_rwkv_6g0.1B.model", "rb") as f:
+    pretrained_params = pickle.load(f)
+
+
+# Add 8 new action tokens
+new_actions = [f"<action_{i}>" for i in range(env.action_space(env_params).n)]  # Set based on environment
+tokenizer.add_special_tokens({"additional_special_tokens": new_actions})
+
+# Update action token range in config
+config["MIN_ACTION_TOK"] = tokenizer.convert_tokens_to_ids("<action_0>")
+config["MAX_ACTION_TOK"] = tokenizer.convert_tokens_to_ids("<action_7>")
+
+# Get updated vocab size (considering action tokens)
+num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size
+
+print(f"Updated vocab size: {num_tokens}")
+
+old_vocab_size = pretrained_params['emb']['weight'].shape[0]
+n_embd =  pretrained_params['emb']['weight'].shape[1]
+
+# Expand embeending for the new tokens
+if num_tokens > old_vocab_size:
+    pad_shape = (num_tokens - old_vocab_size, n_embd)
+    new_embeddings = jnp.zeros(pad_shape, dtype=pretrained_params['emb']['weight'].dtype)
+
+    # Concatenate new embeddings
+    pretrained_params['emb']['weight'] = jnp.concatenate(
+        [pretrained_params['emb']['weight'], new_embeddings], axis=0
+    )
+
+print("Embedding layer updated to size:", pretrained_params['emb']['weight'].shape)
+
+# Get N_layers
+n_layer =  pretrained_params['blocks']['att']['time_faaaa'].shape[0]
+print("nlayer:",n_layer)
+
+# Wrap the environment
 env = FlattenObservationWrapper(env)
 env = LogWrapper(env)
 
-num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size #TODO change this to actual vocab size of old tokenizer
-config["MIN_ACTION_TOK"] = 1
-config["MAX_ACTION_TOK"] = 8 # TODO Set that based on environment
+# Update num_tokens for RWKV model
+num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size 
 
-with open("pre_trained_weights/goog2022_rwkv_6g0.1B.model", "rb") as f:
-    pretrained_params = pickle.load(f)
-
-#TODO load tokenizer, change vocab size
-# Do we have to change vocab size?
-#
-RWKV, _ = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+# Initialize the RWKV model with dynamic layer and embedding size
+RWKV, _ = get_rand_model(0, "6", n_layer, n_embd, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
 params = pretrained_params 
 forward, params = get_ppo_agent(RWKV, params, seed=1)
 v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
 init_state = RWKV.default_state(params)
+print("model made!")
 if isinstance(init_state, tuple):
     init_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in init_state])
 else:
@@ -244,7 +292,8 @@ v_env_step = jax.jit(jax.vmap(
     env.step, in_axes=(0, 0, 0, None)
 ))
 
-def compute_true_length(tokens, pad_token=3): # Padding token is 3 for this tokenizer
+
+def compute_true_length(tokens, pad_token=pad_token_id): # Padding token is 3 for this tokenizer
     return jnp.sum(tokens != pad_token, axis=1)
 
 
@@ -263,8 +312,8 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     update_returns = []
     for t in range(config["NUM_STEPS"]):
         rng, _rng = jax.random.split(rng)
-        tokenized = tokenizer.encode(obsv)
-        token_lengths = compute_true_length(tokenized, pad_token=0)
+        tokenized = tokenize_observation(obsv)
+        token_lengths = compute_true_length(tokenized, pad_token=pad_token_id)
         pi, value, state = v_forward_jit(tokenized, state, params, token_lengths)
         pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
         action = pi.sample(seed=_rng)
@@ -285,6 +334,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
         rng, _rng = jax.random.split(rng)
         rng_step = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state, reward, done, info = v_env_step(rng_step, env_state, action, env_params)
+
         if wandbOn:
             jax.debug.callback(log_all_metrics, info, global_timestep)
 
@@ -323,7 +373,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     rewards_list = jnp.concatenate(rewards_list, axis=1)
     log_probs_list = jnp.concatenate(log_prob_list, axis=1)[..., 1:]
     dones_list = jnp.concatenate(dones_list, axis=1)
-    true_lengths = compute_true_length(tokens_list, pad_token=0)
+    true_lengths = compute_true_length(tokens_list, pad_token=pad_token_id)
     buf = JString(tokens_list, true_lengths)
 
   
@@ -336,7 +386,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     
     # print(tokens_list.shape, flags_list.shape, values_list.shape, rewards_list.shape, log_prob_list.shape)
 
-    _, last_value, _ = v_forward_jit(handle_continuous(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+    _, last_value, _ = v_forward_jit(tokenize_observation, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
     
     advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
     # print("value", values_list)

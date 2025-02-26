@@ -18,8 +18,8 @@ def layer_norm(x, w, eps=1e-5):
 
 def get_ppo_agent(RWKV, params, seed=0):
     key = jax.random.key(seed)
-
     fan_out = params['head']['weight'].shape[-1]
+    jax.debug.print("fan_out:{}",fan_out)
     fan_in = 1
     a = jnp.sqrt(6/(fan_in + fan_out))
     params['value_head'] = {'weight': jax.random.uniform(key, shape=(fan_out,), dtype=params['head']['weight'].dtype, minval=-a, maxval=a)}

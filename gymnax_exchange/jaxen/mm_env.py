@@ -373,8 +373,10 @@ class MarketMakingEnv(BaseLOBEnv):
         key_, key = jax.random.split(key)
         _, state = super().reset_env(key, params)
         state = dataclasses.replace(state, cash_balance=0.0)
+        ##remove....
         price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, price_bid_passive=price_bid_passive, quant_bid_passive=quant_bid_passive,price_ask_passive=price_ask_passive,quant_ask_passive=quant_ask_passive)
+        ##...
         blank_messages = jnp.zeros((104, 8), dtype=jnp.int32) ##Reset for the message based obs space.
         ##FIXME: The size here needs to be size of messages sent, could change.
         if self.cfg.action_space=="fixed_quants":
@@ -422,6 +424,7 @@ class MarketMakingEnv(BaseLOBEnv):
         M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
 
         return EnvState(
+            ##This is reset
             *base_vals,
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
@@ -619,10 +622,10 @@ class MarketMakingEnv(BaseLOBEnv):
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 0, 0, 1, -1, 1, -5, -10], dtype=jnp.int32)
+        bid_offsets = jnp.array([0, 0, 0, -1, 1, -1, 5, 10], dtype=jnp.int32)
         ask_offsets = jnp.array([0, 0, -1, 0, -1, 1, 5, 10], dtype=jnp.int32)
         bid_quants = jnp.array([0, 10, 0, 10, 10, 10, 10, 10], dtype=jnp.int32)
-        ask_quants = jnp.array([0, 10, 10, 0, 10, 10, 10, 10], dtype=jnp.int32)
+        ask_quants = jnp.array([0, 10, 10, 0, 10, 10, 10, 10], dtype=jnp.int32)##config quant....
        
         tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
@@ -633,7 +636,7 @@ class MarketMakingEnv(BaseLOBEnv):
         ask_quant = ask_quants[action]
         
         # Calculate prices with bounds checking
-        bid_price = best_bid + bid_offset * tick_offset
+        bid_price = best_bid - bid_offset * tick_offset
         ask_price = best_ask + ask_offset * tick_offset
         bid_price = jnp.maximum(bid_price, 0) 
         ask_price = jnp.maximum(bid_price+self.cfg.n_ticks_in_book * self.tick_size, ask_price)
@@ -656,7 +659,6 @@ class MarketMakingEnv(BaseLOBEnv):
             state.time + params.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
-        
         # Stack components into message array
         action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
@@ -1373,7 +1375,7 @@ class MarketMakingEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-10, 10, (23,), dtype=jnp.float32) 
+             return spaces.Box(-10, 10, (27,), dtype=jnp.float32) 
         elif self.cfg.observation_space =="messages":
             return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(104, 8), dtype=jnp.int32)
         else:
