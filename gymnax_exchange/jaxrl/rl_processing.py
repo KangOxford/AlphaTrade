@@ -6,9 +6,9 @@ import jax.numpy as jnp
 import distrax
 import optax
 
-PAD_FLAG = 0
-OBS_FLAG = 1
-ACT_FLAG = 2
+PAD_FLAG = 0.
+OBS_FLAG = 1.
+ACT_FLAG = 2.
 
 def layer_norm(x, w, eps=1e-5):
     mean = jnp.mean(x, axis=-1, keepdims=True)
