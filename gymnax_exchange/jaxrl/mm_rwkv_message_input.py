@@ -268,6 +268,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
         pi, value, state = v_forward_jit(tokenized, state, params, token_lengths)
         pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
         action = pi.sample(seed=_rng)
+        jax.debug.print("action:{}",action)
         def log_action_distribution(action):
                     unique_actions, counts = jnp.unique(action, return_counts=True)
                     action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
