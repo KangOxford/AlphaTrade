@@ -940,18 +940,26 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         #==============Cancel previous orders by the agent prior to the market order=========###
         #Cancel all previous agent orders before the market order so that we do not trade with ourselves.
+        if self.cfg.action_space=="fixed_quants":
+            num_messages_over_two=1
+        elif self.cfg.action_space=="fixed_prices":
+            num_messages_over_two=self.cfg.n_actions//2,
+        else:
+            raise ValueError("Other Spaces not done..")
+        
         cnl_msg_bid = job.getCancelMsgs(
-            bids,
-            self.trader_unique_id,
-            self.cfg.n_actions//2, 
-            1  # bids
-        )
+                state.bid_raw_orders,
+                self.trader_unique_id,
+                num_messages_over_two,
+                1  # bid
+            )
         cnl_msg_ask = job.getCancelMsgs(
-            asks,
-            self.trader_unique_id,
-            self.cfg.n_actions//2,
-            -1  # ask side
-        )
+                state.ask_raw_orders,
+                self.trader_unique_id,
+                num_messages_over_two,
+                -1  # ask
+            )
+        
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
         
         (asks, bids, trades), (new_bestask, new_bestbid) = job.scan_through_entire_array_save_bidask(self.cfg,key,
