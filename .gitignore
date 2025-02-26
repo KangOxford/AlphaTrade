@@ -46,6 +46,7 @@ results_file**
 *.nfs*
 
 Dockerfile
-Dockerfile_two
+Dockerfile_twogymnax_exchange/jaxrl/pre_trained_weights/*.model
+
 
 /atpaths/**

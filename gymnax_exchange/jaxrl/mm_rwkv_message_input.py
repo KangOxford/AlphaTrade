@@ -105,8 +105,8 @@ config = {
     "TOTAL_TIMESTEPS": 4e5,
     "UPDATE_EPOCHS": 4,
     "NUM_MINIBATCHES": 1,
-    "GAMMA": 0.99 ** (1/5),
-    "GAE_LAMBDA": 0.95 ** (1/5),
+    "GAMMA": 0.99,# ** (1/5),
+    "GAE_LAMBDA": 0.95 ,#** (1/5),
     "CLIP_EPS": 0.2,
     "ENT_COEF": 0.1,
     "VF_COEF": 0.5,
@@ -122,7 +122,8 @@ config = {
         "WINDOW_INDEX": 43, # 2 fix random episode #-1,
         "EPISODE_TIME": 60*8,  # 
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
-        "ATFOLDER": ATFolder
+        "ATFOLDER": ATFolder,
+        "MAX_SEQ_LEN":8000
     }
 
 
@@ -133,12 +134,6 @@ config["NUM_UPDATES"] = (
 
 jit_ppo_update = get_jit_ppo(config)
 
-def handle_continuous(observation):
-    return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
-
-def tokenize_observation(observation):
-    observation_str = [str(obs) for obs in observation]  
-    return jnp.array([tokenizer.encode(obs) for obs in observation_str], dtype=jnp.int32)
 
 
 rng = jax.random.key(0)
@@ -213,13 +208,32 @@ tokenizer = PreTrainedTokenizerFast(
 pad_token_id = 3
 print("Padding token ID:", pad_token_id)
 
+def tokenize_observation(observation):
+    observation_str = [str(obs) for obs in observation]  
+    return jnp.array([tokenizer.encode(obs) for obs in observation_str], dtype=jnp.int32)
+
+def pad_to_max_length(tokens, max_len, pad_token=pad_token_id):
+    padded_tokens = jnp.pad(
+        tokens,
+        ((0, 0), (0, max_len - tokens.shape[1])),
+        constant_values=pad_token
+    )
+    return padded_tokens
+
+
+def compute_true_length(tokens, pad_token=pad_token_id): # Padding token is 3 for this tokenizer
+    return jnp.sum(tokens != pad_token, axis=1)
+
+def remove_padding(tokens, pad_token_id, token_lengths):
+    return tokens[:, :token_lengths.max()]  # Select only valid tokens (not padded)
+
 # Load the pretrained model
 with open("gymnax_exchange/jaxrl/pre_trained_weights/goog2022_rwkv_6g0.1B.model", "rb") as f:
     pretrained_params = pickle.load(f)
 
 
 # Add 8 new action tokens
-new_actions = [f"<action_{i}>" for i in range(env.action_space(env_params).n)]  # Set based on environment
+new_actions = [f"<action_{i}>" for i in range(env.action_space(env_params).n)] 
 tokenizer.add_special_tokens({"additional_special_tokens": new_actions})
 
 # Update action token range in config
@@ -254,11 +268,9 @@ print("nlayer:",n_layer)
 env = FlattenObservationWrapper(env)
 env = LogWrapper(env)
 
-# Update num_tokens for RWKV model
-num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size 
 
 # Initialize the RWKV model with dynamic layer and embedding size
-RWKV, _ = get_rand_model(0, "6", n_layer, n_embd, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+RWKV, _ = get_rand_model(0, "6", n_layer, n_embd, num_tokens, dtype="float32", rwkv_type="ScanRWKV")
 params = pretrained_params 
 
 print("Original head layer shape:", pretrained_params['head']['weight'].shape)
@@ -296,11 +308,6 @@ v_env_step = jax.jit(jax.vmap(
     env.step, in_axes=(0, 0, 0, None)
 ))
 
-
-def compute_true_length(tokens, pad_token=pad_token_id): # Padding token is 3 for this tokenizer
-    return jnp.sum(tokens != pad_token, axis=1)
-
-
 global_timestep = 1
 
 for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
@@ -317,24 +324,30 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     for t in range(config["NUM_STEPS"]):
         rng, _rng = jax.random.split(rng)
         tokenized = tokenize_observation(obsv)
+        tokenized = pad_to_max_length(tokenized, config["MAX_SEQ_LEN"], pad_token=pad_token_id)
         token_lengths = compute_true_length(tokenized, pad_token=pad_token_id)
         pi, value, state = v_forward_jit(tokenized, state, params, token_lengths)
         pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
         action = pi.sample(seed=_rng)
-        jax.debug.print("action:{}",action)
+        jax.debug.print("action:{}", action)
+
         def log_action_distribution(action):
-                    unique_actions, counts = jnp.unique(action, return_counts=True)
-                    action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
-                    wandb.log(action_distribution)
+            unique_actions, counts = jnp.unique(action, return_counts=True)
+            action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
+            wandb.log(action_distribution)
+
         if wandbOn:
             jax.debug.callback(log_action_distribution, action)
-        ##
+
+        # Store actions
         current_actions = jax.device_get(action)
         all_actions.extend(current_actions.flatten().tolist())
-        ##
+
+        # Compute log probability of the action
         log_prob = pi.log_prob(action)
         _, value1, state = v_forward_jit(action, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
 
+        # Step the environment
         rng, _rng = jax.random.split(rng)
         rng_step = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state, reward, done, info = v_env_step(rng_step, env_state, action, env_params)
@@ -342,35 +355,45 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
         if wandbOn:
             jax.debug.callback(log_all_metrics, info, global_timestep)
 
-        
+        # Reset state for done episodes
         state = jax.vmap(jax.lax.select)(done, init_state, state)
-        
+
+        # Create flags for the observation
+        obs_flags = jnp.ones_like(tokenized) * OBS_FLAG  # Default to OBS_FLAG
+        obs_flags = jnp.where(tokenized == pad_token_id, PAD_FLAG, obs_flags)  # Flag padding
+        flags_list.append(obs_flags)
         tokens_list.append(tokenized)
-        tokens_list.append(action[:, None] + config["MIN_ACTION_TOK"])
         
-        flags_list.append(jnp.ones_like(tokenized) * OBS_FLAG)
-        flags_list.append(jnp.ones_like(tokenized)[:, :1] * ACT_FLAG)
+        # Append action tokens and their flags
+        action_tokens = action[:, None] + config["MIN_ACTION_TOK"]
+        tokens_list.append(action_tokens)
+        flags_list.append(jnp.ones_like(action_tokens) * ACT_FLAG)  
 
         values_list.append(value)
         values_list.append(value1)
 
-        rewards_list.append(jnp.zeros(shape=tokenized.shape))
-        rewards_list.append(reward[:, None])
+        
+        obs_rewards = jnp.zeros_like(tokenized)
+        rewards_list.append(obs_rewards)
+        rewards_list.append(reward[:, None]) 
 
-        log_prob_list.append(jnp.zeros_like(value))
-        log_prob_list.append(log_prob[:, None])
+    
+        obs_log_probs = jnp.zeros_like(value)
+        log_prob_list.append(obs_log_probs)
+        log_prob_list.append(log_prob[:, None]) 
 
-        dones_list.append(jnp.zeros(value.shape, dtype=jnp.bool))
-        dones_list.append(done[:, None])
+    
+        obs_dones = jnp.zeros_like(value, dtype=jnp.bool)
+        dones_list.append(obs_dones)
+        dones_list.append(done[:, None])  # Actions have their own dones
 
+        # Track episode returns
         return_values = info["returned_episode_returns"][info["returned_episode"]]
-        # print(return_values.shape)
         for r in return_values:
-            # print(global_timestep, ":", r)
             update_returns.append(r)
         global_timestep += 1
 
-
+    # Concatenate all lists
     tokens_list = jnp.concatenate(tokens_list, axis=1)
     flags_list = jnp.concatenate(flags_list, axis=1)
     values_list = jnp.concatenate(values_list, axis=1)
@@ -380,29 +403,55 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     true_lengths = compute_true_length(tokens_list, pad_token=pad_token_id)
     buf = JString(tokens_list, true_lengths)
 
-  
-
-
+    # Mark padding as done to avoid bootstrapping
     dones_list = jnp.cumsum(dones_list, axis=1, dtype=jnp.bool)
     flags_list = jnp.where(jnp.concatenate((dones_list[:, :1], dones_list[:, :-1]), axis=1), PAD_FLAG, flags_list)
-    # print(dones_list)
-    # print(flags_list)
-    
-    # print(tokens_list.shape, flags_list.shape, values_list.shape, rewards_list.shape, log_prob_list.shape)
 
-    _, last_value, _ = v_forward_jit(tokenize_observation(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
-    
-    advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
-    # print("value", values_list)
-    # print("target", targets)
-    print("UPDATING")
+    # Tokenize the final observation
+    tokenized_obsv = tokenize_observation(obsv)
+    tokenized_obsv = pad_to_max_length(tokenized_obsv, config["MAX_SEQ_LEN"], pad_token_id)
+        # Compute true lengths for the final observation
+    final_token_lengths = compute_true_length(tokenized_obsv, pad_token=pad_token_id)
+
+    # Compute the last value for GAE
+    _, last_value, _ = v_forward_jit(tokenized_obsv, state, params, final_token_lengths)
+
+        # Cast all inputs to float32
+    flags_list_float32 = flags_list.astype(jnp.float32)
+    dones_list_float32 = dones_list.astype(jnp.float32)
+    values_list_float32 = values_list.astype(jnp.float32)
+    rewards_list_float32 = rewards_list.astype(jnp.float32)
+    last_value_float32 = last_value[..., -1].astype(jnp.float32)
+    jax.debug.print("flags_list dtype: {}", flags_list.dtype)
+    jax.debug.print("dones_list dtype: {}", dones_list.dtype)
+    jax.debug.print("values_list dtype: {}", values_list.dtype)
+    jax.debug.print("rewards_list dtype: {}", rewards_list.dtype)
+    jax.debug.print("last_value dtype: {}", last_value.dtype)
+
+    # Compute advantages and targets with masking
+    mask = (flags_list != PAD_FLAG).astype(jnp.float32)  # Mask out padding
+
+    advantages, targets = j_calculate_gae(
+    flags_list_float32,
+    dones_list_float32,
+    values_list_float32,
+    rewards_list_float32 * mask,
+    last_value_float32,
+    config["GAMMA"],
+    config["GAE_LAMBDA"]
+    )
+    # Log average returns
     if len(update_returns) > 0:
         print("avg returns:", sum(update_returns) / len(update_returns))
     else:
         print("None ended")
 
+    # Update parameters using PPO
     for _ in range(config["UPDATE_EPOCHS"]):
-        params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
+        params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(
+            solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state
+        )
         print(loss, value_loss, loss_actor, entropy)
 
+    # Reset state for done episodes
     state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
