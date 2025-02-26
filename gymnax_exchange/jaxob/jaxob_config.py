@@ -23,10 +23,11 @@ class EnvironmentConfig(Configuration):
     end_fn: Literal["force_market_order", "unwind_mid_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     # Reward
-    inv_penalty: Literal["none", "linear", "quadratic"] = "none"
+    inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
-    reference_price_portfolio_value: Literal["mid", "best_bid_ask"] = "mid"
+    reference_price_portfolio_value: Literal["mid", "best_bid_ask"] =env_cst.reference_price_portfolio_value
     n_actions:int=env_cst.n_actions
+    
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.002
     unrealizedPnL_lambda: float = 0.0

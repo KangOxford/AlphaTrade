@@ -157,6 +157,13 @@ def make_train(config):
     env = MarketMakingEnv(
         key_reset,
         alphatradePath=config["ATFOLDER"],
+        window_index=config["WINDOW_INDEX"],
+        episode_time=config["EPISODE_TIME"],
+        ep_type=config["DATA_TYPE"],
+    )
+
+    eval_env=MarketMakingEnv(
+        alphatradePath=config["ATFOLDER"],
         #task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
         action_type=config["ACTION_TYPE"],
@@ -526,8 +533,7 @@ if __name__ == "__main__":
         "ENV_NAME": "AlphaTradeMM",
         "ANNEAL_LR": True,
         "DEBUG": True,
-        
-       "TASKSIDE": "random", # "random", "buy", "sell"
+
         "REWARD_LAMBDA": 0.1, #0.001,
         "ACTION_TYPE": "pure", # "delta"
         "WINDOW_INDEX": 200, # 2 fix random episode #-1,
