@@ -51,7 +51,7 @@ j_calculate_gae = jax.jit(jax.vmap(calculate_gae, in_axes=(0, 0, 0, 0, 0, None, 
 import wandb
 
 
-wandbOn = True # False
+wandbOn = False#True # False
 if wandbOn:
     import wandb
 
@@ -247,6 +247,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     for t in range(config["NUM_STEPS"]):
         rng, _rng = jax.random.split(rng)
         tokenized = handle_continuous(obsv)
+        print(len(tokenized))
         pi, value, state = v_forward_jit(tokenized, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
         pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
         action = pi.sample(seed=_rng)

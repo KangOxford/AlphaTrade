@@ -115,7 +115,7 @@ print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 jax.numpy.set_printoptions(linewidth=183)
 # ================= imports ==================
 
-
+import pandas as pd
 from ast import Dict
 from contextlib import nullcontext
 # from email import message
@@ -1389,6 +1389,8 @@ class MarketMakingEnv(BaseLOBEnv):
         """State space of the environment."""
         return NotImplementedError
 
+
+
 # ============================================================================= #
 # ============================================================================= #
 # ================================== MAIN ===================================== #
@@ -1465,7 +1467,8 @@ if __name__ == "__main__":
         start=time.time()
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
-        
+        print(obs)
+
      #   print('revenue',state.total_revenue)
         #print('revenue', state.total_revenue)
         #print('inventory',state.inventory)

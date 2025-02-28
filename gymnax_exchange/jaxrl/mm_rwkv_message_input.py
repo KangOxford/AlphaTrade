@@ -49,7 +49,7 @@ import jax
 import jax.numpy as jnp
 #import optax
 import distrax
-import re
+import pandas as pd
 
 from jax_rwkv.src.auto import get_rand_model
 from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, get_jit_ppo, PAD_FLAG, OBS_FLAG, ACT_FLAG
@@ -100,7 +100,7 @@ except:
 
 config = {
     "LR": 1e-3,
-    "NUM_ENVS": 1,
+    "NUM_ENVS": 2,
     "NUM_STEPS": 10,#128,
     "TOTAL_TIMESTEPS": 4e5,
     "UPDATE_EPOCHS": 4,
@@ -204,25 +204,81 @@ tokenizer = PreTrainedTokenizerFast(
     clean_up_tokenization_spaces=False
 )
 
-# Explicitly set padding token ID
+import jax.numpy as jnp
+
+import jax.numpy as jnp
+
+def lob_to_str(jax_array, n_msgs=100):
+    # Constants to match the target format
+    TIME_COL = "<time>"
+    EVENT_TYPE_COL = "<event_type>"
+    ORDER_ID_COL = "<order_id>"
+    SIZE_COL = "<size>"
+    PRICE_COL = "<price>"
+    DIRECTION_COL = "<direction>"
+
+    # Extract relevant columns from the JAX array
+    T = jax_array[:, 0]
+    S = jax_array[:, 1]
+    Q = jax_array[:, 2]
+    P = jax_array[:, 3]
+    OID = jax_array[:, 4]
+    TID = jax_array[:, 5]
+    Ts = jax_array[:, 6]
+    Tns = jax_array[:, 7]
+
+    # Adjust nanoseconds to seconds (without formatting)
+    time_col = Ts + (Tns / 1e9)
+
+    # Map event type from the T column
+    event_type_col = jnp.select([T == 1, T == 2, T == 3], [1, 3, 2], default=0)
+
+    # Convert to string outside JAX computation
+    time_col_str = [f"{x:.9f}" for x in time_col]  
+
+    rows = []
+    for i in range(jax_array.shape[0]):
+        row = [
+            (TIME_COL, time_col_str[i]),
+            (EVENT_TYPE_COL, int(event_type_col[i])),
+            (ORDER_ID_COL, int(OID[i])),
+            (SIZE_COL, int(Q[i])),
+            (PRICE_COL, int(P[i])),
+            (DIRECTION_COL, int(S[i])),
+        ]
+        row_str = ','.join([f"{col},{val}" for col, val in row])
+        rows.append(row_str)
+
+    # Batch the rows into messages
+    batched_strings = [
+        '\n'.join(rows[i:i + n_msgs])
+        for i in range(0, len(rows), n_msgs)
+    ]
+    batched_strings = "\n".join(batched_strings)
+
+    return batched_strings
+
+
+
 pad_token_id = 3
 print("Padding token ID:", pad_token_id)
+
 
 def tokenize_observation(observation):
     observation_str = [str(obs) for obs in observation]  
     return jnp.array([tokenizer.encode(obs) for obs in observation_str], dtype=jnp.int32)
 
-def pad_to_max_length(tokens, max_len, pad_token=pad_token_id):
-    padded_tokens = jnp.pad(
-        tokens,
-        ((0, 0), (0, max_len - tokens.shape[1])),
-        constant_values=pad_token
-    )
+def pad_to_max_length(tokens, max_len, pad_token=0):
+    padded_tokens = jnp.array([
+        jnp.pad(t, (0, max_len - len(t)), constant_values=pad_token)
+        for t in tokens
+    ])
     return padded_tokens
 
 
-def compute_true_length(tokens, pad_token=pad_token_id): # Padding token is 3 for this tokenizer
-    return jnp.sum(tokens != pad_token, axis=1)
+def compute_true_length(tokens, pad_token=3):
+    # Calculate the true lengths and expand dimensions to (num_envs, 1
+    return jnp.expand_dims(jnp.sum(tokens != pad_token, axis=1), axis=1)
 
 def remove_padding(tokens, pad_token_id, token_lengths):
     return tokens[:, :token_lengths.max()]  # Select only valid tokens (not padded)
@@ -241,7 +297,8 @@ config["MIN_ACTION_TOK"] = tokenizer.convert_tokens_to_ids("<action_0>")
 config["MAX_ACTION_TOK"] = tokenizer.convert_tokens_to_ids("<action_7>")
 
 # Get updated vocab size (considering action tokens)
-num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size
+#potentially remove 1
+num_tokens =  env.action_space(env_params).n + tokenizer.vocab_size
 
 print(f"Updated vocab size: {num_tokens}")
 
@@ -279,12 +336,30 @@ print("Original head layer shape:", pretrained_params['head']['weight'].shape)
 forward, params = get_ppo_agent(RWKV, params, seed=1)
 v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
 init_state = RWKV.default_state(params)
-print("model made!")
+#if isinstance(init_state, tuple):
+#    init_state = tuple([
+#        jnp.repeat(s[None], config["NUM_ENVS"], axis=0) if len(s.shape) == 1 else s for s in init_state
+#    ])
+    #init_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in init_state])
+#else:
+#    init_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
+
 if isinstance(init_state, tuple):
-    init_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in init_state])
+    # If it's a tuple, check each element to ensure correct batching
+    # Repeat each element of the tuple (if they have the correct dimension) along the batch dimension (NUM_ENVS)
+    batched_state = tuple([
+        jnp.repeat(s[None], config["NUM_ENVS"], axis=0) if len(s.shape) == 1 else s
+        for s in init_state
+    ])
 else:
-    init_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
-state = init_state
+    # If it's not a tuple, just repeat along the batch dimension (NUM_ENVS)
+    batched_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
+
+# Now batched_state should have the correct shape
+state = batched_state
+
+#state = init_state
+jax.debug.print("state shape: {}", state.shape)
 
 def linear_schedule(count):
     frac = (
@@ -323,10 +398,40 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     update_returns = []
     for t in range(config["NUM_STEPS"]):
         rng, _rng = jax.random.split(rng)
-        tokenized = tokenize_observation(obsv)
-        tokenized = pad_to_max_length(tokenized, config["MAX_SEQ_LEN"], pad_token=pad_token_id)
-        token_lengths = compute_true_length(tokenized, pad_token=pad_token_id)
-        pi, value, state = v_forward_jit(tokenized, state, params, token_lengths)
+        jax.debug.print("obsv shape{}:", obsv.shape[1])
+
+        # Reshape the observation for tokenization
+        reshaped_obsv = obsv.reshape(config["NUM_ENVS"], obsv.shape[1] // 8, 8)
+
+        # Collect tokenized sequences as a Python list
+        tokenized_list = []
+
+        for env_obs in reshaped_obsv:
+            obs_str = lob_to_str(env_obs)
+            tokenized = tokenizer.encode(obs_str)
+            tokenized_list.append(tokenized)
+
+        # Determine the lengths before padding
+        token_lengths = jnp.array([len(t) for t in tokenized_list])
+
+        # Pad all tokenized sequences to MAX_SEQ_LEN and convert to jnp array
+        tokenized_observations = jnp.array([
+            jnp.pad(jnp.array(t), (0, config["MAX_SEQ_LEN"] - len(t)), mode='constant', constant_values=pad_token_id)
+            for t in tokenized_list
+        ])
+        print("tokenized obs shape 0: {}",tokenized_observations.shape[0])
+        print("tokenized obs shape 1: {}",tokenized_observations.shape[1])
+
+        # Compute true lengths in (num_envs, 1) shape
+        token_lengths = compute_true_length(tokenized_observations, pad_token=pad_token_id)
+        print(token_lengths)
+        jax.debug.print("state shape: {}", state.shape)
+        jax.debug.print("state[0] shape: {}", state[0].shape)  
+        jax.debug.print("state[1] shape: {}", state[1].shape)  
+
+        # Forward pass
+        pi, value, state = v_forward_jit(tokenized_observations, state, params, token_lengths)
+
         pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
         action = pi.sample(seed=_rng)
         jax.debug.print("action:{}", action)
@@ -416,30 +521,11 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     # Compute the last value for GAE
     _, last_value, _ = v_forward_jit(tokenized_obsv, state, params, final_token_lengths)
 
-        # Cast all inputs to float32
-    flags_list_float32 = flags_list.astype(jnp.float32)
-    dones_list_float32 = dones_list.astype(jnp.float32)
-    values_list_float32 = values_list.astype(jnp.float32)
-    rewards_list_float32 = rewards_list.astype(jnp.float32)
-    last_value_float32 = last_value[..., -1].astype(jnp.float32)
-    jax.debug.print("flags_list dtype: {}", flags_list.dtype)
-    jax.debug.print("dones_list dtype: {}", dones_list.dtype)
-    jax.debug.print("values_list dtype: {}", values_list.dtype)
-    jax.debug.print("rewards_list dtype: {}", rewards_list.dtype)
-    jax.debug.print("last_value dtype: {}", last_value.dtype)
 
     # Compute advantages and targets with masking
-    mask = (flags_list != PAD_FLAG).astype(jnp.float32)  # Mask out padding
+    mask = (flags_list != PAD_FLAG)  # Mask out padding
 
-    advantages, targets = j_calculate_gae(
-    flags_list_float32,
-    dones_list_float32,
-    values_list_float32,
-    rewards_list_float32 * mask,
-    last_value_float32,
-    config["GAMMA"],
-    config["GAE_LAMBDA"]
-    )
+    advantages, targets = j_calculate_gae(flags_list,dones_list,values_list,rewards_list* mask,last_value,config["GAMMA"],config["GAE_LAMBDA"])
     # Log average returns
     if len(update_returns) > 0:
         print("avg returns:", sum(update_returns) / len(update_returns))
