@@ -260,6 +260,10 @@ num_tokens = 1 + env.action_space(env_params).n + tokenizer.vocab_size
 # Initialize the RWKV model with dynamic layer and embedding size
 RWKV, _ = get_rand_model(0, "6", n_layer, n_embd, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
 params = pretrained_params 
+
+print("Original head layer shape:", pretrained_params['head']['weight'].shape)
+
+
 forward, params = get_ppo_agent(RWKV, params, seed=1)
 v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
 init_state = RWKV.default_state(params)
@@ -386,7 +390,7 @@ for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["
     
     # print(tokens_list.shape, flags_list.shape, values_list.shape, rewards_list.shape, log_prob_list.shape)
 
-    _, last_value, _ = v_forward_jit(tokenize_observation, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+    _, last_value, _ = v_forward_jit(tokenize_observation(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
     
     advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
     # print("value", values_list)
