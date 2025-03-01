@@ -27,11 +27,14 @@ from dataclasses import dataclass
 import tyro
 import pandas as pd
 from jax.tree_util import tree_map
+import os
+import sys
+sys.path.append(os.path.abspath('/home/duser/AlphaTrade'))
 
 from transformers import PreTrainedTokenizerFast
-import src.jax_rwkv.base_rwkv as rwkv6
-from src.jax_rwkv.utils import sample_logits
-from src.auto import models, get_model, save, load
+import jax_rwkv.src.jax_rwkv.base_rwkv as rwkv6
+from jax_rwkv.src.jax_rwkv.utils import sample_logits
+from jax_rwkv.src.auto import models, get_model, save, load
 from data_loading import _df_to_str, convert_to_nanoseconds, get_data_stream, load_message_df
 from constants import MESSAGE_TOKEN_DTYPE_MAP, MESSAGE_TOKEN_TYPES, MambaInferenceArgs
 import re
@@ -43,9 +46,9 @@ from tokenizers import Tokenizer
 
 @dataclass
 class Args:
-    model_dir: str
-    test_context_file: str
-    output_path: str
+    model_dir: str ="gymnax_exchange/jaxrl/pre_trained_weights/"
+    test_context_file: str ="training_oneDay/data/Flow_10/"
+    output_path: str= "output.txt"
     device: Optional[str] = None
     strategy: str = "ScanRWKV"
     dtype: str = "float32"
@@ -67,18 +70,18 @@ def main():
     else:
         jax.config.update('jax_platform_name', jax_platforms_map[args.device])
     # Load tokenizer and model
+    
     tokenizer = PreTrainedTokenizerFast(
-        tokenizer_file="/app/scripts/lob_tok.json",
+        tokenizer_file="gymnax_exchange/jaxlobster/lob_tok.json",
         clean_up_tokenization_spaces=False
     )
     model = rwkv6.ScanRWKV()
-    params = load(os.path.join(args.model_dir,"params.model"))
-    optimizer = load(os.path.join(args.model_dir, "optimizer.model"))
-    init_state = load(os.path.join(args.model_dir, "state.model"))
+    params = load(os.path.join(args.model_dir,"goog2022_rwkv_6g0.1B.model"))
+    init_state = model.default_state(params)
 
     # Define number of lines to load and convert to a sequence
     n_lines = 100  # Number of lines to load
-    n_msgs = 1000    # Number of messages per batch
+    n_msgs = 100    # Number of messages per batch
 
     #folder = "training_oneDay/data/Flow_10"
     file_name = "AMZN_2017-01-03_24900000_57900000_message_10.csv"
@@ -95,14 +98,14 @@ def main():
     # Tokenize context (first 10 lines)
     #context = start_tokens.split('\n')[:10]  # Select first 10 lines as context
     context_text = "\n".join(context)
-    #print(context_text)
-   
+    print(context_text)
+    
 
     encoded = tokenizer.encode(context_text)
     if isinstance(tokenizer, Tokenizer):
         encoded = encoded.ids
     ctx_len = len(encoded)
-    print(encoded)
+
    
 
     # Warm-up phase (optional)
