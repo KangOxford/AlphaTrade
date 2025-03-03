@@ -169,7 +169,7 @@ class EnvParams(BaseEnvParams):
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, alphatradePath, task, window_index, action_type, episode_time,
+            self, key,alphatradePath, task, window_index, action_type, episode_time,
             max_task_size = 500, rewardLambda=1., ep_type="fixed_time"):
         
         #Define Execution-specific attributes.
@@ -183,6 +183,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         #Call base-class init function
         super().__init__(
+            key,
             alphatradePath,
             window_index,
             episode_time,
@@ -1212,6 +1213,7 @@ if __name__ == "__main__":
 
     # env=ExecutionEnv(ATFolder,"sell",1)
     env = ExecutionEnv(
+        key=key_reset,
         alphatradePath=config["ATFOLDER"],
         task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
