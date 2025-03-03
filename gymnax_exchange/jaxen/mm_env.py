@@ -1226,14 +1226,14 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, state, params, total_messages,action_prices,executions):
+    def get_observation(self, state, params, total_messages, action_prices, executions):
         """
         Wrapper function to call the appropriate observation function.
         """
         if self.cfg.observation_space == "engineered":
-            return self.observation_fn(state, params,action_prices,executions)
+            return self.observation_fn(state, params, action_prices, executions)
         elif self.cfg.observation_space == "messages":
-            return self.observation_fn(total_messages)
+            return self.observation_fn(state, total_messages) 
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1251,10 +1251,41 @@ class MarketMakingEnv(BaseLOBEnv):
             raise ValueError("Invalid action sspace specified.")
 
     #=================observation functions========================#    
-    def _get_obs_msg(self,total_msgs)-> chex.Array:
-        """ Return observation from raw state trafo. """
-        obs=total_msgs
-        return obs
+    def _get_obs_msg(self, state, total_msgs: chex.Array):
+        # 1. Process message features
+        #msg_type = total_msgs[0]  # type
+        #msg_direction = total_msgs[1]  # direction
+        
+        # Combine type and direction into event_dir 
+        #event_dir = msg_direction * 4 + msg_type
+
+        # Extract other message features
+        #msg_features = jnp.array([
+        #    event_dir,  # Combined event_dir
+        #    total_msgs[5],  # order_id (we would need to change that for orders from the day before)
+        #    total_msgs[3],  # price
+        #    total_msgs[2],  # size
+        #    0,  # delta_time_s (placeholder)
+        #    0,  # delta_time_ns (placeholder) 
+        #    0,  # delta_price (placeholder)
+        #])
+        
+        # 2. Get LOB state
+       # lob_state = job.get_L2_state(
+        #    self.state.asks,  # Current ask orders
+        #    self.state.bids,  # Current bid orders
+        #    10,  # Number of levels
+        #    self.cfg  
+        #)
+        
+        # Add time_s and time_ns at the start
+        #lob_state_with_time = jnp.concatenate([
+        #    jnp.array([total_msgs[6], total_msgs[7]]),  # time_s, time_ns
+        #    lob_state
+        #])
+        
+        #return msg_features, lob_state_with_time
+        return total_msgs
     
     def _get_obs_engineered(
             self,
