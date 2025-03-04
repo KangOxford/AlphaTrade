@@ -181,6 +181,8 @@ class MarketMakingEnv(BaseLOBEnv):
             self.observation_fn = self._get_obs_engineered
         elif self.cfg.observation_space == "messages":
             self.observation_fn = self._get_obs_msg
+        elif self.cfg.observation_space == "messages_new_tokenizer":
+            self.observation_fn = self._get_obs_msg_new_tokenizer
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1230,6 +1232,8 @@ class MarketMakingEnv(BaseLOBEnv):
             return self.observation_fn(state, params, action_prices, executions)
         elif self.cfg.observation_space == "messages":
             return self.observation_fn(state, total_messages) 
+        elif self.cfg.observation_space == "messages_new_tokenizer":
+            return self.observation_fn(state, total_messages) 
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1248,6 +1252,10 @@ class MarketMakingEnv(BaseLOBEnv):
 
     #=================observation functions========================#    
     def _get_obs_msg(self, state, total_msgs: chex.Array):
+        return total_msgs
+    
+
+    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array):
         # 1. Process message features
         #msg_type = total_msgs[0]  # type
         #msg_direction = total_msgs[1]  # direction
