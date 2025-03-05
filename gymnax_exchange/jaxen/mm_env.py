@@ -1181,7 +1181,7 @@ class MarketMakingEnv(BaseLOBEnv):
             inv_pen = (-1) * (new_inventory ** 2)
         else:
             raise ValueError("Invalid inventory penalty specified.")
-        reward = reward - inv_pen
+        reward = reward + inv_pen
 
         #calculate a fraction of total market activity attributable to us.
         other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
