@@ -223,6 +223,8 @@ class MarketMakingEnv(BaseLOBEnv):
         )
 
 
+
+
     def step_env(
         self, key: chex.PRNGKey, state: EnvState, input_action: jax.Array, params: EnvParams
     ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
@@ -236,6 +238,20 @@ class MarketMakingEnv(BaseLOBEnv):
             state.step_counter,
             state.init_time[0] + params.episode_time
         )
+
+        if self.cfg.observation_space =="messages_new_tokenizer":
+            if self.cfg.action_space=="fixed_quants":
+                num_trades=2
+            elif self.cfg.action_space=="fixed_prices":
+                num_trades=self.cfg.n_actions,
+            else:
+                raise ValueError("Other Spaces not done..")
+            next_order_ID=state.customIDcounter*(self.nTradesLogged+num_trades)
+            ####rename the orderIDs...
+            data_messages = self.renumber_order_ids(data_messages, next_order_ID)
+
+
+         
     
         #=======================================#
         #======Process agent actions ===========#
@@ -538,6 +554,25 @@ class MarketMakingEnv(BaseLOBEnv):
         prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
         # jax.debug.print("prices_quants\n {}", prices_quants)
         return prices_quants
+    def renumber_order_ids(data_messages, start_index):
+        """
+        Renumber columns 4 and 5 of data_messages with incrementing IDs.
+        
+        Args:
+            data_messages: JAX array of messages
+            start_index: Starting index for renumbering (continues across steps)
+        
+        Returns:
+            Updated data_messages with renumbered columns
+        """
+        # Create a range of new order IDs starting from start_index
+        num_messages = data_messages.shape[0]
+        new_order_ids = jnp.arange(start_index, start_index + num_messages)
+        
+        # Create a copy of data_messages to avoid modifying the original
+        updated_messages = data_messages.at[:, 3].set(new_order_ids)
+        updated_messages = updated_messages.at[:, 4].set(new_order_ids) 
+        return updated_messages
  
     def _get_executed_by_price(self, agent_trades: jax.Array) -> jax.Array:
         """ 
@@ -657,7 +692,10 @@ class MarketMakingEnv(BaseLOBEnv):
         trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
         
         # Generate unique order IDs
-        base_id = self.trader_unique_id + state.customIDcounter
+        if self.cfg.observation_space =="messages_new_tokenizer":
+            base_id=(state.customIDcounter+1*self.nTradesLogged)+(state.customIDcounter*2)#ID to now, 2=num trades
+        else:
+            base_id = self.trader_unique_id + state.customIDcounter
         order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
         
         # Time fields (replicated for each message)
