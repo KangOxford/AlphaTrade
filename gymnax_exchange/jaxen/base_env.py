@@ -176,7 +176,7 @@ class BaseLOBEnv(environment.Environment):
         self.n_actions=4
         self.n_ticks_in_book = 10 # Depth of PP actions
         self.customIDCounter=0
-        self.trader_unique_id=10
+        self.trader_unique_id=-1 #need to be negative now??
         self.tick_size=100
         self.start_resolution=60 #Interval in seconds at which eps start
         self.cfg =Configuration()
