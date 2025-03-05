@@ -330,7 +330,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # TODO: use the agent quant identification from the separate function _get_executed_by_level instead of _get_reward
         reward, extras = self._get_reward(state, params, trades,bestasks,bestbids)
-        
+        old_time=state.time
         state = EnvState(
             ask_raw_orders = asks,
             bid_raw_orders = bids,
@@ -384,7 +384,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
         }                    
 
-        return self.get_observation(state, params, total_messages,action_prices,executions), state, reward, done, info
+        return self.get_observation(state, params, total_messages,action_prices,executions,old_time), state, reward, done, info
     
     def reset_env(
             self,
@@ -554,6 +554,44 @@ class MarketMakingEnv(BaseLOBEnv):
         prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
         # jax.debug.print("prices_quants\n {}", prices_quants)
         return prices_quants
+    ###########Functions for the new tokenizer#####################
+    def calculate_row_wise_differences(input_array, old_ts,old_tns):
+            """
+            Calculate row-wise differences for columns 6 and 7, 
+            with first row difference relative to initial time.
+            
+            Args:
+                input_array: JAX array 
+                initial_time: Initial time to calculate first row's difference
+            
+            Returns:
+                Updated input array with row-wise differences
+            """
+           
+            # Create a copy of the input array to avoid modifying the original
+            updated_array = input_array.copy()
+
+            
+            # Extract columns 6 and 7 (indices 6 and 7)
+            col6_values = input_array[:, 6]
+            col7_values = input_array[:, 7]
+            
+            # Calculate row-wise differences for column 6
+            col6_differences = jnp.zeros_like(col6_values)
+            col6_differences = col6_differences.at[0].set(col6_values[0] - old_ts)
+            col6_differences = col6_differences.at[1:].set(col6_values[1:] - col6_values[:-1])
+            
+            # Calculate row-wise differences for column 7
+            col7_differences = jnp.zeros_like(col7_values)
+            col7_differences = col7_differences.at[0].set(col7_values[0] - old_tns)
+            col7_differences = col7_differences.at[1:].set(col7_values[1:] - col7_values[:-1])
+            
+            # Replace columns 6 and 7 with the calculated differences
+            updated_array = updated_array.at[:, 6].set(col6_differences)
+            updated_array = updated_array.at[:, 7].set(col7_differences)
+            
+            return updated_array
+
     def renumber_order_ids(data_messages, start_index):
         """
         Renumber columns 4 and 5 of data_messages with incrementing IDs.
@@ -1266,7 +1304,7 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, state, params, total_messages, action_prices, executions):
+    def get_observation(self, state, params, total_messages, action_prices, executions,old_time):
         """
         Wrapper function to call the appropriate observation function.
         """
@@ -1275,7 +1313,7 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.observation_space == "messages":
             return self.observation_fn(state, total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            return self.observation_fn(state, total_messages) 
+            return self.observation_fn(state, total_messages,old_time) 
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1297,8 +1335,11 @@ class MarketMakingEnv(BaseLOBEnv):
         return total_msgs
     
 
-    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array):
+    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array,old_time):
         #1. Process message features
+        old_ts=old_time[0]
+        old_tns=old_time[1]/1e9
+        total_msgs = self.calculate_row_wise_differences(total_msgs, old_ts,old_tns)
         msg_type = total_msgs[:,0]  # type
         msg_direction = total_msgs[:,1]  # direction
         
@@ -1327,7 +1368,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #Extract other message features
         msg_features = jnp.array([
            event_dir,  # Combined event_dir
-           total_msgs[:,5],  # order_id (we would need to change that for orders from the day before)
+           total_msgs[:,4],  # order_id (we would need to change that for orders from the day before)
            total_msgs[:,3] - mid_prices,  # normalized price
            total_msgs[:,2],  # size
            0,  # delta_time_s (placeholder)
