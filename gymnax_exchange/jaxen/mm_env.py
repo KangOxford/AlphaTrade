@@ -207,11 +207,15 @@ class MarketMakingEnv(BaseLOBEnv):
     def default_params(self) -> EnvParams:
         # Default environment parameters
         base_params = super().default_params
+
+        #jax.debug.print("base params: {}", base_params)
+
         flat_tree = jtu.tree_flatten(base_params)[0]
         #TODO: Clean this up to not have a magic number
         # BaseEnvParams
         base_vals = flat_tree[0:5] #Considers the base parameter values other than init state.
         state_vals = flat_tree[5:] #Considers the state values
+
         return EnvParams(
             *base_vals,
             EnvState(*state_vals),
@@ -1256,40 +1260,59 @@ class MarketMakingEnv(BaseLOBEnv):
     
 
     def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array):
-        # 1. Process message features
-        #msg_type = total_msgs[0]  # type
-        #msg_direction = total_msgs[1]  # direction
+        #1. Process message features
+        msg_type = total_msgs[:,0]  # type
+        msg_direction = total_msgs[:,1]  # direction
         
-        # Combine type and direction into event_dir 
-        #event_dir = msg_direction * 4 + msg_type
+        #Combine type and direction into event_dir 
+        event_dir = msg_direction * 4 + msg_type
 
-        # Extract other message features
-        #msg_features = jnp.array([
-        #    event_dir,  # Combined event_dir
-        #    total_msgs[5],  # order_id (we would need to change that for orders from the day before)
-        #    total_msgs[3],  # price
-        #    total_msgs[2],  # size
-        #    0,  # delta_time_s (placeholder)
-        #    0,  # delta_time_ns (placeholder) 
-        #    0,  # delta_price (placeholder)
-        #])
+        jax.debug.print('prices {}', total_msgs[:,3])
+        jax.debug.print('best bids {}', (state.best_bids))
+
+        if self.cfg.action_space=="fixed_quants":
+            num_messages_by_agent=2 * 2
+        elif self.cfg.action_space=="fixed_prices":
+            num_messages_by_agent=self.cfg.n_actions* 2, # * 2 because action and cancel
+        else:
+            raise ValueError("Other Spaces not done..")
+        # Compute the raw mid prices from the state (assuming state.best_bids and state.best_asks have matching shapes)
+
+        raw_mid_prices = (state.best_bids[:, 0] + state.best_asks[:, 0]) / 2
+
+        # Create a padding of num_messages_by_agent copies of the first mid price
+        padding = jnp.full((num_messages_by_agent,), raw_mid_prices[0])
+
+        # Append the padded values to the beginning of the raw mid prices array
+        mid_prices = jnp.concatenate([padding, raw_mid_prices], axis=0)
+
+        #Extract other message features
+        msg_features = jnp.array([
+           event_dir,  # Combined event_dir
+           total_msgs[:,5],  # order_id (we would need to change that for orders from the day before)
+           total_msgs[:,3] - mid_prices,  # normalized price
+           total_msgs[:,2],  # size
+           0,  # delta_time_s (placeholder)
+           0,  # delta_time_ns (placeholder) 
+           0,  # delta_price (placeholder)
+        ])
         
-        # 2. Get LOB state
-       # lob_state = job.get_L2_state(
-        #    self.state.asks,  # Current ask orders
-        #    self.state.bids,  # Current bid orders
-        #    10,  # Number of levels
-        #    self.cfg  
-        #)
+        #2. Get LOB state
+        lob_state = job.get_L2_state(
+           self.state.asks,  # Current ask orders
+           self.state.bids,  # Current bid orders
+           10,  # Number of levels
+           self.cfg  
+        )
         
-        # Add time_s and time_ns at the start
-        #lob_state_with_time = jnp.concatenate([
-        #    jnp.array([total_msgs[6], total_msgs[7]]),  # time_s, time_ns
-        #    lob_state
-        #])
+        #Add time_s and time_ns at the start
+        lob_state_with_time = jnp.concatenate([
+           jnp.array([total_msgs[6], total_msgs[7]]),  # time_s, time_ns
+           lob_state
+        ])
         
-        #return msg_features, lob_state_with_time
-        return total_msgs
+        return msg_features, lob_state_with_time
+        #return total_msgs
     
     def _get_obs_engineered(
             self,
