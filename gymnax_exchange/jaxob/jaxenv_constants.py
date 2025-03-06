@@ -1,5 +1,5 @@
 action_space= "fixed_quants"
-reward_space = "portfolio_value"
+reward_space = "zero_inv"
 observation_space = "messages_new_tokenizer"
 end_fn = "unwind_mid_price"
 n_ticks_in_book =1
