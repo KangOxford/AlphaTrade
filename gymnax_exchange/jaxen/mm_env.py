@@ -331,6 +331,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # TODO: use the agent quant identification from the separate function _get_executed_by_level instead of _get_reward
         reward, extras = self._get_reward(state, params, trades,bestasks,bestbids)
         old_time=state.time
+        old_mid_price=state.mid_price
         state = EnvState(
             ask_raw_orders = asks,
             bid_raw_orders = bids,
@@ -390,7 +391,7 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             pass
         
-        return self.get_observation(state, params, total_messages,action_prices,executions,old_time), state, reward, done, info
+        return self.get_observation(state, params, total_messages,action_prices,executions,old_time,old_mid_price), state, reward, done, info
     
     def reset_env(
             self,
@@ -416,7 +417,7 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Other action spaces not finished")
         
-        obs = self.get_observation(state, params,blank_messages,action_prices,exections,state.time)
+        obs = self.get_observation(state, params,blank_messages,action_prices,exections,state.time,state.midprice)
         return obs, state
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -595,7 +596,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         return result
 
-    def calculate_row_wise_differences(self,input_array, old_ts,old_tns):
+    def calculate_row_wise_differences_time(self,input_array, old_ts,old_tns):
             """
             Calculate row-wise differences for columns 6 and 7, 
             with first row difference relative to initial time.
@@ -631,6 +632,31 @@ class MarketMakingEnv(BaseLOBEnv):
             updated_array = updated_array.at[:, 7].set(col7_differences)
             
             return updated_array
+    
+    
+
+    def calculate_row_wise_differences_midprice(self, mid_price_array, start_price):
+        """
+        Calculate row-wise differences for a 1D price array,
+        with the first difference relative to the initial price.
+
+        Args:
+            mid_price_array: JAX 1D array of prices
+            start_price: Initial price to calculate the first row's difference
+
+        Returns:
+            Updated JAX 1D array with row-wise differences
+        """
+        # Create a copy of the input array to avoid modifying the original
+        updated_array = mid_price_array.copy()
+
+        # Calculate row-wise differences
+        updated_array = updated_array.at[0].set(mid_price_array[0] - start_price)  # First difference
+        updated_array = updated_array.at[1:].set(mid_price_array[1:] - mid_price_array[:-1])  # Subsequent differences
+
+        return updated_array
+
+
 
     @jax.jit
     def renumber_order_ids(self, data_messages, start_index):
@@ -1345,7 +1371,7 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, state, params, total_messages, action_prices, executions,old_time):
+    def get_observation(self, state, params, total_messages, action_prices, executions,old_time,old_mid_price):
         """
         Wrapper function to call the appropriate observation function.
         """
@@ -1354,7 +1380,7 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.observation_space == "messages":
             return self.observation_fn(state, total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            return self.observation_fn(state, total_messages,old_time) 
+            return self.observation_fn(state, total_messages,old_time,old_mid_price) 
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1376,11 +1402,11 @@ class MarketMakingEnv(BaseLOBEnv):
         return total_msgs
     
 
-    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time):
+    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time,old_mid_price):
         #1. Process message features
         old_ts=old_time[0]
         old_tns=old_time[1]/1e9
-        total_msgs = self.calculate_row_wise_differences(total_msgs, old_ts,old_tns)
+        total_msgs = self.calculate_row_wise_differences_time(total_msgs, old_ts,old_tns)
         msg_type = total_msgs[:,0]  # type
         msg_direction = total_msgs[:,1]  # direction
         
@@ -1405,21 +1431,20 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Append the padded values to the beginning of the raw mid prices array
         mid_prices = jnp.concatenate([padding, raw_mid_prices], axis=0)
-
-        shifted_mid_price= (state.best_bids[:, 0] + state.best_asks[:, 0]) / 2
-        delta_mid_prices=shifted_mid_price-raw_mid_prices
+        ##Bring this in from the state prior to state update...
+        old_mid_price=old_mid_price
         ##Need to fix this so that it is comparing to an actually shifted one. 
-        #TODO: bring the previous mid price in for the top. Not sure how to do the last term, as we don't know this...
-
+        #TODO: Comparison logic.. for the delta mid price.
+        delta_mid_prices=self.calculate_row_wise_differences_midprice(mid_prices,old_mid_price)
 
         #Extract other message features
         msg_features = jnp.array([
            event_dir,  # Combined event_dir
            total_msgs[:,4],  # order_id (we would need to change that for orders from the day before)
-           total_msgs[:,3] - mid_prices,  # normalized price
+           total_msgs[:,3] - mid_prices,  # normalized price (should this not be to some fixed value=> they do SOD...)
            total_msgs[:,2],  # size
-           total_msgs[:,6],  # delta_time_s (placeholder)
-           total_msgs[:,7],  # delta_time_ns (placeholder) 
+           total_msgs[:,6],  # delta_time_s 
+           total_msgs[:,7],  # delta_time_ns 
            delta_mid_prices,  # NImplement this, getting it to run
         ])
         
