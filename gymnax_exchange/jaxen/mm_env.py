@@ -575,8 +575,8 @@ class MarketMakingEnv(BaseLOBEnv):
             messages: JAX array with masked values in column 0
         """
         # Extract the relevant columns
-        trades_col3 = trades[:, 3]  # Column 3
-        messages_col4 = total_messages[:, 4]  # Column 4 
+        trades_col3 = trades[:, 3]  # Column 3=aggresive OID
+        messages_col4 = total_messages[:, 4]  # Column 4 =OID
         
         # Create a mask for each message indicating whether its column 4 value 
         # is in trades column 3
@@ -588,7 +588,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         # Replace values in column 0 with zeros where the mask is True
         result = result.at[:, 0].set(
-            jnp.where(mask, 0.0, total_messages[:, 0])
+            jnp.where(mask, 4.0, total_messages[:, 0])
         )
         
         return result
@@ -675,14 +675,14 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Other Spaces not done..")
             
-        next_order_ID = customIDcounter * (self.stepLines + num_trades)
+        next_order_ID = num_trades + customIDcounter * (self.stepLines)
         num_messages = data_messages.shape[0]
         
         # Create the sequence by adding the offset to a range
         new_order_ids = jnp.arange(num_messages) + next_order_ID
         
         # Update the messages
-        updated_messages = data_messages.at[:, 3].set(new_order_ids)
+        updated_messages = data_messages.at[:, 4].set(new_order_ids)
         updated_messages = updated_messages.at[:, 4].set(new_order_ids)
         return updated_messages
  
@@ -805,7 +805,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         # Generate unique order IDs
         if self.cfg.observation_space =="messages_new_tokenizer":
-            base_id=(state.customIDcounter+1*self.stepLines)+(state.customIDcounter*2)#ID to now, 2=num trades
+            base_id=(state.customIDcounter*self.stepLines)+(state.customIDcounter*2)#ID to now, 2=num trades
         else:
             base_id = self.trader_unique_id + state.customIDcounter
         order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
@@ -816,9 +816,8 @@ class MarketMakingEnv(BaseLOBEnv):
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
         # Stack components into message array
-        action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
-        
         return action_msgs
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
@@ -921,7 +920,7 @@ class MarketMakingEnv(BaseLOBEnv):
      
         #quants, prices = normal_quant_price(price_levels, action)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         #jax.debug.print('action_msgs\n {}', action_msgs)
         return action_msgs
@@ -1411,13 +1410,13 @@ class MarketMakingEnv(BaseLOBEnv):
 
     def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time,old_mid_price):
         #1. Process message features
-       
+        jax.debug.print("total_msgs:{}",total_msgs)
 
         #Replace the time columns with delta times
         old_ts=old_time[0]
         old_tns=old_time[1]/1e9
         total_msgs = self.calculate_row_wise_differences_time(total_msgs, old_ts,old_tns)
-
+        jax.debug.print("total_msgs:{}",total_msgs)
 
         msg_type = total_msgs[:,0]  # type
         msg_direction = total_msgs[:,1]  # direction
@@ -1426,7 +1425,7 @@ class MarketMakingEnv(BaseLOBEnv):
         event_dir = msg_direction * 4 + msg_type
 
         jax.debug.print('prices {}', total_msgs[:,3])
-        jax.debug.print('best bids {}', (state.best_bids))
+    
 
         if self.cfg.action_space=="fixed_quants":
             num_messages_by_agent=2 * 2
@@ -1435,7 +1434,7 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Other Spaces not done..")
         # Compute the raw mid prices from the state (assuming state.best_bids and state.best_asks have matching shapes)
-        raw_mid_prices = (state.best_bids[:, 0] + state.best_asks[:, 0]) / 2
+        raw_mid_prices = (state.best_bids[:, 0] + state.best_asks[:, 0]) // 2
 
         # Create a padding of num_messages_by_agent copies of the first mid price
         padding = jnp.full((num_messages_by_agent,), raw_mid_prices[0])
@@ -1443,14 +1442,14 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Append the padded values to the beginning of the raw mid prices array
         mid_prices = jnp.concatenate([padding, raw_mid_prices], axis=0)
+        jax.debug.print("mid_prices:{}",mid_prices)
 
-        ##Bring this in from the state prior to state update
-        old_mid_price=old_mid_price
+       
        
         #Form delta_mid_prices, the differnce in mid price per step
         #TODO:look at how we handle the agent messages.
         delta_mid_prices=self.calculate_row_wise_differences_midprice(mid_prices,old_mid_price)
-
+        jax.debug.print("delta_mid_prices:{}",delta_mid_prices)
         #Extract other message features
         msg_features = jnp.array([
            event_dir,  # Combined event_dir
@@ -1702,7 +1701,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,15000):
+    for i in range(1,2):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
