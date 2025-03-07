@@ -22,6 +22,7 @@ class EnvironmentConfig(Configuration):
     observation_space: Literal["engineered", "messages", "messages_new_tokenizer"] = env_cst.observation_space
     end_fn: Literal["force_market_order", "unwind_mid_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
+    num_messages_by_agent:int=env_cst.num_messages_by_agent
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
