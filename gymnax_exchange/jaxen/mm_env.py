@@ -240,20 +240,13 @@ class MarketMakingEnv(BaseLOBEnv):
         )
 
         if self.cfg.observation_space =="messages_new_tokenizer":
-            if self.cfg.action_space=="fixed_quants":
-                num_trades=2
-            elif self.cfg.action_space=="fixed_prices":
-                num_trades=self.cfg.n_actions,
-            else:
-                raise ValueError("Other Spaces not done..")
-            next_order_ID = state.customIDcounter * (self.stepLines + num_trades)
-            ####rename the orderIDs...
-            data_messages = self.renumber_order_ids(data_messages, next_order_ID)
+            ####renumber the orderIDs...
+            data_messages = self.renumber_order_ids(data_messages, state.customIDcounter)
 
 
          
     
-        #=======================================#
+        #=======================================#s
         #======Process agent actions ===========#
         #=======================================#
         #action = self._reshape_action(input_action, state, params,key)
@@ -417,7 +410,7 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Other action spaces not finished")
         
-        obs = self.get_observation(state, params,blank_messages,action_prices,exections,state.time,state.midprice)
+        obs = self.get_observation(state, params,blank_messages,action_prices,exections,state.time,state.mid_price)
         return obs, state
     
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
@@ -565,7 +558,7 @@ class MarketMakingEnv(BaseLOBEnv):
     ###########Functions for the new tokenizer#####################
 
     
-    def locate_type_4(total_messages, trades):
+    def locate_type_4(self,total_messages, trades):
         """
         Replace values in column 0 of total_messages(type) with 4 (execution) if the value in column 4 (OID)
         appears in column 3 (OID agr) of the trades array.
@@ -658,25 +651,35 @@ class MarketMakingEnv(BaseLOBEnv):
 
 
 
-    @jax.jit
-    def renumber_order_ids(self, data_messages, start_index):
+    
+    def renumber_order_ids(self, data_messages, customIDcounter):
         """
         Renumber columns 4 and 5 of data_messages with incrementing IDs.
         
         Args:
             data_messages: JAX array of messages
-            start_index: Starting index for renumbering (continues across steps)
+            customIDcounter: Integer counter that changes between steps
         
         Returns:
             Updated data_messages with renumbered columns
         """
-        # Create a range of new order IDs starting from start_index
+        # Find what our start index is
+        if self.cfg.action_space == "fixed_quants":
+            num_trades = 2
+        elif self.cfg.action_space == "fixed_prices":
+            num_trades = self.cfg.n_actions
+        else:
+            raise ValueError("Other Spaces not done..")
+            
+        next_order_ID = customIDcounter * (self.stepLines + num_trades)
         num_messages = data_messages.shape[0]
-        new_order_ids = jnp.arange(start_index, start_index + num_messages)
         
-        # Create a copy of data_messages to avoid modifying the original
+        # Create the sequence by adding the offset to a range
+        new_order_ids = jnp.arange(num_messages) + next_order_ID
+        
+        # Update the messages
         updated_messages = data_messages.at[:, 3].set(new_order_ids)
-        updated_messages = updated_messages.at[:, 4].set(new_order_ids) 
+        updated_messages = updated_messages.at[:, 4].set(new_order_ids)
         return updated_messages
  
     def _get_executed_by_price(self, agent_trades: jax.Array) -> jax.Array:
@@ -1404,9 +1407,14 @@ class MarketMakingEnv(BaseLOBEnv):
 
     def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time,old_mid_price):
         #1. Process message features
+       
+
+        #Replace the time columns with delta times
         old_ts=old_time[0]
         old_tns=old_time[1]/1e9
         total_msgs = self.calculate_row_wise_differences_time(total_msgs, old_ts,old_tns)
+
+
         msg_type = total_msgs[:,0]  # type
         msg_direction = total_msgs[:,1]  # direction
         
@@ -1423,29 +1431,31 @@ class MarketMakingEnv(BaseLOBEnv):
         else:
             raise ValueError("Other Spaces not done..")
         # Compute the raw mid prices from the state (assuming state.best_bids and state.best_asks have matching shapes)
-
         raw_mid_prices = (state.best_bids[:, 0] + state.best_asks[:, 0]) / 2
 
         # Create a padding of num_messages_by_agent copies of the first mid price
         padding = jnp.full((num_messages_by_agent,), raw_mid_prices[0])
+        #TODO: look at how these agent messages are messing with mid price...
 
         # Append the padded values to the beginning of the raw mid prices array
         mid_prices = jnp.concatenate([padding, raw_mid_prices], axis=0)
-        ##Bring this in from the state prior to state update...
+
+        ##Bring this in from the state prior to state update
         old_mid_price=old_mid_price
-        ##Need to fix this so that it is comparing to an actually shifted one. 
-        #TODO: Comparison logic.. for the delta mid price.
+       
+        #Form delta_mid_prices, the differnce in mid price per step
+        #TODO:look at how we handle the agent messages.
         delta_mid_prices=self.calculate_row_wise_differences_midprice(mid_prices,old_mid_price)
 
         #Extract other message features
         msg_features = jnp.array([
            event_dir,  # Combined event_dir
-           total_msgs[:,4],  # order_id (we would need to change that for orders from the day before)
+           total_msgs[:,4],  # order_id (Done in step, we would need to change that for orders from the day before)
            total_msgs[:,3] - mid_prices,  # normalized price (should this not be to some fixed value=> they do SOD...)
            total_msgs[:,2],  # size
            total_msgs[:,6],  # delta_time_s 
            total_msgs[:,7],  # delta_time_ns 
-           delta_mid_prices,  # NImplement this, getting it to run
+           delta_mid_prices,  # possibly working, need to check how our trades are handled (first mid ok?).
         ])
         
         #2. Get LOB state
@@ -1463,8 +1473,15 @@ class MarketMakingEnv(BaseLOBEnv):
            lob_state
         ])
         
-        return msg_features, lob_state_with_time
-        #return total_msgs
+        # Transpose (7x104) to (104x7) - puts each row's features together
+        msg_features_transposed = jnp.transpose(msg_features)
+
+        # Flatten to get [event_dir[0], total_msgs[0,4], ..., delta_mid_prices[0], event_dir[1], ...]
+        msg_features_flat = msg_features_transposed.reshape(-1)
+
+        # Concatenate with lob_state_with_time
+        return jnp.concatenate([msg_features_flat, lob_state_with_time])
+      
     
     def _get_obs_engineered(
             self,
@@ -1609,15 +1626,10 @@ class MarketMakingEnv(BaseLOBEnv):
                 else:
                     raise ValueError("Other Spaces not done..")
                 num_messages_total=num_messages_by_agent+self.stepLines
-                l2_message_length=22
-                #I think this is how we handle appending the orderbook?
-                return spaces.Dict({
-                            'messages': spaces.Box(low=-1 * self.cfg.maxint, high=self.cfg.maxint, 
-                                                shape=(num_messages_total, 8), dtype=jnp.int32),
-                            'tokenizer': spaces.Box(low=-1 * self.cfg.maxint, high=self.cfg.maxint, 
-                                                    shape=(1, l2_message_length), dtype=jnp.int32)
-                        })
-               # return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total+l2_message_length, 8), dtype=jnp.int32)
+                l2_message_length=42
+                #we flatten so total elements in a list..
+                return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(1,num_messages_total*7+42 ), dtype=jnp.int32)
+              
         else:
             raise ValueError("Invalid observation_space specified.")
 
