@@ -520,8 +520,8 @@ def cond_type_side(config : Configuration,book_state, it_data):
          'type':data[0],
          'price':data[3],
          'quantity':data[2],
-         'orderid':data[5],
-         'traderid':data[4],
+         'orderid':data[4],
+         'traderid':data[5],
          'time':data[6],
          'time_ns':data[7]}
     s = msg["side"]
@@ -590,8 +590,8 @@ def cond_type_side_save_states(cfg:Configuration,book_state,it_data):
          'type':data[0],
          'price':data[3],
          'quantity':data[2],
-         'orderid':data[5],
-         'traderid':data[4],
+         'orderid':data[4],
+         'traderid':data[5],
          'time':data[6],
          'time_ns':data[7]}
 
@@ -637,8 +637,8 @@ def cond_type_side_save_bidask(cfg:Configuration,book_state,it_data):
          'type':data[0],
          'price':data[3],
          'quantity':data[2],
-         'orderid':data[5],
-         'traderid':data[4],
+         'orderid':data[4],
+         'traderid':data[5],
          'time':data[6],
          'time_ns':data[7]}
 
