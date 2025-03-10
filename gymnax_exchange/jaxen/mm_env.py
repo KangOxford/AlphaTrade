@@ -216,6 +216,11 @@ class MarketMakingEnv(BaseLOBEnv):
         base_vals = flat_tree[0:5] #Considers the base parameter values other than init state.
         state_vals = flat_tree[5:] #Considers the state values
 
+        
+        jax.debug.print("state_vals shapes: {}", [getattr(leaf, "shape", None) for leaf in state_vals])
+
+
+
         return EnvParams(
             *base_vals,
             EnvState(*state_vals),
@@ -1421,8 +1426,8 @@ class MarketMakingEnv(BaseLOBEnv):
         #Combine type and direction into event_dir 
         event_dir = msg_direction * 4 + msg_type
 
-        jax.debug.print('prices {}', total_msgs[:,3])
-        jax.debug.print('best bids {}', (state.best_bids))
+        #jax.debug.print('prices {}', total_msgs[:,3])
+        #jax.debug.print('best bids {}', (state.best_bids))
 
         if self.cfg.action_space=="fixed_quants":
             num_messages_by_agent=2 * 2
