@@ -244,9 +244,7 @@ class MarketMakingEnv(BaseLOBEnv):
             state.init_time[0] + params.episode_time
         )
 
-        if self.cfg.observation_space =="messages_new_tokenizer":
-            ####renumber the orderIDs...
-            data_messages = self.renumber_order_ids(data_messages, state.customIDcounter)
+        
 
 
          
@@ -260,23 +258,17 @@ class MarketMakingEnv(BaseLOBEnv):
         action_prices = action_msgs[:, 3] #price is position 3 of msg
 
         #Cancel all previous agent orders each step, send fresh
-        if self.cfg.action_space=="fixed_quants":
-            num_messages_over_two=1
-        elif self.cfg.action_space=="fixed_prices":
-            num_messages_over_two=self.cfg.n_actions//2,
-        else:
-            raise ValueError("Other Spaces not done..")
-        
+      
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                num_messages_over_two,
+                self.cfg.num_messages_by_agent//4, #over 4 because cancel on one side...
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                num_messages_over_two,
+                self.cfg.num_messages_by_agent//4,
                 -1  # ask
             )
         
@@ -381,14 +373,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "InventoryPnL":extras["InventoryPnL"],
             "approx_realized_pnl":extras["approx_realized_pnl"],
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
-        }                    
-
-        ###Reinstate TYPE 4 to messages if we are doing the new tokenizer
-        if self.cfg.observation_space =="messages_new_tokenizer":
-            total_messages=self.locate_type_4(total_messages,trades)
-        else:
-            pass
-        
+        }                          
         return self.get_observation(state, params, total_messages,action_prices,executions,old_time,old_mid_price), state, reward, done, info
     
     def reset_env(
@@ -561,38 +546,166 @@ class MarketMakingEnv(BaseLOBEnv):
         # jax.debug.print("prices_quants\n {}", prices_quants)
         return prices_quants
     ###########Functions for the new tokenizer#####################
-
-    
-    def locate_type_4(self,total_messages, trades):
+    def locate_type_4(self, total_messages, trades):
         """
-        Replace values in column 0 of total_messages(type) with 4 (execution) if the value in column 4 (OID)
-        appears in column 3 (OID agr) of the trades array.
+        Replace values in column a0 of total_messages(type) with 4 (execution) if the value in column 4 (OID)
+        appears in column 3 (OID agr) of the trades array. Also resizes the array to accommodate both messages and trades.
         
         Args:
             total_messages: JAX array
             trades: JAX array 
             
         Returns:
-            messages: JAX array with masked values in column 0
+            messages: JAX array with masked values in column 0 and proper sizing
         """
+        # Initialize result with maximum possible size
+        max_output_size = total_messages.shape[0]# + trades.shape[0]
+        result = jnp.zeros((max_output_size, total_messages.shape[1]))
+        
+        # Copy the total_messages into the result array
+        result = result.at[:total_messages.shape[0], :].set(total_messages)
+        
         # Extract the relevant columns
-        trades_col3 = trades[:, 3]  # Column 3
-        messages_col4 = total_messages[:, 4]  # Column 4 
+        trades_col3 = trades[:, 3]  # Column 3=aggresive OID
+        messages_col4 = total_messages[:, 4]  # Column 4 =OID
         
         # Create a mask for each message indicating whether its column 4 value 
         # is in trades column 3
         comparison_matrix = messages_col4[:, None] == trades_col3[None, :]
         mask = jnp.any(comparison_matrix, axis=1)
         
-        # Make a copy of the original array to avoid modifying it
-        result = total_messages.copy()
-        
-        # Replace values in column 0 with zeros where the mask is True
-        result = result.at[:, 0].set(
-            jnp.where(mask, 0.0, total_messages[:, 0])
+        # Update column 0 values to 4 where mask is True
+        result = result.at[:total_messages.shape[0], 0].set(
+            jnp.where(mask, 4, total_messages[:, 0])
         )
         
-        return result
+        return jnp.array(result, dtype=jnp.int32)
+        
+    
+
+
+    def locate_type_4_real(self, total_messages, trades):
+        """
+        JIT-compatible implementation for processing trades and creating type 4 messages.
+        
+        Args:
+            total_messages: JAX array (shape: [M, 8])
+            trades: JAX array (shape: [N, 8])
+            
+        Returns:
+            JAX array with updated messages and additional type 4 messages.
+        """
+        # Define the maximum possible size of the output
+        max_output_size = total_messages.shape[0] + trades.shape[0]
+        result = jnp.zeros((max_output_size, total_messages.shape[1]))
+        
+        # Initialize with original messages
+        result = result.at[:total_messages.shape[0]].set(total_messages)
+        
+        def outer_loop(carry, i):
+            result, current_idx = carry
+            msg = total_messages[i]
+            message_oid = msg[4]
+            original_pos = i
+            current_pos = current_idx
+            
+            # Copy the original message to the output position
+            result = result.at[current_pos].set(msg)
+            current_pos += 1
+            
+            # Track remaining quantity
+            remaining_qty = msg[2]
+            
+            def inner_loop(carry, j):
+                result, current_pos, remaining_qty = carry
+                trade = trades[j]
+                
+                # Check if this trade matches our message
+                is_match = trade[3] == message_oid
+                
+                # Calculate the quantity to trade
+                trade_qty = trade[2]
+                used_qty = jnp.minimum(remaining_qty, trade_qty)
+                
+                # Create a type 4 message for this trade
+                type4_msg = msg.at[0].set(4.0).at[2].set(used_qty * is_match)
+                
+                # Conditionally add the type 4 message
+                result = result.at[current_pos].set(
+                    jnp.where(is_match, type4_msg, result[current_pos])
+                )
+                
+                # Update position and remaining quantity conditionally
+                current_pos = current_pos + is_match
+                remaining_qty = remaining_qty - (used_qty * is_match)
+                
+                return (result, current_pos, remaining_qty), None
+            
+            # Process all trades against this message
+            (result, current_pos, remaining_qty), _ = jax.lax.scan(
+                inner_loop,
+                (result, current_pos, remaining_qty),
+                jnp.arange(trades.shape[0])
+            )
+            
+            # Update the original message quantity
+            result = result.at[original_pos, 2].set(remaining_qty)
+            
+            return (result, current_pos), None
+        
+        # Process all messages
+        (result, _), _ = jax.lax.scan(
+            outer_loop,
+            (result, total_messages.shape[0]),
+            jnp.arange(total_messages.shape[0])
+        )
+        
+        # Remove zero rows - in a JIT-compatible way
+        is_nonzero = jnp.any(result != 0, axis=1)
+        valid_count = jnp.sum(is_nonzero)
+        
+        # Create a properly sized output array
+        final_result = jnp.zeros((valid_count, total_messages.shape[1]))
+        
+        def copy_valid_rows(carry, idx):
+            final_result, count = carry
+            
+            def check_row(carry, row_idx):
+                count, valid_idx, is_valid = carry
+                row_valid = is_nonzero[row_idx]
+                next_valid_idx = valid_idx + row_valid
+                next_count = count - row_valid
+                
+                # When we find a valid row and this is the one we want
+                is_target = (count == 1) & row_valid
+                
+                return (next_count, next_valid_idx, is_target), row_idx
+            
+            # Find the row we want
+            (_, _, _), row_idx = jax.lax.scan(
+                check_row,
+                (idx + 1, 0, False),  # Start count at idx+1 to find the idx-th valid row
+                jnp.arange(max_output_size)
+            )
+            
+            # Extract the last value which should be our target row
+            target_row = row_idx[-1]
+            
+            # Copy the row
+            final_result = final_result.at[idx].set(result[target_row])
+            
+            return (final_result, count), None
+        
+        # Fill the output array with valid rows
+        (final_result, _), _ = jax.lax.scan(
+            copy_valid_rows,
+            (final_result, valid_count),
+            jnp.arange(valid_count)
+        )
+        
+        return final_result
+
+
 
     def calculate_row_wise_differences_time(self,input_array, old_ts,old_tns):
             """
@@ -633,7 +746,7 @@ class MarketMakingEnv(BaseLOBEnv):
     
     
 
-    def calculate_row_wise_differences_midprice(self, mid_price_array, start_price):
+    def calculate_row_wise_differences_midprice(self, mid_price_array, start_price,n_cancels):
         """
         Calculate row-wise differences for a 1D price array,
         with the first difference relative to the initial price.
@@ -649,10 +762,30 @@ class MarketMakingEnv(BaseLOBEnv):
         updated_array = mid_price_array.copy()
 
         # Calculate row-wise differences
-        updated_array = updated_array.at[0].set(mid_price_array[0] - start_price)  # First difference
-        updated_array = updated_array.at[1:].set(mid_price_array[1:] - mid_price_array[:-1])  # Subsequent differences
+        updated_array = updated_array.at[:n_cancels].set(0) #Cancels by agent dont shift mid price
+        updated_array = updated_array.at[n_cancels].set(mid_price_array[n_cancels] - start_price)
+        updated_array = updated_array.at[n_cancels + 1:].set(mid_price_array[n_cancels + 1:] - mid_price_array[n_cancels:-1])  # Subsequent differences
 
         return updated_array
+
+    def fill_trailing_zeros(self,arr):
+        """Helper funcition to fill padding with the last value before padding"""
+        # Find indices of non-zero elements
+        non_zero_indices = jnp.where(arr != 0, size=arr.size, fill_value=-1)[0]
+        
+        # Get the last non-zero index
+        last_non_zero_index = jnp.max(non_zero_indices)
+        
+        # Retrieve the last non-zero value
+        last_non_zero_value = arr[last_non_zero_index]
+        
+        # Create a mask for trailing zeros
+        trailing_zeros_mask = jnp.arange(arr.size) > last_non_zero_index
+        
+        # Replace trailing zeros with the last non-zero value
+        filled_arr = jnp.where(trailing_zeros_mask, last_non_zero_value, arr)
+        
+        return filled_arr
 
 
 
@@ -667,23 +800,16 @@ class MarketMakingEnv(BaseLOBEnv):
         
         Returns:
             Updated data_messages with renumbered columns
-        """
-        # Find what our start index is
-        if self.cfg.action_space == "fixed_quants":
-            num_trades = 2
-        elif self.cfg.action_space == "fixed_prices":
-            num_trades = self.cfg.n_actions
-        else:
-            raise ValueError("Other Spaces not done..")
-            
-        next_order_ID = customIDcounter * (self.stepLines + num_trades)
+        """            
+        ##Keep counting from the start, inclusive of padding...
+        next_order_ID =  customIDcounter * (data_messages.shape[0])
         num_messages = data_messages.shape[0]
         
         # Create the sequence by adding the offset to a range
         new_order_ids = jnp.arange(num_messages) + next_order_ID
         
         # Update the messages
-        updated_messages = data_messages.at[:, 3].set(new_order_ids)
+        updated_messages = data_messages.at[:, 4].set(new_order_ids)
         updated_messages = updated_messages.at[:, 4].set(new_order_ids)
         return updated_messages
  
@@ -805,10 +931,7 @@ class MarketMakingEnv(BaseLOBEnv):
         trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
         
         # Generate unique order IDs
-        if self.cfg.observation_space =="messages_new_tokenizer":
-            base_id=(state.customIDcounter+1*self.stepLines)+(state.customIDcounter*2)#ID to now, 2=num trades
-        else:
-            base_id = self.trader_unique_id + state.customIDcounter
+        base_id = self.trader_unique_id + state.customIDcounter
         order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
         
         # Time fields (replicated for each message)
@@ -817,9 +940,8 @@ class MarketMakingEnv(BaseLOBEnv):
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
         # Stack components into message array
-        action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
-        
         return action_msgs
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
@@ -922,7 +1044,7 @@ class MarketMakingEnv(BaseLOBEnv):
      
         #quants, prices = normal_quant_price(price_levels, action)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         #jax.debug.print('action_msgs\n {}', action_msgs)
         return action_msgs
@@ -1095,23 +1217,17 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         #==============Cancel previous orders by the agent prior to the market order=========###
         #Cancel all previous agent orders before the market order so that we do not trade with ourselves.
-        if self.cfg.action_space=="fixed_quants":
-            num_messages_over_two=1
-        elif self.cfg.action_space=="fixed_prices":
-            num_messages_over_two=self.cfg.n_actions//2,
-        else:
-            raise ValueError("Other Spaces not done..")
         
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                num_messages_over_two,
+                self.cfg.num_messages_by_agent//2,
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                num_messages_over_two,
+                self.cfg.num_messages_by_agent//2,
                 -1  # ask
             )
         
@@ -1411,14 +1527,23 @@ class MarketMakingEnv(BaseLOBEnv):
     
 
     def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time,old_mid_price):
+        # We have to find n_msgs for some features. This is inclusive of cancel here
+
+        ##Give a time to the cancels, the time of the agent actions
+        total_msgs = total_msgs.at[:self.cfg.num_messages_by_agent//2, 6].set(total_msgs[self.cfg.num_messages_by_agent//2+1, 6])
+        total_msgs = total_msgs.at[:self.cfg.num_messages_by_agent//2, 7].set(total_msgs[self.cfg.num_messages_by_agent//2+1, 7])
+
         #1. Process message features
-       
+        ###Reinstate TYPE 4 to messages if we are doing the new tokenizer
+        jax.debug.print("total_msgs start:{}",total_msgs)
+        total_messages_T4=self.locate_type_4(total_msgs,state.trades)
+        jax.debug.print("total_msgs with t4:{}",total_messages_T4)
 
         #Replace the time columns with delta times
         old_ts=old_time[0]
         old_tns=old_time[1]/1e9
-        total_msgs = self.calculate_row_wise_differences_time(total_msgs, old_ts,old_tns)
-
+        total_messages_T4 = self.calculate_row_wise_differences_time(total_messages_T4, old_ts,old_tns)
+        jax.debug.print("total_msgs with delta time:{}",total_messages_T4)
 
         msg_type = total_msgs[:,0]  # type
         msg_direction = total_msgs[:,1]  # direction
@@ -1426,32 +1551,27 @@ class MarketMakingEnv(BaseLOBEnv):
         #Combine type and direction into event_dir 
         event_dir = msg_direction * 4 + msg_type
 
-        #jax.debug.print('prices {}', total_msgs[:,3])
-        #jax.debug.print('best bids {}', (state.best_bids))
+        ##Renumber OID:
+        total_messages_T4 = self.renumber_order_ids(total_messages_T4, state.customIDcounter)
+        jax.debug.print("total_msgs with oid order:{}",total_messages_T4)
 
-        if self.cfg.action_space=="fixed_quants":
-            num_messages_by_agent=2 * 2
-        elif self.cfg.action_space=="fixed_prices":
-            num_messages_by_agent=self.cfg.n_actions* 2, # * 2 because action and cancel
-        else:
-            raise ValueError("Other Spaces not done..")
+        jax.debug.print('prices {}', total_msgs[:,3])
+
+    
         # Compute the raw mid prices from the state (assuming state.best_bids and state.best_asks have matching shapes)
-        raw_mid_prices = (state.best_bids[:, 0] + state.best_asks[:, 0]) / 2
+        raw_mid_prices = (state.best_bids[:, 0] + state.best_asks[:, 0]) // 2
 
         # Create a padding of num_messages_by_agent copies of the first mid price
-        padding = jnp.full((num_messages_by_agent,), raw_mid_prices[0])
-        #TODO: look at how these agent messages are messing with mid price...
+        start_padding = jnp.full((self.cfg.num_messages_by_agent,), raw_mid_prices[0])
+
+        ##Pad for the ending?+>replace 0 with the end mid price?
+        raw_mid_prices=self.fill_trailing_zeros(raw_mid_prices)
 
         # Append the padded values to the beginning of the raw mid prices array
-        mid_prices = jnp.concatenate([padding, raw_mid_prices], axis=0)
+        mid_prices = jnp.concatenate([start_padding, raw_mid_prices], axis=0)
 
-        ##Bring this in from the state prior to state update
-        old_mid_price=old_mid_price
-       
-        #Form delta_mid_prices, the differnce in mid price per step
-        #TODO:look at how we handle the agent messages.
-        delta_mid_prices=self.calculate_row_wise_differences_midprice(mid_prices,old_mid_price)
-
+        delta_mid_prices=self.calculate_row_wise_differences_midprice(mid_prices,old_mid_price,self.cfg.num_messages_by_agent//2)
+        
         #Extract other message features
         msg_features = jnp.array([
            event_dir,  # Combined event_dir
@@ -1484,6 +1604,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # Flatten to get [event_dir[0], total_msgs[0,4], ..., delta_mid_prices[0], event_dir[1], ...]
         msg_features_flat = msg_features_transposed.reshape(-1)
 
+        
         # Concatenate with lob_state_with_time
         return jnp.concatenate([msg_features_flat, lob_state_with_time])
       
@@ -1613,24 +1734,10 @@ class MarketMakingEnv(BaseLOBEnv):
         if self.cfg.observation_space =="engineered":
              return spaces.Box(-10, 10, (27,), dtype=jnp.float32) 
         elif self.cfg.observation_space =="messages":
-                #Get num messages, to make obs space that size
-                if self.cfg.action_space=="fixed_quants":
-                    num_messages_by_agent=2 * 2
-                elif self.cfg.action_space=="fixed_prices":
-                    num_messages_by_agent=self.cfg.n_actions* 2, # * 2 because action and cancel
-                else:
-                    raise ValueError("Other Spaces not done..")
-                num_messages_total=num_messages_by_agent+self.stepLines
+                num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space =="messages_new_tokenizer":
-            #Get num messages again
-                if self.cfg.action_space=="fixed_quants":
-                    num_messages_by_agent=2 * 2
-                elif self.cfg.action_space=="fixed_prices":
-                    num_messages_by_agent=self.cfg.n_actions* 2, # * 2 because action and cancel
-                else:
-                    raise ValueError("Other Spaces not done..")
-                num_messages_total=num_messages_by_agent+self.stepLines
+                num_messages_total=self.cfg.num_messages_by_agent+self.stepLines+self.nTradesLogged
                 l2_message_length=42
                 #we flatten so total elements in a list..
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(1,num_messages_total*7+42 ), dtype=jnp.int32)
@@ -1703,7 +1810,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,15000):
+    for i in range(1,2):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
