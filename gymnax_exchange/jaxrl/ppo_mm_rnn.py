@@ -130,6 +130,24 @@ def make_train(config):
         rewardLambda=config["REWARD_LAMBDA"],
        ep_type=config["DATA_TYPE"],
     )
+
+    eval_env=MarketMakingEnv(
+        alphatradePath=config["ATFOLDER"],
+        #task=config["TASKSIDE"],
+        window_index=config["WINDOW_INDEX"],
+        action_type=config["ACTION_TYPE"],
+        episode_time=config["EPISODE_TIME"],
+        max_task_size=config["MAX_TASK_SIZE"],
+        rewardLambda=config["REWARD_LAMBDA"],
+        ep_type=config["DATA_TYPE"],
+    ) 
+
+    eval_env_params = dataclasses.replace(
+        env.default_params,
+        reward_lambda=config["REWARD_LAMBDA"],
+        episode_time=config["EPISODE_TIME"],
+    )
+
     env_params = dataclasses.replace(
         env.default_params,
         reward_lambda=config["REWARD_LAMBDA"],
@@ -137,6 +155,9 @@ def make_train(config):
     )
     env = FlattenObservationWrapper(env)
     env = LogWrapper(env)
+
+    eval_env = FlattenObservationWrapper(eval_env)
+    eval_env = LogWrapper(eval_env)
 
     def linear_schedule(count):
         frac = (
@@ -288,7 +309,6 @@ def make_train(config):
                     )
                     train_state = train_state.apply_gradients(grads=grads)
                     return train_state, total_loss
-
                 (
                     train_state,
                     init_hstate,
@@ -347,6 +367,57 @@ def make_train(config):
             train_state = update_state[0]
             metric = traj_batch.info
             rng = update_state[-1]
+
+            def _eval_step(eval_runner_state, unused):
+                train_state, eval_env_state, last_obs, last_done, hstate, rng = eval_runner_state
+                rng, _rng = jax.random.split(rng)
+
+                # SELECT ACTION
+                ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+                hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+                action = pi.sample(seed=_rng)
+                log_prob = pi.log_prob(action)
+                value, action, log_prob = (
+                    value.squeeze(0),
+                    action.squeeze(0),
+                    log_prob.squeeze(0),
+                )
+                def log_action_distribution(action):
+                    unique_actions, counts = jnp.unique(action, return_counts=True)
+                    action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
+                    wandb.log(action_distribution)
+                if wandbOn:
+                 jax.debug.callback(log_action_distribution, action)
+
+                # STEP ENV
+                rng, _rng = jax.random.split(rng)
+                rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+                obsv, eval_env_state, reward, done, info = jax.vmap(
+                    eval_env.step, in_axes=(0, 0, 0, None)
+                )(rng_step, eval_env_state, action, eval_env_params)
+                transition = Transition(
+                    last_done, action, value, reward, log_prob, last_obs, info
+                )
+                eval_runner_state = (train_state, eval_env_state, obsv, done, hstate, rng)
+                return eval_runner_state, transition
+
+            rng, _rng = jax.random.split(rng)
+            reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
+            obsv, env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
+            initial_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+            
+            eval_runner_state = (
+            train_state,
+            env_state,
+            obsv,
+            jnp.zeros((config["NUM_ENVS"]), dtype=bool),
+            initial_hstate,
+            _rng,
+            )
+            eval_runner_state, traj_batch = jax.lax.scan(
+                _eval_step, eval_runner_state, None, config["NUM_STEPS"]
+            )
+
             if config.get("DEBUG"):
                 def callback(info):
                     return_values = info["returned_episode_returns"][info["returned_episode"]]
@@ -421,7 +492,7 @@ if __name__ == "__main__":
         "MAX_TASK_SIZE": 100,
         "EPISODE_TIME": 60 * 5, # time in seconds
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
-        "ATFOLDER": "/home/duser/AlphaTrade/training_oneDay"
+        "ATFOLDER": "/home/duser/AlphaTrade/atpaths/GOOG_2days"
     }
     config2 = {
         "LR": 2.5e-4,

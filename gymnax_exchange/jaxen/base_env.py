@@ -254,7 +254,7 @@ class BaseLOBEnv(environment.Environment):
         def get_initial_orders(book_data,time):
             orderbookLevels=10
             #initid=25
-            initid=job.INITID
+            initid=job.cst.INITID
             data=jnp.array(book_data).reshape(int(10*2),2)
             newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
             initOB = newarr \

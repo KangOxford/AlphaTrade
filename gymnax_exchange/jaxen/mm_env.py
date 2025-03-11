@@ -106,7 +106,7 @@ import chex
 from jax import config
 import faulthandler
 faulthandler.enable()
-chex.assert_gpu_available(backend=None)
+chex.assert_gpu_available()
 # config.update('jax_platform_name', 'cpu')
 # config.update("jax_enable_x64",True)
 config.update("jax_disable_jit", False) # use this during training

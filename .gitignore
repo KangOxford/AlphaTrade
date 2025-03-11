@@ -46,3 +46,5 @@ results_file**
 *.nfs*
 
 Dockerfile
+
+/atpaths/**
