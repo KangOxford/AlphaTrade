@@ -208,7 +208,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # Default environment parameters
         base_params = super().default_params
 
-        #jax.debug.print("base params: {}", base_params)
+
 
         flat_tree = jtu.tree_flatten(base_params)[0]
         #TODO: Clean this up to not have a magic number
@@ -1535,15 +1535,15 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #1. Process message features
         ###Reinstate TYPE 4 to messages if we are doing the new tokenizer
-        jax.debug.print("total_msgs start:{}",total_msgs)
+        #jax.debug.print("total_msgs start:{}",total_msgs)
         total_messages_T4=self.locate_type_4(total_msgs,state.trades)
-        jax.debug.print("total_msgs with t4:{}",total_messages_T4)
+        #jax.debug.print("total_msgs with t4:{}",total_messages_T4)
 
         #Replace the time columns with delta times
         old_ts=old_time[0]
         old_tns=old_time[1]/1e9
         total_messages_T4 = self.calculate_row_wise_differences_time(total_messages_T4, old_ts,old_tns)
-        jax.debug.print("total_msgs with delta time:{}",total_messages_T4)
+        #jax.debug.print("total_msgs with delta time:{}",total_messages_T4)
 
         msg_type = total_msgs[:,0]  # type
         msg_direction = total_msgs[:,1]  # direction
@@ -1553,9 +1553,9 @@ class MarketMakingEnv(BaseLOBEnv):
 
         ##Renumber OID:
         total_messages_T4 = self.renumber_order_ids(total_messages_T4, state.customIDcounter)
-        jax.debug.print("total_msgs with oid order:{}",total_messages_T4)
+        #jax.debug.print("total_msgs with oid order:{}",total_messages_T4)
 
-        jax.debug.print('prices {}', total_msgs[:,3])
+        #jax.debug.print('prices {}', total_msgs[:,3])
 
     
         # Compute the raw mid prices from the state (assuming state.best_bids and state.best_asks have matching shapes)

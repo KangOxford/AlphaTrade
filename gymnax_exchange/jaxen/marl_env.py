@@ -7,6 +7,8 @@ import chex
 from flax import struct
 import jax.tree_util as jtu
 
+# for debugging
+jax.config.update('jax_disable_jit', True)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
@@ -31,6 +33,7 @@ class MultiAgentParams(BaseParams):
 # define the MARL environment.
 class MARLEnv(BaseLOBEnv):
     def __init__(self,
+                 key,
                  alphatradePath: str,
                  window_index: int,
                  episode_time: int,
@@ -44,40 +47,52 @@ class MARLEnv(BaseLOBEnv):
                  mm_n_ticks_in_book: int = 2,
                  mm_max_task_size: int = 500):
         # Initialize the base environment
-        super().__init__(alphatradePath, window_index, episode_time, ep_type=ep_type)
-        # Create the market making sub–env
+        #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
+
+        super().__init__(key, alphatradePath, window_index, episode_time, ep_type=ep_type,)
+         # Split the key for the sub-environments:
+        key_mm, key_exe = jax.random.split(key, 2)
+        
+        print("Initializing MM environment...")
+        # Create the market making sub-env 
         self.mm_env = MarketMakingEnv(
-            alphatradePath,
+            key=key_mm,
+            alphatradePath=alphatradePath,
             window_index=window_index,
-            action_type=mm_action_type,
             episode_time=episode_time,
-            max_task_size=mm_max_task_size,
+            #max_task_size=mm_max_task_size,
             rewardLambda=mm_reward_lambda,
             ep_type=ep_type
         )
-        # Create the execution sub–env
+        
+        print("Initializing EXE environment...")
+        # Create the execution sub-env
         self.exe_env = ExecutionEnv(
-            alphatradePath,
-            task="buy",  
+            key=key_exe,
+            alphatradePath=alphatradePath,
+            task="buy",
             window_index=window_index,
             action_type="pure", 
             episode_time=episode_time,
-            max_task_size=exe_task_size,
+            #max_task_size=exe_task_size,
             rewardLambda=exe_reward_lambda,
             ep_type=ep_type
         )
+        
         self.mm_trader_id = mm_trader_id
         self.exe_trader_id = exe_trader_id
+        print("MARL Environment initialized")
 
+    @property
     def default_params(self) -> MultiAgentParams:
         # Get the base parameters from BaseLOBEnv
         base_params = super().default_params
         # Get the sub–env default parameters
-        mm_params = self.mm_env.default_params
         exe_params = self.exe_env.default_params
+        mm_params = self.mm_env.default_params
         # Combine them into a MultiAgentParams instance.
         return MultiAgentParams(
-            **dataclasses.asdict(base_params),
+            #**dataclasses.asdict(base_params),
             mm_params=mm_params,
             exe_params=exe_params
         )
@@ -133,11 +148,10 @@ class MARLEnv(BaseLOBEnv):
         # (B) Build Market Maker messages
         # -------------------------------------------------------
         # Use the MM env’s message-building functions
-        mm_raw_action = self.mm_env._reshape_action(actions["market_maker"],
+        mm_raw_action = self.mm_env.get_action(actions["market_maker"],
                                                     state.mm_state,
-                                                    params.mm_params,
-                                                    key_mm)
-        mm_order_msgs = self.mm_env._getActionMsgsV2(mm_raw_action,
+                                                    params.mm_params)
+        mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
                                                    state.mm_state,
                                                    params.mm_params)
         mm_cnl_msgs = job.getCancelMsgs(
@@ -307,6 +321,7 @@ if __name__ == "__main__":
 
     # Instantiate the MARL environment.
     env = MARLEnv(
+        key = key_reset,
         alphatradePath=ATFolder,
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
