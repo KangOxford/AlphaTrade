@@ -8,7 +8,7 @@ from flax import struct
 import jax.tree_util as jtu
 
 # for debugging
-jax.config.update('jax_disable_jit', True)
+jax.config.update('jax_disable_jit', False)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
@@ -16,6 +16,8 @@ from mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
 from exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 
 # Define a combined (multi–agent) state that extends the base order book state
 @struct.dataclass
@@ -45,11 +47,15 @@ class MARLEnv(BaseLOBEnv):
                  exe_task_size: int = 100,
                  mm_action_type: str = "pure",
                  mm_n_ticks_in_book: int = 2,
-                 mm_max_task_size: int = 500):
+                  mm_max_task_size: int = 500
+                 ):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
 
         super().__init__(key, alphatradePath, window_index, episode_time, ep_type=ep_type,)
+
+        self.cfg = EnvironmentConfig()
+
          # Split the key for the sub-environments:
         key_mm, key_exe = jax.random.split(key, 2)
         
@@ -92,7 +98,7 @@ class MARLEnv(BaseLOBEnv):
         mm_params = self.mm_env.default_params
         # Combine them into a MultiAgentParams instance.
         return MultiAgentParams(
-            #**dataclasses.asdict(base_params),
+            **dataclasses.asdict(base_params),
             mm_params=mm_params,
             exe_params=exe_params
         )
@@ -148,12 +154,12 @@ class MARLEnv(BaseLOBEnv):
         # (B) Build Market Maker messages
         # -------------------------------------------------------
         # Use the MM env’s message-building functions
-        mm_raw_action = self.mm_env.get_action(actions["market_maker"],
+        mm_order_msgs = self.mm_env.get_action(actions["market_maker"],
                                                     state.mm_state,
                                                     params.mm_params)
-        mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
-                                                   state.mm_state,
-                                                   params.mm_params)
+        #mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
+        #                                           state.mm_state,
+        #                                           params.mm_params)
         mm_cnl_msgs = job.getCancelMsgs(
             state.bid_raw_orders,  # using the shared order book from the base state
             self.mm_trader_id,
@@ -215,6 +221,8 @@ class MARLEnv(BaseLOBEnv):
 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
+            self.cfg,  
+            key,  
             combined_msgs,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
@@ -230,11 +238,11 @@ class MARLEnv(BaseLOBEnv):
         # (F) Compute agent-specific rewards and observations
         # -------------------------------------------------------
         mm_agent_trades = job.get_agent_trades(new_trades, self.mm_trader_id)
-        mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, new_trades, new_bestasks, new_bestbids)
+        mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
         mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
-        exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, new_trades)
+        exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
         exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
 
         # -------------------------------------------------------
@@ -335,7 +343,7 @@ if __name__ == "__main__":
         mm_max_task_size=config["MM_MAX_TASK_SIZE"]
     )
     # Get the default combined parameters.
-    env_params = env.default_params()
+    env_params = env.default_params
 
     env_params = dataclasses.replace(env_params, episode_time=config["EPISODE_TIME"])
 
