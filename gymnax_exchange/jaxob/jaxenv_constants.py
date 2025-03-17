@@ -1,6 +1,6 @@
 action_space= "fixed_quants"
 reward_space = "zero_inv"
-observation_space = "messages_new_tokenizer"
+observation_space = "engineered"
 end_fn = "unwind_mid_price"
 n_ticks_in_book =1
 n_actions=8

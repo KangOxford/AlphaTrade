@@ -40,8 +40,8 @@ class MARLEnv(BaseLOBEnv):
                  window_index: int,
                  episode_time: int,
                  ep_type: str = "fixed_time",
-                 mm_trader_id: int = 1111,
-                 exe_trader_id: int = 2222,
+                 mm_trader_id: int = -9999991,
+                 exe_trader_id: int = -9999992,
                  mm_reward_lambda: float = 0.0001,
                  exe_reward_lambda: float = 1.0,
                  exe_task_size: int = 100,
@@ -68,6 +68,7 @@ class MARLEnv(BaseLOBEnv):
             episode_time=episode_time,
             #max_task_size=mm_max_task_size,
             rewardLambda=mm_reward_lambda,
+            trader_unique_id = mm_trader_id,
             ep_type=ep_type
         )
         
@@ -82,6 +83,7 @@ class MARLEnv(BaseLOBEnv):
             episode_time=episode_time,
             #max_task_size=exe_task_size,
             rewardLambda=exe_reward_lambda,
+            trader_unique_id=exe_trader_id, 
             ep_type=ep_type
         )
         
@@ -160,6 +162,9 @@ class MARLEnv(BaseLOBEnv):
         #mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
         #                                           state.mm_state,
         #                                           params.mm_params)
+
+        jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
+
         mm_cnl_msgs = job.getCancelMsgs(
             state.bid_raw_orders,  # using the shared order book from the base state
             self.mm_trader_id,
@@ -187,6 +192,8 @@ class MARLEnv(BaseLOBEnv):
         exe_order_msgs = self.exe_env._getActionMsgs(exe_raw_action,
                                                      state.exe_state,
                                                      params.exe_params)
+        
+        jax.debug.print(f"Execution messages: {exe_order_msgs}")
         
         # For execution, decide which side to cancel (depending on task)
         side_for_exe = 1 - state.exe_state.is_sell_task * 2
@@ -218,6 +225,7 @@ class MARLEnv(BaseLOBEnv):
         # (E) Process combined messages through the order book
         # -------------------------------------------------------
 
+        #jax.debug.print(f"Combined messages: {combined_msgs}")
 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
@@ -227,6 +235,8 @@ class MARLEnv(BaseLOBEnv):
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
         )
+
+        
         # Forward-fill best prices if necessary:
         #new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines+1:], state.best_asks[-1, 0])
         #new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines+1:], state.best_bids[-1, 0])
@@ -244,6 +254,10 @@ class MARLEnv(BaseLOBEnv):
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
         exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
         exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
+
+        jax.debug.print(f"MM trades: {mm_agent_trades}")
+        jax.debug.print(f"EXE trades: {exe_agent_trades}")
+        jax.debug.print(f"All Trades: {new_trades}")
 
         # -------------------------------------------------------
         # (G) Update the multi–agent state
@@ -284,6 +298,34 @@ class MARLEnv(BaseLOBEnv):
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, done, info
 
+    def _ffill_best_prices(self, prices_quants, last_valid_price):
+            def ffill(arr, inval=-1):
+                """ Forward fill array values `inval` with previous value """
+                def f(prev, x):
+                    new = jnp.where(x != inval, x, prev)
+                    return (new, new)
+                # initialising with inval in case first value is already invalid
+                _, out = jax.lax.scan(f, inval, arr)
+                return out
+
+            # if first new price is invalid (-1), copy over last price
+            prices_quants = prices_quants.at[0, 0:2].set(
+                jnp.where(
+                    # jnp.repeat(prices_quants[0, 0] == -1, 2),
+                    prices_quants[0, 0] == -1,
+                    jnp.array([last_valid_price, 0]),
+                    prices_quants[0, 0:2]
+                )
+            )
+            # set quantity to 0 if price is invalid (-1)
+            prices_quants = prices_quants.at[:, 1].set(
+                jnp.where(prices_quants[:, 0] == -1, 0, prices_quants[:, 1])
+            )
+            # forward fill new prices if some are invalid (-1)
+            prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
+            # jax.debug.print("prices_quants\n {}", prices_quants)
+            return prices_quants
+
 
     def action_space(self, params: Optional[MultiAgentParams] = None):
         # Return a dictionary of action spaces
@@ -315,11 +357,11 @@ if __name__ == "__main__":
         "EPISODE_TIME": 300,  # for example, 5 minutes
         "WINDOW_INDEX": 1,
         # sub–env parameters:
-        "MM_TRADER_ID": 1111,
+        "MM_TRADER_ID": -9999991,
         "MM_REWARD_LAMBDA": 0.0001,
         "MM_ACTION_TYPE": "pure",
         "MM_MAX_TASK_SIZE": 500,
-        "EXE_TRADER_ID": 2222,
+        "EXE_TRADER_ID": -9999992,
         "EXE_REWARD_LAMBDA": 1.0,
         "EXE_TASK_SIZE": 100,
     }
@@ -343,6 +385,7 @@ if __name__ == "__main__":
         mm_max_task_size=config["MM_MAX_TASK_SIZE"]
     )
     # Get the default combined parameters.
+    print("starting default parameters")
     env_params = env.default_params
 
     env_params = dataclasses.replace(env_params, episode_time=config["EPISODE_TIME"])
@@ -353,16 +396,30 @@ if __name__ == "__main__":
     print("Execution obs:", obs["execution"])
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 20):
+    for i in range(1, 2000):
         print("=" * 40)
+        
         print(f"Step {i}")
+
+        key_step, _ = jax.random.split(key_step, 2)
+
+        #key_policy, _ = jax.random.split(key_policy, 2)
         # Get random actions from each agent’s action space.
-        action_mm = env.mm_env.action_space().sample(key_policy)
-        action_exe = env.exe_env.action_space().sample(key_policy)
+
+        key_policy, subkey_mm = jax.random.split(key_policy)
+        action_mm = env.mm_env.action_space().sample(subkey_mm)
+
+        key_policy, subkey_exe = jax.random.split(key_policy)
+        action_exe = env.exe_env.action_space().sample(subkey_exe)
+        #action_mm = env.mm_env.action_space().sample(key_policy)
+        #action_exe = env.exe_env.action_space().sample(key_policy)
         actions = {"market_maker": action_mm, "execution": action_exe}
         obs, state, rewards, done, info = env.step_env(key_step, state, actions, env_params)
+        print(f"Actions: {actions}")
         print("Step rewards:", rewards)
         print("Step info:", info)
+        print("Market Maker Raw Action:", action_mm.tolist())
+        print("Execution Raw Action:", action_exe.tolist())
         if done:
             print("Episode finished!")
             break

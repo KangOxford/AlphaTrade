@@ -165,13 +165,14 @@ class EnvParams(BaseEnvParams):
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
             self,key, alphatradePath, window_index,  episode_time,
-             rewardLambda=0.2, ep_type="fixed_time"):
+             rewardLambda=0.2, trader_unique_id=-9999997, ep_type="fixed_time"):
         self.rewardLambda = rewardLambda 
         super().__init__(
             key,
             alphatradePath,
             window_index,
             episode_time,
+            trader_unique_id,
             ep_type,
         )
         self.cfg=EnvironmentConfig()
@@ -217,7 +218,7 @@ class MarketMakingEnv(BaseLOBEnv):
         state_vals = flat_tree[5:] #Considers the state values
 
         
-        jax.debug.print("state_vals shapes: {}", [getattr(leaf, "shape", None) for leaf in state_vals])
+        #jax.debug.print("state_vals shapes: {}", [getattr(leaf, "shape", None) for leaf in state_vals])
 
 
 
@@ -244,10 +245,7 @@ class MarketMakingEnv(BaseLOBEnv):
             state.init_time[0] + params.episode_time
         )
 
-        
 
-
-         
     
         #=======================================#s
         #======Process agent actions ===========#
@@ -545,6 +543,8 @@ class MarketMakingEnv(BaseLOBEnv):
         prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
         # jax.debug.print("prices_quants\n {}", prices_quants)
         return prices_quants
+    
+
     ###########Functions for the new tokenizer#####################
     def locate_type_4(self, total_messages, trades):
         """
@@ -1810,7 +1810,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,2):
+    for i in range(1,20):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
@@ -1828,6 +1828,8 @@ if __name__ == "__main__":
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
         print(obs)
+        print("Step reward:", reward)
+        print("Step info:", info)
 
      #   print('revenue',state.total_revenue)
         #print('revenue', state.total_revenue)

@@ -170,7 +170,7 @@ class EnvParams(BaseEnvParams):
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
             self, key,alphatradePath, task, window_index, action_type, episode_time,
-            max_task_size = 500, rewardLambda=1., ep_type="fixed_time"):
+            max_task_size = 500, rewardLambda=1.,trader_unique_id=-9999998, ep_type="fixed_time"):
         
         #Define Execution-specific attributes.
         self.task = task # "random", "buy", "sell"
@@ -187,6 +187,7 @@ class ExecutionEnv(BaseLOBEnv):
             alphatradePath,
             window_index,
             episode_time,
+            trader_unique_id,
             ep_type,
         )
 
