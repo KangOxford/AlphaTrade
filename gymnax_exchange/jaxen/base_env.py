@@ -162,7 +162,7 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self,key, alphatradePath, window_selector, sliceTimeWindow, ep_type="fixed_time"):
+    def __init__(self,cfg:Configuration,key, alphatradePath, window_selector, sliceTimeWindow, ep_type="fixed_time"):
         super().__init__()
         self.window_selector = window_selector
         self.ep_type = ep_type # fixed_steps, fixed_time
@@ -179,7 +179,7 @@ class BaseLOBEnv(environment.Environment):
         self.trader_unique_id=-9999999 #need to be negative now??
         self.tick_size=100
         self.start_resolution=60 #Interval in seconds at which eps start
-        self.cfg =Configuration()
+        self.cfg =cfg
         loader=LoadLOBSTER_resample(alphatradePath,
                                     self.book_depth,
                                     ep_type,

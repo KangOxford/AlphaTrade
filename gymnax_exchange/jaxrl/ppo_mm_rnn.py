@@ -30,6 +30,9 @@ import datetime
 import gymnax_exchange.utils.colorednoise as cnoise
 jax.numpy.set_printoptions(linewidth=250)
 import dataclasses
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+
+
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -145,6 +148,10 @@ if wandbOn:
 
 
 def make_train(config):
+    env_config=EnvironmentConfig(**config["ENV_CONFIG"])
+
+    # env_config = dataclasses.replace(env_config, **config["ENV_CONFIG"])
+
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
@@ -155,34 +162,22 @@ def make_train(config):
     rng = jax.random.key(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     env = MarketMakingEnv(
+        env_config,
         key_reset,
-        alphatradePath=config["ATFOLDER"],
+        alphatradePath=config["ATFOLDER"]+"/train",
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
         ep_type=config["DATA_TYPE"],
     )
 
     eval_env=MarketMakingEnv(
-        alphatradePath=config["ATFOLDER"],
-        #task=config["TASKSIDE"],
+        env_config,
+        key_reset,
+        alphatradePath=config["ATFOLDER"]+"/val",
         window_index=config["WINDOW_INDEX"],
-        action_type=config["ACTION_TYPE"],
         episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
-        rewardLambda=config["REWARD_LAMBDA"],
-       ep_type=config["DATA_TYPE"],
-    )
-
-    eval_env=MarketMakingEnv(
-        alphatradePath=config["ATFOLDER"],
-        #task=config["TASKSIDE"],
-        window_index=config["WINDOW_INDEX"],
-        action_type=config["ACTION_TYPE"],
-        episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
-        rewardLambda=config["REWARD_LAMBDA"],
         ep_type=config["DATA_TYPE"],
-    ) 
+    )
 
     eval_env_params = dataclasses.replace(
         env.default_params,
@@ -219,6 +214,7 @@ def make_train(config):
             ),
             jnp.zeros((1, config["NUM_ENVS"])),
         )
+
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
         network_params = network.init(_rng, init_hstate, init_x)
         if config["ANNEAL_LR"]:
@@ -245,6 +241,8 @@ def make_train(config):
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
+            update_count=runner_state[-1]
+            runner_state=runner_state[:-1]
             # COLLECT TRAJECTORIES
             def _env_step(runner_state, unused):
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
@@ -252,6 +250,8 @@ def make_train(config):
 
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
+
+
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng)
                 log_prob = pi.log_prob(action)
@@ -456,20 +456,23 @@ def make_train(config):
             initial_hstate,
             _rng,
             )
-            eval_runner_state, traj_batch = jax.lax.scan(
+            eval_runner_state, eval_traj_batch = jax.lax.scan(
                 _eval_step, eval_runner_state, None, config["NUM_STEPS"]
             )
-
+            eval_metric=eval_traj_batch.info
             if config.get("DEBUG"):
-                def callback(info):
-                    return_values = info["returned_episode_returns"][info["returned_episode"]]
-                    timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
-                    PnL = info["total_PnL"]
-                    inventories = info["inventory"] 
-                    buyQuant=info["buyQuant"]
-                    sellQuant=info["sellQuant"]
-                    reward=info["reward"]
-                    other_exec_quants=info["other_exec_quants"]
+                def callback(info_train,info_eval,update_count):
+                    return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                    timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
+                    PnL = info_train["total_PnL"]
+                    inventories = info_train["inventory"] 
+                    buyQuant=info_train["buyQuant"]
+                    sellQuant=info_train["sellQuant"]
+                    reward=info_train["reward"]
+                    other_exec_quants=info_train["other_exec_quants"]
+                    reward_eval=info_eval["reward"]
+                    PnL_eval=info_eval["total_PnL"]
+
                     if wandbOn:
                         wandb.log(
                             data={
@@ -477,21 +480,28 @@ def make_train(config):
                                 "reward":jnp.mean(reward) if reward.size > 0 else 0,
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
                                 "PnL": jnp.mean(PnL) if PnL.size > 0 else 0,  # Handle empty arrays
+                                "PnL_eval": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,  # Handle empty arrays
+                                "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
                                 "inventory": jnp.mean(inventories) if inventories.size > 0 else 0, 
                                 "buyQuant":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
                                 "sellQuant":jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
                                 "other_exec_quants":jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
+                                "update_count": update_count,
                             },
                             commit=True
                         )
-                    for t in range(len(timesteps)):
-                        print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
-                jax.debug.callback(callback, metric)
+                    print("Update step is",update_count, "of",config["NUM_UPDATES"])
+                    if config["VERBOSE"]:
+                        for t in range(len(timesteps)):
+                            print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
+                jax.debug.callback(callback, metric,eval_metric,update_count)
 
-            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
-            return runner_state, metric
+            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
+
+            return runner_state, (metric,eval_metric)
 
         rng, _rng = jax.random.split(rng)
+        update_count=0
         runner_state = (
             train_state,
             env_state,
@@ -499,11 +509,12 @@ def make_train(config):
             jnp.zeros((config["NUM_ENVS"]), dtype=bool),
             init_hstate,
             _rng,
+            update_count, 
         )
-        runner_state, metric = jax.lax.scan(
+        runner_state, (metric,eval_metric) = jax.lax.scan(
             _update_step, runner_state, None, config["NUM_UPDATES"]
         )
-        return {"runner_state": runner_state, "metric": metric}
+        return {"runner_state": runner_state, "metric": metric, "eval_metric": eval_metric}
 
     return train
 
@@ -512,112 +523,131 @@ if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
     try:
         ATFolder = sys.argv[1]
-        print("AlphaTrade folder:",ATFolder)
+        print("ATFFolder:",ATFolder)
     except:
-        # ATFolder = "./testing_oneDay"
-        #ATFolder = "/training_oneDay"
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
-    config = {
-        "LR": 2.5e-4,
-        "NUM_ENVS": 256,
-        "NUM_STEPS": 128,
-        "TOTAL_TIMESTEPS": 4e6,
-        "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 16,
-        "GAMMA": 0.99,
-        "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.,
-        "VF_COEF": 0.5,
-        "MAX_GRAD_NORM": 0.5,
-        "ENV_NAME": "AlphaTradeMM",
-        "ANNEAL_LR": True,
-        "DEBUG": True,
 
-        "REWARD_LAMBDA": 0.1, #0.001,
-        "ACTION_TYPE": "pure", # "delta"
-        "WINDOW_INDEX": 200, # 2 fix random episode #-1,
-        "MAX_TASK_SIZE": 100,
-        "EPISODE_TIME": 60*5,  # 
-        "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
-        "ATFOLDER": "/home/duser/AlphaTrade/atpaths/GOOG_2days"
-    }
-    config2 = {
-        "LR": 2.5e-4,
-        "NUM_ENVS": 4,
-        "NUM_STEPS": 128,
-        "TOTAL_TIMESTEPS": 5e5,
-        "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 4,
-        "GAMMA": 0.99,
-        "GAE_LAMBDA": 0.95,
-        "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.01,
-        "VF_COEF": 0.5,
-        "MAX_GRAD_NORM": 0.5,
-        "ENV_NAME": "CartPole-v1",
-        "ANNEAL_LR": True,
-        "DEBUG": True,
+    # Need only to add deviations from the default environment config.
+    env_config_hps = [{"observation_space":"engineered",
+                        "reward_space":"pnl"},
+                      {"observation_space":"engineered",
+                        "reward_space":"zero_inv"}]
+    
+    # Model & Training parameters, should be independant of the environment config
+    # TODO: Some adjustment needed, some of these are effectively environment parameters
+    training_parameters = {
+        "LR": {"values": [2.5e-4]},
+        "NUM_ENVS": {"values": [256]},
+        "NUM_STEPS": {"values": [128]},
+        "TOTAL_TIMESTEPS": {"values": [4e5]},
+        "UPDATE_EPOCHS": {"values": [4]},
+        "NUM_MINIBATCHES": {"values": [16]},
+        "GAMMA": {"values": [0.99]},
+        "GAE_LAMBDA": {"values": [0.95]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.0]},
+        "VF_COEF": {"values": [0.5]},
+        "MAX_GRAD_NORM": {"values": [0.5]},
+        "ENV_NAME": {"values": ["AlphaTradeMM"]},
+        "ANNEAL_LR": {"values": [True]},
+        "DEBUG": {"values": [True]},
+        "VERBOSE": {"values": [False]},
+        "REWARD_LAMBDA": {"values": [0.1]},
+        "ACTION_TYPE": {"values": ["pure"]},
+        "WINDOW_INDEX": {"values": [200]},
+        "MAX_TASK_SIZE": {"values": [100]},
+        "EPISODE_TIME": {"values": [60*5]},
+        "DATA_TYPE": {"values": ["fixed_time"]},
+        "ATFOLDER": {"values": [ATFolder]},
+        "ENV_CONFIG": {"values": env_config_hps}
+    }    
+
+    sweep_config={
+        "method": "grid",
+        "parameters": training_parameters
     }
 
-    if wandbOn:
+    def sweep_fun():
         run = wandb.init(
-            project="AlphaTradeJAX_Train",
-            config=config,
+            project="Alphatrade_Sweeps",
             save_code=True,  # 
         )
-        import datetime;params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
-    else:
-        import datetime;params_file_name = f'params_file_{timestamp}'
-
-    print(f"Results will be saved to {params_file_name}")
-
-    # +++++ Single GPU +++++
-    rng = jax.random.PRNGKey(0)
-    # rng = jax.random.PRNGKey(30)
-    train_jit = jax.jit(make_train(config))
- 
-    out = train_jit(rng)
-  
-    # +++++ Single GPU +++++
-
-    # # +++++ Multiple GPUs +++++
-    # num_devices = 4F
-    # rng = jax.random.PRNGKey(30)
-    # rngs = jax.random.split(rng, num_devices)
-    # train_fn = lambda rng: make_train(ppo_config)(rng)
-    # start=time.time()
-    # out = jax.pmap(train_fn)(rngs)
-    # print("Time: ", time.time()-start)
-    # # +++++ Multiple GPUs +++++
+        params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        print(f"Results will be saved to {params_file_name}")
+        # +++++ Single GPU +++++
+        rng = jax.random.PRNGKey(0)
+        train_jit = jax.jit(make_train(wandb.config))
+        # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+        out = train_jit(rng)
+        train_state = out['runner_state'][0] # runner_state.train_state
+        params = train_state.params
     
-    
+        # Save the params to a file using flax.serialization.to_bytes
+        with open(params_file_name, 'wb') as f:
+            f.write(flax.serialization.to_bytes(params))
+            print(f"params saved")
 
-    # '''
-    # # ---------- Save Output ----------
-    import flax
+        # Load the params from the file using flax.serialization.from_bytes
+        # with open(params_file_name, 'rb') as f:
+        #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        #     print(f"params restored")
 
-    train_state = out['runner_state'][0] # runner_state.train_state
-    params = train_state.params
-    
-
-
-    import datetime;params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-
-    # Save the params to a file using flax.serialization.to_bytes
-    with open(params_file_name, 'wb') as f:
-        f.write(flax.serialization.to_bytes(params))
-        print(f"params saved")
-
-    # Load the params from the file using flax.serialization.from_bytes
-    with open(params_file_name, 'rb') as f:
-        restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-        print(f"params restored")
-        
-    # jax.debug.breakpoint()
-    # assert jax.tree_util.tree_all(jax.tree_map(lambda x, y: (x == y).all(), params, restored_params))
-    # print(">>>")
-    # '''
-
-    if wandbOn:
         run.finish()
+
+    sweep_id = wandb.sweep(sweep=sweep_config, project="TEST_SWEEPS")
+    wandb.agent(sweep_id, function=sweep_fun, count=10)
+
+
+    sys.exit(0)
+
+
+    # rng = jax.random.PRNGKey(0)
+    # for r in ["pnl"]: 
+    #     if wandbOn:
+    #         run = wandb.init(
+    #             project="AlphaTradeJAX_Train",
+    #             config=config,
+    #             save_code=True,  # 
+    #         )
+    #         params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
+    #     else:
+    #         params_file_name = f'params_file_{timestamp}'
+
+    #     print(f"Results will be saved to {params_file_name}")
+    #     config["ENV_CONFIG"]=dataclasses.replace(config["ENV_CONFIG"],reward_space=r)
+    #     train_jit = jax.jit(make_train(config))
+    #     out = train_jit(rng)
+  
+    #     # +++++ Single GPU +++++
+
+    #     # # +++++ Multiple GPUs +++++
+    #     # num_devices = 4F
+    #     # rng = jax.random.PRNGKey(30)
+    #     # rngs = jax.random.split(rng, num_devices)
+    #     # train_fn = lambda rng: make_train(ppo_config)(rng)
+    #     # start=time.time()
+    #     # out = jax.pmap(train_fn)(rngs)
+    #     # print("Time: ", time.time()-start)
+    #     # # +++++ Multiple GPUs +++++
+    
+    
+    #     # # ---------- Save Output ----------
+    #     train_state = out['runner_state'][0] # runner_state.train_state
+    #     params = train_state.params
+    
+
+
+    #     params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+
+    #     # Save the params to a file using flax.serialization.to_bytes
+    #     with open(params_file_name, 'wb') as f:
+    #         f.write(flax.serialization.to_bytes(params))
+    #         print(f"params saved")
+
+    #     # Load the params from the file using flax.serialization.from_bytes
+    #     with open(params_file_name, 'rb') as f:
+    #         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+    #         print(f"params restored")
+
+    #     if wandbOn:
+    #         run.finish()

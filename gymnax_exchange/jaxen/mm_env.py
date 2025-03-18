@@ -164,17 +164,18 @@ class EnvParams(BaseEnvParams):
 
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
-            self,key, alphatradePath, window_index,  episode_time,
+            self,cfg:EnvironmentConfig,key, alphatradePath, window_index,  episode_time,
              rewardLambda=0.2, ep_type="fixed_time"):
         self.rewardLambda = rewardLambda 
         super().__init__(
             key,
+            cfg,
             alphatradePath,
             window_index,
             episode_time,
             ep_type,
         )
-        self.cfg=EnvironmentConfig()
+        self.cfg= cfg
 
         ##Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
@@ -435,8 +436,8 @@ class MarketMakingEnv(BaseLOBEnv):
             ##This is reset
             *base_vals,
            # prev_action=jnp.zeros((self.n_actions, 2), jnp.int32),
-            prev_executed=jnp.zeros((2, 2), jnp.int32), # jnp.zeros((self.n_actions,2 ), jnp.int32),
-            prev_action=jnp.zeros((2), jnp.int32),#jnp.zeros((2 ,2), jnp.int32),
+            # prev_executed=jnp.zeros((2, 2), jnp.int32), # jnp.zeros((self.n_actions,2 ), jnp.int32),
+            # prev_action=jnp.zeros((2), jnp.int32),#jnp.zeros((2 ,2), jnp.int32),
            # prev_executed=jnp.zeros((2,2 ), jnp.int32),
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
@@ -1429,7 +1430,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
             reward = (new_inventory * reference_price) + new_cash_balance
-        elif self.cfg.reward_space == "revenue":
+        elif self.cfg.reward_space == "pnl":
             reward = PnL
         elif self.cfg.reward_space == "complex":
             reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl + inventoryPnL_lambda * jnp.minimum(InventoryPnL, InventoryPnL * asymmetrically_dampened_lambda)
