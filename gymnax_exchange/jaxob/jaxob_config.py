@@ -34,7 +34,9 @@ class EnvironmentConfig(Configuration):
     unrealizedPnL_lambda: float = 0.0
     asymmetrically_dampened_lambda: float = 0.05
 
-
+@dataclass(frozen=True)
+class EnvironmentExecutionConfig(Configuration):
+    n_ticks_in_book : int = env_cst.n_ticks_in_book
 
 
 

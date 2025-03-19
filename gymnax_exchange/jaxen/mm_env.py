@@ -1434,7 +1434,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
             reward = (new_inventory * reference_price) + new_cash_balance
-        elif self.cfg.reward_space == "revenue":
+        elif self.cfg.reward_space == "pnl":
             reward = PnL
         elif self.cfg.reward_space == "complex":
             reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl + inventoryPnL_lambda * jnp.minimum(InventoryPnL, InventoryPnL * asymmetrically_dampened_lambda)

@@ -133,6 +133,7 @@ from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
 from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
 from gymnax_exchange.utils import utils
 import dataclasses
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 
 import jax.tree_util as jtu
 
@@ -169,7 +170,7 @@ class EnvParams(BaseEnvParams):
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, key,alphatradePath, task, window_index, action_type, episode_time,
+            self, cfg:EnvironmentExecutionConfig, key,alphatradePath, task, window_index, action_type, episode_time,
             max_task_size = 500, rewardLambda=1.,trader_unique_id=-9999998, ep_type="fixed_time"):
         
         #Define Execution-specific attributes.
@@ -180,15 +181,17 @@ class ExecutionEnv(BaseLOBEnv):
         self.rewardLambda = rewardLambda
         # TODO: fix!! this can be overwritten in the base class
         self.n_actions = 2 # 4: (FT, M, NT, PP), 3: (FT, NT, PP), 2 (FT, NT), 1 (FT)
+        self.cfg=cfg
 
         #Call base-class init function
         super().__init__(
-            key,
-            alphatradePath,
-            window_index,
-            episode_time,
-            trader_unique_id,
-            ep_type,
+            cfg = cfg,
+            key = key,
+            alphatradePath = alphatradePath,
+            window_selector = window_index,
+            sliceTimeWindow = episode_time,
+            trader_unique_id = trader_unique_id,
+            ep_type = ep_type,
         )
 
     @property
@@ -1192,7 +1195,7 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         # ATFolder = "./testing_oneDay"
-        ATFolder = "./training_oneDay"
+        ATFolder = "./training_oneDay/train"
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
         # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
@@ -1209,18 +1212,21 @@ if __name__ == "__main__":
         "EPISODE_TIME": 60 * 5, # 60 seconds
     }
         
+    env_cfg = EnvironmentExecutionConfig()
+
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # env=ExecutionEnv(ATFolder,"sell",1)
     env = ExecutionEnv(
-        key=key_reset,
-        alphatradePath=config["ATFOLDER"],
-        task=config["TASKSIDE"],
-        window_index=config["WINDOW_INDEX"],
-        action_type=config["ACTION_TYPE"],
-        episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
+        cfg = env_cfg,
+        key = key_reset,
+        alphatradePath = config["ATFOLDER"],
+        task = config["TASKSIDE"],
+        window_index = config["WINDOW_INDEX"],
+        action_type = config["ACTION_TYPE"],
+        episode_time = config["EPISODE_TIME"],
+        max_task_size = config["MAX_TASK_SIZE"],
         ep_type=config["EP_TYPE"],
     )
     # env_params=env.default_params
