@@ -18,6 +18,7 @@ from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, En
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 from gymnax_exchange.jaxob.jaxob_config import Configuration
 
 # Define a combined (multi–agent) state that extends the base order book state
@@ -78,9 +79,12 @@ class MARLEnv(BaseLOBEnv):
             ep_type=ep_type
         )
         
+        exe_config = EnvironmentExecutionConfig()
+
         print("Initializing EXE environment...")
         # Create the execution sub-env
         self.exe_env = ExecutionEnv(
+            cfg = exe_config,
             key=key_exe,
             alphatradePath=alphatradePath,
             task="buy",
@@ -169,21 +173,24 @@ class MARLEnv(BaseLOBEnv):
         #                                           state.mm_state,
         #                                           params.mm_params)
 
-        jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
+
 
         mm_cnl_msgs = job.getCancelMsgs(
             state.bid_raw_orders,  # using the shared order book from the base state
             self.mm_trader_id,
-            self.mm_env.n_actions // 2,
+            self.mm_env.cfg.num_messages_by_agent//4,
             1
         )
         mm_cnl_msgs_ask = job.getCancelMsgs(
             state.ask_raw_orders,
             self.mm_trader_id,
-            self.mm_env.n_actions // 2,
+            self.mm_env.cfg.num_messages_by_agent//4,
             -1
         )
         mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
+
+        jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
+        jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
 
         # Do filtering to net cancellations in MM)
         mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
@@ -214,7 +221,7 @@ class MARLEnv(BaseLOBEnv):
             self.exe_env.n_actions,
             side_for_exe
         )
-        #exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
+        exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
 
         # -------------------------------------------------------
         # (D) Combine all agent messages with data messages
