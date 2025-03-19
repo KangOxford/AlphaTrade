@@ -18,6 +18,7 @@ from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, En
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import Configuration
 
 # Define a combined (multi–agent) state that extends the base order book state
 @struct.dataclass
@@ -52,22 +53,27 @@ class MARLEnv(BaseLOBEnv):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
 
-        super().__init__(key, alphatradePath, window_index, episode_time, ep_type=ep_type,)
-
-        self.cfg = EnvironmentConfig()
+        # Create config first
+        self.cfg = Configuration()
+        
+        # Pass config to parent class
+        super().__init__(self.cfg, key, alphatradePath, window_index, episode_time, ep_type=ep_type)
 
          # Split the key for the sub-environments:
         key_mm, key_exe = jax.random.split(key, 2)
         
+        mm_config = EnvironmentConfig()
+
         print("Initializing MM environment...")
         # Create the market making sub-env 
         self.mm_env = MarketMakingEnv(
             key=key_mm,
+            cfg=mm_config,
             alphatradePath=alphatradePath,
             window_index=window_index,
             episode_time=episode_time,
             #max_task_size=mm_max_task_size,
-            rewardLambda=mm_reward_lambda,
+            #rewardLambda=mm_reward_lambda,
             trader_unique_id = mm_trader_id,
             ep_type=ep_type
         )
@@ -352,7 +358,7 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:", ATFolder)
     except:
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay"
+        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
         print("Using default folder:", ATFolder)
 
     config = {

@@ -167,16 +167,17 @@ class MarketMakingEnv(BaseLOBEnv):
             self,cfg:EnvironmentConfig, key, alphatradePath, window_index,  episode_time,
              rewardLambda=0.2, trader_unique_id=-9999997, ep_type="fixed_time"):
         self.rewardLambda = rewardLambda 
-        super().__init__(
-            key,
-            cfg,
-            alphatradePath,
-            window_index,
-            episode_time,
-            trader_unique_id,
-            ep_type,
-        )
         self.cfg=cfg
+        super().__init__(
+            cfg = cfg,
+            key = key,
+            alphatradePath = alphatradePath,
+            window_selector = window_index,
+            sliceTimeWindow = episode_time,
+            trader_unique_id = trader_unique_id,
+            ep_type = ep_type,
+        )
+        
 
         ##Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
@@ -273,7 +274,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
 
-        jax.debug.print(f"Market Maker action msg: {action_msgs}")
+        #jax.debug.print(f"Market Maker action msg: {action_msgs}")
 
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
@@ -1768,7 +1769,7 @@ if __name__ == "__main__":
     except:
         # ATFolder = "./testing_oneDay"
         #ATFolder = "/training_oneDay"
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay"
+        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
 
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
@@ -1788,8 +1789,11 @@ if __name__ == "__main__":
     
     # env=MarketMakingEnv(ATFolder,"sell",1)
 
+    env_cfg = EnvironmentConfig()
+
     env = MarketMakingEnv(
-        key_reset,
+        cfg = env_cfg,
+        key = key_reset,
         alphatradePath=config["ATFOLDER"],
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
