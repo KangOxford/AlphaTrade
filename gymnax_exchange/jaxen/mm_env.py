@@ -1429,12 +1429,13 @@ class MarketMakingEnv(BaseLOBEnv):
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = state.cash_balance + PnL
         inventoryValue=new_inventory*(reference_price//self.tick_size)
-        netWorth=PnL+inventoryValue  
+        netWorth=new_cash_balance+inventoryValue  
 
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
             reward = (new_inventory * reference_price) + new_cash_balance
         elif self.cfg.reward_space == "pnl":
+            ##This will just force sales...
             reward = PnL
         elif self.cfg.reward_space == "complex":
             reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl + inventoryPnL_lambda * jnp.minimum(InventoryPnL, InventoryPnL * asymmetrically_dampened_lambda)

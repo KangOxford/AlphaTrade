@@ -472,16 +472,44 @@ def make_train(config):
                     other_exec_quants=info_train["other_exec_quants"]
                     reward_eval=info_eval["reward"]
                     PnL_eval=info_eval["total_PnL"]
+                    netWorth=info_train["netWorth"]
+                    netWorth_eval=info_eval["netWorth"]
+                    
+
 
                     if wandbOn:
                         wandb.log(
                             data={
                                 "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0, # timesteps[t],
+                                #Stream reward and std for error bars
                                 "reward":jnp.mean(reward) if reward.size > 0 else 0,
+                                "reward_upper": (jnp.mean(reward) + jnp.std(reward)) if reward.size > 0 else 0,
+                                "reward_lower": (jnp.mean(reward) - jnp.std(reward)) if reward.size > 0 else 0,
+
+                                #Same for eval
+                                "reward_eval_mean":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
+                                "reward_eval_upper": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                "reward_eval_lower": (jnp.mean(reward_eval) - jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                
+                                #Steam Pnl and its std
+                                "PnL_mean": jnp.mean(PnL) if PnL.size > 0 else 0,
+                                "PnL_upper": (jnp.mean(PnL) + jnp.std(PnL)) if PnL.size > 0 else 0,
+                                "PnL_lower": (jnp.mean(PnL) - jnp.std(PnL)) if PnL.size > 0 else 0,
+
+                                #Same for eval
+                                "PnL_eval_mean": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
+                                "PnL_eval_upper": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
+                                "PnL_eval_lower": (jnp.mean(PnL_eval) - jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
+
+                                #Net worth plot, i.e. new_cash_balance+inventoryValue . Best target.
+                                "netWorth": jnp.mean(netWorth) if netWorth.size > 0 else 0,
+                                "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
+                                
+
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                "PnL": jnp.mean(PnL) if PnL.size > 0 else 0,  # Handle empty arrays
-                                "PnL_eval": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,  # Handle empty arrays
-                                "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
+                                
+                               
+                                
                                 "inventory": jnp.mean(inventories) if inventories.size > 0 else 0, 
                                 "buyQuant":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
                                 "sellQuant":jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
@@ -546,16 +574,16 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4]},
+        "LR": {"values": [1e-5, 2.5e-4, 5e-4, 1e-3]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [128]},
-        "TOTAL_TIMESTEPS": {"values": [4e5]},
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.99]},
-        "GAE_LAMBDA": {"values": [0.95]},
+        "GAMMA": {"values": [0.95, 0.99, 0.999]},
+        "GAE_LAMBDA": {"values": [0.95,0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0]},
+        "ENT_COEF": {"values": [0.0,0.1]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -564,9 +592,9 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "REWARD_LAMBDA": {"values": [0.1]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [200]},
+        "WINDOW_INDEX": {"values": [4]},
         "MAX_TASK_SIZE": {"values": [100]},
-        "EPISODE_TIME": {"values": [60*5]},
+        "EPISODE_TIME": {"values": [60*3]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps}
