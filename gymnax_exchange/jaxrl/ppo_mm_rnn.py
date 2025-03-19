@@ -528,10 +528,20 @@ if __name__ == "__main__":
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
     # Need only to add deviations from the default environment config.
-    env_config_hps = [{"observation_space":"engineered",
-                        "reward_space":"pnl"},
-                      {"observation_space":"engineered",
-                        "reward_space":"zero_inv"}]
+    env_config_hps = []
+    for o in ["engineered"]:
+        for r in ["pnl", "complex", "portfolio_value"]:
+            for i in ["none", "linear", "quadratic"]:
+                for a in ["fixed_prices", "fixed_quants"]:
+                    for e in ["force_market_order", "unwind_mid_price","do_nothing"]:
+                        for r in ["mid", "best_bid_ask"]:
+                            env_config_hps.append({"observation_space":o,
+                                                    "reward_space":r,
+                                                    "inv_penalty":i,
+                                                    "action_space":a,
+                                                        "end_fn":e,
+                                                        "reference_price_portfolio_value":r})  
+ 
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
