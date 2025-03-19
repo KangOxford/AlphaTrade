@@ -164,18 +164,19 @@ class EnvParams(BaseEnvParams):
 
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
-            self,key, alphatradePath, window_index,  episode_time,
+            self,cfg:EnvironmentConfig, key, alphatradePath, window_index,  episode_time,
              rewardLambda=0.2, trader_unique_id=-9999997, ep_type="fixed_time"):
         self.rewardLambda = rewardLambda 
         super().__init__(
             key,
+            cfg,
             alphatradePath,
             window_index,
             episode_time,
             trader_unique_id,
             ep_type,
         )
-        self.cfg=EnvironmentConfig()
+        self.cfg=cfg
 
         ##Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
@@ -271,6 +272,8 @@ class MarketMakingEnv(BaseLOBEnv):
             )
         
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
+
+        jax.debug.print(f"Market Maker action msg: {action_msgs}")
 
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
@@ -1030,7 +1033,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
 
         sell_levels=sell_task_prices(best_ask, best_bid)
-        sell_levels = jnp.array(sell_levels[:-1])
+        sell_levels = jnp.array(sell_levels[:-1]) #Drop Market price
 
         buy_levels=buy_task_prices(best_ask, best_bid)
         buy_levels = jnp.array(buy_levels[:-1])
@@ -1774,10 +1777,10 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 43,
+        "WINDOW_INDEX": 1,
         "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*8,  
+        "EPISODE_TIME": 60*10,  
     }
         
     rng = jax.random.PRNGKey(0)
@@ -1831,6 +1834,9 @@ if __name__ == "__main__":
         print("Step reward:", reward)
         print("Step info:", info)
 
+
+        print("Intial Time \n", state.init_time)
+        print("Time \n", state.time)
      #   print('revenue',state.total_revenue)
         #print('revenue', state.total_revenue)
         #print('inventory',state.inventory)

@@ -180,7 +180,7 @@ class MARLEnv(BaseLOBEnv):
         mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
 
         # Do filtering to net cancellations in MM)
-       # mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
+        mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
 
         # -------------------------------------------------------
         # (C) Build Execution messages
@@ -258,6 +258,9 @@ class MARLEnv(BaseLOBEnv):
         jax.debug.print(f"MM trades: {mm_agent_trades}")
         jax.debug.print(f"EXE trades: {exe_agent_trades}")
         jax.debug.print(f"All Trades: {new_trades}")
+
+        jax.debug.print(f"MM obs: {mm_obs}")
+        jax.debug.print(f"EXE obs: {exe_obs}")
 
         # -------------------------------------------------------
         # (G) Update the multi–agent state
@@ -396,7 +399,7 @@ if __name__ == "__main__":
     print("Execution obs:", obs["execution"])
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 2000):
+    for i in range(1, 20):
         print("=" * 40)
         
         print(f"Step {i}")
