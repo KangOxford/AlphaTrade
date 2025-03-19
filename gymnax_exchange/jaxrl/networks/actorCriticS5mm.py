@@ -20,6 +20,7 @@ dt_max=0.1
 n_layers = (2, 2, 2)
 conj_sym=True
 clip_eigs=False
+
 bidirectional=False
 
 blocks = 1

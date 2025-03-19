@@ -139,7 +139,7 @@ import dataclasses
 import jax.tree_util as jtu
 
 
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxen.jaxen_config import EnvironmentConfig
 
 
 

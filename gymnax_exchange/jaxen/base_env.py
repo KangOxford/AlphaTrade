@@ -297,12 +297,12 @@ class BaseLOBEnv(environment.Environment):
     def _init_states(self,key,alphatradePath,starts):
         print("START:  pre-reset in the initialization")
         pkl_file_name = (alphatradePath
-                         + '_' + type(self).__name__
+                         + '/' + type(self).__name__
                          + '_stateArray_idx_' + str(self.window_selector)
                          + '_dtype_"' + self.ep_type
                          + '"_depth_' + str(self.book_depth)
                          + '.pkl')
-        print("pre-reset will be saved to ", pkl_file_name)
+        print("pre-reset will be saved to or loaded from: \n \t", pkl_file_name)
         try:
             with open(pkl_file_name, 'rb') as f:
                 self.init_states_array = pickle.load(f)

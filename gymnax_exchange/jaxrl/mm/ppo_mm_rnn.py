@@ -30,9 +30,12 @@ import datetime
 import gymnax_exchange.utils.colorednoise as cnoise
 jax.numpy.set_printoptions(linewidth=250)
 import dataclasses
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxen.jaxen_config import EnvironmentConfig
+import gymnax_exchange.jaxrl.training_config as tcfg
 
-
+wandbOn = True # False
+if wandbOn:
+    import wandb
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -142,15 +145,12 @@ class Transition(NamedTuple):
     obs: jnp.ndarray
     info: jnp.ndarray
 
-wandbOn = True # False
-if wandbOn:
-    import wandb
+
 
 
 def make_train(config):
     env_config=EnvironmentConfig(**config["ENV_CONFIG"])
 
-    # env_config = dataclasses.replace(env_config, **config["ENV_CONFIG"])
 
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -237,7 +237,7 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
-        init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+        
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
@@ -526,42 +526,11 @@ if __name__ == "__main__":
         print("ATFFolder:",ATFolder)
     except:
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
+    training_parameters = tcfg.rnn_training_parameters
+    training_parameters["ATFOLDER"] = {"values" : [ATFolder]}
+    training_parameters["ENV_CONFIG"]= {"values" : tcfg.mm_env_config_hps}
 
-    # Need only to add deviations from the default environment config.
-    env_config_hps = [{"observation_space":"engineered",
-                        "reward_space":"pnl"},
-                      {"observation_space":"engineered",
-                        "reward_space":"zero_inv"}]
     
-    # Model & Training parameters, should be independant of the environment config
-    # TODO: Some adjustment needed, some of these are effectively environment parameters
-    training_parameters = {
-        "LR": {"values": [2.5e-4]},
-        "NUM_ENVS": {"values": [256]},
-        "NUM_STEPS": {"values": [128]},
-        "TOTAL_TIMESTEPS": {"values": [4e5]},
-        "UPDATE_EPOCHS": {"values": [4]},
-        "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.99]},
-        "GAE_LAMBDA": {"values": [0.95]},
-        "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0]},
-        "VF_COEF": {"values": [0.5]},
-        "MAX_GRAD_NORM": {"values": [0.5]},
-        "ENV_NAME": {"values": ["AlphaTradeMM"]},
-        "ANNEAL_LR": {"values": [True]},
-        "DEBUG": {"values": [True]},
-        "VERBOSE": {"values": [False]},
-        "REWARD_LAMBDA": {"values": [0.1]},
-        "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [200]},
-        "MAX_TASK_SIZE": {"values": [100]},
-        "EPISODE_TIME": {"values": [60*5]},
-        "DATA_TYPE": {"values": ["fixed_time"]},
-        "ATFOLDER": {"values": [ATFolder]},
-        "ENV_CONFIG": {"values": env_config_hps}
-    }    
-
     sweep_config={
         "method": "grid",
         "parameters": training_parameters
@@ -572,7 +541,9 @@ if __name__ == "__main__":
             project="Alphatrade_Sweeps",
             save_code=True,  # 
         )
-        params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        # Create the 'params' folder if it doesn't already exist
+        os.makedirs(f'{wandb.config["ATFOLDER"]}/params', exist_ok=True)
+        params_file_name = f'{wandb.config["ATFOLDER"]}/params/params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
         print(f"Results will be saved to {params_file_name}")
         # +++++ Single GPU +++++
         rng = jax.random.PRNGKey(0)
@@ -598,56 +569,7 @@ if __name__ == "__main__":
     wandb.agent(sweep_id, function=sweep_fun, count=10)
 
 
-    sys.exit(0)
+    # sys.exit(0)
 
 
-    # rng = jax.random.PRNGKey(0)
-    # for r in ["pnl"]: 
-    #     if wandbOn:
-    #         run = wandb.init(
-    #             project="AlphaTradeJAX_Train",
-    #             config=config,
-    #             save_code=True,  # 
-    #         )
-    #         params_file_name = f'params_file_{wandb.run.name}_{timestamp}'
-    #     else:
-    #         params_file_name = f'params_file_{timestamp}'
-
-    #     print(f"Results will be saved to {params_file_name}")
-    #     config["ENV_CONFIG"]=dataclasses.replace(config["ENV_CONFIG"],reward_space=r)
-    #     train_jit = jax.jit(make_train(config))
-    #     out = train_jit(rng)
-  
-    #     # +++++ Single GPU +++++
-
-    #     # # +++++ Multiple GPUs +++++
-    #     # num_devices = 4F
-    #     # rng = jax.random.PRNGKey(30)
-    #     # rngs = jax.random.split(rng, num_devices)
-    #     # train_fn = lambda rng: make_train(ppo_config)(rng)
-    #     # start=time.time()
-    #     # out = jax.pmap(train_fn)(rngs)
-    #     # print("Time: ", time.time()-start)
-    #     # # +++++ Multiple GPUs +++++
     
-    
-    #     # # ---------- Save Output ----------
-    #     train_state = out['runner_state'][0] # runner_state.train_state
-    #     params = train_state.params
-    
-
-
-    #     params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-
-    #     # Save the params to a file using flax.serialization.to_bytes
-    #     with open(params_file_name, 'wb') as f:
-    #         f.write(flax.serialization.to_bytes(params))
-    #         print(f"params saved")
-
-    #     # Load the params from the file using flax.serialization.from_bytes
-    #     with open(params_file_name, 'rb') as f:
-    #         restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-    #         print(f"params restored")
-
-    #     if wandbOn:
-    #         run.finish()
