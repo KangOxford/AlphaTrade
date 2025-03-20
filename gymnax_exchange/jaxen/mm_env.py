@@ -1084,6 +1084,7 @@ class MarketMakingEnv(BaseLOBEnv):
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
+        
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = (self.trader_unique_id == executed[:, 6]) | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
