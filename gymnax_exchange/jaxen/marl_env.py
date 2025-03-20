@@ -88,9 +88,7 @@ class MARLEnv(BaseLOBEnv):
             cfg = exe_config,
             key=key_exe,
             alphatradePath=alphatradePath,
-            task="buy",
             window_index=window_index,
-            action_type="pure", 
             episode_time=episode_time,
             #max_task_size=exe_task_size,
             rewardLambda=exe_reward_lambda,
@@ -173,7 +171,7 @@ class MARLEnv(BaseLOBEnv):
         #mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
         #                                           state.mm_state,
         #                                           params.mm_params)
-
+        mm_action_prices = mm_order_msgs[:, 3]
 
 
         mm_cnl_msgs = job.getCancelMsgs(
@@ -249,21 +247,52 @@ class MARLEnv(BaseLOBEnv):
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
         )
-
         
         # Forward-fill best prices if necessary:
-        #new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines+1:], state.best_asks[-1, 0])
-        #new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines+1:], state.best_bids[-1, 0])
-        # Update time and ID counter
+        new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines+1:], state.mm_state.best_asks[-1, 0])
+        new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines+1:], state.mm_state.best_bids[-1, 0])
+
+       
+
+        # Get features of previous state for mm obvs update
+        old_time=state.time
+        old_mid_price=state.mm_state.mid_price
+
+         # Update time and ID counter
         final_time = combined_msgs[-1, -2:] + params.time_delay_obs_act
         final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
 
+        #---------------------------------------------------------
+        #(F) End step functions
+        #----------------------------------------------------------
+        
+        # Market maker end fuction
+        (new_asks, new_bids, new_trades), new_id_counter, new_time=self.mm_env.get_episode_end_fn(key_mm,
+            new_bestasks, new_bestbids, final_time, new_asks, new_bids, new_trades, state.mm_state, params.mm_params)
+        
+        # Execution End 
+        #Find quant executed
+        exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
+        exe_executions = self.exe_env._get_executed_by_action(exe_agent_trades, actions["execution"], state.exe_state)
+        exe_quant_executed_this_step = exe_executions.sum()
+        quant_left = state.exe_state.task_to_execute - (state.exe_state.quant_executed + exe_quant_executed_this_step)
+
+
+        (new_asks, new_bids, new_trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
+            self.exe_env.get_episode_end_fn(key_exe,
+                quant_left, new_bestasks[-1], new_bestbids[-1], final_time, new_asks, new_bids, new_trades, state.exe_state, params.exe_params)
+        new_bestasks = jnp.concatenate([new_bestasks,new_bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
+        new_bestbids = jnp.concatenate([new_bestbids, new_bestbids[-1:,:]], axis=0, dtype=jnp.int32)
+        
+
         # -------------------------------------------------------
-        # (F) Compute agent-specific rewards and observations
+        # (G) Compute agent-specific rewards and observations
         # -------------------------------------------------------
         mm_agent_trades = job.get_agent_trades(new_trades, self.mm_trader_id)
+        mm_executions = self.mm_env._get_executed_by_action(mm_agent_trades, actions["market_maker"], state,mm_action_prices)
         mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
-        mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
+        #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
+        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
         exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
@@ -277,7 +306,7 @@ class MARLEnv(BaseLOBEnv):
         jax.debug.print(f"EXE obs: {exe_obs}")
 
         # -------------------------------------------------------
-        # (G) Update the multi–agent state
+        # (H) Update the multi–agent state
         # -------------------------------------------------------
         # Update the shared base state fields
         base_state = state  
@@ -309,8 +338,8 @@ class MARLEnv(BaseLOBEnv):
             exe_state=new_exe_state
         )
 
-        obs = {"market_maker": jnp.array(mm_obs, dtype= jnp.float32), "execution": jnp.array(exe_obs, dtype= jnp.float32)}
-        rewards = {"market_maker": jnp.array(mm_reward, dtype= jnp.float32), "execution": exe_reward}
+        obs = {"market_maker": mm_obs, "execution": exe_obs}
+        rewards = {"market_maker": mm_reward, "execution": exe_reward}
         done = self.is_terminal(new_state, params)
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, done, info

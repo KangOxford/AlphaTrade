@@ -170,19 +170,13 @@ class EnvParams(BaseEnvParams):
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, cfg:EnvironmentExecutionConfig, key,alphatradePath, task, window_index, action_type, episode_time,
-            max_task_size = 500, rewardLambda=1.,trader_unique_id=-9999998, ep_type="fixed_time"):
+            self, cfg:EnvironmentExecutionConfig,key,alphatradePath, window_index, episode_time,
+            rewardLambda=1.,trader_unique_id=-9999998, ep_type="fixed_time"):
         
-        #Define Execution-specific attributes.
-        self.task = task # "random", "buy", "sell"
-        self.n_ticks_in_book = 2 # Depth of PP actions
-        self.action_type = action_type # 'delta' or 'pure'
-        self.max_task_size = max_task_size
-        self.rewardLambda = rewardLambda
-        # TODO: fix!! this can be overwritten in the base class
-        self.n_actions = 2 # 4: (FT, M, NT, PP), 3: (FT, NT, PP), 2 (FT, NT), 1 (FT)
+        #Define the config
+        self.rewardLambda = rewardLambda 
         self.cfg=cfg
-
+           
         #Call base-class init function
         super().__init__(
             cfg = cfg,
@@ -193,6 +187,12 @@ class ExecutionEnv(BaseLOBEnv):
             trader_unique_id = trader_unique_id,
             ep_type = ep_type,
         )
+
+         ##Choose an end function from theconfig
+        if self.cfg.end_fn=="force_market_order":
+            self.end_fn =self._force_market_order_if_done
+        elif self.cfg.end_fn=="unwind_FT":
+            self.end_fn=self.unwind_FT
 
     @property
     def default_params(self) -> EnvParams:
@@ -206,7 +206,7 @@ class ExecutionEnv(BaseLOBEnv):
         return EnvParams(
             *base_vals,
             EnvState(*state_vals),
-            self.max_task_size,
+            self.cfg.max_task_size,
             reward_lambda=self.rewardLambda
         )
 
@@ -235,7 +235,7 @@ class ExecutionEnv(BaseLOBEnv):
         cnl_msgs = job.getCancelMsgs(
             raw_order_side,
             self.cfg.init_id + 1,
-            self.n_actions,  # max number of orders to cancel
+            self.cfg.n_actions,  # max number of orders to cancel
             1 - state.is_sell_task * 2
         )
         
@@ -286,7 +286,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         # TODO: check if episode time is over and force market order if necessary
         (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
-            self._force_market_order_if_done(key,
+            self.get_episode_end_fn(key,
                 quant_left, bestasks[-1], bestbids[-1], time, asks, bids, trades, state, params)
 
         bestasks = jnp.concatenate([bestasks, jnp.resize(new_bestask, (1, 2))], axis=0, dtype=jnp.int32)
@@ -316,7 +316,7 @@ class ExecutionEnv(BaseLOBEnv):
             init_time = state.init_time,
             # time = time,
             time = new_time,
-            # customIDcounter = state.customIDcounter + self.n_actions + 1,
+            # customIDcounter = state.customIDcounter + self.cfg.n_actions + 1,
             customIDcounter = new_id_counter,
             window_index = state.window_index,
             step_counter = state.step_counter + 1,
@@ -372,10 +372,10 @@ class ExecutionEnv(BaseLOBEnv):
         """ Reset the environment to init state (pre computed from data)."""
         key_, key = jax.random.split(key)
         _, state = super().reset_env(key, params)
-        if self.task == 'random':
+        if self.cfg.task == 'random':
             direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
         else:
-            direction = 0 if self.task == 'buy' else 1
+            direction = 0 if self.cfg.task == 'buy' else 1
             
         state = dataclasses.replace(state, is_sell_task=direction)
 
@@ -417,8 +417,8 @@ class ExecutionEnv(BaseLOBEnv):
     def _get_pass_price_quant(self, state):
         price_passive_2 = jax.lax.cond(
             state.is_sell_task,
-            lambda: state.best_asks[-1, 0] + self.tick_size * self.n_ticks_in_book,
-            lambda: state.best_bids[-1, 0] - self.tick_size * self.n_ticks_in_book
+            lambda: state.best_asks[-1, 0] + self.tick_size * self.cfg.n_ticks_in_book,
+            lambda: state.best_bids[-1, 0] - self.tick_size * self.cfg.n_ticks_in_book
         )
         orders = jax.lax.cond(
             state.is_sell_task,
@@ -436,17 +436,17 @@ class ExecutionEnv(BaseLOBEnv):
         best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
         M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
         # if task is 'random', this will be randomly picked at env reset
-        is_sell_task = 0 if self.task == 'buy' else 1 # if self.task == 'random', set defualt as 0
+        is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0
         # HERE...
 
         return EnvState(
             *base_vals,
-            prev_action=jnp.zeros((self.n_actions, 2), jnp.int32),
-            prev_executed=jnp.zeros((self.n_actions, ), jnp.int32),
+            prev_action=jnp.zeros((self.cfg.n_actions, 2), jnp.int32),
+            prev_executed=jnp.zeros((self.cfg.n_actions, ), jnp.int32),
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
             init_price=M,
-            task_to_execute=self.max_task_size,
+            task_to_execute=self.cfg.max_task_size,
             quant_executed=0,
             total_revenue=0.,
             drift_return=0.,
@@ -491,7 +491,7 @@ class ExecutionEnv(BaseLOBEnv):
             ).astype(jnp.int32)
             return scaledAction
 
-        if self.action_type == 'delta':
+        if self.cfg.action_type == 'delta':
             action = twapV3(state, params) + action
 
         action = truncate_action(action, state.task_to_execute - state.quant_executed)
@@ -598,8 +598,8 @@ class ExecutionEnv(BaseLOBEnv):
         TODO: make this more general for aggressive actions?
         """
         price_levels, r_idx = jnp.unique(
-            agent_trades[:, 0], return_inverse=True, size=self.n_actions+1, fill_value=0)
-        quant_by_price = jax.ops.segment_sum(jnp.abs(agent_trades[:, 1]), r_idx, num_segments=self.n_actions+1)
+            agent_trades[:, 0], return_inverse=True, size=self.cfg.n_actions+1, fill_value=0)
+        quant_by_price = jax.ops.segment_sum(jnp.abs(agent_trades[:, 1]), r_idx, num_segments=self.cfg.n_actions+1)
         price_quants = jnp.vstack((price_levels[1:], quant_by_price[1:])).T
         # jax.debug.print("_get_executed_by_level\n {}", price_quants)
         return price_quants
@@ -681,7 +681,7 @@ class ExecutionEnv(BaseLOBEnv):
 
             quants = action.astype(jnp.int32)
             prices = jnp.array(price_levels[:-1])
-            if self.n_actions == 4:
+            if self.cfg.n_actions == 4:
                 # if mid_price == near_touch_price: combine orders into one
                 return jax.lax.cond(
                     price_levels[1] == price_levels[2],
@@ -704,7 +704,7 @@ class ExecutionEnv(BaseLOBEnv):
             # mid defaults to one tick more passive if between ticks
             M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
             NT = best_bid
-            PP = best_bid - self.tick_size*self.n_ticks_in_book
+            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
             MKT = self.cfg.maxint
             if action.shape[0] == 4:
                 return FT, M, NT, PP, MKT
@@ -723,7 +723,7 @@ class ExecutionEnv(BaseLOBEnv):
             M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
                  * self.tick_size).astype(jnp.int32)
             NT = best_ask
-            PP = best_ask + self.tick_size*self.n_ticks_in_book
+            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
             MKT = 0
             if action.shape[0] == 4:
                 return FT, M, NT, PP, MKT
@@ -736,15 +736,15 @@ class ExecutionEnv(BaseLOBEnv):
 
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
-        types = jnp.ones((self.n_actions,), jnp.int32)
-        sides = (1 - state.is_sell_task*2) * jnp.ones((self.n_actions,), jnp.int32)
-        trader_ids = jnp.ones((self.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((self.n_actions,), jnp.int32) *
+        types = jnp.ones((self.cfg.n_actions,), jnp.int32)
+        sides = (1 - state.is_sell_task*2) * jnp.ones((self.cfg.n_actions,), jnp.int32)
+        trader_ids = jnp.ones((self.cfg.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids = (jnp.ones((self.cfg.n_actions,), jnp.int32) *
                     (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, self.n_actions) #Each message has a unique ID
+                    + jnp.arange(0, self.cfg.n_actions) #Each message has a unique ID
         times = jnp.resize(
             state.time + params.time_delay_obs_act,
-            (self.n_actions, 2)
+            (self.cfg.n_actions, 2)
         )
         # --------------- 01 rest info for deciding action_msgs ---------------
         
@@ -780,6 +780,76 @@ class ExecutionEnv(BaseLOBEnv):
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
+
+
+    #======================Wrappers to choose funcitons=========================================#    
+    def get_episode_end_fn(self,key,quant_left,bestasks, bestbids, time, asks, bids, trades, state, params):
+        """
+        Wrapper function to call the appropriate episode end function.
+        """
+        if self.cfg.end_fn == "force_market_order":
+            return self.end_fn(key,quant_left,bestasks, bestbids, time, asks, bids, trades, state, params)
+        elif self.cfg.end_fn =="unwind_FT":
+            return self.end_fn(quant_left,bestasks, bestbids, time, asks, bids, trades, state, params)
+        else:
+            raise ValueError("Invalid end_fn specified.")
+
+    #--------unwind at mid FT-good for MARL------#
+    def unwind_FT(
+            self,
+            quant_left: jax.Array,
+            bestask: jax.Array,
+            bestbid: jax.Array,
+            time: jax.Array,
+            asks: jax.Array,
+            bids: jax.Array,
+            trades: jax.Array,
+            state: EnvState,
+            params: EnvParams,
+        ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
+        
+        #-----check if ep over-----#
+        if self.ep_type == 'fixed_time':
+            remainingTime = params.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
+            ep_is_over = remainingTime <= 5  # 5 seconds
+        else:
+            ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
+        averageMidprice = ((bestask[0] + bestbid[0]) // 2).mean() // self.tick_size * self.tick_size
+        #jax.debug.print("mid_price:{}",mid_price)
+        
+        new_time = time + params.time_delay_obs_act
+        next_id = state.customIDcounter + self.cfg.n_actions + 1
+
+        doom_price = jax.lax.cond(
+            state.is_sell_task,
+            lambda: ((bestbid[0])// self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: (( bestask[0])// self.tick_size * self.tick_size).astype(jnp.int32),
+        )
+
+        def place_midprice_trade(trades, price, quant, time):
+            '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
+            mid_trade = job.create_trade(
+                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
+            trades = job.add_trade(trades, mid_trade)
+            #jax.debug.print("called?")
+            return trades
+        
+        #Get side to place trade. +ve quant means we (aggresive) sold.
+        side_sign=(state.is_sell_task*2-1) # 1 if sell, -1 if buy
+        
+        trades = jax.lax.cond(
+            ep_is_over & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
+            place_midprice_trade,  # Place a midprice trade
+            lambda trades, b, c, d: trades,  # If not, return the existing trades
+            trades, doom_price, side_sign*quant_left, new_time  # Inv +ve means incoming is sell so standing buy.
+        )
+        #Return traded amounts
+        doom_quant = ep_is_over * quant_left
+        mkt_exec_quant=0 #return for consitency
+        id_counter=next_id
+
+        return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
+    #--------Force market if done-------------#
     def _force_market_order_if_done(
             self,
             key: chex.PRNGKey,
@@ -804,20 +874,20 @@ class ExecutionEnv(BaseLOBEnv):
                 # type, side, quant, price
                 1, side, quant_left, mkt_p,
                 self.trader_unique_id,
-                self.trader_unique_id + state.customIDcounter + self.n_actions,  # unique order ID for market order
+                self.trader_unique_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
                 *new_time,  # time of message
             ])
-            next_id = state.customIDcounter + self.n_actions + 1
+            next_id = state.customIDcounter + self.cfg.n_actions + 1
             return mkt_msg, next_id, new_time
 
         def create_dummy_order():
-            next_id = state.customIDcounter + self.n_actions
+            next_id = state.customIDcounter + self.cfg.n_actions
             return jnp.zeros((8,), dtype=jnp.int32), next_id, time 
         
 
         def place_doom_trade(trades, price, quant, time):
             doom_trade = job.create_trade(
-                price, quant, self.trader_unique_id + self.n_actions + 1, -666666, *time, self.trader_unique_id, -666666)
+                price, quant, self.trader_unique_id + self.cfg.n_actions + 1, -666666, *time, self.trader_unique_id, -666666)
             # jax.debug.print('doom_trade\n {}', doom_trade)
             trades = job.add_trade(trades, doom_trade)
             return trades
@@ -1055,9 +1125,9 @@ class ExecutionEnv(BaseLOBEnv):
             # "episode_time": jnp.array([1e3, 1e9]),
             "time_remaining": self.sliceTimeWindow, # 10 minutes = 600 seconds
             "init_price": 1e7, #p_std,
-            "task_size": self.max_task_size,
-            "executed_quant": self.max_task_size,
-            "remaining_quant": self.max_task_size,
+            "task_size": self.cfg.max_task_size,
+            "executed_quant": self.cfg.max_task_size,
+            "remaining_quant": self.cfg.max_task_size,
             "step_counter": 30,  # TODO: find way to make this dependent on episode length
             "max_steps": 30,
             "remaining_ratio": 1,
@@ -1088,7 +1158,7 @@ class ExecutionEnv(BaseLOBEnv):
             "p_pass": jnp.where(state.is_sell_task, best_asks, best_bids),
             "q_pass": jnp.where(state.is_sell_task, best_ask_qtys, best_bid_qtys), 
             "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
-            "p_pass2": jnp.where(state.is_sell_task, best_asks+self.tick_size*self.n_ticks_in_book, best_bids-self.tick_size*self.n_ticks_in_book), # second_passives
+            "p_pass2": jnp.where(state.is_sell_task, best_asks+self.tick_size*self.cfg.n_ticks_in_book, best_bids-self.tick_size*self.cfg.n_ticks_in_book), # second_passives
             "spread": best_asks - best_bids,
             "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,
@@ -1157,12 +1227,12 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """ Action space of the environment. """
-        if self.action_type == 'delta':
-            # return spaces.Box(-5, 5, (self.n_actions,), dtype=jnp.int32)
-            return spaces.Box(-100, 100, (self.n_actions,), dtype=jnp.int32)
+        if self.cfg.action_type == 'delta':
+            # return spaces.Box(-5, 5, (self.cfg.n_actions,), dtype=jnp.int32)
+            return spaces.Box(-100, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         else:
-            # return spaces.Box(0, 100, (self.n_actions,), dtype=jnp.int32)
-            return spaces.Box(0, self.max_task_size, (self.n_actions,), dtype=jnp.int32)
+            # return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+            return spaces.Box(0, self.cfg.max_task_size, (self.cfg.n_actions,), dtype=jnp.int32)
     
        
 
@@ -1222,11 +1292,8 @@ if __name__ == "__main__":
         cfg = env_cfg,
         key = key_reset,
         alphatradePath = config["ATFOLDER"],
-        task = config["TASKSIDE"],
         window_index = config["WINDOW_INDEX"],
-        action_type = config["ACTION_TYPE"],
         episode_time = config["EPISODE_TIME"],
-        max_task_size = config["MAX_TASK_SIZE"],
         ep_type=config["EP_TYPE"],
     )
     # env_params=env.default_params

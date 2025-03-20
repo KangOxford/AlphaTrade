@@ -1085,6 +1085,7 @@ class MarketMakingEnv(BaseLOBEnv):
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
+        
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = (self.trader_unique_id == executed[:, 6]) | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
@@ -1430,12 +1431,13 @@ class MarketMakingEnv(BaseLOBEnv):
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = state.cash_balance + PnL
         inventoryValue=new_inventory*(reference_price//self.tick_size)
-        netWorth=PnL+inventoryValue  
+        netWorth=new_cash_balance+inventoryValue  
 
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
-            reward = (new_inventory * reference_price) + new_cash_balance
+            reward = (new_inventory * reference_price//self.tick_size) + new_cash_balance
         elif self.cfg.reward_space == "pnl":
+            ##This will just force sales...
             reward = PnL
         elif self.cfg.reward_space == "complex":
             reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl + inventoryPnL_lambda * jnp.minimum(InventoryPnL, InventoryPnL * asymmetrically_dampened_lambda)

@@ -37,6 +37,12 @@ class EnvironmentConfig(Configuration):
 @dataclass(frozen=True)
 class EnvironmentExecutionConfig(Configuration):
     n_ticks_in_book : int = env_cst.n_ticks_in_book
+    task: Literal["random", "buy", "sell"]="buy"
+    action_type: Literal["delta", "pure"]="pure"
+    end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
+    max_task_size:int=500
+    n_actions:int=4
+    
 
 
 
