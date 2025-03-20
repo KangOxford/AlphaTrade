@@ -557,33 +557,56 @@ if __name__ == "__main__":
 
     # Need only to add deviations from the default environment config.
     env_config_hps = []
-    for o in ["engineered"]:
-        for r in ["pnl", "complex", "portfolio_value"]:
-            for i in ["none", "linear", "quadratic"]:
-                for a in ["fixed_prices", "fixed_quants"]:
-                    for e in ["force_market_order", "unwind_mid_price","do_nothing"]:
-                        for r in ["mid", "best_bid_ask"]:
-                            env_config_hps.append({"observation_space":o,
-                                                    "reward_space":r,
-                                                    "inv_penalty":i,
-                                                    "action_space":a,
-                                                        "end_fn":e,
-                                                        "reference_price_portfolio_value":r})  
- 
+    #for o in ["engineered"]:
+    #    for r in ["portfolio_value"]:
+    #        for i in ["none", "linear", "quadratic"]:
+    #            for a in ["fixed_quants"]:
+    #                for e in ["unwind_mid_price","do_nothing"]:
+    #                    for r in ["mid", "best_bid_ask"]:
+    #                        env_config_hps.append({"observation_space":o,
+    #                                                "reward_space":r,
+    #                                                "inv_penalty":i,
+    #                                                "action_space":a,
+    #                                                    "end_fn":e,
+    #                                                    "reference_price_portfolio_value":r})  
+    env_config_hps = [{"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"linear",
+                         "n_actions":8,
+                         "end_fn":"unwind_mid_price"},
+
+                         {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"linear",
+                         "n_actions":4,
+                         "end_fn":"unwind_mid_price"},
+                         
+                         {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_mid_price"},
+
+                         {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":4,
+                         "end_fn":"unwind_mid_price"}
+                       ]
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [1e-5, 2.5e-4, 5e-4, 1e-3]},
+        "LR": {"values": [2.5e-4]},
         "NUM_ENVS": {"values": [256]},
-        "NUM_STEPS": {"values": [128]},
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
+        "NUM_STEPS": {"values": [32]},
+        "TOTAL_TIMESTEPS": {"values": [5e6]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.95, 0.99, 0.999]},
-        "GAE_LAMBDA": {"values": [0.95,0.99]},
+        "GAMMA": {"values": [0.999]},
+        "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0,0.1]},
+        "ENT_COEF": {"values": [0.1]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -632,7 +655,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="TEST_SWEEPS")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_R")
     wandb.agent(sweep_id, function=sweep_fun, count=10)
 
 

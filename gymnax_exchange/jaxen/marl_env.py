@@ -172,7 +172,7 @@ class MARLEnv(BaseLOBEnv):
         #mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
         #                                           state.mm_state,
         #                                           params.mm_params)
-
+        mm_action_prices = mm_order_msgs[:, 3]
 
 
         mm_cnl_msgs = job.getCancelMsgs(
@@ -254,6 +254,10 @@ class MARLEnv(BaseLOBEnv):
         #new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines+1:], state.best_asks[-1, 0])
         #new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines+1:], state.best_bids[-1, 0])
         # Update time and ID counter
+        old_time=state.time
+        #old_mid_price=state.mid_price
+        old_mid_price=state.mm_state.mid_price
+
         final_time = combined_msgs[-1, -2:] + params.time_delay_obs_act
         final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
 
@@ -261,8 +265,10 @@ class MARLEnv(BaseLOBEnv):
         # (F) Compute agent-specific rewards and observations
         # -------------------------------------------------------
         mm_agent_trades = job.get_agent_trades(new_trades, self.mm_trader_id)
+        mm_executions = self.mm_env._get_executed_by_action(mm_agent_trades, actions["market_maker"], state,mm_action_prices)
         mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
-        mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
+        #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
+        mm_obs=self.mm_env.get_observation(state.mm_state, params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
         exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
