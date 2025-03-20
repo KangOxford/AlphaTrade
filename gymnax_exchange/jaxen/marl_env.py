@@ -277,9 +277,11 @@ class MARLEnv(BaseLOBEnv):
         quant_left = state.exe_state.task_to_execute - (state.exe_state.quant_executed + exe_quant_executed_this_step)
 
 
-        (new_asks, new_bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
+        (new_asks, new_bids, new_trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
             self.exe_env.get_episode_end_fn(key_exe,
                 quant_left, new_bestasks[-1], new_bestbids[-1], final_time, new_asks, new_bids, new_trades, state.exe_state, params.exe_params)
+        new_bestasks = jnp.concatenate([new_bestasks,new_bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
+        new_bestbids = jnp.concatenate([new_bestbids, new_bestbids[-1:,:]], axis=0, dtype=jnp.int32)
         
 
         # -------------------------------------------------------
@@ -289,7 +291,7 @@ class MARLEnv(BaseLOBEnv):
         mm_executions = self.mm_env._get_executed_by_action(mm_agent_trades, actions["market_maker"], state,mm_action_prices)
         mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
         #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
-        mm_obs=self.mm_env.get_observation(state.mm_state, params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
+        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
         exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
@@ -336,7 +338,7 @@ class MARLEnv(BaseLOBEnv):
         )
 
         obs = {"market_maker": mm_obs, "execution": exe_obs}
-        rewards = {"market_maker": float(mm_reward), "execution": float(exe_reward)}
+        rewards = {"market_maker": mm_reward, "execution": exe_reward}
         done = self.is_terminal(new_state, params)
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, done, info
@@ -457,7 +459,7 @@ if __name__ == "__main__":
         #action_mm = env.mm_env.action_space().sample(key_policy)
         #action_exe = env.exe_env.action_space().sample(key_policy)
         actions = {"market_maker": action_mm, "execution": action_exe}
-        obs, state, rewards, done, info = env.step_env(key_step, state, actions, env_params)
+        obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
         print(f"Actions: {actions}")
         print("Step rewards:", rewards)
         print("Step info:", info)
