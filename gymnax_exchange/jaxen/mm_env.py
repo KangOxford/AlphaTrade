@@ -110,6 +110,7 @@ chex.assert_gpu_available(backend=None)
 # config.update('jax_platform_name', 'cpu')
 # config.update("jax_enable_x64",True)
 config.update("jax_disable_jit", False) # use this during training
+#jax.config.update("jax_log_compiles", True) use this to see when he is recompiling
 # config.update("jax_disable_jit", True) # Code snippet to disable all jitting.
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 jax.numpy.set_printoptions(linewidth=183)
