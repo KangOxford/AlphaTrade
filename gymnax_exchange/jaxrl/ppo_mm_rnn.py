@@ -470,18 +470,46 @@ def make_train(config):
                     sellQuant=info_train["sellQuant"]
                     reward=info_train["reward"]
                     other_exec_quants=info_train["other_exec_quants"]
+                    # Extract networth metrics
+                    networth = info_train["netWorth"]
                     reward_eval=info_eval["reward"]
                     PnL_eval=info_eval["total_PnL"]
+                    # Extract evaluation networth metrics
+                    networth_eval = info_eval["netWorth"]
 
                     if wandbOn:
                         wandb.log(
                             data={
                                 "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0, # timesteps[t],
+                                # Add mean and standard deviation for reward
                                 "reward":jnp.mean(reward) if reward.size > 0 else 0,
-                                "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                "PnL": jnp.mean(PnL) if PnL.size > 0 else 0,  # Handle empty arrays
-                                "PnL_eval": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,  # Handle empty arrays
+                                "reward_minus_std": jnp.mean(reward) - jnp.std(reward) if reward.size > 0 else 0,
+                                "reward_plus_std": jnp.mean(reward) + jnp.std(reward) if reward.size > 0 else 0,
+                                # Add mean and standard deviation for episodic return
+                                "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,
+                                "episodic_return_minus_std": jnp.mean(return_values) - jnp.std(return_values) if return_values.size > 0 else 0,
+                                "episodic_return_plus_std": jnp.mean(return_values) + jnp.std(return_values) if return_values.size > 0 else 0,
+                                # Add mean and standard deviation for PnL
+                                "PnL": jnp.mean(PnL) if PnL.size > 0 else 0,
+                                "PnL_minus_std": jnp.mean(PnL) - jnp.std(PnL) if PnL.size > 0 else 0,
+                                "PnL_plus_std": jnp.mean(PnL) + jnp.std(PnL) if PnL.size > 0 else 0,
+                                # Add mean and standard deviation for evaluation PnL
+                                "PnL_eval": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
+                                "PnL_eval_minus_std": jnp.mean(PnL_eval) - jnp.std(PnL_eval) if PnL_eval.size > 0 else 0,
+                                "PnL_eval_plus_std": jnp.mean(PnL_eval) + jnp.std(PnL_eval) if PnL_eval.size > 0 else 0,
+                                # Add mean and standard deviation for evaluation reward
                                 "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
+                                "reward_eval_minus_std": jnp.mean(reward_eval) - jnp.std(reward_eval) if reward_eval.size > 0 else 0,
+                                "reward_eval_plus_std": jnp.mean(reward_eval) + jnp.std(reward_eval) if reward_eval.size > 0 else 0,
+                                # Add networth metrics
+                                "networth": jnp.mean(networth) if networth.size > 0 else 0,
+                                "networth_minus_std": jnp.mean(networth) - jnp.std(networth) if networth.size > 0 else 0,
+                                "networth_plus_std": jnp.mean(networth) + jnp.std(networth) if networth.size > 0 else 0,
+                                # Add evaluation networth metrics
+                                "networth_eval": jnp.mean(networth_eval) if networth_eval.size > 0 else 0,
+                                "networth_eval_minus_std": jnp.mean(networth_eval) - jnp.std(networth_eval) if networth_eval.size > 0 else 0,
+                                "networth_eval_plus_std": jnp.mean(networth_eval) + jnp.std(networth_eval) if networth_eval.size > 0 else 0,
+                                # Keep other metrics as they were
                                 "inventory": jnp.mean(inventories) if inventories.size > 0 else 0, 
                                 "buyQuant":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
                                 "sellQuant":jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
@@ -490,6 +518,17 @@ def make_train(config):
                             },
                             commit=True
                         )
+                        
+                        # Additionally log histograms for full distributions
+                        if reward.size > 0:
+                            wandb.log({"reward_histogram": wandb.Histogram(reward)}, commit=False)
+                        if return_values.size > 0:
+                            wandb.log({"episodic_return_histogram": wandb.Histogram(return_values)}, commit=False)
+                        if PnL.size > 0:
+                            wandb.log({"PnL_histogram": wandb.Histogram(PnL)}, commit=False)
+                        # Add networth histogram
+                        if networth.size > 0:
+                            wandb.log({"networth_histogram": wandb.Histogram(networth)}, commit=False)
                     print("Update step is",update_count, "of",config["NUM_UPDATES"])
                     if config["VERBOSE"]:
                         for t in range(len(timesteps)):
@@ -528,18 +567,35 @@ if __name__ == "__main__":
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
     # Need only to add deviations from the default environment config.
-    env_config_hps = [{"observation_space":"engineered",
-                        "reward_space":"pnl"},
-                      {"observation_space":"engineered",
-                        "reward_space":"zero_inv"}]
+    #env_config_hps = [{"observation_space":"engineered",
+    #                    "reward_space":"pnl"},
+    #                  {"observation_space":"engineered",
+    #                    "reward_space":"zero_inv"}]
     
+    env_config_hps = []
+
+    for o in ["engineered"]:
+        for r in ["pnl", "complex", "portfolio_value"]:
+            for i in ["none", "linear", "quadratic"]:
+                for a in ["fixed_quants"]:
+                    for e in ["unwind_mid_price"]:
+                        for ref_price in ["mid"]:
+                            for n_actions in [4, 8]:
+                                env_config_hps.append({"observation_space":o,
+                                                        "reward_space":r,
+                                                        "inv_penalty":i,
+                                                        "action_space":a,
+                                                        "end_fn":e,
+                                                        "reference_price_portfolio_value":ref_price,
+                                                        "n_actions":n_actions})  
+
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
         "LR": {"values": [2.5e-4]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [128]},
-        "TOTAL_TIMESTEPS": {"values": [4e5]},
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.99]},
@@ -554,7 +610,7 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "REWARD_LAMBDA": {"values": [0.1]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [200]},
+        "WINDOW_INDEX": {"values": [-1]},
         "MAX_TASK_SIZE": {"values": [100]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
@@ -594,7 +650,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="TEST_SWEEPS")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="RNN_SWEEPS")
     wandb.agent(sweep_id, function=sweep_fun, count=10)
 
 
