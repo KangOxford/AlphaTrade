@@ -585,7 +585,7 @@ if __name__ == "__main__":
     env_config_hps = [{"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
-                         "n_actions":8,
+                         "n_actions":4,
                          "end_fn":"unwind_mid_price"},
 
                          {"observation_space":"engineered",
@@ -604,6 +604,13 @@ if __name__ == "__main__":
                          "reward_space":"portfolio_value",
                          "inv_penalty":"none",
                          "n_actions":4,
+                         "end_fn":"unwind_mid_price"},
+
+                        {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":4,
+                         "action_space":"fixed_prices",
                          "end_fn":"unwind_mid_price"}
                        ]
     
@@ -628,7 +635,7 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "REWARD_LAMBDA": {"values": [0.1]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [4]},
+        "WINDOW_INDEX": {"values": [-1]},
         "MAX_TASK_SIZE": {"values": [100]},
         "EPISODE_TIME": {"values": [60*3]},
         "DATA_TYPE": {"values": ["fixed_time"]},
@@ -668,7 +675,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_R")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="RNN_SWEEPS_MM")
     wandb.agent(sweep_id, function=sweep_fun, count=10)
 
 
