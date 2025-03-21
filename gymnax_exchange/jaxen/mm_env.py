@@ -415,6 +415,9 @@ class MarketMakingEnv(BaseLOBEnv):
             # TODO: make the 5 sec a function of the step size
             time_left=(params.episode_time - (state.time - state.init_time)[0] )
             #jax.debug.print("time_left :{}",time_left)
+            jax.debug.print("time :{}",state.time)
+            jax.debug.print("init_time :{}",state.init_time)
+            jax.debug.print("start_index :{}",state.start_index)
             return (
                 (params.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
             )
@@ -1794,7 +1797,7 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 1,
+        "WINDOW_INDEX": 0,
         "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*30,  
