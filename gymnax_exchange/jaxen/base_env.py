@@ -189,7 +189,7 @@ class BaseLOBEnv(environment.Environment):
                                     day_start=self.day_start,
                                     day_end=self.day_end) 
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
-        jax.debug.print("starts:{}",starts)
+        #jax.debug.print("starts:{}",starts)
         self.max_messages_in_episode_arr = max_messages_arr
         self.messages=msgs #Is different to trad. base: all msgs concat. 
         self.books=books

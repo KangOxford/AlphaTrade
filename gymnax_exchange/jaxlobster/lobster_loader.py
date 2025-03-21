@@ -260,8 +260,8 @@ class LoadLOBSTER():
             init_OBs.append(orderbook_day.iloc[start_index,:])
         
         if self.window_type == "fixed_steps":
-            print(indices)
-            print(len(sliced_parts))
+            #print(indices)
+           # print(len(sliced_parts))
             assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
             for part in sliced_parts:
                 assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
