@@ -201,8 +201,8 @@ class MarketMakingEnv(BaseLOBEnv):
         ##Choose an end function from theconfig
         if self.cfg.end_fn=="force_market_order":
             self.end_fn =self._force_market_order_if_done
-        elif self.cfg.end_fn=="unwind_mid_price":
-            self.end_fn=self.unwind_mid_price
+        elif self.cfg.end_fn=="unwind_ref_price":
+            self.end_fn=self.unwind_ref_price
         elif self.cfg.end_fn=="do_nothing":
             self.end_fn=self.end_fn_pass
       
@@ -358,6 +358,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "total_PnL": state.total_PnL,                           
             "current_step": state.step_counter,
             "done": done,
+            "time_seconds":state.time[0],
             "inventory": state.inventory,
             "market_share":extras["market_share"],
             "buyPnL":extras["buyPnL"],
@@ -909,16 +910,16 @@ class MarketMakingEnv(BaseLOBEnv):
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 0, 0, -1, 1, -1, 5, 10], dtype=jnp.int32)
         ask_offsets = jnp.array([0, 0, -1, 0, -1, 1, 5, 10], dtype=jnp.int32)
-        bid_quants = jnp.array([0, 10, 0, 10, 10, 10, 10, 10], dtype=jnp.int32)
-        ask_quants = jnp.array([0, 10, 10, 0, 10, 10, 10, 10], dtype=jnp.int32)##config quant....
+        bid_quants = jnp.array([0, 1, 0, 1, 1, 1, 1, 1], dtype=jnp.int32)
+        ask_quants = jnp.array([0, 1, 1, 0, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
         tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
         # Get parameters for current action
         bid_offset = bid_offsets[action]
         ask_offset = ask_offsets[action]
-        bid_quant = bid_quants[action]
-        ask_quant = ask_quants[action]
+        bid_quant = bid_quants[action]*self.cfg.fixed_quant_value
+        ask_quant = ask_quants[action]*self.cfg.fixed_quant_value
         
         # Calculate prices with bounds checking
         bid_price = best_bid - bid_offset * tick_offset
@@ -1074,7 +1075,7 @@ class MarketMakingEnv(BaseLOBEnv):
         time = time + params.time_delay_obs_act
         return (asks, bids, trades),  id_counter, time
 
-    def unwind_mid_price(self,
+    def unwind_ref_price(self,
             bestasks: jax.Array,
             bestbids: jax.Array,
             time: jax.Array,
@@ -1085,7 +1086,9 @@ class MarketMakingEnv(BaseLOBEnv):
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
-        
+        '''Function to create an artifical trade which liquidates the agent's position.
+            cfg.rerefernce price sets the price of the trade
+        '''
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = (self.trader_unique_id == executed[:, 6]) | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
@@ -1118,11 +1121,12 @@ class MarketMakingEnv(BaseLOBEnv):
         
         new_time = time + params.time_delay_obs_act
 
+
         is_sell_task = jnp.where(new_inventory > 0, 1, 0)
-        doom_price = jax.lax.cond(
+        FT_price = jax.lax.cond(
             is_sell_task,
-            lambda: ((bestbids[-1, 0])*0.98 // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: (( bestasks[-1, 0])*1.02 // self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: ((bestbids[-1, 0]) // self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: (( bestasks[-1, 0])// self.tick_size * self.tick_size).astype(jnp.int32),
         )
 
         def place_midprice_trade(trades, price, quant, time):
@@ -1132,12 +1136,19 @@ class MarketMakingEnv(BaseLOBEnv):
             trades = job.add_trade(trades, mid_trade)
             #jax.debug.print("called?")
             return trades
+
+        ##Get the price to unwind at based on the config
+        if self.cfg.reference_price_portfolio_value == "mid":
+            reference_price = averageMidprice
+        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
+            reference_price=FT_price
+
         
         trades = jax.lax.cond(
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, doom_price, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
+            trades, reference_price, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
         )
         #jax.debug.print("averageMidprice :{}",averageMidprice)
 
@@ -1166,7 +1177,8 @@ class MarketMakingEnv(BaseLOBEnv):
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         """ Force a market order if episode is over (either in terms of time or steps).
          Cancel all agent trades and place a market trade. If this is unmatched, cancel any remaing volume
-          and place an artificial trade at a bad price. """
+          and place an artificial trade at a bad price.
+           NOTICE,NOT REALLY USED FOR MARKET MAKING """
         
         def create_mkt_order():
             '''Create a market order by either placing a limit
@@ -1493,7 +1505,7 @@ class MarketMakingEnv(BaseLOBEnv):
         """
         Wrapper function to call the appropriate episode end function.
         """
-        if self.cfg.end_fn == "unwind_mid_price":
+        if self.cfg.end_fn == "unwind_ref_price":
             return self.end_fn(bestasks, bestbids, time, asks, bids, trades, state, params)
         elif self.cfg.end_fn == "force_market_order":
             return self.end_fn(key,bestasks, bestbids, time, asks, bids, trades, state, params)
@@ -1772,7 +1784,8 @@ if __name__ == "__main__":
     except:
         # ATFolder = "./testing_oneDay"
         #ATFolder = "/training_oneDay"
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
+        #ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
+        ATFolder= "/home/duser/AlphaTrade/testing"
 
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
@@ -1784,7 +1797,7 @@ if __name__ == "__main__":
         "WINDOW_INDEX": 1,
         "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*10,  
+        "EPISODE_TIME": 60*30,  
     }
         
     rng = jax.random.PRNGKey(0)
@@ -1820,26 +1833,25 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,20):
+    for i in range(1,2000):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
-        print("-"*20)
+        print("-"*200)
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         #test_action=env.action_space().sample(key_policy)
         test_action = env.action_space().sample(key_policy) 
-        #test_action=0
         jax.debug.print("test_action :{}",test_action)
-        #test_action=0
         env.action_space().sample(key_policy) // 10
         # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
-        print(obs)
+        #print(obs)
         print("Step reward:", reward)
-        print("Step info:", info)
+        #print("Step info:", info)
+        print("time",info["time_seconds"])
 
 
         print("Intial Time \n", state.init_time)

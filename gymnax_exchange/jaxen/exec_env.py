@@ -391,6 +391,9 @@ class ExecutionEnv(BaseLOBEnv):
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """ Check whether state is terminal. """
         if self.ep_type == 'fixed_time':
+            jax.debug.print("params_episode_time:{}",params.episode_time)
+            jax.debug.print("time:{}",state.time)
+            jax.debug.print("init_time:{}",state.init_time)
             # TODO: make the 5 sec a function of the step size
             return (
                 (params.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
@@ -1275,7 +1278,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "TASKSIDE": "buy", # "random", # "buy",
         "MAX_TASK_SIZE": 100, # 500,
-        "WINDOW_INDEX": 1,
+        "WINDOW_INDEX": 5,
         "ACTION_TYPE": "pure", # "pure",
         "REWARD_LAMBDA": 1.0,
         "EP_TYPE": "fixed_time",

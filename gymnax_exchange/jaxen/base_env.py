@@ -178,16 +178,18 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id= trader_unique_id #need to be negative now??
         self.tick_size=100
-        self.start_resolution=60*5 #Interval in seconds at which eps start
+        self.start_resolution=60*30 #Interval in seconds at which eps start
         self.cfg = cfg
-        jax.debug.print("cfg: {}",self.cfg)
         loader=LoadLOBSTER_resample(alphatradePath,
                                     self.book_depth,
                                     ep_type,
                                     window_length=self.sliceTimeWindow,
                                     n_msg_per_step=self.stepLines,
-                                    window_resolution=self.start_resolution) 
+                                    window_resolution=self.start_resolution,
+                                    day_start=self.day_start,
+                                    day_end=self.day_end) 
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
+        jax.debug.print("starts:{}",starts)
         self.max_messages_in_episode_arr = max_messages_arr
         self.messages=msgs #Is different to trad. base: all msgs concat. 
         self.books=books
@@ -310,14 +312,16 @@ class BaseLOBEnv(environment.Environment):
                 print("LOADING STATES FROM PKL...")
         except:
             print("COMPUTING INIT STATES...")
-            states = [self._get_state_from_data(key,self.messages[starts[i]],
+            for i in range(self.n_windows):
+                print("message starts",self.messages[starts[i]])
+            states = [self._get_state_from_data(key,
+                                                self.messages[starts[i]],
                                                 self.books[i],
-                                                self.max_messages_in_episode_arr[i]//self.stepLines+1,
+                                                self.max_messages_in_episode_arr[i]
+                                                    //self.stepLines+1,
                                                     i,
                                                     starts[i]) 
-                        for i in range(self.n_windows)
-                        for _ in [print(f"Processing window {i + 1}/{self.n_windows}") if i % 10 == 0 else None]]
-            
+                        for i in range(self.n_windows)]
             self.init_states_array=tree_stack(states)
             print("SAVING STATES TO PKL...")
             with open(pkl_file_name, 'wb') as f:

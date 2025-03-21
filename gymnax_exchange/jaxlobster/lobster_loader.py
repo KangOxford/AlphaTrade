@@ -327,7 +327,9 @@ class LoadLOBSTER_resample():
                  type_="fixed_time",
                  window_length=1800,
                  window_resolution=60,
-                 n_msg_per_step=100):
+                 n_msg_per_step=100,
+                 day_start=34200,  
+                 day_end=57600):
         self.atpath=alphatradepath
         self.messagePath = alphatradepath+"/data/Flow_"+str(n_Levels)+"/"
         self.orderbookPath = alphatradepath+"/data/Book_"+str(n_Levels)+"/"
@@ -336,6 +338,10 @@ class LoadLOBSTER_resample():
         self.window_resolution=window_resolution
         self.n_messages=n_msg_per_step
         self.index_offest=0
+        self.day_start=day_start
+        self.day_end=day_end
+   
+        
 
 
 
@@ -467,11 +473,13 @@ class LoadLOBSTER_resample():
                 init_OBs (List): List of arrays repr. init. orderbook
                                     data for each starting point.
         """
-        d_end = (message_day['time_s'].max()+1-self.window_length+self.window_resolution
+        d_end = (#message_day['time_s'].max()+1-self.window_length+self.window_resolution
+                 self.day_end
                  if self.window_type=="fixed_time"  
                  else message_day.shape[0]-
                     self.window_length*self.n_messages)
-        d_start = (message_day['time_s'].min() 
+        d_start = (#message_day['time_s'].min() 
+                    self.day_start
                  if self.window_type=="fixed_time"  
                  else 0)
         #Note indices may be either time or index. Confusing. 

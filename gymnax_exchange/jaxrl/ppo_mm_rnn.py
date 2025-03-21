@@ -247,6 +247,7 @@ def make_train(config):
             def _env_step(runner_state, unused):
                 train_state, env_state, last_obs, last_done, hstate, rng = runner_state
                 rng, _rng = jax.random.split(rng)
+                
 
                 # SELECT ACTION
                 ac_in = (last_obs[np.newaxis, :], last_done[np.newaxis, :])
@@ -276,6 +277,7 @@ def make_train(config):
                 transition = Transition(
                     last_done, action, value, reward, log_prob, last_obs, info
                 )
+
                 runner_state = (train_state, env_state, obsv, done, hstate, rng)
                 return runner_state, transition
 
@@ -445,12 +447,12 @@ def make_train(config):
 
             rng, _rng = jax.random.split(rng)
             reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-            obsv, env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
+            obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
             initial_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
             
             eval_runner_state = (
             train_state,
-            env_state,
+            eval_env_state,
             obsv,
             jnp.zeros((config["NUM_ENVS"]), dtype=bool),
             initial_hstate,
@@ -462,8 +464,9 @@ def make_train(config):
             eval_metric=eval_traj_batch.info
             if config.get("DEBUG"):
                 def callback(info_train,info_eval,update_count):
-                    return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                    return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
                     timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
+                    time=info_train["time_seconds"] 
                     PnL = info_train["total_PnL"]
                     inventories = info_train["inventory"] 
                     buyQuant=info_train["buyQuant"]
@@ -483,6 +486,7 @@ def make_train(config):
                         wandb.log(
                             data={
                                 "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0, # timesteps[t],
+                                "time":jnp.mean(time) if time.size>0 else 0,
                                 #Stream reward and std for error bars
                                 "reward":jnp.mean(reward) if reward.size > 0 else 0,
                                 "reward_upper": (jnp.mean(reward) + jnp.std(reward)) if reward.size > 0 else 0,
@@ -508,9 +512,7 @@ def make_train(config):
                                 "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
                                 
 
-                                "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                
-                               
+                                "return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
                                 
                                 "inventory": jnp.mean(inventories) if inventories.size > 0 else 0, 
                                 "buyQuant":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
@@ -586,25 +588,25 @@ if __name__ == "__main__":
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
                          "n_actions":8,
-                         "end_fn":"unwind_mid_price"},
+                         "end_fn":"unwind_ref_price"},
 
                          {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
                          "n_actions":4,
-                         "end_fn":"unwind_mid_price"},
+                         "end_fn":"unwind_ref_price"},
                          
                          {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"none",
                          "n_actions":8,
-                         "end_fn":"unwind_mid_price"},
+                         "end_fn":"unwind_ref_price"},
 
                          {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"none",
                          "n_actions":4,
-                         "end_fn":"unwind_mid_price"}
+                         "end_fn":"unwind_ref_price"}
                        ]
     
     # Model & Training parameters, should be independant of the environment config
@@ -613,13 +615,13 @@ if __name__ == "__main__":
         "LR": {"values": [2.5e-4]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [5e6]},
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.1]},
+        "ENT_COEF": {"values": [0.01,0.0]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -628,9 +630,9 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "REWARD_LAMBDA": {"values": [0.1]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [4]},
+        "WINDOW_INDEX": {"values": [2]},
         "MAX_TASK_SIZE": {"values": [100]},
-        "EPISODE_TIME": {"values": [60*3]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps}
@@ -668,7 +670,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_R")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_21_03_fixed_for_real")
     wandb.agent(sweep_id, function=sweep_fun, count=10)
 
 
