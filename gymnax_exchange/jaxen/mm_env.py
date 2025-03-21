@@ -415,9 +415,9 @@ class MarketMakingEnv(BaseLOBEnv):
             # TODO: make the 5 sec a function of the step size
             time_left=(params.episode_time - (state.time - state.init_time)[0] )
             #jax.debug.print("time_left :{}",time_left)
-            jax.debug.print("time :{}",state.time)
-            jax.debug.print("init_time :{}",state.init_time)
-            jax.debug.print("start_index :{}",state.start_index)
+            #jax.debug.print("time :{}",state.time)
+            #jax.debug.print("init_time :{}",state.init_time)
+            #jax.debug.print("start_index :{}",state.start_index)
             return (
                 (params.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
             )
