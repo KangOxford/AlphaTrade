@@ -464,75 +464,113 @@ def make_train(config):
             eval_metric=eval_traj_batch.info
             if config.get("DEBUG"):
                 def callback(info_train,info_eval,update_count):
+                    #------------Collect info for plotting---------------------------#
+                    #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
                     timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
-                    time=info_train["time_seconds"] 
-                    PnL = info_train["total_PnL"]
-                    inventories = info_train["inventory"] 
-                    buyQuant=info_train["buyQuant"]
-                    sellQuant=info_train["sellQuant"]
-                    reward=info_train["reward"]
-                    other_exec_quants=info_train["other_exec_quants"]
-                    # Extract networth metrics
-                    networth = info_train["netWorth"]
+                    #time=info_train["time_seconds"] 
+
+                    #-----------Train info----------#
+                    PnL_train = info_train["total_PnL"]
+                    inventories_train = info_train["inventory"] 
+                    buyQuant_train=info_train["buyQuant"]
+                    sellQuant_train=info_train["sellQuant"]
+                    reward_train=info_train["reward"]
+                    other_exec_quants_train=info_train["other_exec_quants"]
+                    netWorth_train = info_train["netWorth"]
+                    averageMidprice_train=info_eval["averageMidprice"]
+                    averageBestbid_train=info_train["average_best_bid"]
+                    averageBestask_train=info_train["average_best_ask"]
+
+                    #-------------eval info------#   
+                    PnL_eval = info_eval["total_PnL"]
+                    inventories_eval = info_eval["inventory"] 
+                    buyQuant_eval=info_eval["buyQuant"]
+                    sellQuant_eval=info_eval["sellQuant"]
                     reward_eval=info_eval["reward"]
-                    PnL_eval=info_eval["total_PnL"]
-                    netWorth=info_train["netWorth"]
-                    netWorth_eval=info_eval["netWorth"]
-                    
-
-
+                    other_exec_quants_eval=info_eval["other_exec_quants"]
+                    netWorth_eval = info_eval["netWorth"]
+                    averageMidprice_eval=info_eval["averageMidprice"]
+                    averageBestbid_eval=info_eval["average_best_bid"]
+                    averageBestask_eval=info_eval["average_best_ask"]
                     if wandbOn:
                         wandb.log(
                             data={
+                                #-----time and return------------#
+                                "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
                                 "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0, # timesteps[t],
-                                "time":jnp.mean(time) if time.size>0 else 0,
-                                #Stream reward and std for error bars
-                                "reward":jnp.mean(reward) if reward.size > 0 else 0,
-                                "reward_upper": (jnp.mean(reward) + jnp.std(reward)) if reward.size > 0 else 0,
-                                "reward_lower": (jnp.mean(reward) - jnp.std(reward)) if reward.size > 0 else 0,
+                                #"time":jnp.mean(time) if time.size>0 else 0,
 
-                                #Same for eval
-                                "reward_eval_mean":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
-                                "reward_eval_upper": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
-                                "reward_eval_lower": (jnp.mean(reward_eval) - jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                #---------Reward and error bars--------#
+                                #train
+                                "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
+                                "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                                "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                                #eval
+                                "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
+                                "reward_eval_plus_std": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                "reward_eval_minus_std": (jnp.mean(reward_eval) - jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
                                 
-                                #Steam Pnl and its std
-                                "PnL_mean": jnp.mean(PnL) if PnL.size > 0 else 0,
-                                "PnL_upper": (jnp.mean(PnL) + jnp.std(PnL)) if PnL.size > 0 else 0,
-                                "PnL_lower": (jnp.mean(PnL) - jnp.std(PnL)) if PnL.size > 0 else 0,
-
-                                #Same for eval
+                                #---------PnL and errors bars-----------#
+                                #reward
+                                "PnL_train_mean": jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
+                                "PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                "PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                #eval
                                 "PnL_eval_mean": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
-                                "PnL_eval_upper": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
-                                "PnL_eval_lower": (jnp.mean(PnL_eval) - jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
+                                "PnL_eval_plus_std": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
+                                "PnL_eval_minus_std": (jnp.mean(PnL_eval) - jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
 
-                                #Net worth plot, i.e. new_cash_balance+inventoryValue . Best target.
-                                "netWorth": jnp.mean(netWorth) if netWorth.size > 0 else 0,
+                                #-------------NetWorth and error bars----------#
+                                #train
+                                "netWorth_train": jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
+                                "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                "netWorth_minus_stf": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                #eval
                                 "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
+                                "netWorth_eval_upper": (jnp.mean(netWorth_eval) + jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
+                                "netWorth_eval_lower": (jnp.mean(netWorth_eval) - jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
                                 
+                                #----------Iventory and error bars------------#
+                                #train
+                                "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
+                                "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                #eval
+                                "inventory_eval": jnp.mean(inventories_eval) if inventories_eval.size > 0 else 0,
+                                "inventory_eval_plus_std":(jnp.mean(inventories_eval) + jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
+                                "inventory_eval_minus_std":(jnp.mean(inventories_eval) - jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
 
-                                "return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                
-                                "inventory": jnp.mean(inventories) if inventories.size > 0 else 0, 
-                                "buyQuant":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
-                                "sellQuant":jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
-                                "other_exec_quants":jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
+                                #----------Buy and Sell Quant and error bars------------#
+                                #train
+                                "buyQuant_train":jnp.mean(buyQuant_train) if buyQuant_train.size > 0 else 0,
+                                "sellQuant_train":jnp.mean(sellQuant_train) if sellQuant_train.size > 0 else 0,
+                                "other_exec_quants_train":jnp.mean(other_exec_quants_train) if other_exec_quants_train.size > 0 else 0,
+                                "averageMidprice_train":jnp.mean(averageMidprice_train) if averageMidprice_train.size>0 else 0,
+                                "averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
+                                "averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
+                                #eval
+                                "buyQuant_eval":jnp.mean(buyQuant_eval) if buyQuant_eval.size > 0 else 0,
+                                "sellQuant_eval":jnp.mean(sellQuant_eval) if sellQuant_eval.size > 0 else 0,
+                                "other_exec_quants_eval":jnp.mean(other_exec_quants_eval) if other_exec_quants_eval.size > 0 else 0,
+                                "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
+                                "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
+                                "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,
                                 "update_count": update_count,
                             },
                             commit=True
                         )
                         
                         # Additionally log histograms for full distributions
-                        if reward.size > 0:
-                            wandb.log({"reward_histogram": wandb.Histogram(reward)}, commit=False)
+                        if reward_train.size > 0:
+                            wandb.log({"reward_histogram": wandb.Histogram(reward_train)}, commit=False)
                         if return_values.size > 0:
                             wandb.log({"episodic_return_histogram": wandb.Histogram(return_values)}, commit=False)
-                        if PnL.size > 0:
-                            wandb.log({"PnL_histogram": wandb.Histogram(PnL)}, commit=False)
+                        if PnL_train.size > 0:
+                            wandb.log({"PnL_histogram": wandb.Histogram(PnL_train)}, commit=False)
                         # Add networth histogram
-                        if networth.size > 0:
-                            wandb.log({"networth_histogram": wandb.Histogram(networth)}, commit=False)
+                        if netWorth_train.size > 0:
+                            wandb.log({"networth_histogram": wandb.Histogram(netWorth_train)}, commit=False)
                     print("Update step is",update_count, "of",config["NUM_UPDATES"])
                     if config["VERBOSE"]:
                         for t in range(len(timesteps)):
@@ -573,55 +611,62 @@ if __name__ == "__main__":
     # Need only to add deviations from the default environment config.
     env_config_hps = []
     #for o in ["engineered"]:
-    #    for r in ["portfolio_value"]:
+    #    for r in ["portfolio_value","pnl","complex"]:
     #        for i in ["none", "linear", "quadratic"]:
     #            for a in ["fixed_quants"]:
-    #                for e in ["unwind_mid_price","do_nothing"]:
-    #                    for r in ["mid", "best_bid_ask"]:
-    #                        env_config_hps.append({"observation_space":o,
-    #                                                "reward_space":r,
-    #                                                "inv_penalty":i,
-    #                                                "action_space":a,
+    #                for e in ["unwind_ref_price","do_nothing"]:
+    #                    for ref in ["mid", "best_bid_ask"]:
+    #                        for n in [4,8]:
+    #                            for q in [1,10]:
+    #                                env_config_hps.append({"observation_space":o,
+    #                                                    "reward_space":r,
+    #                                                    "inv_penalty":i,
+    #                                                    "action_space":a,
     #                                                    "end_fn":e,
-    #                                                    "reference_price_portfolio_value":r})  
+    #                                                    "reference_price_portfolio_value":ref,
+    #                                                    "n_actions":n,
+    #                                                    "fixed_quant_value":q})  
     env_config_hps = [{"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
                          "n_actions":8,
-                         "end_fn":"unwind_ref_price"},
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask"
+                         },
 
-                         {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"linear",
-                         "n_actions":4,
-                         "end_fn":"unwind_ref_price"},
-                         
                          {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"none",
                          "n_actions":8,
-                         "end_fn":"unwind_ref_price"},
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask"
+                         },
 
-                         {"observation_space":"engineered",
+                          {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
-                         "inv_penalty":"none",
-                         "n_actions":4,
-                         "end_fn":"unwind_ref_price"}
+                         "inv_penalty":"quadratic",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask"
+                         }                        
                        ]
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4]},
+        "LR": {"values": [2.5e-4,1e-3]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
         "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "UPDATE_EPOCHS": {"values": [4]},
+        "UPDATE_EPOCHS": {"values": [2]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.01,0.0]},
+        "ENT_COEF": {"values": [0.0,0.001]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -630,7 +675,7 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "REWARD_LAMBDA": {"values": [0.1]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [2]},
+        "WINDOW_INDEX": {"values": [7]},
         "MAX_TASK_SIZE": {"values": [100]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
@@ -670,8 +715,8 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_21_03_fixed_for_real")
-    wandb.agent(sweep_id, function=sweep_fun, count=10)
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_22_03_Reuben_simple")
+    wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
     sys.exit(0)
