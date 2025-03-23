@@ -17,10 +17,12 @@ from mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
 from exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from typing import NamedTuple
 
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 from gymnax_exchange.jaxob.jaxob_config import Configuration
+from dataclasses import dataclass
 
 # Define a combined (multi–agent) state that extends the base order book state
 @struct.dataclass
@@ -34,6 +36,8 @@ class MultiAgentState(BaseState):
 class MultiAgentParams(BaseParams):
     mm_params: MMParams
     exe_params: EXEParams
+  
+
 
 # define the MARL environment.
 class MARLEnv(BaseLOBEnv):
@@ -134,7 +138,8 @@ class MARLEnv(BaseLOBEnv):
             mm_state = mm_state,
             exe_state = exe_state
         )
-        multi_obs = {"market_maker": jnp.array(mm_obs, dtype= jnp.float32), "execution": jnp.array(exe_obs, dtype= jnp.float32)}
+        multi_obs = jnp.concatenate([mm_obs, exe_obs], axis=0)
+        #multi_obs = {"market_maker": jnp.array(mm_obs, dtype= jnp.float32), "execution": jnp.array(exe_obs, dtype= jnp.float32)}
         return multi_obs, multi_state
 
 
@@ -278,6 +283,8 @@ class MARLEnv(BaseLOBEnv):
         (new_asks, new_bids, new_trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
             self.exe_env.get_episode_end_fn(key_exe,
                 quant_left, new_bestasks[-1], new_bestbids[-1], final_time, new_asks, new_bids, new_trades, state.exe_state, params.exe_params)
+        
+        #Repeat final best bid/ask as in done in envs
         new_bestasks = jnp.concatenate([new_bestasks,new_bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
         new_bestbids = jnp.concatenate([new_bestbids, new_bestbids[-1:,:]], axis=0, dtype=jnp.int32)
         
@@ -335,9 +342,15 @@ class MARLEnv(BaseLOBEnv):
             exe_state=new_exe_state
         )
 
-        obs = {"market_maker": mm_obs, "execution": exe_obs}
+        obs = jnp.concatenate([mm_obs, exe_obs], axis=0)
+        #obs = {"market_maker": mm_obs, "execution": exe_obs}
         rewards = {"market_maker": mm_reward, "execution": exe_reward}
-        done = self.is_terminal(new_state, params)
+
+        #If one done both done termination
+        mm_done = self.mm_env.is_terminal(new_state, params.mm_params)
+        exe_done = self.exe_env.is_terminal(new_state, params.exe_params)
+        done = mm_done or exe_done
+
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, done, info
 
@@ -379,7 +392,8 @@ class MARLEnv(BaseLOBEnv):
     def observation_space(self, params: Optional[MultiAgentParams] = None):
         mm_space = self.mm_env.observation_space(params.mm_params if params is not None else None)
         exe_space = self.exe_env.observation_space(params.exe_params if params is not None else None)
-        return {"market_maker": mm_space, "execution": exe_space}
+        #return {"market_maker": mm_space, "execution": exe_space}
+        return jnp.concatenate([mm_space, exe_space], axis=0)
 
 
 # --- Example main function to test the MARL environment ---
@@ -435,11 +449,12 @@ if __name__ == "__main__":
 
     # Reset the environment.
     obs, state = env.reset_env(key_reset, env_params)
-    print("Reset done. Market maker obs:", obs["market_maker"])
-    print("Execution obs:", obs["execution"])
+    #print("Reset done. Market maker obs:", obs.market_maker)
+    #print("Execution obs:", obs.execution)
+    print("Reset done. obs:", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 20):
+    for i in range(1, 2000):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -458,6 +473,10 @@ if __name__ == "__main__":
         #action_exe = env.exe_env.action_space().sample(key_policy)
         actions = {"market_maker": action_mm, "execution": action_exe}
         obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
+        mm_obs = obs[:27]
+        exec_obs = obs[27:]
+        print(f"mm_obs: {mm_obs}")
+        print(f"exec_obs: {exec_obs}")
         print(f"Actions: {actions}")
         print("Step rewards:", rewards)
         print("Step info:", info)

@@ -181,13 +181,11 @@ def make_train(config):
 
     eval_env_params = dataclasses.replace(
         env.default_params,
-        reward_lambda=config["REWARD_LAMBDA"],
         episode_time=config["EPISODE_TIME"],
     )
 
     env_params = dataclasses.replace(
         env.default_params,
-        reward_lambda=config["REWARD_LAMBDA"],
         episode_time=config["EPISODE_TIME"],
     )
     env = FlattenObservationWrapper(env)
@@ -525,7 +523,7 @@ def make_train(config):
                                 #train
                                 "netWorth_train": jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
                                 "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
-                                "netWorth_minus_stf": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                "netWorth_train_minus_st": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
                                 #eval
                                 "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
                                 "netWorth_eval_upper": (jnp.mean(netWorth_eval) + jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
@@ -673,7 +671,6 @@ if __name__ == "__main__":
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
-        "REWARD_LAMBDA": {"values": [0.1]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [7]},
         "MAX_TASK_SIZE": {"values": [100]},

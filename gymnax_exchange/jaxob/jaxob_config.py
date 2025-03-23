@@ -18,7 +18,7 @@ class Configuration:
 
 @dataclass(frozen=True)
 class EnvironmentConfig(Configuration):
-    action_space: Literal["fixed_prices", "fixed_quants", "parameterised"] =env_cst.action_space
+    action_space: Literal["fixed_prices", "fixed_quants", "AvSt"] =env_cst.action_space
     observation_space: Literal["engineered", "messages", "messages_new_tokenizer"] = env_cst.observation_space
     end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
