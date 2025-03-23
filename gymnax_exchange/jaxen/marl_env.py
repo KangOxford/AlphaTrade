@@ -421,7 +421,7 @@ if __name__ == "__main__":
         ep_type=config["EP_TYPE"],
         mm_trader_id=config["MM_TRADER_ID"],
         exe_trader_id=config["EXE_TRADER_ID"],
-        mm_reward_lambda=config["MM_REWARD_LAMBDA"],
+        #mm_reward_lambda=config["MM_REWARD_LAMBDA"],
         exe_reward_lambda=config["EXE_REWARD_LAMBDA"],
         exe_task_size=config["EXE_TASK_SIZE"],
         mm_action_type=config["MM_ACTION_TYPE"],
