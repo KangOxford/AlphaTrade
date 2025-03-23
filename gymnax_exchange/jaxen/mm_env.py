@@ -247,9 +247,7 @@ class MarketMakingEnv(BaseLOBEnv):
             state.step_counter,
             state.init_time[0] + params.episode_time
         )
-
-
-    
+   
         #=======================================#s
         #======Process agent actions ===========#
         #=======================================#
@@ -257,6 +255,7 @@ class MarketMakingEnv(BaseLOBEnv):
         action=input_action
         action_msgs = self.get_action(action, state, params)
         action_prices = action_msgs[:, 3] #price is position 3 of msg
+
 
         #Cancel all previous agent orders each step, send fresh
       
@@ -960,35 +959,36 @@ class MarketMakingEnv(BaseLOBEnv):
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         mid_price = (best_ask + best_bid) / 2
-        
-        # Market volatility estimation (rolling standard deviation of mid-price)
-        sigma = state.mid_prices[-50:].std()  # 50-step rolling window
 
-        # Define discrete actions mapping for AS parameters
+        #Select parameters based on action
         gamma_values = jnp.array([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0], dtype=jnp.float32)  # Risk aversion
-        k_values = jnp.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0], dtype=jnp.float32)  # Order arrival intensity
-        inv_penalty = jnp.array([0, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float32)  # Inventory control
-        
-        # Select parameters based on action
         gamma = gamma_values[action]
-        k = k_values[action]
-        inv_adj = inv_penalty[action]
-        
-        # Compute AS optimal spread
-        delta = (1 / gamma) * jnp.log(1 + gamma * k)
-        
-        # Inventory-based price shift (q = inventory level)
-        q = state.inventory
-        inv_shift = (gamma * sigma**2 / (2 * k)) * q
 
-        # Compute bid and ask prices
-        bid_price = mid_price - delta - inv_adj * inv_shift
-        ask_price = mid_price + delta - inv_adj * inv_shift
-        
+        #k is market order arrival rate
+        market_order_fraction=0.01
+        k = (100*market_order_fraction)/state.delta_time
+
+        # Market volatility estimation (rolling standard deviation of mid-price)
+        sigma = ((state.best_asks[-50:]+state.best_bids[-50:])/2).std()//(self.tick_size*self.tick_size)  # 50-step rolling window
+
+        #Get time until ep end
+        time_left = params.episode_time - (state.time - state.init_time)[0]
+        normalized_time = time_left / params.episode_time
+
+        #Reservation price
+        res_price = mid_price - ((state.inventory+1)//self.tick_size) * gamma * (sigma**2) * normalized_time
+
+        #Spread
+        spread = gamma*(sigma**2)*normalized_time + (2/gamma) * jnp.log(1 + gamma/k)
+        spread = jnp.maximum(spread, self.tick_size)  # Ensure at least 1 tick spread
+
+        bid_price= res_price-spread
+        ask_price= res_price+spread
+
         # Ensure valid price bounds
-        bid_price = jnp.maximum(bid_price, 0)
-        ask_price = jnp.maximum(bid_price + self.cfg.n_ticks_in_book * self.tick_size, ask_price)
-        
+        bid_price = jnp.clip(bid_price, 0, best_bid)  # Ensure bid price is reasonable
+        ask_price = jnp.clip(ask_price, best_ask, best_ask + 20*self.cfg.n_ticks_in_book * self.tick_size) #max of 20 ticks away
+
         # Set fixed quantities
         bid_quant = self.cfg.fixed_quant_value
         ask_quant = self.cfg.fixed_quant_value

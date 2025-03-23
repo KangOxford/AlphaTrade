@@ -183,9 +183,9 @@ class MARLEnv(BaseLOBEnv):
             -1
         )
         mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
+        jax.debug.print("MM cnl msgs: {}", mm_cnl_msgs)
+        jax.debug.print("MM order msgs: {}", mm_order_msgs)
 
-        jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
-        jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
 
         # Do filtering to net cancellations in MM)
         mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
@@ -201,7 +201,7 @@ class MARLEnv(BaseLOBEnv):
                                                      state.exe_state,
                                                      params.exe_params)
         
-        jax.debug.print(f"Execution messages: {exe_order_msgs}")
+        
         
         # For execution, decide which side to cancel (depending on task)
         side_for_exe = 1 - state.exe_state.is_sell_task * 2
@@ -218,6 +218,9 @@ class MARLEnv(BaseLOBEnv):
         )
         exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
 
+        jax.debug.print("Execution raw action: {}", exe_raw_action)
+        jax.debug.print("Execution order messages: {}", exe_order_msgs)
+        jax.debug.print("Execution cancel messages: {}", exe_cnl_msgs)
         # -------------------------------------------------------
         # (D) Combine all agent messages with data messages
         # -------------------------------------------------------
@@ -234,6 +237,8 @@ class MARLEnv(BaseLOBEnv):
         # -------------------------------------------------------
 
         #jax.debug.print(f"Combined messages: {combined_msgs}")
+        jax.debug.print("Old Asks: {}", state.ask_raw_orders)
+        jax.debug.print("Old Bids: {}", state.bid_raw_orders)
 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
@@ -243,7 +248,8 @@ class MARLEnv(BaseLOBEnv):
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             self.stepLines
         )
-        
+        jax.debug.print("New  asks: {}", new_asks)
+        jax.debug.print("New  bids: {}", new_bids)
         # Forward-fill best prices if necessary:
         new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines+1:], state.mm_state.best_asks[-1, 0])
         new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines+1:], state.mm_state.best_bids[-1, 0])
@@ -296,12 +302,15 @@ class MARLEnv(BaseLOBEnv):
         exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
         exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
 
-        jax.debug.print(f"MM trades: {mm_agent_trades}")
-        jax.debug.print(f"EXE trades: {exe_agent_trades}")
-        jax.debug.print(f"All Trades: {new_trades}")
+        jax.debug.print("MM reward: {}", mm_reward)
+        jax.debug.print("Execution reward: {}", exe_reward)
+        jax.debug.print("MM obs: {}", mm_obs)
+        jax.debug.print("Execution obs: {}", exe_obs)
+        jax.debug.print("MM mm_order_msgs: {}", mm_order_msgs)
+        jax.debug.print("Execution exe_order_msgs: {}", exe_order_msgs)
+        jax.debug.print("MM trades: {}", mm_agent_trades)
+        jax.debug.print("Execution trades: {}", exe_agent_trades)
 
-        jax.debug.print(f"MM obs: {mm_obs}")
-        jax.debug.print(f"EXE obs: {exe_obs}")
 
         # -------------------------------------------------------
         # (H) Update the multi–agent state
@@ -344,6 +353,9 @@ class MARLEnv(BaseLOBEnv):
         mm_done = self.mm_env.is_terminal(new_mm_state, params.mm_params)
         exe_done = self.exe_env.is_terminal(new_exe_state, params.exe_params)
         done = jax.lax.bitwise_or(mm_done, exe_done)
+        jax.debug.print("MM done: {}", mm_done)
+        jax.debug.print("Execution done: {}", exe_done)
+        jax.debug.print("Combined done: {}", done)
 
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, done, info
@@ -445,7 +457,7 @@ if __name__ == "__main__":
     print("Reset done. obs:", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 2000):
+    for i in range(1, 20):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -466,8 +478,9 @@ if __name__ == "__main__":
         obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
         mm_obs = obs[:27]
         exec_obs = obs[27:]
-        print(f"mm_obs: {mm_obs}")
-        print(f"exec_obs: {exec_obs}")
+        jax.debug.print("trades: {}", state.trades)
+       # print(f"mm_obs: {mm_obs.shape}")
+        #print(f"exec_obs: {exec_obs.shape}")
         print(f"Actions: {actions}")
         print("Step rewards:", rewards)
         print("Step info:", info)

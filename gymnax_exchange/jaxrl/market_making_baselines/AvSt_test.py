@@ -62,7 +62,6 @@ if __name__ == "__main__":
     # env_params=env.default_params
     env_params = dataclasses.replace(
         env.default_params,
-        reward_lambda=0.00001,
         episode_time=config["EPISODE_TIME"],  # in seconds
     )
     # print(env_params.message_data.shape, env_params.book_data.shape)
@@ -82,6 +81,7 @@ if __name__ == "__main__":
             # sync_tensorboard=True,  # auto-upload  tensorboard metrics
             save_code=False,  # optional
         )
+    config["DEBUG"] = True
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         print("-"*200)
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
-        test_action = 0
+        test_action = env.action_space().sample(key_policy) 
         start=time.time()
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
@@ -127,18 +127,18 @@ if __name__ == "__main__":
                                 "netWorth_minus_std": (jnp.mean(netWorth) - jnp.std(netWorth)) if netWorth.size > 0 else 0,
                                 
                                 #----------Iventory and error bars------------#
-                                "inventory_train": jnp.mean(inventories) if inventories.size > 0 else 0, 
-                                "inventory_train_plus_std":(jnp.mean(inventories) + jnp.std(inventories)) if inventories.size > 0 else 0,
-                                "inventory_train_minus_std":(jnp.mean(inventories) - jnp.std(inventories)) if inventories.size > 0 else 0,
+                                "inventory": jnp.mean(inventories) if inventories.size > 0 else 0, 
+                                "inventory_plus_std":(jnp.mean(inventories) + jnp.std(inventories)) if inventories.size > 0 else 0,
+                                "inventory_minus_std":(jnp.mean(inventories) - jnp.std(inventories)) if inventories.size > 0 else 0,
 
                                 #----------Buy and Sell Quant and error bars------------#
 
-                                "buyQuant_train":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
-                                "sellQuant_train":jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
-                                "other_exec_quants_train":jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
-                                "averageMidprice_train":jnp.mean(averageMidprice) if averageMidprice.size>0 else 0,
-                                "averageBestbid_train":jnp.mean(averageBestbid) if averageBestbid.size>0 else 0,
-                                "averageBestask_train":jnp.mean(averageBestask) if averageBestask.size>0 else 0,
+                                "buyQuant":jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
+                                "sellQuant":jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
+                                "other_exec_quants":jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
+                                "averageMidprice":jnp.mean(averageMidprice) if averageMidprice.size>0 else 0,
+                                "averageBestbid":jnp.mean(averageBestbid) if averageBestbid.size>0 else 0,
+                                "averageBestask":jnp.mean(averageBestask) if averageBestask.size>0 else 0,
                                
                             },
                             commit=True
