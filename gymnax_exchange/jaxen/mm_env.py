@@ -161,13 +161,12 @@ class EnvState(BaseEnvState):
 
 @struct.dataclass
 class EnvParams(BaseEnvParams):
-    reward_lambda: float 
+    pass
 
 class MarketMakingEnv(BaseLOBEnv):
     def __init__(
             self,cfg:EnvironmentConfig, key, alphatradePath, window_index,  episode_time,
-             rewardLambda=0.2, trader_unique_id=-9999997, ep_type="fixed_time"):
-        self.rewardLambda = rewardLambda 
+              trader_unique_id=-9999997, ep_type="fixed_time"):
         self.cfg=cfg
         super().__init__(
             cfg = cfg,
@@ -195,6 +194,8 @@ class MarketMakingEnv(BaseLOBEnv):
             self.action_fn = self._getActionMsgs_fixedQuant
         elif self.cfg.action_space == "fixed_prices":
             self.action_fn = self._getActionMsgs_fixedPrice
+        elif self.cfg.action_space == "AvSt":
+            self.action_fn = self._getActionMsgs_AvSt
         else:
             raise ValueError("Invalid action_space specified.")
         
@@ -228,7 +229,6 @@ class MarketMakingEnv(BaseLOBEnv):
         return EnvParams(
             *base_vals,
             EnvState(*state_vals),
-            reward_lambda=self.rewardLambda
         )
 
 
@@ -395,7 +395,7 @@ class MarketMakingEnv(BaseLOBEnv):
         ##...
         blank_messages = jnp.zeros((104, 8), dtype=jnp.int32) ##Reset for the message based obs space.
         ##FIXME: The size here needs to be size of messages sent, could change.
-        if self.cfg.action_space=="fixed_quants":
+        if self.cfg.action_space=="fixed_quants" or self.cfg.action_space=="AvSt":
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades
             exections=jnp.zeros((2,2),dtype=jnp.int32)
         elif self.cfg.action_space=="fixed_prices":
@@ -883,7 +883,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Create masks for valid indices
         valid_indices = price_to_index >= 0
-        if self.cfg.action_space == "fixed_quants":
+        if self.cfg.action_space == "fixed_quants"or self.cfg.action_space=="AvSt":
             num_prices = 2 #2 trades for this setup.
         elif self.cfg.action_space=="fixed_prices":
             num_prices=self.cfg.n_actions
@@ -951,6 +951,66 @@ class MarketMakingEnv(BaseLOBEnv):
         # Stack components into message array
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+        return action_msgs
+    
+    def _getActionMsgs_AvSt(self, action: jax.Array, state: EnvState, params: EnvParams):
+        '''Transform discrete action into Avellaneda-Stoikov bid and ask order messages.'''
+        
+        # Compute best_ask, best_bid, and mid-price using a rolling average
+        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        mid_price = (best_ask + best_bid) / 2
+        
+        # Market volatility estimation (rolling standard deviation of mid-price)
+        sigma = state.mid_prices[-50:].std()  # 50-step rolling window
+
+        # Define discrete actions mapping for AS parameters
+        gamma_values = jnp.array([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0], dtype=jnp.float32)  # Risk aversion
+        k_values = jnp.array([0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0], dtype=jnp.float32)  # Order arrival intensity
+        inv_penalty = jnp.array([0, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0], dtype=jnp.float32)  # Inventory control
+        
+        # Select parameters based on action
+        gamma = gamma_values[action]
+        k = k_values[action]
+        inv_adj = inv_penalty[action]
+        
+        # Compute AS optimal spread
+        delta = (1 / gamma) * jnp.log(1 + gamma * k)
+        
+        # Inventory-based price shift (q = inventory level)
+        q = state.inventory
+        inv_shift = (gamma * sigma**2 / (2 * k)) * q
+
+        # Compute bid and ask prices
+        bid_price = mid_price - delta - inv_adj * inv_shift
+        ask_price = mid_price + delta - inv_adj * inv_shift
+        
+        # Ensure valid price bounds
+        bid_price = jnp.maximum(bid_price, 0)
+        ask_price = jnp.maximum(bid_price + self.cfg.n_ticks_in_book * self.tick_size, ask_price)
+        
+        # Set fixed quantities
+        bid_quant = self.cfg.fixed_quant_value
+        ask_quant = self.cfg.fixed_quant_value
+
+        # Construct order messages
+        types = jnp.array([1, 1], dtype=jnp.int32)  # 1 = limit order
+        sides = jnp.array([1, -1], dtype=jnp.int32)  # 1 = bid, -1 = ask
+        quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
+        prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
+        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
+
+        # Generate order IDs
+        base_id = self.trader_unique_id + state.customIDcounter
+        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
+
+        # Time fields
+        times = jnp.resize(state.time + params.time_delay_obs_act, (2, 2))
+
+        # Stack messages
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+
         return action_msgs
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
@@ -1069,7 +1129,7 @@ class MarketMakingEnv(BaseLOBEnv):
             state: EnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
-        if self.cfg.action_space=="fixed_quants":
+        if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
         elif self.cfg.action_space=="fixed_prices":
             id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
@@ -1155,7 +1215,7 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         #jax.debug.print("averageMidprice :{}",averageMidprice)
 
-        if self.cfg.action_space=="fixed_quants":
+        if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
         elif self.cfg.action_space=="fixed_prices":
             id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
@@ -1200,7 +1260,7 @@ class MarketMakingEnv(BaseLOBEnv):
                 self.trader_unique_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
                 *new_time,  # time of message
             ])
-            if self.cfg.action_space=="fixed_quants":
+            if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
                 id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
             elif self.cfg.action_space=="fixed_prices":
                 id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
@@ -1538,8 +1598,8 @@ class MarketMakingEnv(BaseLOBEnv):
             return self.action_fn(action, state, params)
         elif self.cfg.action_space == "fixed_prices":
             return self.action_fn(action, state, params)
-        elif self.cfg.action_space == "parameterised":
-            raise ValueError("Not yet implemented")
+        elif self.cfg.action_space == "AvSt":
+            return self.action_fn(action, state, params)
         else:
             raise ValueError("Invalid action sspace specified.")
 
@@ -1744,7 +1804,7 @@ class MarketMakingEnv(BaseLOBEnv):
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
              return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
-        elif self.cfg.action_space =="fixed_quants":
+        elif self.cfg.action_space =="fixed_quants"or self.cfg.action_space=="AvSt":
             return spaces.Discrete(self.cfg.n_actions)
         else:
             raise ValueError("Invalid action_space specified.")
@@ -1798,7 +1858,6 @@ if __name__ == "__main__":
     config = {
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 0,
-        "REWARD_LAMBDA": 0.1,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*30,  
     }
@@ -1821,7 +1880,6 @@ if __name__ == "__main__":
     # env_params=env.default_params
     env_params = dataclasses.replace(
         env.default_params,
-        reward_lambda=0.00001,
         episode_time=config["EPISODE_TIME"],  # in seconds
     )
     # print(env_params.message_data.shape, env_params.book_data.shape)
