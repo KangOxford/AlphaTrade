@@ -17,12 +17,10 @@ from mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
 from exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from typing import NamedTuple
-
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 from gymnax_exchange.jaxob.jaxob_config import Configuration
-from dataclasses import dataclass
+
 
 # Define a combined (multi–agent) state that extends the base order book state
 @struct.dataclass
@@ -50,10 +48,6 @@ class MARLEnv(BaseLOBEnv):
                  mm_trader_id: int = -9999991,
                  exe_trader_id: int = -9999992,
                  exe_reward_lambda: float = 1.0,
-                 exe_task_size: int = 100,
-                 mm_action_type: str = "pure",
-                 mm_n_ticks_in_book: int = 2,
-                  mm_max_task_size: int = 500
                  ):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
@@ -347,9 +341,9 @@ class MARLEnv(BaseLOBEnv):
         rewards = {"market_maker": mm_reward, "execution": exe_reward}
 
         #If one done both done termination
-        mm_done = self.mm_env.is_terminal(new_state, params.mm_params)
-        exe_done = self.exe_env.is_terminal(new_state, params.exe_params)
-        done = mm_done or exe_done
+        mm_done = self.mm_env.is_terminal(new_mm_state, params.mm_params)
+        exe_done = self.exe_env.is_terminal(new_exe_state, params.exe_params)
+        done = jax.lax.bitwise_or(mm_done, exe_done)
 
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, done, info
@@ -435,12 +429,9 @@ if __name__ == "__main__":
         ep_type=config["EP_TYPE"],
         mm_trader_id=config["MM_TRADER_ID"],
         exe_trader_id=config["EXE_TRADER_ID"],
-        mm_reward_lambda=config["MM_REWARD_LAMBDA"],
         exe_reward_lambda=config["EXE_REWARD_LAMBDA"],
-        exe_task_size=config["EXE_TASK_SIZE"],
-        mm_action_type=config["MM_ACTION_TYPE"],
-        mm_max_task_size=config["MM_MAX_TASK_SIZE"]
     )
+
     # Get the default combined parameters.
     print("starting default parameters")
     env_params = env.default_params
