@@ -535,7 +535,7 @@ def make_train(config):
                     reward_train=info_train["reward"]
                     other_exec_quants_train=info_train["other_exec_quants"]
                     netWorth_train = info_train["netWorth"]
-                    averageMidprice_train=info_eval["averageMidprice"]
+                    averageMidprice_train=info_train["averageMidprice"]
                     averageBestbid_train=info_train["average_best_bid"]
                     averageBestask_train=info_train["average_best_ask"]
                    
