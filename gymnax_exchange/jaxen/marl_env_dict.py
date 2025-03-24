@@ -47,10 +47,6 @@ class MARLEnv(BaseLOBEnv):
                  mm_trader_id: int = -9999991,
                  exe_trader_id: int = -9999992,
                  exe_reward_lambda: float = 1.0,
-                 exe_task_size: int = 100,
-                 mm_action_type: str = "pure",
-                 mm_n_ticks_in_book: int = 2,
-                  mm_max_task_size: int = 500
                  ):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
@@ -402,6 +398,8 @@ class MARLEnv(BaseLOBEnv):
         next_state = jax.tree_map(
             lambda x, y: jax.lax.select(ep_done, x, y), state_re, state_st
         )
+
+        #jax.debug.print(f"Obs: {obs}")
         
         return obs, next_state, rewards, dones, infos
 
@@ -445,10 +443,6 @@ if __name__ == "__main__":
         mm_trader_id=config["MM_TRADER_ID"],
         exe_trader_id=config["EXE_TRADER_ID"],
         #mm_reward_lambda=config["MM_REWARD_LAMBDA"],
-        exe_reward_lambda=config["EXE_REWARD_LAMBDA"],
-        exe_task_size=config["EXE_TASK_SIZE"],
-        mm_action_type=config["MM_ACTION_TYPE"],
-        mm_max_task_size=config["MM_MAX_TASK_SIZE"]
     )
     # Get the default combined parameters.
     print("starting default parameters")
@@ -481,11 +475,12 @@ if __name__ == "__main__":
         #action_exe = env.exe_env.action_space().sample(key_policy)
         actions = {"market_maker": action_mm, "execution": action_exe}
         obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
-        #print(f"Actions: {actions}")
-        #print("Step rewards:", rewards)
-        #print("Step info:", info)
-        #print("Market Maker Raw Action:", action_mm.tolist())
-       # print("Execution Raw Action:", action_exe.tolist())
-        #if done:
-        #    print("Episode finished!")
-       #     break
+        print(f"Actions: {actions}")
+        print("Step rewards:", rewards)
+        print("Step info:", info)
+        print("Market Maker Raw Action:", action_mm.tolist())
+        print("Execution Raw Action:", action_exe.tolist())
+        print("Done:", done)
+        if done["__all__"]:
+            print("Episode finished!")
+            break
