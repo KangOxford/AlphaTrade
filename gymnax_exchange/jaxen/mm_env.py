@@ -1643,7 +1643,6 @@ class MarketMakingEnv(BaseLOBEnv):
             "prev_action": action_prices,  # use quants only
             "prev_executed":executions,  # 
             "prev_executed_ratio": jnp.where(executions==0., 0., executions /10)# state.prev_action[:, 1]), Hard code size of normal trade
-            
         }
 
         # TODO: put this into config somewhere?
@@ -1718,10 +1717,10 @@ class MarketMakingEnv(BaseLOBEnv):
 
     def action_space(
         self, params: Optional[EnvParams] = None
-    ) -> spaces.Box:
+    ) -> spaces.Discrete:
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
-             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+             return spaces.Discrete(self.cfg.n_actions)
         elif self.cfg.action_space =="fixed_quants":
             return spaces.Discrete(self.cfg.n_actions)
         else:
