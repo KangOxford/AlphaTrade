@@ -198,6 +198,7 @@ class MARLEnv(BaseLOBEnv):
         exe_order_msgs = self.exe_env._getActionMsgs(exe_raw_action,
                                                      state.exe_state,
                                                      params.exe_params)
+        exe_action_prices = exe_order_msgs[:, 3]  # Get action prices
         
         jax.debug.print(f"Execution messages: {exe_order_msgs}")
         
@@ -256,6 +257,8 @@ class MARLEnv(BaseLOBEnv):
         final_time = combined_msgs[-1, -2:] + params.time_delay_obs_act
         final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
 
+        jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
+
         #---------------------------------------------------------
         #(F) End step functions
         #----------------------------------------------------------
@@ -304,6 +307,7 @@ class MARLEnv(BaseLOBEnv):
         # -------------------------------------------------------
         # Update the shared base state fields
         base_state = state  
+        delta_time = final_time[0] + final_time[1]/1e9 - state.time[0] - state.time[1]/1e9
         new_shared_state = {
             "ask_raw_orders": new_asks,
             "bid_raw_orders": new_bids,
@@ -312,10 +316,47 @@ class MARLEnv(BaseLOBEnv):
             "customIDcounter": final_id_ctr,
             "best_asks": new_bestasks,
             "best_bids": new_bestbids,
-            "step_counter": state.step_counter + 1
+            "step_counter": state.step_counter + 1,
+            "delta_time": delta_time
         }
-        new_mm_state = state.mm_state.replace(**new_shared_state)
-        new_exe_state = state.exe_state.replace(**new_shared_state)
+
+        # Calculate MM-specific state updates
+        mm_price_bid_passive, mm_quant_bid_passive, mm_price_ask_passive, mm_quant_ask_passive = self.mm_env._get_pass_price_quant(state.mm_state)
+
+        # Calculate EXE-specific state updates
+        exe_price_passive_2, exe_quant_passive_2 = self.exe_env._get_pass_price_quant(state.exe_state)
+        exe_trade_duration_step = (jnp.abs(exe_agent_trades[:, 1]) / state.exe_state.task_to_execute * (exe_agent_trades[:, -2] - state.init_time[0])).sum()
+        exe_trade_duration = state.exe_state.trade_duration + exe_trade_duration_step
+
+        # Update MM state with all fields
+        new_mm_state = state.mm_state.replace(
+            **new_shared_state,
+            inventory=mm_info["end_inventory"],
+            total_PnL=state.mm_state.total_PnL + mm_info["PnL"],
+            mid_price=mm_info["mid_price"],
+            cash_balance=mm_info["cash_balance"],
+            price_bid_passive=mm_price_bid_passive,
+            quant_bid_passive=mm_quant_bid_passive,
+            price_ask_passive=mm_price_ask_passive,
+            quant_ask_passive=mm_quant_ask_passive
+        )
+
+        # Update EXE state with all fields
+        new_exe_state = state.exe_state.replace(
+            **new_shared_state,
+            prev_action=jnp.vstack([exe_action_prices, actions["execution"]]).T,  # store both prices and quantities
+            quant_executed=state.exe_state.quant_executed + exe_info["agentQuant"],
+            total_revenue=state.exe_state.total_revenue + exe_info["revenue"],
+            drift_return=state.exe_state.drift_return + exe_info["drift"],
+            advantage_return=state.exe_state.advantage_return + exe_info["advantage"],
+            slippage_rm=exe_info["slippage_rm"],
+            price_adv_rm=exe_info["price_adv_rm"],
+            price_drift_rm=exe_info["price_drift_rm"],
+            vwap_rm=exe_info["vwap_rm"],
+            trade_duration=exe_trade_duration,
+            price_passive_2=exe_price_passive_2,
+            quant_passive_2=exe_quant_passive_2
+        )
 
         new_state = MultiAgentState(
             ask_raw_orders=new_asks,
