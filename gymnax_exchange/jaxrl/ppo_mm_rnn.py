@@ -465,7 +465,7 @@ def make_train(config):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
-                    timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
+                    timesteps = info_train["timestep"]#[info_train["returned_episode"]] * config["NUM_ENVS"] #changed to raw timesteps adn sum...
                     #time=info_train["time_seconds"] 
 
                     #-----------Train info----------#
@@ -496,7 +496,7 @@ def make_train(config):
                             data={
                                 #-----time and return------------#
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0, # timesteps[t],
+                                "global_step": jnp.sum(timesteps) if timesteps.size > 0 else 0,
                                 #"time":jnp.mean(time) if time.size>0 else 0,
 
                                 #---------Reward and error bars--------#
@@ -630,7 +630,8 @@ if __name__ == "__main__":
                          "n_actions":8,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask"
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
                          },
 
                          {"observation_space":"engineered",
