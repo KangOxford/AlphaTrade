@@ -149,6 +149,7 @@ if wandbOn:
 
 def make_train(config):
     env_config=EnvironmentConfig(**config["ENV_CONFIG"])
+    baseline_env_config=EnvironmentConfig(**config["BASELINE_ENV_CONFIG"])
 
     # env_config = dataclasses.replace(env_config, **config["ENV_CONFIG"])
 
@@ -179,6 +180,16 @@ def make_train(config):
         ep_type=config["DATA_TYPE"],
     )
 
+    #Add an AvSt baseline, compare to eval env
+    baseline_env=MarketMakingEnv(
+        baseline_env_config,
+        key_reset,
+        alphatradePath=config["ATFOLDER"]+"/val",
+        window_index=config["WINDOW_INDEX"],
+        episode_time=config["EPISODE_TIME"],
+        ep_type=config["DATA_TYPE"],
+    )
+
     eval_env_params = dataclasses.replace(
         env.default_params,
         episode_time=config["EPISODE_TIME"],
@@ -188,11 +199,20 @@ def make_train(config):
         env.default_params,
         episode_time=config["EPISODE_TIME"],
     )
+    baseline_env_params = dataclasses.replace(
+        env.default_params,
+        episode_time=config["EPISODE_TIME"],
+    )
+    baseline_action=config["BASELINE_FIXED_ACTION"]
+
     env = FlattenObservationWrapper(env)
     env = LogWrapper(env)
 
     eval_env = FlattenObservationWrapper(eval_env)
     eval_env = LogWrapper(eval_env)
+
+    baseline_env = FlattenObservationWrapper(baseline_env)
+    baseline_env = LogWrapper(baseline_env) 
 
     def linear_schedule(count):
         frac = (
@@ -410,6 +430,8 @@ def make_train(config):
             metric = traj_batch.info
             rng = update_state[-1]
 
+            #-----Evaluation------#
+
             def _eval_step(eval_runner_state, unused):
                 train_state, eval_env_state, last_obs, last_done, hstate, rng = eval_runner_state
                 rng, _rng = jax.random.split(rng)
@@ -460,8 +482,45 @@ def make_train(config):
                 _eval_step, eval_runner_state, None, config["NUM_STEPS"]
             )
             eval_metric=eval_traj_batch.info
+            #-----Baseline evaluation------#
+            def _baseline_step(baseline_runner_state,unused ):
+                baseline_action,baseline_env_state, last_obs, last_done, rng = baseline_runner_state
+
+                # SELECT ACTION
+                action=jnp.full((config["NUM_ENVS"],), baseline_action)
+
+                # STEP ENV
+                rng, _rng = jax.random.split(rng)
+                rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+                obsv, baseline_env_state, reward, done, info = jax.vmap(
+                    baseline_env.step, in_axes=(0, 0, 0, None)
+                )(rng_step, baseline_env_state, action, baseline_env_params)
+                value=jnp.array([0])
+                log_prob=jnp.array([0])
+                transition= Transition(
+                    last_done, action, value,reward,log_prob, last_obs, info
+                )
+      
+                baseline_runner_state = (baseline_action,baseline_env_state, obsv, done, rng)
+                return baseline_runner_state,transition
+            rng, _rng = jax.random.split(rng)
+            reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
+            obsv, baseline_env_state = jax.vmap(baseline_env.reset, in_axes=(0, None))(reset_rng, baseline_env_params)
+            
+            baseline_runner_state = (
+            baseline_action,  
+            baseline_env_state,   
+            obsv,
+            jnp.zeros((config["NUM_ENVS"]), dtype=bool),
+            _rng,
+            )
+            baseline_runner_state, baseline_traj_batch = jax.lax.scan(
+                _baseline_step, baseline_runner_state, None, config["NUM_STEPS"]
+            )
+            baseline_metric=baseline_traj_batch.info
+
             if config.get("DEBUG"):
-                def callback(info_train,info_eval,update_count):
+                def callback(info_train,info_eval,baseline_metric,update_count):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
@@ -479,6 +538,7 @@ def make_train(config):
                     averageMidprice_train=info_eval["averageMidprice"]
                     averageBestbid_train=info_train["average_best_bid"]
                     averageBestask_train=info_train["average_best_ask"]
+                   
 
                     #-------------eval info------#   
                     PnL_eval = info_eval["total_PnL"]
@@ -491,6 +551,21 @@ def make_train(config):
                     averageMidprice_eval=info_eval["averageMidprice"]
                     averageBestbid_eval=info_eval["average_best_bid"]
                     averageBestask_eval=info_eval["average_best_ask"]
+                    
+                    #-------------baseline info------#
+                    PnL_baseline = baseline_metric["total_PnL"]
+                    inventories_baseline = baseline_metric["inventory"]
+                    buyQuant_baseline=baseline_metric["buyQuant"]
+                    sellQuant_baseline=baseline_metric["sellQuant"]
+                    reward_baseline=baseline_metric["reward"]
+                    other_exec_quants_baseline=baseline_metric["other_exec_quants"]
+                    netWorth_baseline = baseline_metric["netWorth"]
+                    averageMidprice_baseline=baseline_metric["averageMidprice"]
+                    averageBestbid_baseline=baseline_metric["average_best_bid"]
+                    averageBestask_baseline=baseline_metric["average_best_ask"]
+                   
+                    #-----------------Logging-------------------#
+
                     if wandbOn:
                         wandb.log(
                             data={
@@ -508,6 +583,10 @@ def make_train(config):
                                 "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
                                 "reward_eval_plus_std": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
                                 "reward_eval_minus_std": (jnp.mean(reward_eval) - jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                #baseline
+                                "reward_baseline":jnp.mean(reward_baseline) if reward_baseline.size > 0 else 0,
+                                "reward_baseline_plus_std": (jnp.mean(reward_baseline) + jnp.std(reward_baseline)) if reward_baseline.size > 0 else 0,
+                                "reward_baseline_minus_std": (jnp.mean(reward_baseline) - jnp.std(reward_baseline)) if reward_baseline.size > 0 else 0,
                                 
                                 #---------PnL and errors bars-----------#
                                 #reward
@@ -518,6 +597,10 @@ def make_train(config):
                                 "PnL_eval_mean": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
                                 "PnL_eval_plus_std": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
                                 "PnL_eval_minus_std": (jnp.mean(PnL_eval) - jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
+                                #baseline
+                                "PnL_baseline_mean": jnp.mean(PnL_baseline) if PnL_baseline.size > 0 else 0,
+                                "PnL_baseline_plus_std": (jnp.mean(PnL_baseline) + jnp.std(PnL_baseline)) if PnL_baseline.size > 0 else 0,
+                                "PnL_baseline_minus_std": (jnp.mean(PnL_baseline) - jnp.std(PnL_baseline)) if PnL_baseline.size > 0 else 0,
 
                                 #-------------NetWorth and error bars----------#
                                 #train
@@ -528,7 +611,11 @@ def make_train(config):
                                 "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
                                 "netWorth_eval_upper": (jnp.mean(netWorth_eval) + jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
                                 "netWorth_eval_lower": (jnp.mean(netWorth_eval) - jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
-                                
+                                #baseline
+                                "netWorth_baseline": jnp.mean(netWorth_baseline) if netWorth_baseline.size > 0 else 0,
+                                "netWorth_baseline_upper": (jnp.mean(netWorth_baseline) + jnp.std(netWorth_baseline)) if netWorth_baseline.size > 0 else 0,
+                                "netWorth_baseline_lower": (jnp.mean(netWorth_baseline) - jnp.std(netWorth_baseline)) if netWorth_baseline.size > 0 else 0,
+                                                                
                                 #----------Iventory and error bars------------#
                                 #train
                                 "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
@@ -538,7 +625,11 @@ def make_train(config):
                                 "inventory_eval": jnp.mean(inventories_eval) if inventories_eval.size > 0 else 0,
                                 "inventory_eval_plus_std":(jnp.mean(inventories_eval) + jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
                                 "inventory_eval_minus_std":(jnp.mean(inventories_eval) - jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
-
+                                #baseline
+                                "inventory_baseline": jnp.mean(inventories_baseline) if inventories_baseline.size > 0 else 0,
+                                "inventory_baseline_plus_std":(jnp.mean(inventories_baseline) + jnp.std(inventories_baseline)) if inventories_baseline.size > 0 else 0,
+                                "inventory_baseline_minus_std":(jnp.mean(inventories_baseline) - jnp.std(inventories_baseline)) if inventories_baseline.size > 0 else 0,
+                                
                                 #----------Buy and Sell Quant and error bars------------#
                                 #train
                                 "buyQuant_train":jnp.mean(buyQuant_train) if buyQuant_train.size > 0 else 0,
@@ -554,8 +645,20 @@ def make_train(config):
                                 "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
                                 "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
                                 "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,
-                                "update_count": update_count,
-                            },
+                               
+                                #baseline
+                                "buyQuant_baseline":jnp.mean(buyQuant_baseline) if buyQuant_baseline.size > 0 else 0,
+                                "sellQuant_baseline":jnp.mean(sellQuant_baseline) if sellQuant_baseline.size > 0 else 0,
+                                "other_exec_quants_baseline":jnp.mean(other_exec_quants_baseline) if other_exec_quants_baseline.size > 0 else 0,
+                                "averageMidprice_baseline":jnp.mean(averageMidprice_baseline) if averageMidprice_baseline.size>0 else 0,
+                                "averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
+                                "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
+                                #----------Action prices------------#
+                              
+                               
+                                 "update_count": update_count,
+                            
+                                                            },
                             commit=True
                         )
                         
@@ -573,7 +676,7 @@ def make_train(config):
                     if config["VERBOSE"]:
                         for t in range(len(timesteps)):
                             print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
-                jax.debug.callback(callback, metric,eval_metric,update_count)
+                jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
 
@@ -640,7 +743,8 @@ if __name__ == "__main__":
                          "n_actions":8,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask"
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
                          },
 
                           {"observation_space":"engineered",
@@ -649,9 +753,18 @@ if __name__ == "__main__":
                          "n_actions":8,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask"
-                         }                        
-                       ]
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
+                          }]
+    baseline_env_config_hps = [{"observation_space":"engineered",
+                            "reward_space":"portfolio_value",
+                            "inv_penalty":"linear",
+                            "n_actions":8,
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"best_bid_ask",
+                            "action_space":"AvSt"
+                            }]      
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
@@ -659,7 +772,7 @@ if __name__ == "__main__":
         "LR": {"values": [2.5e-4,1e-3]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
+        "TOTAL_TIMESTEPS": {"values": [4e6]},
         "UPDATE_EPOCHS": {"values": [2]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
@@ -673,12 +786,14 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [7]},
+        "WINDOW_INDEX": {"values": [-1]},
         "MAX_TASK_SIZE": {"values": [100]},
-        "EPISODE_TIME": {"values": [60*5]},
+        "EPISODE_TIME": {"values": [60*10]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "ATFOLDER": {"values": [ATFolder]},
-        "ENV_CONFIG": {"values": env_config_hps}
+        "ENV_CONFIG": {"values": env_config_hps},
+        "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
+        "BASELINE_FIXED_ACTION": {"values": [4]}
     }    
 
     sweep_config={
@@ -713,7 +828,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_22_03_Reuben_simple")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_SWEEPS_24_03")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
