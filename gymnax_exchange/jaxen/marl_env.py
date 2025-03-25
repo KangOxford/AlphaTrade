@@ -336,6 +336,7 @@ class MARLEnv(BaseLOBEnv):
         )
 
         obs = {"market_maker": mm_obs, "execution": exe_obs}
+        
         rewards = {"market_maker": mm_reward, "execution": exe_reward}
         done = self.is_terminal(new_state, params)
         info = {"market_maker": mm_info, "execution": exe_info}

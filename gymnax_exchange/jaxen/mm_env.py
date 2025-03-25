@@ -1848,7 +1848,7 @@ if __name__ == "__main__":
         # ATFolder = "./testing_oneDay"
         #ATFolder = "/training_oneDay"
         #ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-        ATFolder= "/home/duser/AlphaTrade/testing"
+        ATFolder= "/home/duser/AlphaTrade/training_oneDay/val"
 
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'

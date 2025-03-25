@@ -778,7 +778,7 @@ class ExecutionEnv(BaseLOBEnv):
         # )
         quants, prices = normal_quant_price(price_levels, action)
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
-        action_msgs = jnp.stack([types, sides, quants, prices, trader_ids, order_ids], axis=1)
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         # jax.debug.print('action_msgs\n {}', action_msgs)
         return action_msgs
