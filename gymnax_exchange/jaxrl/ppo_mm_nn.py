@@ -93,15 +93,11 @@ def make_train(config):
         alphatradePath=config["ATFOLDER"],
         #task=config["TASKSIDE"],
         window_index=config["WINDOW_INDEX"],
-        action_type=config["ACTION_TYPE"],
         episode_time=config["EPISODE_TIME"],
-        max_task_size=config["MAX_TASK_SIZE"],
-        rewardLambda=config["REWARD_LAMBDA"],
         ep_type=config["DATA_TYPE"],
     )
     env_params = dataclasses.replace(
         env.default_params,
-        reward_lambda=config["REWARD_LAMBDA"],
         #task_size=config["TASK_SIZE"],
         episode_time=config["EPISODE_TIME"],
     )
