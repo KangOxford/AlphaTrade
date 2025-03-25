@@ -107,7 +107,7 @@ faulthandler.enable()
 chex.assert_gpu_available(backend=None)
 # config.update('jax_platform_name', 'cpu')
 # config.update("jax_enable_x64",True)
-config.update("jax_disable_jit", False) # use this during training
+config.update("jax_disable_jit", True) # use this during training
 # config.update("jax_disable_jit", True) # Code snippet to disable all jitting.
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 jax.numpy.set_printoptions(linewidth=183)
@@ -222,6 +222,8 @@ class ExecutionEnv(BaseLOBEnv):
             state.init_time[0] + params.episode_time
         )
         
+        jax.debug.print(f"Data messages: {data_messages}")
+        
         action = self._reshape_action(input_action, state, params,key)
         action_msgs = self._getActionMsgs(action, state, params)
         action_prices = action_msgs[:, 3]
@@ -241,7 +243,7 @@ class ExecutionEnv(BaseLOBEnv):
         
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
-        # jax.debug.print('filtered action_msgs\n {}', action_msgs)
+        jax.debug.print('filtered action_msgs\n {}', action_msgs)
         
         # Add to the top of the data messages
         total_messages = jnp.concatenate([cnl_msgs, action_msgs, data_messages], axis=0)
@@ -273,6 +275,11 @@ class ExecutionEnv(BaseLOBEnv):
         # filter to trades by our agent (rest are 0s)
 
         agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+
+        jax.debug.print(f"Agent trades: {agent_trades}")
+        jax.debug.print(f"All trades: {trades}")
+
+
         # executions = self._get_executed_by_level(agent_trades, action, state)
         executions = self._get_executed_by_action(agent_trades, action, state)
         quant_executed_this_step = executions.sum()
