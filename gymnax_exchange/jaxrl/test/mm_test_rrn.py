@@ -71,7 +71,8 @@ import wandb  # Import Weights & Biases for logging
 wandb.init(project="AlphaTrade_MM_RNN_Eval", config={"run_type": "evaluation"})
 
 # Load the trained model parameters 
-params_filename = "/home/duser/AlphaTrade/params_file_solar-sweep-13_03-24_19-35"
+
+params_filename = "/home/duser/AlphaTrade/params_file_fiery-sweep-2_03-24_15-55"
 with open(params_filename, 'rb') as f:
     params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
 
@@ -167,10 +168,10 @@ if __name__ == "__main__":
     #-----Shared configuration-----#
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 4,
+        "WINDOW_INDEX": -1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*10,
-        "NUM_ENVS": 1, 
+        "EPISODE_TIME": 60*15,
+        "NUM_ENVS": 256, 
         "TRADERID": 10,
     }
     
@@ -260,7 +261,7 @@ if __name__ == "__main__":
         # ============================
         # Run the test loop
         # ============================
-        for step in range(5): #enough to finish episode
+        for step in range(100000000): 
             rng, _rng = jax.random.split(rng)
             #test action
             test_ac_in = (test_obsv[jnp.newaxis, :], test_done[jnp.newaxis, :])
@@ -341,7 +342,7 @@ if __name__ == "__main__":
             
                         #baseline
                         "PnL_baseline": PnL_baseline,
-                   
+                
 
                         #-------------NetWorth and error bars----------#
                         #train
@@ -391,7 +392,9 @@ if __name__ == "__main__":
             
             if test_done.all():
                 break
-        
+
+    print("Done epsiode", episode)   
+            
             
 
         

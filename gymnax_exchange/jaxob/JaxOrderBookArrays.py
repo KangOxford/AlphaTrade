@@ -763,14 +763,14 @@ def getCancelMsgs(bookside,agentID,size,side):
     """  
     bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
     indices_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2,
-                                 jnp.ones((1,size),dtype=jnp.int32)*side,
-                                bookside[indices_to_cancel,1],
-                                bookside[indices_to_cancel,0],
-                                bookside[indices_to_cancel,3],
-                                bookside[indices_to_cancel,2],
-                                bookside[indices_to_cancel,4],
-                                bookside[indices_to_cancel,5]],axis=0).transpose()
+    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2, #type
+                                 jnp.ones((1,size),dtype=jnp.int32)*side, #side
+                                bookside[indices_to_cancel,1],#q
+                                bookside[indices_to_cancel,0],#p
+                                bookside[indices_to_cancel,2],#oid
+                                bookside[indices_to_cancel,3],#tid
+                                bookside[indices_to_cancel,4],#t
+                                bookside[indices_to_cancel,5]],axis=0).transpose()#tns
     return cancel_msgs
 
 
