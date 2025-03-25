@@ -9,8 +9,8 @@ import jax.tree_util as jtu
 from functools import partial
 
 # for debugging
-jax.config.update('jax_disable_jit', False)
-jax.config.update("jax_log_compiles", True)
+jax.config.update('jax_disable_jit', True)
+jax.config.update("jax_log_compiles", False)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 

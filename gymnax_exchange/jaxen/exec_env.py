@@ -107,7 +107,7 @@ faulthandler.enable()
 chex.assert_gpu_available(backend=None)
 # config.update('jax_platform_name', 'cpu')
 # config.update("jax_enable_x64",True)
-config.update("jax_disable_jit", True) # use this during training
+config.update("jax_disable_jit", False) # use this during training
 # config.update("jax_disable_jit", True) # Code snippet to disable all jitting.
 print("Num Jax Devices:",jax.device_count(),"Device List:",jax.devices())
 jax.numpy.set_printoptions(linewidth=183)
@@ -223,7 +223,7 @@ class ExecutionEnv(BaseLOBEnv):
         )
         
         jax.debug.print(f"Data messages: {data_messages}")
-        
+
         action = self._reshape_action(input_action, state, params,key)
         action_msgs = self._getActionMsgs(action, state, params)
         action_prices = action_msgs[:, 3]
