@@ -1860,7 +1860,7 @@ if __name__ == "__main__":
         "WINDOW_INDEX": 0,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*30,  
-    }
+        "TRADERID":10}
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -1875,6 +1875,7 @@ if __name__ == "__main__":
         alphatradePath=config["ATFOLDER"],
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
+        trader_unique_id=config["TRADERID"],
         ep_type=config["EP_TYPE"],
     )
     # env_params=env.default_params
@@ -1894,7 +1895,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,2000):
+    for i in range(1,10):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)
