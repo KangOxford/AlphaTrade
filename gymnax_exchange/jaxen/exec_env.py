@@ -225,7 +225,7 @@ class ExecutionEnv(BaseLOBEnv):
         action = self._reshape_action(input_action, state, params,key)
         action_msgs = self._getActionMsgs(action, state, params)
         action_prices = action_msgs[:, 3]
-        jax.debug.print('action_msgs\n {}', action_msgs)
+        #jax.debug.print('action_msgs\n {}', action_msgs)
 
         raw_order_side = jax.lax.cond(
             state.is_sell_task,
@@ -274,8 +274,8 @@ class ExecutionEnv(BaseLOBEnv):
 
         agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
 
-        jax.debug.print("Agent trades:{}", agent_trades)
-        jax.debug.print(" trades :{}", trades)
+        #jax.debug.print("Agent trades:{}", agent_trades)
+       # jax.debug.print(" trades :{}", trades)
         
 
 
