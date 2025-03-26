@@ -254,7 +254,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #action = self._reshape_action(input_action, state, params,key)
         action=input_action
         action_msgs = self.get_action(action, state, params)
-        jax.debug.print("Action messages: {}", action_msgs)
+       # jax.debug.print("Action messages: {}", action_msgs)
         action_prices = action_msgs[:, 3] #price is position 3 of msg
 
 
@@ -909,8 +909,8 @@ class MarketMakingEnv(BaseLOBEnv):
         # Compute best_ask and best_bid using a rolling average to reduce variance
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        jax.debug.print("best_ask:{}",best_ask)
-        jax.debug.print("best_bid:{}",best_bid)
+        #jax.debug.print("best_ask:{}",best_ask)
+        #jax.debug.print("best_bid:{}",best_bid)
         
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 0, 0, -1, 1, -1, 5, 10], dtype=jnp.int32)
