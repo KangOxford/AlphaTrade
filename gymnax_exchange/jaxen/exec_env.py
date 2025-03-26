@@ -284,10 +284,11 @@ class ExecutionEnv(BaseLOBEnv):
         quant_executed_this_step = executions.sum()
         quant_left = state.task_to_execute - (state.quant_executed + quant_executed_this_step)
         
-        jax.debug.print('agent_trades\n {}', agent_trades[:30])
-        jax.debug.print('executions: {}', executions)
-        jax.debug.print("quant_executed_this_step: {}, quant_left: {}",quant_executed_this_step, quant_left)
-        jax.debug.print("task_to_execute: {}, quant_executed: {}", state.task_to_execute, state.quant_executed)
+        # jax.debug.print('agent_trades\n {}', agent_trades[:30])
+        # jax.debug.print('executions: {}', executions)
+        # jax.debug.print(
+        #     "quant_executed_this_step: {}, quant_left: {}, quant_executed_this_step {}",
+        #     quant_executed_this_step, quant_left, quant_executed_this_step)
 
         # TODO: check if episode time is over and force market order if necessary
         (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
@@ -1244,7 +1245,7 @@ class ExecutionEnv(BaseLOBEnv):
             return spaces.Box(-100, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         else:
             # return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
-            return spaces.Box(0, self.cfg.max_task_size, (self.cfg.n_actions,), dtype=jnp.int32)
+            return spaces.Box(0, self.cfg.max_task_size//self.cfg.n_actions, (self.cfg.n_actions,), dtype=jnp.int32)
     
        
 
@@ -1330,7 +1331,7 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
-        test_action = env.action_space().sample(key_policy) // 10
+        test_action = env.action_space().sample(key_policy) 
         # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
