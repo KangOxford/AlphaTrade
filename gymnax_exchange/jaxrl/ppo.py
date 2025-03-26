@@ -93,8 +93,6 @@ def make_train(config):
     env_params = dataclasses.replace(
         env.default_params,
         reward_lambda=config["REWARD_LAMBDA"],
-        task_size=config["TASK_SIZE"],
-        episode_time=config["EPISODE_TIME"],
     )
     env = LogWrapper(env)
     
