@@ -68,12 +68,37 @@ class ScannedRNN(nn.Module):
 
 
 
-
+class ScannedRNN_old(nn.Module):
+    @functools.partial(
+        nn.scan,
+        variable_broadcast="params",
+        in_axes=0,
+        out_axes=0,
+        split_rngs={"params": False},
+    )
+    @nn.compact
+    def __call__(self, carry, x):
+        """Applies the module."""
+        rnn_state = carry
+        ins, resets = x
+        rnn_state = jnp.where(
+            resets[:, np.newaxis],
+            self.initialize_carry(ins.shape[0], ins.shape[1]),
+            rnn_state,
+        )
+        new_rnn_state, y = nn.GRUCell()(rnn_state, ins)
+        return new_rnn_state, y
+  
+    @staticmethod
+    def initialize_carry(batch_size, hidden_size):
+        # Use a dummy key since the default state init fn is just zeros.
+        return nn.GRUCell.initialize_carry(
+            jax.random.PRNGKey(0), (batch_size,), hidden_size
+        )
 
 
 class ActorCriticRNN(nn.Module):
-    action_dim: int  # The total number of discrete actions available
-    n_actions: int   # The number of actions to pick (e.g., 4)
+    action_dim: Sequence[int]
     config: Dict
 
     @nn.compact
@@ -87,24 +112,16 @@ class ActorCriticRNN(nn.Module):
         rnn_in = (embedding, dones)
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
 
-        # Actor Network
         actor_mean = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
         actor_mean = nn.relu(actor_mean)
-        
-        # Instead of outputting action_dim logits, we output (n_actions, action_dim) logits
         actor_mean = nn.Dense(
-            self.n_actions * self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
         )(actor_mean)
-        
-        # Reshape to (batch_size, n_actions, action_dim)
-        actor_mean = actor_mean.reshape(-1, self.n_actions, self.action_dim)
 
-        # Create categorical distributions for each of the `n_actions`
         pi = distrax.Categorical(logits=actor_mean)
 
-        # Critic Network
         critic = nn.Dense(128, kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
@@ -211,7 +228,7 @@ def make_train(config):
 
     def train(rng):
         # INIT NETWORK
-        network = ActorCriticRNN(env.action_space(env_params).shape[0],eval_env.cfg.n_actions, config=config)
+        network = ActorCriticRNN(env.action_space(env_params).n, config=config)
         rng, _rng = jax.random.split(rng)
         init_x = (
             jnp.zeros(
@@ -261,10 +278,11 @@ def make_train(config):
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng)
                 log_prob = pi.log_prob(action)
-                jax.debug.print("log_prob:{}",log_prob.shape)
-                value=value.squeeze(0)
-                   
-              
+                value, action, log_prob = (
+                    value.squeeze(0),
+                    action.squeeze(0),
+                    log_prob.squeeze(0),
+                )
 
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
@@ -411,7 +429,6 @@ def make_train(config):
             rng = update_state[-1]
 
             #-----Evaluation------#
-
             def _eval_step(eval_runner_state, unused):
                 train_state, eval_env_state, last_obs, last_done, hstate, rng = eval_runner_state
                 rng, _rng = jax.random.split(rng)
@@ -421,9 +438,12 @@ def make_train(config):
                 hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
                 action = pi.sample(seed=_rng)
                 log_prob = pi.log_prob(action)
-                value=value.squeeze(0)
-                   
-               
+                value, action, log_prob = (
+                    value.squeeze(0),
+                    action.squeeze(0),
+                    log_prob.squeeze(0),
+                )
+
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
@@ -470,8 +490,7 @@ def make_train(config):
                 log_prob=jnp.array([0])
                 transition= Transition(
                     last_done, action, value,reward,log_prob, last_obs, info
-                )
-      
+                )      
                 baseline_runner_state = (baseline_action,baseline_env_state, obsv, done, rng)
                 return baseline_runner_state,transition
             rng, _rng = jax.random.split(rng)
@@ -704,13 +723,13 @@ if __name__ == "__main__":
                          "action_type":"pure",
                          "end_fn":"unwind_FT",
                          "max_task_size":50,
-                         "n_actions":4
+                         "n_actions":1
                           }]
     baseline_env_config_hps = [  {"task":"random",
                             "action_type":"pure",
                             "end_fn":"unwind_FT",
                             "max_task_size":50,
-                            "n_actions":4
+                            "n_actions":1
                             }]
     
     
@@ -741,7 +760,7 @@ if __name__ == "__main__":
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
-        "BASELINE_FIXED_ACTION": {"values": [1,1,1,1]}##Needs to be the same as n_actions in baseline..
+        "BASELINE_FIXED_ACTION": {"values": [1]}##Needs to be the same as n_actions in baseline..
     }    
 
     sweep_config={
