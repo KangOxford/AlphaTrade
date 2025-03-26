@@ -254,6 +254,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #action = self._reshape_action(input_action, state, params,key)
         action=input_action
         action_msgs = self.get_action(action, state, params)
+        jax.debug.print("Action messages: {}", action_msgs)
         action_prices = action_msgs[:, 3] #price is position 3 of msg
 
 
@@ -289,7 +290,7 @@ class MarketMakingEnv(BaseLOBEnv):
         # To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
         # Process messages of step (action+data) through the orderbook
-        (asks, bids, trades), (bestasks, bestbids) = job.scan_through_entire_array_save_bidask(self.cfg,key,
+        (asks, bids, trades), (bestbids, bestasks) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
@@ -908,6 +909,8 @@ class MarketMakingEnv(BaseLOBEnv):
         # Compute best_ask and best_bid using a rolling average to reduce variance
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        jax.debug.print("best_ask:{}",best_ask)
+        jax.debug.print("best_bid:{}",best_bid)
         
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 0, 0, -1, 1, -1, 5, 10], dtype=jnp.int32)
@@ -1096,6 +1099,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #Trade off the average over the last 10 messages to avoid the variance:
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        
 
 
         sell_levels=sell_task_prices(best_ask, best_bid)
@@ -1314,7 +1318,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
         
-        (asks, bids, trades), (new_bestask, new_bestbid) = job.scan_through_entire_array_save_bidask(self.cfg,key,
+        (asks, bids, trades), (new_bestbid, new_bestask) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             cnl_msgs, 
             (asks, bids, trades),
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
@@ -1322,7 +1326,7 @@ class MarketMakingEnv(BaseLOBEnv):
         )
    
         #Filter our new message through the orderbook#
-        (asks, bids, trades), (new_bestask, new_bestbid) = job.cond_type_side_save_bidask(self.cfg,
+        (asks, bids, trades), (new_bestbid, new_bestask) = job.cond_type_side_save_bidask(self.cfg,
             (asks, bids, trades),
             (key,order_msg)
         )
@@ -1356,7 +1360,7 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
 
-        (asks, bids, trades), (new_bestask, new_bestbid) = job.scan_through_entire_array_save_bidask(self.cfg,key,
+        (asks, bids, trades), (new_bestbid, new_bestask) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             cnl_msgs, 
             (asks, bids, trades),
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
@@ -1895,7 +1899,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,10):
+    for i in range(1,1000):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)

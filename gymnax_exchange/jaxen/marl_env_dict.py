@@ -235,7 +235,7 @@ class MARLEnv(BaseLOBEnv):
         #jax.debug.print(f"Combined messages: {combined_msgs}")
 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
-        (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
+        (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
             self.cfg,  
             key,  
             combined_msgs,

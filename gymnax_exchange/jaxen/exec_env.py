@@ -221,13 +221,11 @@ class ExecutionEnv(BaseLOBEnv):
             state.step_counter,
             state.init_time[0] + params.episode_time
         )
-        
-        jax.debug.print(f"Data messages: {data_messages}")
-
+    
         action = self._reshape_action(input_action, state, params,key)
         action_msgs = self._getActionMsgs(action, state, params)
         action_prices = action_msgs[:, 3]
-        # jax.debug.print('action_msgs\n {}', action_msgs)
+        jax.debug.print('action_msgs\n {}', action_msgs)
 
         raw_order_side = jax.lax.cond(
             state.is_sell_task,
@@ -243,7 +241,7 @@ class ExecutionEnv(BaseLOBEnv):
         
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
-        jax.debug.print('filtered action_msgs\n {}', action_msgs)
+        #jax.debug.print('filtered action_msgs\n {}', action_msgs)
         
         # Add to the top of the data messages
         total_messages = jnp.concatenate([cnl_msgs, action_msgs, data_messages], axis=0)
@@ -252,7 +250,7 @@ class ExecutionEnv(BaseLOBEnv):
         # To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
         # Process messages of step (action+data) through the orderbook
-        (asks, bids, trades), (bestasks, bestbids) = job.scan_through_entire_array_save_bidask(self.cfg, key,
+        (asks, bids, trades), (bestbids, bestasks) = job.scan_through_entire_array_save_bidask(self.cfg, key,
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
@@ -276,8 +274,9 @@ class ExecutionEnv(BaseLOBEnv):
 
         agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
 
-        jax.debug.print(f"Agent trades: {agent_trades}")
-        jax.debug.print(f"All trades: {trades}")
+        jax.debug.print("Agent trades:{}", agent_trades)
+        jax.debug.print(" trades :{}", trades)
+        
 
 
         # executions = self._get_executed_by_level(agent_trades, action, state)
@@ -285,11 +284,10 @@ class ExecutionEnv(BaseLOBEnv):
         quant_executed_this_step = executions.sum()
         quant_left = state.task_to_execute - (state.quant_executed + quant_executed_this_step)
         
-        # jax.debug.print('agent_trades\n {}', agent_trades[:30])
-        # jax.debug.print('executions: {}', executions)
-        # jax.debug.print(
-        #     "quant_executed_this_step: {}, quant_left: {}, quant_executed_this_step {}",
-        #     quant_executed_this_step, quant_left, quant_executed_this_step)
+        jax.debug.print('agent_trades\n {}', agent_trades[:30])
+        jax.debug.print('executions: {}', executions)
+        jax.debug.print("quant_executed_this_step: {}, quant_left: {}",quant_executed_this_step, quant_left)
+        jax.debug.print("task_to_execute: {}, quant_executed: {}", state.task_to_execute, state.quant_executed)
 
         # TODO: check if episode time is over and force market order if necessary
         (asks, bids, trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
@@ -711,7 +709,7 @@ class ExecutionEnv(BaseLOBEnv):
         def buy_task_prices(best_ask, best_bid):
             # FT = best_ask
             # essentially convert to market order (20% higher price than best ask)
-            FT = ((best_ask * 1.2) // self.tick_size * self.tick_size).astype(jnp.int32)
+            FT = ((best_ask) // self.tick_size * self.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
             M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
             NT = best_bid
@@ -729,7 +727,7 @@ class ExecutionEnv(BaseLOBEnv):
         def sell_task_prices(best_ask, best_bid):
             # FT = best_bid
             # essentially convert to market order (20% lower price than best bid)
-            FT = ((best_bid * 0.8) // self.tick_size * self.tick_size).astype(jnp.int32)
+            FT = ((best_bid) // self.tick_size * self.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
             M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
                  * self.tick_size).astype(jnp.int32)
@@ -760,7 +758,9 @@ class ExecutionEnv(BaseLOBEnv):
         # --------------- 01 rest info for deciding action_msgs ---------------
         
         # --------------- 02 info for deciding prices ---------------
-        best_ask, best_bid = state.best_asks[-1, 0], state.best_bids[-1, 0]
+        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
 
         price_levels = jax.lax.cond(
             state.is_sell_task,
@@ -768,6 +768,7 @@ class ExecutionEnv(BaseLOBEnv):
             buy_task_prices,
             best_ask, best_bid
         )
+        jax.debug.print('price_levels\n {}', price_levels)
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
@@ -787,7 +788,7 @@ class ExecutionEnv(BaseLOBEnv):
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
-        # jax.debug.print('action_msgs\n {}', action_msgs)
+        # jax.debug.print('action_msgs\n {}', action_mgs)
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
@@ -919,7 +920,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         # jax.debug.print("trades before mkt\n {}", trades[:20])
 
-        (asks, bids, trades), (new_bestask, new_bestbid) = job.cond_type_side_save_bidask(self.cfg,
+        (asks, bids, trades), (new_bestbid, new_bestask) = job.cond_type_side_save_bidask(self.cfg,
             (asks, bids, trades),
             (key,order_msg)
         )
@@ -1252,7 +1253,7 @@ class ExecutionEnv(BaseLOBEnv):
         """Observation space of the environment."""
         #space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
         # space = spaces.Box(-10, 10, (21,), dtype=jnp.float32) 
-        space = spaces.Box(-10, 10, (23,), dtype=jnp.float32) 
+        space = spaces.Box(-10, 10, (29,), dtype=jnp.float32) 
         return space
 
     def state_space(self, params: EnvParams) -> spaces.Dict:
@@ -1284,13 +1285,11 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "TASKSIDE": "buy", # "random", # "buy",
-        "MAX_TASK_SIZE": 100, # 500,
         "WINDOW_INDEX": 5,
-        "ACTION_TYPE": "pure", # "pure",
         "REWARD_LAMBDA": 1.0,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60 * 5, # 60 seconds
+        "EPISODE_TIME": 60 * 50, # 60 seconds
+        "trader_unique_id": 10,
     }
         
     env_cfg = EnvironmentExecutionConfig()
@@ -1306,13 +1305,12 @@ if __name__ == "__main__":
         window_index = config["WINDOW_INDEX"],
         episode_time = config["EPISODE_TIME"],
         ep_type=config["EP_TYPE"],
+        trader_unique_id=config["trader_unique_id"],
     )
     # env_params=env.default_params
     env_params = dataclasses.replace(
         env.default_params,
         reward_lambda=1,
-        task_size=config["MAX_TASK_SIZE"],
-        episode_time=config["EPISODE_TIME"],  # in seconds
     )
     # print(env_params.message_data.shape, env_params.book_data.shape)
 
@@ -1325,7 +1323,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,10):
+    for i in range(1,100):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
@@ -1350,6 +1348,7 @@ if __name__ == "__main__":
         # print(f"Time for {i} step: \n",time.time()-start)
         if done:
             print("==="*20)
+            break
         # ---------- acion from random sampling ----------
         # ==================== ACTION ====================
 
