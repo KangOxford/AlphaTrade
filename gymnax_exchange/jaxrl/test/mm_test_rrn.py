@@ -72,7 +72,7 @@ wandb.init(project="AlphaTrade_MM_RNN_Eval", config={"run_type": "evaluation"})
 
 # Load the trained model parameters 
 
-params_filename = "/home/duser/AlphaTrade/params_file_fiery-sweep-2_03-24_15-55"
+params_filename = "/home/duser/AlphaTrade/params_file_electric-sweep-1_03-25_15-44"
 with open(params_filename, 'rb') as f:
     params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
 
@@ -281,7 +281,7 @@ if __name__ == "__main__":
             test_episode_reward += test_reward.sum()
 
             #baseline action
-            baseline_action = 7
+            baseline_action = 5
             baseline_obsv, baseline_env_state, baseline_reward, baseline_done, baseline_info = baseline_env.step(key_step, baseline_env_state, baseline_action, baseline_env_params)
             baseline_episode_reward += baseline_reward
 

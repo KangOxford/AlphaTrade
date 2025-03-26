@@ -1510,7 +1510,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
-            reward = (new_inventory * reference_price//self.tick_size) + new_cash_balance
+            reward = (new_inventory * reference_price) + new_cash_balance
         elif self.cfg.reward_space == "pnl":
             ##This will just force sales...
             reward = PnL
@@ -1541,7 +1541,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #reward_scaled = jnp.clip(reward_scaled, -0.1, 0.1)
         # reward /= params.avg_twap_list[state.window_index]
         #jax.debug.print("new_inventory:{}",new_inventory)
-        return reward, {
+        return reward_scaled, {
             "market_share": market_share,
             "undamped_reward":undamped_reward,
             "inventoryValue":inventoryValue,
