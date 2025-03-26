@@ -6,11 +6,10 @@ import jax.numpy as jnp
 import chex
 from flax import struct
 import jax.tree_util as jtu
-from functools import partial
 
 # for debugging
-jax.config.update('jax_disable_jit', True)
-jax.config.update("jax_log_compiles", False)
+jax.config.update('jax_disable_jit', False)
+jax.config.update("jax_log_compiles", True)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
@@ -47,6 +46,10 @@ class MARLEnv(BaseLOBEnv):
                  mm_trader_id: int = -9999991,
                  exe_trader_id: int = -9999992,
                  exe_reward_lambda: float = 1.0,
+                 exe_task_size: int = 100,
+                 mm_action_type: str = "pure",
+                 mm_n_ticks_in_book: int = 2,
+                  mm_max_task_size: int = 500
                  ):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
@@ -158,7 +161,7 @@ class MARLEnv(BaseLOBEnv):
         # -------------------------------------------------------
         # (B) Build Market Maker messages
         # -------------------------------------------------------
-        # Use the MM env's message-building functions
+        # Use the MM env’s message-building functions
         mm_order_msgs = self.mm_env.get_action(actions["market_maker"],
                                                     state.mm_state,
                                                     params.mm_params)
@@ -198,7 +201,6 @@ class MARLEnv(BaseLOBEnv):
         exe_order_msgs = self.exe_env._getActionMsgs(exe_raw_action,
                                                      state.exe_state,
                                                      params.exe_params)
-        exe_action_prices = exe_order_msgs[:, 3]  # Get action prices
         
         jax.debug.print(f"Execution messages: {exe_order_msgs}")
         
@@ -257,8 +259,6 @@ class MARLEnv(BaseLOBEnv):
         final_time = combined_msgs[-1, -2:] + params.time_delay_obs_act
         final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
 
-        jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
-
         #---------------------------------------------------------
         #(F) End step functions
         #----------------------------------------------------------
@@ -307,7 +307,6 @@ class MARLEnv(BaseLOBEnv):
         # -------------------------------------------------------
         # Update the shared base state fields
         base_state = state  
-        delta_time = final_time[0] + final_time[1]/1e9 - state.time[0] - state.time[1]/1e9
         new_shared_state = {
             "ask_raw_orders": new_asks,
             "bid_raw_orders": new_bids,
@@ -316,47 +315,10 @@ class MARLEnv(BaseLOBEnv):
             "customIDcounter": final_id_ctr,
             "best_asks": new_bestasks,
             "best_bids": new_bestbids,
-            "step_counter": state.step_counter + 1,
-            "delta_time": delta_time
+            "step_counter": state.step_counter + 1
         }
-
-        # Calculate MM-specific state updates
-        mm_price_bid_passive, mm_quant_bid_passive, mm_price_ask_passive, mm_quant_ask_passive = self.mm_env._get_pass_price_quant(state.mm_state)
-
-        # Calculate EXE-specific state updates
-        exe_price_passive_2, exe_quant_passive_2 = self.exe_env._get_pass_price_quant(state.exe_state)
-        exe_trade_duration_step = (jnp.abs(exe_agent_trades[:, 1]) / state.exe_state.task_to_execute * (exe_agent_trades[:, -2] - state.init_time[0])).sum()
-        exe_trade_duration = state.exe_state.trade_duration + exe_trade_duration_step
-
-        # Update MM state with all fields
-        new_mm_state = state.mm_state.replace(
-            **new_shared_state,
-            inventory=mm_info["end_inventory"],
-            total_PnL=state.mm_state.total_PnL + mm_info["PnL"],
-            mid_price=mm_info["mid_price"],
-            cash_balance=mm_info["cash_balance"],
-            price_bid_passive=mm_price_bid_passive,
-            quant_bid_passive=mm_quant_bid_passive,
-            price_ask_passive=mm_price_ask_passive,
-            quant_ask_passive=mm_quant_ask_passive
-        )
-
-        # Update EXE state with all fields
-        new_exe_state = state.exe_state.replace(
-            **new_shared_state,
-            prev_action=jnp.vstack([exe_action_prices, actions["execution"]]).T,  # store both prices and quantities
-            quant_executed=state.exe_state.quant_executed + exe_info["agentQuant"],
-            total_revenue=state.exe_state.total_revenue + exe_info["revenue"],
-            drift_return=state.exe_state.drift_return + exe_info["drift"],
-            advantage_return=state.exe_state.advantage_return + exe_info["advantage"],
-            slippage_rm=exe_info["slippage_rm"],
-            price_adv_rm=exe_info["price_adv_rm"],
-            price_drift_rm=exe_info["price_drift_rm"],
-            vwap_rm=exe_info["vwap_rm"],
-            trade_duration=exe_trade_duration,
-            price_passive_2=exe_price_passive_2,
-            quant_passive_2=exe_quant_passive_2
-        )
+        new_mm_state = state.mm_state.replace(**new_shared_state)
+        new_exe_state = state.exe_state.replace(**new_shared_state)
 
         new_state = MultiAgentState(
             ask_raw_orders=new_asks,
@@ -374,12 +336,11 @@ class MARLEnv(BaseLOBEnv):
         )
 
         obs = {"market_maker": mm_obs, "execution": exe_obs}
+        
         rewards = {"market_maker": mm_reward, "execution": exe_reward}
         done = self.is_terminal(new_state, params)
-        jax.debug.print(f"Done: {done}")
-        dones = {"market_maker": done, "execution": done, "__all__": done} # ALl of them are the same done
         info = {"market_maker": mm_info, "execution": exe_info}
-        return obs, new_state, rewards, dones, info
+        return obs, new_state, rewards, done, info
 
     def _ffill_best_prices(self, prices_quants, last_valid_price):
             def ffill(arr, inval=-1):
@@ -421,28 +382,6 @@ class MARLEnv(BaseLOBEnv):
         exe_space = self.exe_env.observation_space(params.exe_params if params is not None else None)
         return {"market_maker": mm_space, "execution": exe_space}
 
-    @partial(jax.jit, static_argnums=[0])
-    def step(self, key, state, actions, params):
-        """Override the parent step method to handle dictionaries."""
-        # Call step_env to get the raw results
-        obs_st, state_st, rewards, dones, infos = self.step_env(key, state, actions, params)
-        
-        # If needed, get reset observations (for when episodes terminate)
-        key_reset = jax.random.fold_in(key, state.step_counter)
-        obs_re, state_re = self.reset_env(key_reset, params)
-        
-        #  Use tree_map for dictionary handling (they do the same thing in JaxMARL )
-        ep_done = dones.get("__all__", self.is_terminal(state_st, params))
-        obs = jax.tree_map(
-            lambda x, y: jax.lax.select(ep_done, x, y), obs_re, obs_st
-        )
-        next_state = jax.tree_map(
-            lambda x, y: jax.lax.select(ep_done, x, y), state_re, state_st
-        )
-
-        #jax.debug.print(f"Obs: {obs}")
-        
-        return obs, next_state, rewards, dones, infos
 
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
@@ -484,6 +423,10 @@ if __name__ == "__main__":
         mm_trader_id=config["MM_TRADER_ID"],
         exe_trader_id=config["EXE_TRADER_ID"],
         #mm_reward_lambda=config["MM_REWARD_LAMBDA"],
+        exe_reward_lambda=config["EXE_REWARD_LAMBDA"],
+        exe_task_size=config["EXE_TASK_SIZE"],
+        mm_action_type=config["MM_ACTION_TYPE"],
+        mm_max_task_size=config["MM_MAX_TASK_SIZE"]
     )
     # Get the default combined parameters.
     print("starting default parameters")
@@ -505,7 +448,7 @@ if __name__ == "__main__":
         key_step, _ = jax.random.split(key_step, 2)
 
         #key_policy, _ = jax.random.split(key_policy, 2)
-        # Get random actions from each agent's action space.
+        # Get random actions from each agent’s action space.
 
         key_policy, subkey_mm = jax.random.split(key_policy)
         action_mm = env.mm_env.action_space().sample(subkey_mm)
@@ -521,7 +464,6 @@ if __name__ == "__main__":
         print("Step info:", info)
         print("Market Maker Raw Action:", action_mm.tolist())
         print("Execution Raw Action:", action_exe.tolist())
-        print("Done:", done)
-        if done["__all__"]:
+        if done:
             print("Episode finished!")
             break
