@@ -250,7 +250,7 @@ class ExecutionEnv(BaseLOBEnv):
         cnl_msgs = job.getCancelMsgs(
             raw_order_side,
             self.trader_unique_id,
-            self.cfg.num_messages_by_agent,  # max number of orders to cancel
+            self.cfg.num_messages_by_agent//2,  # max number of orders to cancel
             1 - state.is_sell_task * 2
         )
         

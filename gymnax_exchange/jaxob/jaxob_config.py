@@ -46,7 +46,7 @@ class EnvironmentExecutionConfig(Configuration):
     max_task_size:int=100
     n_actions:int=4
     fixed_quant_value=10
-    num_messages_by_agent=4####make this and the mm one programtic..
+    num_messages_by_agent=8####make this and the mm one programtic..
     
 
 

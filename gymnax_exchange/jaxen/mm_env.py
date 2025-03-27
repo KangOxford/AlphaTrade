@@ -310,6 +310,7 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
         executions = self._get_executed_by_action(agent_trades, action, state,action_prices)
+        executions=jnp.abs(executions)
         #=======================================#
         #===force inventory sale at episode end=#
         #=======================================#
