@@ -719,18 +719,20 @@ if __name__ == "__main__":
     #                                                    "reference_price_portfolio_value":ref,
     #                                                    "n_actions":n,
     #                                                    "fixed_quant_value":q})  
-    env_config_hps = [  {"task":"random",
+    env_config_hps = [ {"task":"random",
                          "action_type":"pure",
                          "end_fn":"unwind_FT",
                          "max_task_size":50,
-                         "n_actions":1
+                         "n_actions":8,
+                         "action_space":"fixed_quants"
                           }]
-    baseline_env_config_hps = [  {"task":"random",
-                            "action_type":"pure",
-                            "end_fn":"unwind_FT",
-                            "max_task_size":50,
-                            "n_actions":1
-                            }]
+    baseline_env_config_hps = [ {"task":"random",
+                         "action_type":"pure",
+                         "end_fn":"unwind_FT",
+                         "max_task_size":50,
+                         "n_actions":8,
+                         "action_space":"fixed_quants"
+                          }]
     
     
     # Model & Training parameters, should be independant of the environment config

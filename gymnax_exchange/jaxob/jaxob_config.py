@@ -28,8 +28,7 @@ class EnvironmentConfig(Configuration):
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
     reference_price_portfolio_value: Literal["mid", "best_bid_ask"] =env_cst.reference_price_portfolio_value
     n_actions:int=env_cst.n_actions
-
-    fixed_quant_value:int=env_cst.n_actions
+    fixed_quant_value:int=env_cst.fixed_quant_value
     
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.002
@@ -41,9 +40,13 @@ class EnvironmentExecutionConfig(Configuration):
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     task: Literal["random", "buy", "sell"]="buy"
     action_type: Literal["delta", "pure"]="pure"
+    action_space: Literal["fixed_quants","fixed_prices"]="fixed_quants"
+
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     max_task_size:int=100
     n_actions:int=4
+    fixed_quant_value=10
+    num_messages_by_agent=4####make this and the mm one programtic..
     
 
 

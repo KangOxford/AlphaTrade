@@ -188,11 +188,22 @@ class ExecutionEnv(BaseLOBEnv):
             ep_type = ep_type,
         )
 
-         ##Choose an end function from theconfig
+         #----------------- Set the end function -----------------#
         if self.cfg.end_fn=="force_market_order":
             self.end_fn =self._force_market_order_if_done
         elif self.cfg.end_fn=="unwind_FT":
             self.end_fn=self.unwind_FT
+        else:
+            raise ValueError(f"Unknown end function: {self.cfg.end_fn}")
+        #---------------------------------------------------------#
+
+        #----------------- Set the action function -----------------#
+        if self.cfg.action_space == "fixed_quants":
+            self.action_fn = self._getActionMsgs_fixedQuant
+        elif self.cfg.action_space == "fixed_prices":
+            self.action_fn = self._getActionMsgs_fixedPrice
+        else:
+            raise ValueError("Invalid action_space specified.")
 
     @property
     def default_params(self) -> EnvParams:
@@ -223,9 +234,13 @@ class ExecutionEnv(BaseLOBEnv):
         )
     
         action = self._reshape_action(input_action, state, params,key)
-        action_msgs = self._getActionMsgs(action, state, params)
+        action_msgs = self.get_action(action, state, params)
         action_prices = action_msgs[:, 3]
+        action_quants=action_msgs[:,2]
         #jax.debug.print('action_msgs\n {}', action_msgs)
+        #jax.debug.print("bids:{}",state.bid_raw_orders)
+
+
 
         raw_order_side = jax.lax.cond(
             state.is_sell_task,
@@ -234,14 +249,15 @@ class ExecutionEnv(BaseLOBEnv):
         )
         cnl_msgs = job.getCancelMsgs(
             raw_order_side,
-            self.cfg.init_id + 1,
-            self.cfg.n_actions,  # max number of orders to cancel
+            self.trader_unique_id,
+            self.cfg.num_messages_by_agent,  # max number of orders to cancel
             1 - state.is_sell_task * 2
         )
         
         # net actions and cancellations at same price if new action is not bigger than cancellation
         action_msgs, cnl_msgs = self._filter_messages(action_msgs, cnl_msgs)
         #jax.debug.print('filtered action_msgs\n {}', action_msgs)
+        #jax.debug.print("cln msgs:{}",cnl_msgs)
         
         # Add to the top of the data messages
         total_messages = jnp.concatenate([cnl_msgs, action_msgs, data_messages], axis=0)
@@ -256,6 +272,7 @@ class ExecutionEnv(BaseLOBEnv):
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
             self.stepLines
         )
+        #jax.debug.print("new bids:{}",bids)
 
         # If best price is not available in the current step, use the last available price
         # TODO: check if we really only want the most recent stepLines prices (+1 for the additional market order)
@@ -280,13 +297,17 @@ class ExecutionEnv(BaseLOBEnv):
 
 
         # executions = self._get_executed_by_level(agent_trades, action, state)
-        executions = self._get_executed_by_action(agent_trades, action, state)
-        quant_executed_this_step = executions.sum()
+        executions = self._get_executed_by_action(agent_trades, action, state,action_prices)
+        executions=jnp.abs(executions) #deal with the negative quants from trades
+    
+        quant_executed_this_step = executions[:,1].sum()#sum the quants..
+        #jax.debug.print("executions:{}",executions)
+
         quant_left = state.task_to_execute - (state.quant_executed + quant_executed_this_step)
         
         # jax.debug.print('agent_trades\n {}', agent_trades[:30])
-        # jax.debug.print('executions: {}', executions)
-        # jax.debug.print(
+        #jax.debug.print('executions: {}', executions)
+        #jax.debug.print(
         #     "quant_executed_this_step: {}, quant_left: {}, quant_executed_this_step {}",
         #     quant_executed_this_step, quant_left, quant_executed_this_step)
 
@@ -298,7 +319,7 @@ class ExecutionEnv(BaseLOBEnv):
         bestasks = jnp.concatenate([bestasks, jnp.resize(new_bestask, (1, 2))], axis=0, dtype=jnp.int32)
         bestbids = jnp.concatenate([bestbids, jnp.resize(new_bestbid, (1, 2))], axis=0, dtype=jnp.int32)
 
-        # jax.debug.print("bestasks\n {}", bestasks)
+        #jax.debug.print("bestasks\n {}", bestasks)
         
         price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
         # jax.debug.print('price_passive_2: {}, quant_passive_2: {}', price_passive_2, quant_passive_2)
@@ -313,9 +334,8 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print('trade_duration_step: {}, trade_duration: {}', trade_duration_step, trade_duration)
         # jax.debug.print('left before mkt: {}, left after mkt {}', quant_left, state.task_to_execute - state.quant_executed - extras["agentQuant"])
         state = EnvState(
-            #jnp.vstack([jnp.arange(3), jnp.arange(3)]).T
-            prev_action = jnp.vstack([action_prices, action]).T,  # includes prices and quantitites  
-            prev_executed = executions, # include prices and quantities 
+            prev_action = jnp.vstack([action_prices, action_quants]).T,  # includes prices and quantitites  
+            prev_executed = executions[:,1],#just the quants to keep same setup  
             ask_raw_orders = asks,
             bid_raw_orders = bids,
             trades = trades,
@@ -448,11 +468,17 @@ class ExecutionEnv(BaseLOBEnv):
         # if task is 'random', this will be randomly picked at env reset
         is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0
         # HERE...
+        if self.cfg.action_space=="fixed_prices":
+            n_trades=self.cfg.n_actions
+        elif self.cfg.action_space=="fixed_quants":
+            n_trades=4##always send 4
+        else:
+            raise ValueError("Invalid Action Space")
 
         return EnvState(
             *base_vals,
-            prev_action=jnp.zeros((self.cfg.n_actions, 2), jnp.int32),
-            prev_executed=jnp.zeros((self.cfg.n_actions, ), jnp.int32),
+            prev_action=jnp.zeros((n_trades, 2), jnp.int32),
+            prev_executed=jnp.zeros((n_trades, ), jnp.int32),
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
             init_price=M,
@@ -501,10 +527,17 @@ class ExecutionEnv(BaseLOBEnv):
             ).astype(jnp.int32)
             return scaledAction
 
-        if self.cfg.action_type == 'delta':
-            action = twapV3(state, params) + action
-
-        action = truncate_action(action, state.task_to_execute - state.quant_executed)
+        ##----Only truncate for the non fixed quants, this is handled in action space for fixed quants
+        if self.cfg.action_space=="fixed_prices":
+            #Only do delta for non fixed quants
+            if self.cfg.action_type == 'delta':
+                action = twapV3(state, params) + action
+            action = truncate_action(action, state.task_to_execute - state.quant_executed)
+        elif self.cfg.action_space=="fixed_quants":
+            action=action
+        else:
+            raise ValueError("Invalid Action Space")
+        
         # jax.debug.print("base_ {}, delta_ {}, action_ {}; action {}",base_, delta_,action_,action)
         # jax.debug.print("action {}", action)
         return action
@@ -632,7 +665,48 @@ class ExecutionEnv(BaseLOBEnv):
         price_quants = price_quants[jnp.argsort(jnp.argsort(actions <= 0))]
         return price_quants
     
-    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState,action_prices:jax.Array) -> jax.Array:
+        """ Get executed quantity by level from trades. 
+        """
+        #TODO: This will have an issue if we buy and sell at the same price. This should be avoided anyway.
+        #TODO: Put in a safe guard for that.
+        def find_index_safe(x, action_prices):
+            # Create a mask for matching prices
+            match_mask = action_prices == x
+            has_match = jnp.any(match_mask)
+            first_match = jnp.argmax(match_mask)  # Returns the first index of True, or 0 if no match
+            return jax.lax.cond(
+                has_match,
+                lambda _: first_match,  # Return the index if a match exists
+                lambda _: -1,           # Return -1 otherwise
+                operand=None
+            )
+
+        # Map prices to indices
+        price_to_index = jax.vmap(lambda x: find_index_safe(x, action_prices))(agent_trades[:, 0])
+        #jax.debug.print("action_prices:{}",action_prices)
+        #jax.debug.print("agent_trades :{}",agent_trades)
+
+        # Create masks for valid indices
+        valid_indices = price_to_index >= 0
+        if self.cfg.action_space == "fixed_quants":
+            num_prices = 4 #always 4 trades for fixed quants
+        elif self.cfg.action_space=="fixed_prices":
+            num_prices=self.cfg.n_actions
+
+        # Mask trades and indices instead of boolean indexing
+        valid_trades = jnp.where(valid_indices, agent_trades[:, 1], 0)
+        #jax.debug.print("valid_trades:{}",valid_trades)
+        valid_price_to_index = jnp.where(valid_indices, price_to_index, 0)
+
+        # Sum trades by price level
+        executions = jax.ops.segment_sum(valid_trades, valid_price_to_index, num_segments=num_prices)
+       # Create a 2D array with price levels and corresponding trade quantities
+        price_quantity_pairs = jnp.stack([action_prices, executions], axis=-1)
+
+        return price_quantity_pairs
+    
+    def _get_executed_by_action_old(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
             Aggressive quantities at FT and more passive are summed as the first quantity.
@@ -678,8 +752,90 @@ class ExecutionEnv(BaseLOBEnv):
         # jax.debug.print("actions {} \n price_quants {} \n", actions, price_quants)
         # return quants only (aggressive prices could be multiple)
         return price_quants[:, 1]
+
+
+    #-------Action Functions-------#
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
+        """Action function for the fixed Quant Action space
+        Pick for a ladder of quant execution options
+        Always send 4 messages"""
+
+        #----01 get price levels----#
+
+        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        #jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
+
+        def buy_task_prices(best_ask, best_bid):
+            FT = best_ask
+            # mid defaults to one tick more passive if between ticks
+            M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
+            NT = best_bid
+            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
+            return FT, M, NT, PP
+        def sell_task_prices(best_ask, best_bid):
+            FT = best_bid
+            # mid defaults to one tick more passive if between ticks
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
+                 * self.tick_size).astype(jnp.int32)
+            NT = best_ask
+            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
+            return FT, M, NT, PP
+        
+        price_levels = jax.lax.cond(
+            state.is_sell_task,
+            sell_task_prices,
+            buy_task_prices,
+            best_ask, best_bid
+        )
+
+        #----02 get quants----#
+        #jax.debug.print("action:{}",action)
+        
+        quant_array = jnp.array([
+            [0, 0, 0, 0],  # No trade
+            [1, 0, 0, 0],  # FT
+            [0, 1, 0, 0],  # M
+            [0, 0, 1, 0],  # NT
+            [0, 0, 0, 1],  # PP
+            [0, 1, 1, 0],  # M+NT
+            [0, 0, 1, 1],  # NT+PP
+            [0, 1, 1, 1]   # M+NT+PP
+        ])
+        quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
+        #----03 get the rest of the message----#
+        types = jnp.ones((4,), jnp.int32)##Always send 4 orders!
+        sides = (1 - state.is_sell_task*2) * jnp.ones((4,), jnp.int32)
+        trader_ids = jnp.ones((4,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids = (jnp.ones((4,), jnp.int32) *
+                    (self.trader_unique_id + state.customIDcounter)) \
+                    + jnp.arange(0, 4) #Each message has a unique ID
+        times = jnp.resize(
+            state.time + params.time_delay_obs_act,
+            (4, 2)#4 trades, 2 times
+        )
+        #------Check quants dont exceed inv----#
+        quant_left=state.task_to_execute-state.quant_executed
+        total_quant=quants.sum()
+        quants = jnp.where(
+                total_quant <= quant_left,
+                quants,
+                jnp.floor(quant_array[1]*quant_left)##spread evely across choices
+            ).astype(jnp.int32)
+        #--make arrays--#
+        quants=jnp.array(quants)
+        #jax.debug.print("quants:{}",quants)
+        price_levels=jnp.array(price_levels)
+        #---form messages---#
+        action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times],axis=1)
+        return action_msgs         
+
+
     
-    def _getActionMsgs(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
+        """get messages for action space where input is quantity at each price level"""
+        
 
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
             def combine_mid_nt(quants, prices):
@@ -806,6 +962,18 @@ class ExecutionEnv(BaseLOBEnv):
             return self.end_fn(quant_left,bestasks, bestbids, time, asks, bids, trades, state, params)
         else:
             raise ValueError("Invalid end_fn specified.")
+        
+    def get_action(self,action, state, params):
+        """
+        Wrapper function to call the appropriate action function.
+        """
+        if self.cfg.action_space == "fixed_quants":
+            return self.action_fn(action, state, params)
+        elif self.cfg.action_space == "fixed_prices":
+            return self.action_fn(action, state, params)
+        else:
+            raise ValueError("Invalid action sspace specified.")    
+    
 
     #--------unwind at mid FT-good for MARL------#
     def unwind_FT(
@@ -1240,20 +1408,21 @@ class ExecutionEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """ Action space of the environment. """
-        if self.cfg.action_type == 'delta':
-            # return spaces.Box(-5, 5, (self.cfg.n_actions,), dtype=jnp.int32)
-            return spaces.Box(-100, 100, (self.cfg.n_actions,), dtype=jnp.int32)
-        else:
-            # return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
-            return spaces.Box(0, self.cfg.max_task_size//self.cfg.n_actions, (self.cfg.n_actions,), dtype=jnp.int32)
-    
-       
+        if self.cfg.action_space=="fixed_prices":
+            if self.cfg.action_type == 'delta':
+                return spaces.Box(-100, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+            elif self.cfg.action_type == 'pure':
+                return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+            else:
+                raise ValueError("Invalid action_type specified.")
+        elif self.cfg.action_space=="fixed_quants":
+            return spaces.Discrete(self.cfg.n_actions)
+        else:    
+            raise ValueError("Invalid action_space specified.")
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        #space = spaces.Box(-10,10,(809,),dtype=jnp.float32) 
-        # space = spaces.Box(-10, 10, (21,), dtype=jnp.float32) 
         space = spaces.Box(-10, 10, (29,), dtype=jnp.float32) 
         return space
 
@@ -1332,6 +1501,7 @@ if __name__ == "__main__":
         key_step, _ = jax.random.split(key_step, 2)
         # test_action=env.action_space().sample(key_policy)
         test_action = env.action_space().sample(key_policy) 
+        #test_action=4
         # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()

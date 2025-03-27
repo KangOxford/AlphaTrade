@@ -1514,7 +1514,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Set reward based on config file
         if self.cfg.reward_space == "portfolio_value":
-            reward = (new_inventory * reference_price) + new_cash_balance
+            reward = (new_inventory * reference_price//self.tick_size) + new_cash_balance
         elif self.cfg.reward_space == "pnl":
             ##This will just force sales...
             reward = PnL
