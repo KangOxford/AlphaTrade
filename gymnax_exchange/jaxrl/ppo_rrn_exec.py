@@ -520,8 +520,8 @@ def make_train(config):
                     #-----------Train info----------#
                     revenues_train = info_train["total_revenue"]
                     quant_executed_train=info_train["quant_executed"]
-                    average_price_train = info_train["current_step"]
-                    current_step_train = info_train["inventory"] 
+                    average_price_train = info_train["average_price"]
+                    current_step_train = info_train["current_step"] 
                     mkt_forced_quant_train=info_train["mkt_forced_quant"]
                     doom_quant_train=info_train["doom_quant"]
                     trade_duration_train=info_train["trade_duration"]
@@ -533,8 +533,8 @@ def make_train(config):
                     #-------------eval info------#   
                     revenues_eval = info_eval["total_revenue"]
                     quant_executed_eval=info_eval["quant_executed"]
-                    average_price_eval = info_eval["current_step"]
-                    current_step_eval = info_eval["inventory"] 
+                    average_price_eval = info_eval["average_price"]
+                    current_step_eval = info_eval["current_step"] 
                     mkt_forced_quant_eval=info_eval["mkt_forced_quant"]
                     doom_quant_eval=info_eval["doom_quant"]
                     trade_duration_eval=info_eval["trade_duration"]
@@ -545,8 +545,8 @@ def make_train(config):
                     #-------------baseline info------#
                     revenues_baseline = baseline_metric["total_revenue"]
                     quant_executed_baseline=baseline_metric["quant_executed"]
-                    average_price_baseline = baseline_metric["current_step"]
-                    current_step_baseline = baseline_metric["inventory"] 
+                    average_price_baseline = baseline_metric["average_price"]
+                    current_step_baseline = baseline_metric["current_step"] 
                     mkt_forced_quant_baseline=baseline_metric["mkt_forced_quant"]
                     doom_quant_baseline=baseline_metric["doom_quant"]
                     trade_duration_baseline=baseline_metric["trade_duration"]
