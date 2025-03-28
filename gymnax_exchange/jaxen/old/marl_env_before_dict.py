@@ -9,8 +9,8 @@ import jax.tree_util as jtu
 from functools import partial
 
 # for debugging
-jax.config.update('jax_disable_jit', False)
-jax.config.update("jax_log_compiles", True)
+jax.config.update('jax_disable_jit', True)
+jax.config.update("jax_log_compiles", False)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
@@ -195,11 +195,11 @@ class MARLEnv(BaseLOBEnv):
                                                       state.exe_state,
                                                       params.exe_params,
                                                       key_exe)
-        exe_order_msgs = self.exe_env.get_action(exe_raw_action,
+        exe_order_msgs = self.exe_env._getActionMsgs(exe_raw_action,
                                                      state.exe_state,
                                                      params.exe_params)
         exe_action_prices = exe_order_msgs[:, 3]  # Get action prices
-        exe_action_quants=exe_order_msgs[:,2]
+        
         jax.debug.print(f"Execution messages: {exe_order_msgs}")
         
         # For execution, decide which side to cancel (depending on task)
@@ -212,7 +212,7 @@ class MARLEnv(BaseLOBEnv):
         exe_cnl_msgs = job.getCancelMsgs(
             raw_order_side,
             self.exe_trader_id,
-            self.exe_env.cfg.num_messages_by_agent//2, #cant be n_actions due to new space
+            self.exe_env.n_actions,
             side_for_exe
         )
         exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
@@ -235,7 +235,7 @@ class MARLEnv(BaseLOBEnv):
         #jax.debug.print(f"Combined messages: {combined_msgs}")
 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
-        (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
+        (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
             self.cfg,  
             key,  
             combined_msgs,
@@ -270,9 +270,8 @@ class MARLEnv(BaseLOBEnv):
         # Execution End 
         #Find quant executed
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
-        exe_executions = self.exe_env._get_executed_by_action(exe_agent_trades, actions["execution"], state.exe_state,exe_action_prices)
-        exe_executions=jnp.abs(exe_executions)
-        exe_quant_executed_this_step = exe_executions[:,1].sum()#new handeling of executions
+        exe_executions = self.exe_env._get_executed_by_action(exe_agent_trades, actions["execution"], state.exe_state)
+        exe_quant_executed_this_step = exe_executions.sum()
         quant_left = state.exe_state.task_to_execute - (state.exe_state.quant_executed + exe_quant_executed_this_step)
 
 
@@ -288,7 +287,6 @@ class MARLEnv(BaseLOBEnv):
         # -------------------------------------------------------
         mm_agent_trades = job.get_agent_trades(new_trades, self.mm_trader_id)
         mm_executions = self.mm_env._get_executed_by_action(mm_agent_trades, actions["market_maker"], state,mm_action_prices)
-        mm_executions=jnp.abs(mm_executions) #check incase neg quant
         mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
         #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
         mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
@@ -346,7 +344,7 @@ class MARLEnv(BaseLOBEnv):
         # Update EXE state with all fields
         new_exe_state = state.exe_state.replace(
             **new_shared_state,
-            prev_action=jnp.vstack([exe_action_prices, exe_action_quants]).T,  # store both prices and quantities+> action no longer = quant
+            prev_action=jnp.vstack([exe_action_prices, actions["execution"]]).T,  # store both prices and quantities
             quant_executed=state.exe_state.quant_executed + exe_info["agentQuant"],
             total_revenue=state.exe_state.total_revenue + exe_info["revenue"],
             drift_return=state.exe_state.drift_return + exe_info["drift"],
