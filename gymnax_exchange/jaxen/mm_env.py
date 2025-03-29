@@ -921,7 +921,7 @@ class MarketMakingEnv(BaseLOBEnv):
        
         tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
-        jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
+        #jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
         #jax.debug.print("best asks: {}", state.best_asks)
         #jax.debug.print("best bids: {}", state.best_bids)
         
@@ -1905,7 +1905,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,10):
+    for i in range(1,10000):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)
