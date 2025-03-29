@@ -196,8 +196,6 @@ class MarketMakingEnv(BaseLOBEnv):
             self.action_fn = self._getActionMsgs_fixedPrice
         elif self.cfg.action_space == "AvSt":
             self.action_fn = self._getActionMsgs_AvSt
-        elif self.cfg.action_space == "spread_skew":
-            self.action_fn = self._getActionMsgs_spread_skew
         else:
             raise ValueError("Invalid action_space specified.")
         
@@ -256,6 +254,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #action = self._reshape_action(input_action, state, params,key)
         action=input_action
         action_msgs = self.get_action(action, state, params)
+       # jax.debug.print("Action messages: {}", action_msgs)
         action_prices = action_msgs[:, 3] #price is position 3 of msg
 
 
@@ -403,9 +402,6 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.action_space=="fixed_prices":
             action_prices=jnp.zeros((self.cfg.n_actions,1),dtype=jnp.int32) #2 trades
             exections=jnp.zeros((self.cfg.n_actions,2),dtype=jnp.int32)
-        elif self.cfg.action_space=="spread_skew":
-            action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades (bid and ask)
-            exections=jnp.zeros((2,2),dtype=jnp.int32)
         else:
             raise ValueError("Other action spaces not finished")
         
@@ -445,7 +441,7 @@ class MarketMakingEnv(BaseLOBEnv):
         """Reset state from data"""
         base_state = super()._get_state_from_data(key,first_message, book_data, max_steps_in_episode, window_index, start_index)
         base_vals = jtu.tree_flatten(base_state)[0]
-        best_bid, best_ask = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
+        best_bid, best_ask= job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
         M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
 
         return EnvState(
@@ -888,14 +884,10 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Create masks for valid indices
         valid_indices = price_to_index >= 0
-        if self.cfg.action_space == "fixed_quants" or self.cfg.action_space=="AvSt":
+        if self.cfg.action_space == "fixed_quants"or self.cfg.action_space=="AvSt":
             num_prices = 2 #2 trades for this setup.
         elif self.cfg.action_space=="fixed_prices":
             num_prices=self.cfg.n_actions
-        elif self.cfg.action_space=="spread_skew":
-            num_prices = 2  # 2 trades (bid and ask)
-        else:
-            raise ValueError("Invalid action space specified")
 
         # Mask trades and indices instead of boolean indexing
         valid_trades = jnp.where(valid_indices, agent_trades[:, 1], 0)
@@ -918,6 +910,8 @@ class MarketMakingEnv(BaseLOBEnv):
         # Compute best_ask and best_bid using a rolling average to reduce variance
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        #jax.debug.print("best_ask:{}",best_ask)
+        #jax.debug.print("best_bid:{}",best_bid)
         
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 0, 0, -1, 1, -1, 5, 10], dtype=jnp.int32)
@@ -927,6 +921,11 @@ class MarketMakingEnv(BaseLOBEnv):
        
         tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
+        jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
+        #jax.debug.print("best asks: {}", state.best_asks)
+        #jax.debug.print("best bids: {}", state.best_bids)
+        
+
         # Get parameters for current action
         bid_offset = bid_offsets[action]
         ask_offset = ask_offsets[action]
@@ -1106,6 +1105,7 @@ class MarketMakingEnv(BaseLOBEnv):
         #Trade off the average over the last 10 messages to avoid the variance:
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        
 
 
         sell_levels=sell_task_prices(best_ask, best_bid)
@@ -1129,95 +1129,6 @@ class MarketMakingEnv(BaseLOBEnv):
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
-    def _getActionMsgs_spread_skew(self, action: jax.Array, state: EnvState, params: EnvParams):
-        '''Transform discrete action into bid and ask order messages based on spread and skew parameters.
-        Actions [0-5] map to combinations of:
-        spread: 0 = tight spread, 1 = wide spread
-        skew: 0 = bid skew, 1 = neutral, 2 = ask skew
-        
-        Mapping:
-        0: tight spread, bid skew
-        1: tight spread, neutral 
-        2: tight spread, ask skew
-        3: wide spread, bid skew
-        4: wide spread, neutral
-        5: wide spread, ask skew
-        '''
-        # Compute best_ask, best_bid, and mid-price using a rolling average
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        mid_price = (best_ask + best_bid) / 2
-
-
-        jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
-        #jax.debug.print("best asks: {}", state.best_asks)
-        #jax.debug.print("best bids: {}", state.best_bids)
-        
-        # Get current spread
-        current_spread = best_ask - best_bid
-        
-        # Map action to spread and skew parameters
-        # action = spread_type * 3 + skew_type
-        spread_type = action // 3  # 0 = tight, 1 = wide
-        skew_type = action % 3     # 0 = neutral, 1 = ask skew, 2 = bid skew
-        
-        # Define spread multipliers
-        # Tight spread = 1.0 * current_spread
-        # Wide spread = 2.0 * current_spread
-        spread_multiplier = jnp.where(spread_type == 0, 1.0, 2.0)
-        new_spread = current_spread * spread_multiplier
-        
-        # Define skew amounts (in ticks)
-        # The skew will shift the mid price by this many ticks
-        skew_ticks = jnp.where(skew_type == 0, -self.cfg.n_ticks_in_book,   # bid skew - shift down by n_ticks_in_book ticks
-                            jnp.where(skew_type == 1, 0,  # neutral - no skew
-                            self.cfg.n_ticks_in_book))   # ask skew - shift up by n_ticks_in_book ticks
-
-
-        # Calculate skewed mid price
-        skewed_mid = mid_price + skew_ticks * self.tick_size
-        
-        # Calculate final bid and ask prices
-        half_spread = new_spread // 2
-        bid_price = skewed_mid - half_spread
-        ask_price = skewed_mid + half_spread
-        
-        # Ensure prices are a multiple of tick size
-        bid_price = (bid_price // self.tick_size) * self.tick_size
-        ask_price = (ask_price // self.tick_size) * self.tick_size
-        
-        # Set fixed quantities
-        bid_quant = self.cfg.fixed_quant_value
-        ask_quant = self.cfg.fixed_quant_value
-        
-        # Construct order messages
-        types = jnp.array([1, 1], dtype=jnp.int32)  # 1 = limit order
-        sides = jnp.array([1, -1], dtype=jnp.int32)  # 1 = bid, -1 = ask
-        quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
-        prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
-        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
-        
-        # Generate order IDs
-        base_id = self.trader_unique_id + state.customIDcounter
-        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
-        
-        # Time fields
-        times = jnp.resize(state.time + params.time_delay_obs_act, (2, 2))
-        
-        # Stack messages
-        action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
-        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
-        
-        # Debug prints
-        jax.debug.print("Action: {}", action)
-        jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
-        jax.debug.print("Spread Type: {}, Skew Type: {}", spread_type, skew_type)
-        jax.debug.print("Current Spread: {}, New Spread: {}", current_spread, new_spread)
-        jax.debug.print("Skew Ticks: {}, Skewed Mid: {}", skew_ticks, skewed_mid)
-        jax.debug.print("Final Bid Price: {}, Final Ask Price: {}", bid_price, ask_price)
-        jax.debug.print("Final Messages:\n{}", action_msgs)
-        
-        return action_msgs
 
     #===================End Episode Functions=============================================#
     def end_fn_pass(self,
@@ -1232,8 +1143,6 @@ class MarketMakingEnv(BaseLOBEnv):
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
         elif self.cfg.action_space=="fixed_prices":
             id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
-        elif self.cfg.action_space=="spread_skew":
-            id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
         else:
             raise ValueError("Action space not implemented yet")
         time = time + params.time_delay_obs_act
@@ -1320,8 +1229,6 @@ class MarketMakingEnv(BaseLOBEnv):
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
         elif self.cfg.action_space=="fixed_prices":
             id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
-        elif self.cfg.action_space=="spread_skew":
-            id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
         else:
             raise ValueError("Action space not implemented yet")
         
@@ -1367,8 +1274,6 @@ class MarketMakingEnv(BaseLOBEnv):
                 id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
             elif self.cfg.action_space=="fixed_prices":
                 id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
-            elif self.cfg.action_space=="spread_skew":
-                id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
             else:
                 raise ValueError("Action space not implemented yet")
             return mkt_msg, id_counter, new_time
@@ -1705,8 +1610,6 @@ class MarketMakingEnv(BaseLOBEnv):
             return self.action_fn(action, state, params)
         elif self.cfg.action_space == "AvSt":
             return self.action_fn(action, state, params)
-        elif self.cfg.action_space == "spread_skew":
-            return self.action_fn(action, state, params)
         else:
             raise ValueError("Invalid action sspace specified.")
 
@@ -1911,10 +1814,8 @@ class MarketMakingEnv(BaseLOBEnv):
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
              return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
-        elif self.cfg.action_space =="fixed_quants" or self.cfg.action_space=="AvSt":
+        elif self.cfg.action_space =="fixed_quants"or self.cfg.action_space=="AvSt":
             return spaces.Discrete(self.cfg.n_actions)
-        elif self.cfg.action_space == "spread_skew":
-            return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         else:
             raise ValueError("Invalid action_space specified.")
        
@@ -2004,7 +1905,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,20):
+    for i in range(1,10):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)

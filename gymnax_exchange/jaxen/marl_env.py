@@ -44,7 +44,7 @@ class MARLEnv(BaseLOBEnv):
                  window_index: int,
                  episode_time: int,
                  ep_type: str = "fixed_time",
-                 mm_trader_id: int = -9999991,
+                 mm_trader_id: int = -4999991,
                  exe_trader_id: int = -9999992,
                  exe_reward_lambda: float = 1.0,
                  ):
@@ -464,7 +464,7 @@ if __name__ == "__main__":
         "EPISODE_TIME": 300,  # for example, 5 minutes
         "WINDOW_INDEX": 1,
         # sub–env parameters:
-        "MM_TRADER_ID": -9999991,
+        "MM_TRADER_ID": -4999991,
         "MM_REWARD_LAMBDA": 0.0001,
         "MM_ACTION_TYPE": "pure",
         "MM_MAX_TASK_SIZE": 500,
