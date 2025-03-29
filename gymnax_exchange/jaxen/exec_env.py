@@ -463,7 +463,7 @@ class ExecutionEnv(BaseLOBEnv):
         #(self,message_data,book_data,max_steps_in_episode)
         base_state = super()._get_state_from_data(key,first_message, book_data, max_steps_in_episode, window_index, start_index)
         base_vals = jtu.tree_flatten(base_state)[0]
-        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
+        best_bid, best_ask = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
         M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
         # if task is 'random', this will be randomly picked at env reset
         is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0

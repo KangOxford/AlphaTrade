@@ -261,7 +261,11 @@ class BaseLOBEnv(environment.Environment):
         def get_initial_orders(book_data,time):
             orderbookLevels=10
             initid=self.cfg.init_id
+            #jax.debug.print("\n=== Debug Order Book Initialization ===")
+            #jax.debug.print("Raw book_data shape: {}", book_data.shape)
+            #jax.debug.print("Raw book_data: {}", book_data)
             data=jnp.array(book_data).reshape(int(10*2),2)
+            #jax.debug.print("\nReshaped data: {}", data)
             newarr = jnp.zeros((int(orderbookLevels*2),8),dtype=jnp.int32)
             initOB = newarr \
                 .at[:,3].set(data[:,0]) \
@@ -273,6 +277,12 @@ class BaseLOBEnv(environment.Environment):
                 .at[:,5].set(initid-jnp.arange(0,orderbookLevels*2)) \
                 .at[:,6].set(time[0]) \
                 .at[:,7].set(time[1])
+            #jax.debug.print("\nFinal initOB array:")
+            #jax.debug.print("Shape: {}", initOB.shape)
+            #jax.debug.print("Content: {}", initOB)
+            #jax.debug.print("Side assignments (column 1): {}", initOB[:,1])
+            #jax.debug.print("Price assignments (column 3): {}", initOB[:,3])
+            #jax.debug.print("Quantity assignments (column 2): {}", initOB[:,2])
             return initOB
         init_orders=get_initial_orders(book_data,time)
         #jax.debug.print("init_orders {}",init_orders)
@@ -282,7 +292,9 @@ class BaseLOBEnv(environment.Environment):
         trades_init=(jnp.ones((self.cfg.nTrades,8))*-1).astype(jnp.int32)
         #Process the initial messages through the orderbook
         ordersides=job.scan_through_entire_array(self.cfg,key,init_orders,(asks_raw,bids_raw,trades_init))
-        #jax.debug.print("trades init {}",ordersides[2])
+        
+ 
+        
         return EnvState(ask_raw_orders=ordersides[0],
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],

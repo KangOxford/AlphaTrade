@@ -441,7 +441,7 @@ class MarketMakingEnv(BaseLOBEnv):
         """Reset state from data"""
         base_state = super()._get_state_from_data(key,first_message, book_data, max_steps_in_episode, window_index, start_index)
         base_vals = jtu.tree_flatten(base_state)[0]
-        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
+        best_bid, best_ask= job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
         M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
 
         return EnvState(
@@ -921,6 +921,11 @@ class MarketMakingEnv(BaseLOBEnv):
        
         tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
+        jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
+        #jax.debug.print("best asks: {}", state.best_asks)
+        #jax.debug.print("best bids: {}", state.best_bids)
+        
+
         # Get parameters for current action
         bid_offset = bid_offsets[action]
         ask_offset = ask_offsets[action]
@@ -1900,7 +1905,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,1000):
+    for i in range(1,10):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)
