@@ -1,4 +1,8 @@
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+#FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04
+
+
+
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -43,5 +47,5 @@ RUN pip3 install -r requirements.txt
 RUN echo 'export PATH=$PATH:/home/duser/.local/bin' >> ~/.bashrc
 
 # Configure git
-RUN git config --global user.email "Valentinm@hotmail.de" && \
-    git config --global user.name "Valentin"
+RUN git config --global user.email "reuben@robots.ox.ac.uk" && \
+    git config --global user.name "reuben"
