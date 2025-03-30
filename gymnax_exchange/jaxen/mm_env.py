@@ -1634,7 +1634,7 @@ class MarketMakingEnv(BaseLOBEnv):
         reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
     
         #--------------------C) Portfolilo Value--------------#
-        reward_portfolio_value=new_inventory+new_cash_balance
+        reward_portfolio_value=new_inventory*(reference_price)+new_cash_balance
 
         #-----------------d) delta Portfolio Value--------#
         #Get old ref price
