@@ -1,5 +1,5 @@
-action_space= "spread_skew"
-reward_space = "zero_inv"
+action_space= "AvSt"
+reward_space = "portfolio_value"
 observation_space = "engineered"
 end_fn = "unwind_ref_price"
 n_ticks_in_book =1

@@ -25,7 +25,7 @@ class EnvironmentConfig(Configuration):
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
-    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value"] =env_cst.reward_space
+    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value","spooner","spooner_damped","spooner_scaled","delta_netWorth"] =env_cst.reward_space
     reference_price_portfolio_value: Literal["mid", "best_bid_ask"] =env_cst.reference_price_portfolio_value
     n_actions:int=env_cst.n_actions
     fixed_quant_value:int=env_cst.fixed_quant_value
