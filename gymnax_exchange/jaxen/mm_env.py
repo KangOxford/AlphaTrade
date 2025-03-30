@@ -979,7 +979,7 @@ class MarketMakingEnv(BaseLOBEnv):
         mid_price = (best_ask + best_bid) // 2
 
         #Select aaggresion parameter
-        gamma_values = jnp.array([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0], dtype=jnp.float32)  # Risk aversion
+        gamma_values = jnp.array([0.1, 0.2, 0.5, 1, 2, 5, 10, 20], dtype=jnp.float32)  # Risk aversion
         gamma = gamma_values[action]
 
         #Estimate K paramter from data
@@ -996,7 +996,7 @@ class MarketMakingEnv(BaseLOBEnv):
         normalized_time = time_left / params.episode_time
 
         #Reservation price
-        res_price = (mid_price - ((state.inventory)//self.tick_size) * gamma * (vol) * normalized_time)
+        res_price = (mid_price - ((state.inventory)) * gamma * (vol) * normalized_time)
 
         #Spread
         spread = (gamma*vol*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.tick_size
@@ -1590,7 +1590,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = state.cash_balance + PnL
-        inventoryValue=new_inventory*(reference_price//self.tick_size)
+        inventoryValue=new_inventory*(reference_price)
         netWorth=new_cash_balance+inventoryValue  
 
         #calculate a fraction of total market activity attributable to us.

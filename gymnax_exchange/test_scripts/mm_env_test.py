@@ -107,6 +107,7 @@ def generate_plots(
     print(f"Data saved to {reward_file}")
     print(f"Last valid step {valid_steps}")
     print(f"Last NetWorth: {netWorth[-1]}")
+    print(f"Last PnL: {total_PnL[-1]}")
 
     # ============================
     # Plotting each reward type separately
@@ -145,6 +146,13 @@ def generate_plots(
     fig, axes = plt.subplots(3, 3, figsize=(15, 15))  # Adjust the grid as needed
 
     # Plot each metric on a separate subplot
+    axes[0, 0].plot(range(plot_until_step), rewards, label="Reward", color='green')
+    axes[0, 0].set_xlabel("Steps")
+    axes[0, 0].set_ylabel("Reward")
+    axes[0, 0].set_title("Reward Over Steps")
+    axes[0, 0].legend()
+
+
     axes[0, 1].plot(range(plot_until_step), inventory, label="Inventory", color='green')
     axes[0, 1].set_xlabel("Steps")
     axes[0, 1].set_ylabel("Inventory")
@@ -264,7 +272,6 @@ if __name__ == "__main__":
     reward_spooner_scaled = np.zeros((test_steps, 1), dtype=int)
     reward_spooner_damped = np.zeros((test_steps, 1), dtype=int)
     reward_delta_netWorth = np.zeros((test_steps, 1), dtype=int)
-    msgs=np.zeros((test_steps,8),dtype=int)
     inventory = np.zeros((test_steps, 1), dtype=int)
     total_PnL = np.zeros((test_steps, 1), dtype=int)
     buyQuant = np.zeros((test_steps, 1), dtype=int)
@@ -292,8 +299,7 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         test_action = env.action_space().sample(key_policy) 
-        #jax.debug.print("action{}",test_action)
-        #test_action=7
+        #test_action=8
         
         start = time.time()
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
@@ -328,7 +334,7 @@ if __name__ == "__main__":
     generate_plots(
      rewards,
      reward_portfolio_value,
-    reward_complex,
+     reward_complex,
      reward_spooner,
      reward_spooner_damped,
      reward_spooner_scaled,
