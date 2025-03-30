@@ -132,7 +132,7 @@ def generate_plots(
         plt.legend()
 
         # Save each plot to a separate file
-        plot_file = f"gymnax_exchange/test_scripts/test_outputsreward_{reward_name.replace(' ', '_').lower()}.png"
+        plot_file = f"gymnax_exchange/test_scripts/test_outputs/reward_{reward_name.replace(' ', '_').lower()}.png"
         plt.savefig(plot_file)
         plt.close()
 
@@ -205,8 +205,8 @@ if __name__ == "__main__":
     except:
         # ATFolder = "./testing_oneDay"
         #ATFolder = "/training_oneDay"
-        #ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-        ATFolder= "/home/duser/AlphaTrade/testing"
+        ATFolder = "/home/duser/AlphaTrade/training_oneDay/val"
+        #ATFolder= "/home/duser/AlphaTrade/testing"
 
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
