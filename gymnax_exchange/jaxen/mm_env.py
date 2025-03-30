@@ -1607,7 +1607,7 @@ class MarketMakingEnv(BaseLOBEnv):
         InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.tick_size 
     
         #Market Making PNL:     
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() / self.tick_size 
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() 
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
 
@@ -1642,12 +1642,12 @@ class MarketMakingEnv(BaseLOBEnv):
         #-----------------d) delta Portfolio Value--------#
         #Get old ref price
         if self.cfg.reference_price_portfolio_value == "mid":
-            old_reference_price = state.mid_price
+            old_reference_price = state.mid_price/self.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask.
             old_reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: state.best_bids[-1][0],
-                                        lambda: state.best_asks[-1][0])
+                                        lambda: state.best_bids[-1][0]/self.tick_size,
+                                        lambda: state.best_asks[-1][0]/self.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth

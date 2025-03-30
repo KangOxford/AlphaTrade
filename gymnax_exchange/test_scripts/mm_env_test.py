@@ -223,7 +223,7 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": 6,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*30,  
     }

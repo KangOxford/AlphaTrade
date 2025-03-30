@@ -26,6 +26,8 @@ def generate_plots(
     total_revenue,
     quant_executed,
     average_price,
+    vwap_rm,
+    mid_price,
     valid_steps,
     reward_file,
     output_dir
@@ -38,6 +40,8 @@ def generate_plots(
     total_revenue = total_revenue[:valid_steps]
     quant_executed = quant_executed[:valid_steps]
     average_price = average_price[:valid_steps]
+    vwap_rm=vwap_rm[:valid_steps]
+    mid_price=mid_price[:valid_steps]
 
     # Save data to CSV
     data = np.hstack([rewards, total_revenue, quant_executed, average_price])
@@ -47,19 +51,10 @@ def generate_plots(
     print(f"Data saved to {reward_file}")
 
     # Plot reward
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(valid_steps), rewards, label="Reward", color='blue')
-    plt.axhline(y=0, color='red', linestyle='--')
-    plt.xlabel("Steps")
-    plt.ylabel("Reward")
-    plt.title("Reward Over Steps")
-    plt.legend()
-    plt.savefig(os.path.join(output_dir, 'reward_plot.png'))
-    plt.close()
-    print("Reward plot saved.")
+    
 
     # Combined plot
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(3, 2, figsize=(12, 10))
     axes[0, 0].plot(range(valid_steps), total_revenue, label="Total Revenue", color='green')
     axes[0, 0].set_title("Total Revenue Over Steps")
     
@@ -68,6 +63,17 @@ def generate_plots(
     
     axes[1, 0].plot(range(valid_steps), average_price, label="Average Price", color='orange')
     axes[1, 0].set_title("Average Price Over Steps")
+
+    axes[1, 1].plot(range(valid_steps), rewards, label="Reward", color='red')
+    axes[1, 1].set_title("Reward Over Steps")
+
+    axes[2, 0].plot(range(valid_steps), vwap_rm, label="Vwam RM", color='red')
+    axes[2, 0].set_title("Vwap RM Over Steps")
+
+    axes[2, 1].plot(range(valid_steps), mid_price, label="mid price", color='red')
+    axes[2, 1].set_title("Mid Price Over Steps")
+
+
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'combined_plot.png'))
@@ -78,7 +84,7 @@ if __name__ == "__main__":
     ATFolder = "/home/duser/AlphaTrade/training_oneDay/val"
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": 10,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60 * 30,
     }
@@ -110,6 +116,8 @@ if __name__ == "__main__":
     total_revenue = np.zeros((test_steps, 1))
     quant_executed = np.zeros((test_steps, 1))
     average_price = np.zeros((test_steps, 1))
+    mid_price=np.zeros((test_steps, 1))
+    vwap_rm=np.zeros((test_steps, 1))
 
     output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
     valid_steps = 0
@@ -118,18 +126,21 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         test_action = env.action_space().sample(key_policy)
+        #test_action=0
         
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
         
         rewards[i] = reward
         total_revenue[i] = info["total_revenue"]
-        quant_executed[i] = info["quantity_executed"]
+        quant_executed[i] = info["quant_executed"]
         average_price[i] = info["average_price"]
+        vwap_rm[i]=info["vwap_rm"]
+        mid_price[i]=info["mid_price"]
         
         valid_steps += 1
         if done:
             break
 
     generate_plots(
-        rewards, total_revenue, quant_executed, average_price, valid_steps, reward_file, output_dir
+        rewards, total_revenue, quant_executed, average_price,vwap_rm, mid_price, valid_steps, reward_file, output_dir
     )
