@@ -1022,7 +1022,7 @@ class ExecutionEnv(BaseLOBEnv):
             ep_is_over & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, doom_price, side_sign*quant_left, new_time  # Inv +ve means incoming is sell so standing buy.
+            trades, doom_price, side_sign*jnp.abs(quant_left), new_time  # Inv +ve means incoming is sell so standing buy.
         )
         #Return traded amounts
         doom_quant = ep_is_over * quant_left

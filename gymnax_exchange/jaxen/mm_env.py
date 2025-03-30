@@ -1541,7 +1541,8 @@ class MarketMakingEnv(BaseLOBEnv):
         '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
         '''
         # ====================01 get reward stats ==========================================#
-        
+        #Notice, normalise prices in reward by tick size. On state prices are not normalised 
+        #Being constient with exec. Cash balance and pnl etc are normalised in state, also consitent
 
         # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -1569,22 +1570,24 @@ class MarketMakingEnv(BaseLOBEnv):
         new_inventory=state.inventory+inventory_delta
 
         #Find the new obsvered mid price at the end of the step.
+        #non normalized=> going on state
         mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) //( 2 * self.tick_size) * self.tick_size
 
         #Real Revenue calcs: (actual cash flow+actual value of portfolio)
         income=(agent_sells[:, 0]* jnp.abs(agent_sells[:, 1])).sum()
         outgoing=(agent_buys[:, 0] * jnp.abs(agent_buys[:, 1])).sum() 
-             
-        PnL=(income-outgoing)
+
+        #PnL,== cash balance== normalised by tick size
+        PnL=(income-outgoing)/self.tick_size
 
         # Compute a reference price based on the config
         if self.cfg.reference_price_portfolio_value == "mid":
-            reference_price = mid_price_end
+            reference_price = mid_price_end/self.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask.
             reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestbids[-1][0],
-                                        lambda: bestasks[-1][0])
+                                        lambda: bestbids[-1][0]/self.tick_size,
+                                        lambda: bestasks[-1][0]/self.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
 
@@ -1601,12 +1604,12 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #------------A) spooner Rewards-------------------------#       
         #Inventory PnL: 
-        InventoryPnL= state.inventory*(mid_price_end-state.mid_price) 
+        InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.tick_size 
     
         #Market Making PNL:     
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() // self.tick_size * self.tick_size
-        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() 
-        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() 
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() / self.tick_size 
+        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
+        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
 
         #A1)Spooner paper reward
         reward_spooner = buyPnL + sellPnL + InventoryPnL - jnp.maximum(0,InventoryPnL)
@@ -1622,13 +1625,13 @@ class MarketMakingEnv(BaseLOBEnv):
         inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
         unrealizedPnL_lambda = self.cfg.unrealizedPnL_lambda
         asymmetrically_dampened_lambda = self.cfg.asymmetrically_dampened_lambda
-        avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0] / buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
-        avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum() , 0)
-        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) 
+        avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0]/ buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
+        avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum(), 0)
+        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) /self.tick_size
         approx_unrealized_pnl = jnp.where( 
             inventory_delta > 0,
-            inventory_delta * (averageMidprice - avg_buy_price),  # Excess buys
-            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice)  # Excess sells
+            inventory_delta * (averageMidprice - avg_buy_price)/self.tick_size,  # Excess buys
+            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice)/self.tick_size  # Excess sells
         )
   
         reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening

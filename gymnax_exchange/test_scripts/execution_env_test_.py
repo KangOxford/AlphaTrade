@@ -1,0 +1,135 @@
+import os
+import sys
+sys.path.append(os.path.abspath('/home/duser/AlphaTrade'))
+sys.path.append('.')
+import time
+import dataclasses
+import jax
+import numpy as np
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv  
+import faulthandler
+import pandas as pd  
+import chex
+
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
+
+faulthandler.enable()
+
+# ============================
+# Configuration
+# ============================
+
+def generate_plots(
+    rewards,
+    total_revenue,
+    quant_executed,
+    average_price,
+    valid_steps,
+    reward_file,
+    output_dir
+):
+    """
+    Generates plots and saves data to CSV for execution environment metrics.
+    """
+    # Trim data to valid steps
+    rewards = rewards[:valid_steps]
+    total_revenue = total_revenue[:valid_steps]
+    quant_executed = quant_executed[:valid_steps]
+    average_price = average_price[:valid_steps]
+
+    # Save data to CSV
+    data = np.hstack([rewards, total_revenue, quant_executed, average_price])
+    column_names = ['Reward', 'Total Revenue', 'Quantity Executed', 'Average Price']
+    df = pd.DataFrame(data, columns=column_names)
+    df.to_csv(reward_file, index=False)
+    print(f"Data saved to {reward_file}")
+
+    # Plot reward
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(valid_steps), rewards, label="Reward", color='blue')
+    plt.axhline(y=0, color='red', linestyle='--')
+    plt.xlabel("Steps")
+    plt.ylabel("Reward")
+    plt.title("Reward Over Steps")
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, 'reward_plot.png'))
+    plt.close()
+    print("Reward plot saved.")
+
+    # Combined plot
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    axes[0, 0].plot(range(valid_steps), total_revenue, label="Total Revenue", color='green')
+    axes[0, 0].set_title("Total Revenue Over Steps")
+    
+    axes[0, 1].plot(range(valid_steps), quant_executed, label="Quantity Executed", color='purple')
+    axes[0, 1].set_title("Quantity Executed Over Steps")
+    
+    axes[1, 0].plot(range(valid_steps), average_price, label="Average Price", color='orange')
+    axes[1, 0].set_title("Average Price Over Steps")
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'combined_plot.png'))
+    plt.close()
+    print("Combined plots saved.")
+
+if __name__ == "__main__":
+    ATFolder = "/home/duser/AlphaTrade/training_oneDay/val"
+    config = {
+        "ATFOLDER": ATFolder,
+        "WINDOW_INDEX": 0,
+        "EP_TYPE": "fixed_time",
+        "EPISODE_TIME": 60 * 30,
+    }
+
+    rng = jax.random.PRNGKey(0)
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+    
+    env_cfg = EnvironmentExecutionConfig()
+    env = ExecutionEnv(
+        cfg=env_cfg,
+        key=key_reset,
+        alphatradePath=config["ATFOLDER"],
+        window_index=config["WINDOW_INDEX"],
+        episode_time=config["EPISODE_TIME"],
+        ep_type=config["EP_TYPE"],
+    )
+
+    env_params = dataclasses.replace(
+        env.default_params,
+        episode_time=config["EPISODE_TIME"],
+    )
+
+    obs, state = env.reset(key_reset, env_params)
+    test_steps = 15000
+    reward_file = 'gymnax_exchange/test_scripts/test_outputs/data.csv'
+    os.makedirs(os.path.dirname(reward_file), exist_ok=True)
+
+    rewards = np.zeros((test_steps, 1))
+    total_revenue = np.zeros((test_steps, 1))
+    quant_executed = np.zeros((test_steps, 1))
+    average_price = np.zeros((test_steps, 1))
+
+    output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
+    valid_steps = 0
+
+    for i in range(test_steps):
+        key_policy, _ = jax.random.split(key_policy, 2)
+        key_step, _ = jax.random.split(key_step, 2)
+        test_action = env.action_space().sample(key_policy)
+        
+        obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
+        
+        rewards[i] = reward
+        total_revenue[i] = info["total_revenue"]
+        quant_executed[i] = info["quantity_executed"]
+        average_price[i] = info["average_price"]
+        
+        valid_steps += 1
+        if done:
+            break
+
+    generate_plots(
+        rewards, total_revenue, quant_executed, average_price, valid_steps, reward_file, output_dir
+    )
