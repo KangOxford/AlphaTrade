@@ -133,7 +133,7 @@ def generate_plots(
         plt.legend()
 
         # Save each plot to a separate file
-        plot_file = f"gymnax_exchange/test_scripts/test_outputs/reward_{reward_name.replace(' ', '_').lower()}.png"
+        plot_file = f"gymnax_exchange/jaxen/Testing/output/reward_{reward_name.replace(' ', '_').lower()}.png"
         plt.savefig(plot_file)
         plt.close()
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     # ============================
     # Initialize data storage
     # ============================
-    reward_file = 'gymnax_exchange/test_scripts/test_outputs/data.csv'  # Relative path
+    reward_file = 'gymnax_exchange/jaxen/Testing/outputdata.csv'  # Relative path
     
     # Ensure the directory exists, if not, create it
     os.makedirs(os.path.dirname(reward_file), exist_ok=True)
@@ -284,7 +284,7 @@ if __name__ == "__main__":
    
 
 
-    output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
+    output_dir = 'gymnax_exchange/jaxen/Testing/output'
    
     # ============================
     # Track the number of valid steps

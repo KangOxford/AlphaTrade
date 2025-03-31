@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     obs, state = env.reset(key_reset, env_params)
     test_steps = 15000
-    reward_file = 'gymnax_exchange/test_scripts/test_outputs/data.csv'
+    reward_file = 'gymnax_exchange/jaxen/Testing/output/data.csv'
     os.makedirs(os.path.dirname(reward_file), exist_ok=True)
 
     rewards = np.zeros((test_steps, 1))
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     advantage_reward=np.zeros((test_steps, 1))
 
 
-    output_dir = '/home/duser/AlphaTrade/gymnax_exchange/jaxen/Testing'
+    output_dir = 'gymnax_exchange/jaxen/Testing/output'
     valid_steps = 0
 
     
