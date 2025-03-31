@@ -1683,9 +1683,9 @@ class MarketMakingEnv(BaseLOBEnv):
         reward = reward + inv_pen
 
         # ----------04) normalize the reward ----------#
-        reward_scaled = reward / 1000
+        
 
-        return reward_scaled, {
+        return reward, {
             "reward_portfolio_value":reward_portfolio_value,
             "reward_complex":reward_complex,
             "reward_spooner":reward_spooner,

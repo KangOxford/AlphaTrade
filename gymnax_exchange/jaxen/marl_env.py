@@ -199,7 +199,7 @@ class MARLEnv(BaseLOBEnv):
                                                      params.exe_params)
         exe_action_prices = exe_order_msgs[:, 3]  # Get action prices
         exe_action_quants=exe_order_msgs[:,2]
-        jax.debug.print(f"Execution messages: {exe_order_msgs}")
+        #jax.debug.print(f"Execution messages: {exe_order_msgs}")
         
         # For execution, decide which side to cancel (depending on task)
         side_for_exe = 1 - state.exe_state.is_sell_task * 2
@@ -555,7 +555,7 @@ if __name__ == "__main__":
     print("Execution obs:", obs["execution"])
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 20):
+    for i in range(1, 10):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -574,12 +574,20 @@ if __name__ == "__main__":
         #action_exe = env.exe_env.action_space().sample(key_policy)
         actions = {"market_maker": action_mm, "execution": action_exe}
         obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
-        print(f"Actions: {actions}")
-        print("Step rewards:", rewards)
-        print("Step info:", info)
-        print("Market Maker Raw Action:", action_mm.tolist())
-        print("Execution Raw Action:", action_exe.tolist())
-        print("Done:", done)
+
+        #DEBUG PRINTS
+        #jax.debug.print("EXE info:{}",info["execution"])
+        #jax.debug.print("MM info:{}",info["market_maker"])
+        jax.debug.print("market maker reward:{}",rewards["market_maker"])
+        jax.debug.print("MM info:{}",info["market_maker"]["reward"])
+
+        
+        #print(f"Actions: {actions}")
+        #print("Step rewards:", rewards)
+        #print("Step info:", info)
+        #print("Market Maker Raw Action:", action_mm.tolist())
+        #print("Execution Raw Action:", action_exe.tolist())
+        #print("Done:", done)
         if done["__all__"]:
             print("Episode finished!")
             break

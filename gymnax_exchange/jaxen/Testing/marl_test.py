@@ -194,17 +194,11 @@ def generate_plots(
     axes[2, 3].set_title("MM Sell Quantity")
     axes[2, 3].legend()
 
-    axes[2, 4].plot(range(plot_until_step), mm_bid_price, label="MM Bid Price", color='red')
-    axes[2, 4].set_title("MM Bid Price")
-    axes[2, 4].legend()
-
-    # Combined MM/EXE Price Plots
-    axes[3, 0].plot(range(plot_until_step), mm_ask_price, label="MM Ask Price", color='blue')
-    axes[3, 0].set_title("MM Ask Price")
-    axes[3, 0].legend()
 
     axes[3, 1].plot(range(plot_until_step), mm_averageMidprice, label="MM Average Midprice", color='purple')
-    axes[3, 1].set_title("MM Average Midprice")
+    axes[3, 1].plot(range(plot_until_step), mm_ask_price, label="MM Ask Price", color='blue')
+    axes[3, 1].plot(range(plot_until_step), mm_bid_price, label="MM Bid Price", color='red')
+    axes[3, 1].set_title("MM Prices Midprice")
     axes[3, 1].legend()
 
     axes[3, 2].plot(range(plot_until_step), exe_mid_price, label="Exe Mid Price", color='green')
@@ -341,11 +335,12 @@ if __name__ == "__main__":
     
     output_dir = 'gymnax_exchange/jaxen/Testing/output/marl'
     valid_steps = 0
+    test_steps = 15000
 
  
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 20000):       
+    for i in range(test_steps):      
         print(f"Step {i}")
 
         key_step, _ = jax.random.split(key_step, 2)
