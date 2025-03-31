@@ -1149,7 +1149,7 @@ class MarketMakingEnv(BaseLOBEnv):
         mid_price = (best_ask + best_bid) / 2
 
 
-        jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
+        #jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
         #jax.debug.print("best asks: {}", state.best_asks)
         #jax.debug.print("best bids: {}", state.best_bids)
         
@@ -1209,13 +1209,13 @@ class MarketMakingEnv(BaseLOBEnv):
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
         
         # Debug prints
-        jax.debug.print("Action: {}", action)
-        jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
-        jax.debug.print("Spread Type: {}, Skew Type: {}", spread_type, skew_type)
-        jax.debug.print("Current Spread: {}, New Spread: {}", current_spread, new_spread)
-        jax.debug.print("Skew Ticks: {}, Skewed Mid: {}", skew_ticks, skewed_mid)
-        jax.debug.print("Final Bid Price: {}, Final Ask Price: {}", bid_price, ask_price)
-        jax.debug.print("Final Messages:\n{}", action_msgs)
+        #jax.debug.print("Action: {}", action)
+       # jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
+        #jax.debug.print("Spread Type: {}, Skew Type: {}", spread_type, skew_type)
+        #jax.debug.print("Current Spread: {}, New Spread: {}", current_spread, new_spread)
+        #jax.debug.print("Skew Ticks: {}, Skewed Mid: {}", skew_ticks, skewed_mid)
+        #jax.debug.print("Final Bid Price: {}, Final Ask Price: {}", bid_price, ask_price)
+        #jax.debug.print("Final Messages:\n{}", action_msgs)
         
         return action_msgs
 
