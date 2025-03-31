@@ -287,7 +287,7 @@ if __name__ == "__main__":
     
 
     
-    output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
+    output_dir = '/home/duser/AlphaTrade/gymnax_exchange/jaxen/Testing'
     valid_steps = 0
 
  

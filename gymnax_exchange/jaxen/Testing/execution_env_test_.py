@@ -153,7 +153,7 @@ if __name__ == "__main__":
     advantage_reward=np.zeros((test_steps, 1))
 
 
-    output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
+    output_dir = '/home/duser/AlphaTrade/gymnax_exchange/jaxen/Testing'
     valid_steps = 0
 
     
