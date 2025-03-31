@@ -536,8 +536,8 @@ def make_train(config):
                     other_exec_quants_train=info_train["other_exec_quants"]
                     netWorth_train = info_train["netWorth"]
                     averageMidprice_train=info_train["averageMidprice"]
-                    averageBestbid_train=info_train["average_best_bid"]
-                    averageBestask_train=info_train["average_best_ask"]
+                    #averageBestbid_train=info_train["average_best_bid"]
+                    #averageBestask_train=info_train["average_best_ask"]
                    
 
                     #-------------eval info------#   
@@ -549,8 +549,8 @@ def make_train(config):
                     other_exec_quants_eval=info_eval["other_exec_quants"]
                     netWorth_eval = info_eval["netWorth"]
                     averageMidprice_eval=info_eval["averageMidprice"]
-                    averageBestbid_eval=info_eval["average_best_bid"]
-                    averageBestask_eval=info_eval["average_best_ask"]
+                    #averageBestbid_eval=info_eval["average_best_bid"]
+                    #averageBestask_eval=info_eval["average_best_ask"]
                     
                     #-------------baseline info------#
                     PnL_baseline = baseline_metric["total_PnL"]
@@ -561,8 +561,8 @@ def make_train(config):
                     other_exec_quants_baseline=baseline_metric["other_exec_quants"]
                     netWorth_baseline = baseline_metric["netWorth"]
                     averageMidprice_baseline=baseline_metric["averageMidprice"]
-                    averageBestbid_baseline=baseline_metric["average_best_bid"]
-                    averageBestask_baseline=baseline_metric["average_best_ask"]
+                    #averageBestbid_baseline=baseline_metric["average_best_bid"]
+                    #averageBestask_baseline=baseline_metric["average_best_ask"]
                    
                     #-----------------Logging-------------------#
 
@@ -636,23 +636,23 @@ def make_train(config):
                                 "sellQuant_train":jnp.mean(sellQuant_train) if sellQuant_train.size > 0 else 0,
                                 "other_exec_quants_train":jnp.mean(other_exec_quants_train) if other_exec_quants_train.size > 0 else 0,
                                 "averageMidprice_train":jnp.mean(averageMidprice_train) if averageMidprice_train.size>0 else 0,
-                                "averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
-                                "averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
+                                #"averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
+                                #"averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
                                 #eval
                                 "buyQuant_eval":jnp.mean(buyQuant_eval) if buyQuant_eval.size > 0 else 0,
                                 "sellQuant_eval":jnp.mean(sellQuant_eval) if sellQuant_eval.size > 0 else 0,
                                 "other_exec_quants_eval":jnp.mean(other_exec_quants_eval) if other_exec_quants_eval.size > 0 else 0,
                                 "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
-                                "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
-                                "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,
+                                #"averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
+                                #"averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,
                                
                                 #baseline
                                 "buyQuant_baseline":jnp.mean(buyQuant_baseline) if buyQuant_baseline.size > 0 else 0,
                                 "sellQuant_baseline":jnp.mean(sellQuant_baseline) if sellQuant_baseline.size > 0 else 0,
                                 "other_exec_quants_baseline":jnp.mean(other_exec_quants_baseline) if other_exec_quants_baseline.size > 0 else 0,
                                 "averageMidprice_baseline":jnp.mean(averageMidprice_baseline) if averageMidprice_baseline.size>0 else 0,
-                                "averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
-                                "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
+                                #"averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
+                               # "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
                                 #----------Action prices------------#
                               
                                
@@ -730,16 +730,16 @@ if __name__ == "__main__":
     env_config_hps = [  {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
-                         "n_actions":8,
+                         "n_actions":6,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
+                         "action_space":"spread_skew"
                           }]
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
                             "inv_penalty":"linear",
-                            "n_actions":8,
+                            "n_actions":6,
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"best_bid_ask",
@@ -750,9 +750,9 @@ if __name__ == "__main__":
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
         "LR": {"values": [2.5e-4,5e-4,1e-3]},
-        "NUM_ENVS": {"values": [256]},
+        "NUM_ENVS": {"values": [256,1]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [8e5]},
+        "TOTAL_TIMESTEPS": {"values": [50000]},
         "UPDATE_EPOCHS": {"values": [2,4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999,0.99999,0.95]},
@@ -809,7 +809,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_TRAIN_FULL_DAY")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_action_space_skewing_2")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

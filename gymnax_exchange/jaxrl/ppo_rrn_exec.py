@@ -741,7 +741,7 @@ if __name__ == "__main__":
         "LR": {"values": [2.5e-4,1e-5]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [8e5]},
+        "TOTAL_TIMESTEPS": {"values": [50000]},
         "UPDATE_EPOCHS": {"values": [2,4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999,0.95]},
