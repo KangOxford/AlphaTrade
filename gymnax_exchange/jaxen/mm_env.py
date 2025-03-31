@@ -352,11 +352,8 @@ class MarketMakingEnv(BaseLOBEnv):
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
-        average_best_bid= jnp.int32((state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         info = {
             "reward":reward,
-            "action msgs":action_msgs,
             "reward_portfolio_value":extras["reward_portfolio_value"],
             "reward_complex":extras["reward_complex"],
             "reward_spooner":extras[ "reward_spooner"],
@@ -381,8 +378,6 @@ class MarketMakingEnv(BaseLOBEnv):
             "averageMidprice":extras["averageMidprice"],
             "Step_PnL":extras["PnL"],
             "action_prices":action_prices,
-            "average_best_bid":average_best_bid,
-            "average_best_ask":average_best_ask,
             "InventoryPnL":extras["InventoryPnL"],
             "approx_realized_pnl":extras["approx_realized_pnl"],
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]

@@ -10,15 +10,14 @@ from functools import partial
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
-jax.config.update("jax_log_compiles", True)
+jax.config.update("jax_log_compiles", False)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
-from mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
-from exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
+from gymnax_exchange.jaxen.mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 from gymnax_exchange.jaxob.jaxob_config import Configuration
@@ -182,8 +181,8 @@ class MARLEnv(BaseLOBEnv):
         )
         mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
 
-        jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
-        jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
+       # jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
+       # jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
 
         # Do filtering to net cancellations in MM)
         mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
@@ -257,7 +256,7 @@ class MARLEnv(BaseLOBEnv):
         final_time = combined_msgs[-1, -2:] + params.time_delay_obs_act
         final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
 
-        jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
+        #jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
 
         #---------------------------------------------------------
         #(F) End step functions
@@ -289,20 +288,20 @@ class MARLEnv(BaseLOBEnv):
         mm_agent_trades = job.get_agent_trades(new_trades, self.mm_trader_id)
         mm_executions = self.mm_env._get_executed_by_action(mm_agent_trades, actions["market_maker"], state,mm_action_prices)
         mm_executions=jnp.abs(mm_executions) #check incase neg quant
-        mm_reward, mm_info = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
+        mm_reward, mm_extras = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
         #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
         mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
-        exe_reward, exe_info = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
+        exe_reward, exe_extras = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
         exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
 
-        jax.debug.print(f"MM trades: {mm_agent_trades}")
-        jax.debug.print(f"EXE trades: {exe_agent_trades}")
-        jax.debug.print(f"All Trades: {new_trades}")
+        #jax.debug.print(f"MM trades: {mm_agent_trades}")
+        #jax.debug.print(f"EXE trades: {exe_agent_trades}")
+        #jax.debug.print(f"All Trades: {new_trades}")
 
-        jax.debug.print(f"MM obs: {mm_obs}")
-        jax.debug.print(f"EXE obs: {exe_obs}")
+        #jax.debug.print(f"MM obs: {mm_obs}")
+        #jax.debug.print(f"EXE obs: {exe_obs}")
 
         # -------------------------------------------------------
         # (H) Update the multi–agent state
@@ -333,10 +332,10 @@ class MARLEnv(BaseLOBEnv):
         # Update MM state with all fields
         new_mm_state = state.mm_state.replace(
             **new_shared_state,
-            inventory=mm_info["end_inventory"],
-            total_PnL=state.mm_state.total_PnL + mm_info["PnL"],
-            mid_price=mm_info["mid_price"],
-            cash_balance=mm_info["cash_balance"],
+            inventory=mm_extras["end_inventory"],
+            total_PnL=state.mm_state.total_PnL + mm_extras["PnL"],
+            mid_price=mm_extras["mid_price"],
+            cash_balance=mm_extras["cash_balance"],
             price_bid_passive=mm_price_bid_passive,
             quant_bid_passive=mm_quant_bid_passive,
             price_ask_passive=mm_price_ask_passive,
@@ -347,14 +346,14 @@ class MARLEnv(BaseLOBEnv):
         new_exe_state = state.exe_state.replace(
             **new_shared_state,
             prev_action=jnp.vstack([exe_action_prices, exe_action_quants]).T,  # store both prices and quantities+> action no longer = quant
-            quant_executed=state.exe_state.quant_executed + exe_info["agentQuant"],
-            total_revenue=state.exe_state.total_revenue + exe_info["revenue"],
-            drift_return=state.exe_state.drift_return + exe_info["drift"],
-            advantage_return=state.exe_state.advantage_return + exe_info["advantage"],
-            slippage_rm=exe_info["slippage_rm"],
-            price_adv_rm=exe_info["price_adv_rm"],
-            price_drift_rm=exe_info["price_drift_rm"],
-            vwap_rm=exe_info["vwap_rm"],
+            quant_executed=state.exe_state.quant_executed + exe_extras["agentQuant"],
+            total_revenue=state.exe_state.total_revenue + exe_extras["revenue"],
+            drift_return=state.exe_state.drift_return + exe_extras["drift"],
+            advantage_return=state.exe_state.advantage_return + exe_extras["advantage"],
+            slippage_rm=exe_extras["slippage_rm"],
+            price_adv_rm=exe_extras["price_adv_rm"],
+            price_drift_rm=exe_extras["price_drift_rm"],
+            vwap_rm=exe_extras["vwap_rm"],
             trade_duration=exe_trade_duration,
             price_passive_2=exe_price_passive_2,
             quant_passive_2=exe_quant_passive_2
@@ -377,9 +376,66 @@ class MARLEnv(BaseLOBEnv):
 
         obs = {"market_maker": mm_obs, "execution": exe_obs}
         rewards = {"market_maker": mm_reward, "execution": exe_reward}
-        done = self.is_terminal(new_state, params)
-        jax.debug.print(f"Done: {done}")
-        dones = {"market_maker": done, "execution": done, "__all__": done} # ALl of them are the same done
+        mm_done= self.mm_env.is_terminal(state.mm_state,params.mm_params)
+        exec_done=self.exe_env.is_terminal(state.exe_state,params.exe_params)
+        done = jnp.logical_and(mm_done, exec_done)
+        jax.debug.print("Done: {}",done)
+        dones = {"market_maker": mm_done, "execution": exec_done, "__all__": done} # ALl of them are the same done
+
+        #Get infos:
+        exe_info = {
+            "window_index": state.exe_state.window_index,
+            "total_revenue": state.exe_state.total_revenue,
+            "quant_executed": state.exe_state.quant_executed,
+            "task_to_execute": state.exe_state.task_to_execute,
+            "average_price": jnp.nan_to_num(state.exe_state.total_revenue 
+                                            / state.exe_state.quant_executed, 0.0),
+            "mid_price":((state.exe_state.best_bids[:, 0] + state.exe_state.best_asks[:, 0]) // 2).mean(),
+            "current_step": state.exe_state.step_counter,
+            "done": done,
+            "slippage_rm": state.exe_state.slippage_rm,
+            "price_adv_rm": state.exe_state.price_adv_rm,
+            "price_drift_rm": state.exe_state.price_drift_rm,
+            "vwap_rm": state.exe_state.vwap_rm,
+            "advantage_reward": state.exe_state.advantage_return,
+            "drift_reward": state.exe_state.drift_return,
+            "trade_duration": state.exe_state.trade_duration,
+            "mkt_forced_quant": mkt_exec_quant + doom_quant,
+            "doom_quant": doom_quant,
+            "is_sell_task": state.exe_state.is_sell_task,
+        }
+
+        mm_info = {
+            "reward":mm_reward,
+            "reward_portfolio_value":mm_extras["reward_portfolio_value"],
+            "reward_complex":mm_extras["reward_complex"],
+            "reward_spooner":mm_extras[ "reward_spooner"],
+            "reward_spooner_damped":mm_extras["reward_spooner_damped"],
+            "reward_spooner_scaled":mm_extras[ "reward_spooner_scaled"],
+            "reward_delta_netWorth":mm_extras["reward_delta_netWorth"],
+            "window_index": state.mm_state.window_index,
+            "total_PnL": state.mm_state.total_PnL,                           
+            "current_step": state.mm_state.step_counter,
+            "done": done,
+            "time_seconds":state.mm_state.time[0],
+            "inventory": state.mm_state.inventory,
+            "market_share":mm_extras["market_share"],
+            "buyPnL":mm_extras["buyPnL"],
+            "scaledInventoryPnL":mm_extras["scaledInventoryPnL"],
+            "netWorth":mm_extras["netWorth"],
+            "sellPnL":mm_extras["sellPnL"],
+            "buyQuant":mm_extras["buyQuant"],
+            "sellQuant":mm_extras["sellQuant"],
+            "inventoryValue":mm_extras["inventoryValue"],
+            "other_exec_quants":mm_extras["other_exec_quants"],
+            "averageMidprice":mm_extras["averageMidprice"],
+            "Step_PnL":mm_extras["PnL"],
+            "action_prices":mm_action_prices,
+            "InventoryPnL":mm_extras["InventoryPnL"],
+            "approx_realized_pnl":mm_extras["approx_realized_pnl"],
+            "approx_unrealized_pnl": mm_extras["approx_unrealized_pnl"]
+        } 
+
         info = {"market_maker": mm_info, "execution": exe_info}
         return obs, new_state, rewards, dones, info
 
