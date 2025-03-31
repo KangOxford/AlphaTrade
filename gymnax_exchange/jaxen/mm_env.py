@@ -356,6 +356,13 @@ class MarketMakingEnv(BaseLOBEnv):
         average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         info = {
             "reward":reward,
+            "action msgs":action_msgs,
+            "reward_portfolio_value":extras["reward_portfolio_value"],
+            "reward_complex":extras["reward_complex"],
+            "reward_spooner":extras[ "reward_spooner"],
+            "reward_spooner_damped":extras["reward_spooner_damped"],
+            "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
+            "reward_delta_netWorth":extras["reward_delta_netWorth"],
             "window_index": state.window_index,
             "total_PnL": state.total_PnL,                           
             "current_step": state.step_counter,
@@ -963,41 +970,48 @@ class MarketMakingEnv(BaseLOBEnv):
         return action_msgs
     
     def _getActionMsgs_AvSt(self, action: jax.Array, state: EnvState, params: EnvParams):
-        '''Transform discrete action into Avellaneda-Stoikov bid and ask order messages.'''
-        
+        '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
+        0-7, with lower giving more aggresive bid and asks
+        '''
         # Compute best_ask, best_bid, and mid-price using a rolling average
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        mid_price = (best_ask + best_bid) / 2
+        mid_price = (best_ask + best_bid) // 2
 
-        #Select parameters based on action
-        gamma_values = jnp.array([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0], dtype=jnp.float32)  # Risk aversion
+        #Select aaggresion parameter
+        gamma_values = jnp.array([0.1, 0.2, 0.5, 1, 2, 5, 10, 20], dtype=jnp.float32)  # Risk aversion
         gamma = gamma_values[action]
 
-        #k is market order arrival rate
+        #Estimate K paramter from data
         market_order_fraction=0.01
         k = (100*market_order_fraction)/state.delta_time
 
         # Market volatility estimation (rolling standard deviation of mid-price)
-        sigma = ((state.best_asks[-50:]+state.best_bids[-50:])/2).std()//(self.tick_size*self.tick_size)  # 50-step rolling window
-
+        mid_price_history = ((state.best_asks[-50:]+state.best_bids[-50:])//2)
+        returns= jnp.log(mid_price_history[1:] / mid_price_history[:-1])
+        vol = jnp.std(returns)
+        
         #Get time until ep end
         time_left = params.episode_time - (state.time - state.init_time)[0]
         normalized_time = time_left / params.episode_time
 
         #Reservation price
-        res_price = mid_price - ((state.inventory+1)//self.tick_size) * gamma * (sigma**2) * normalized_time
+        res_price = (mid_price - ((state.inventory)) * gamma * (vol) * normalized_time)
 
         #Spread
-        spread = gamma*(sigma**2)*normalized_time + (2/gamma) * jnp.log(1 + gamma/k)
-        spread = jnp.maximum(spread, self.tick_size)  # Ensure at least 1 tick spread
+        spread = (gamma*vol*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.tick_size
+        spread=jnp.clip(spread,self.tick_size,self.cfg.maxint)#make sure spread is at least a tick
 
         bid_price= res_price-spread
         ask_price= res_price+spread
 
-        # Ensure valid price bounds
-        bid_price = jnp.clip(bid_price, 0, best_bid)  # Ensure bid price is reasonable
-        ask_price = jnp.clip(ask_price, best_ask, best_ask + 20*self.cfg.n_ticks_in_book * self.tick_size) #max of 20 ticks away
+        # Ensure valid price bound 
+        bid_price = jnp.clip(bid_price, 0, self.cfg.maxint) 
+        ask_price = jnp.clip(ask_price,  0, self.cfg.maxint) 
+
+        #Ensure ints of tick_size
+        bid_price=((bid_price) // self.tick_size * self.tick_size).astype(jnp.int32)
+        ask_price=((ask_price) // self.tick_size * self.tick_size).astype(jnp.int32)
 
         # Set fixed quantities
         bid_quant = self.cfg.fixed_quant_value
@@ -1021,6 +1035,15 @@ class MarketMakingEnv(BaseLOBEnv):
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
 
+        #Debug prints:
+        #jax.debug.print("vol:{}",vol)
+        #jax.debug.print("Inv:{}",state.inventory)
+        #jax.debug.print("best bid:{}",state.best_bids[-1][0])
+        #jax.debug.print("best ask:{}",state.best_asks[-1][0])
+        #jax.debug.print("res price:{}",res_price)
+        #jax.debug.print("spread:{}",spread)
+        #jax.debug.print("mid price :{}",mid_price)
+        #jax.debug.print("msg:{}",action_msgs)
         return action_msgs
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
@@ -1175,7 +1198,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
 
         # Calculate skewed mid price
-        skewed_mid = mid_price + skew_ticks * self.tick_size
+        skewed_mid = mid_price + skew_ticks 
         
         # Calculate final bid and ask prices
         half_spread = new_spread // 2
@@ -1210,7 +1233,7 @@ class MarketMakingEnv(BaseLOBEnv):
         
         # Debug prints
         #jax.debug.print("Action: {}", action)
-       # jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
+        #jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
         #jax.debug.print("Spread Type: {}, Skew Type: {}", spread_type, skew_type)
         #jax.debug.print("Current Spread: {}, New Spread: {}", current_spread, new_spread)
         #jax.debug.print("Skew Ticks: {}, Skewed Mid: {}", skew_ticks, skewed_mid)
@@ -1312,7 +1335,7 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, reference_price, jnp.sign(new_inventory) * new_inventory, new_time  # Inv +ve means incoming is sell so standing buy.
+            trades, reference_price, jnp.sign(new_inventory) * jnp.abs(new_inventory), new_time  # Inv +ve means incoming is sell so standing buy.
         )
         #jax.debug.print("averageMidprice :{}",averageMidprice)
 
@@ -1517,11 +1540,12 @@ class MarketMakingEnv(BaseLOBEnv):
     def _get_reward(self, state: EnvState, params: EnvParams, trades: chex.Array,bestasks :chex.Array, bestbids: chex.Array) -> jnp.int32:
         '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
         '''
-        # ====================get reward and revenue ==========================================#
-        # Gather the 'trades' that are nonempty, make the rest 0
+        # ====================01 get reward stats ==========================================#
+        #Notice, normalise prices in reward by tick size. On state prices are not normalised 
+        #Being constient with exec. Cash balance and pnl etc are normalised in state, also consitent
+
+        # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
-             
-        # Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = (self.trader_unique_id == executed[:, 6]) | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
@@ -1546,83 +1570,109 @@ class MarketMakingEnv(BaseLOBEnv):
         new_inventory=state.inventory+inventory_delta
 
         #Find the new obsvered mid price at the end of the step.
-        #Note: to make integer of tick_size // is integer division.
+        #non normalized=> going on state
         mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) //( 2 * self.tick_size) * self.tick_size
-        #Inventory PnL: 
-        InventoryPnL= state.inventory*(mid_price_end-state.mid_price) // self.tick_size 
-    
-        #Market Making PNL:     
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() // self.tick_size * self.tick_size
-        #jax.debug.print("averageMidprice:{}",averageMidprice)
-        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() / self.tick_size
-        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() / self.tick_size
 
-        #Lamda weighted, non directional#
-        # Multiply PnL from inventory with small lambda to dampen the effect
-        #reward=buyPnL+sellPnL +  InventoryPnL
-        #reward=buyPnL+sellPnL + self.rewardLambda * InventoryPnL # Symmetrically dampened PnL
-
-        # Other versions of reward
-        undamped_reward=buyPnL+sellPnL+InventoryPnL
-        scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1)
-        #reward = buyPnL + sellPnL + scaledInventoryPnL - (1-self.rewardLambda)*jnp.maximum(0,scaledInventoryPnL) # Asymmetrically dampened PnL
-        
-        #More complex reward function (should be added as part of the env if we actually use them):
-        inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
-        unrealizedPnL_lambda = self.cfg.unrealizedPnL_lambda
-        asymmetrically_dampened_lambda = self.cfg.asymmetrically_dampened_lambda
-        avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0] / buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
-        avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum() , 0)
-        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) / self.tick_size
-        approx_unrealized_pnl = jnp.where( 
-            inventory_delta > 0,
-            inventory_delta * (averageMidprice - avg_buy_price) / self.tick_size,  # Excess buys
-            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice) / self.tick_size # Excess sells
-        )
-  
-        #reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
-        #reward= -jnp.abs(new_inventory)
-    
-        #Define a penalty if he exceeds a certain inventory
-       # penalty_threshold = 100.0
-       # penalty_amount = 500.0 
-       # penalty = jnp.where(jnp.abs(state.inventory) > penalty_threshold, penalty_amount, 0.0)
-        #reward = reward - penalty
-        
         #Real Revenue calcs: (actual cash flow+actual value of portfolio)
         income=(agent_sells[:, 0]* jnp.abs(agent_sells[:, 1])).sum()
         outgoing=(agent_buys[:, 0] * jnp.abs(agent_buys[:, 1])).sum() 
-             
-        PnL=(income-outgoing)//self.tick_size
 
-
+        #PnL,== cash balance== normalised by tick size
+        PnL=(income-outgoing)/self.tick_size
 
         # Compute a reference price based on the config
         if self.cfg.reference_price_portfolio_value == "mid":
-            reference_price = mid_price_end
+            reference_price = mid_price_end/self.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask.
             reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestbids[-1][0],
-                                        lambda: bestasks[-1][0])
+                                        lambda: bestbids[-1][0]/self.tick_size,
+                                        lambda: bestasks[-1][0]/self.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
-        
+
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = state.cash_balance + PnL
-        inventoryValue=new_inventory*(reference_price//self.tick_size)
+        inventoryValue=new_inventory*(reference_price)
         netWorth=new_cash_balance+inventoryValue  
 
-        # Set reward based on config file
+        #calculate a fraction of total market activity attributable to us.
+        other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
+        market_share = TradedVolume / (TradedVolume + other_exec_quants)
+
+        #=========02 Get rewards============================##
+
+        #------------A) spooner Rewards-------------------------#       
+        #Inventory PnL: 
+        InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.tick_size 
+    
+        #Market Making PNL:     
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() 
+        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
+        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
+
+        #A1)Spooner paper reward
+        reward_spooner = buyPnL + sellPnL + InventoryPnL - jnp.maximum(0,InventoryPnL)
+
+        #A2)spooner_damped
+        reward_spooner_damped = buyPnL + sellPnL + InventoryPnL - (1-self.cfg.inventoryPnL_lambda)*jnp.maximum(0,InventoryPnL)
+
+        #A3) Spooner Scaled
+        scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1)
+        reward_spooner_scaled=buyPnL + sellPnL + scaledInventoryPnL -jnp.maximum(0,scaledInventoryPnL)
+
+        #----------------------B) Complex reward---------------------------------------------#
+        inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
+        unrealizedPnL_lambda = self.cfg.unrealizedPnL_lambda
+        asymmetrically_dampened_lambda = self.cfg.asymmetrically_dampened_lambda
+        avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0]/ buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
+        avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum(), 0)
+        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) /self.tick_size
+        approx_unrealized_pnl = jnp.where( 
+            inventory_delta > 0,
+            inventory_delta * (averageMidprice - avg_buy_price)/self.tick_size,  # Excess buys
+            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice)/self.tick_size  # Excess sells
+        )
+  
+        reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
+    
+        #--------------------C) Portfolilo Value--------------#
+        reward_portfolio_value=new_inventory*(reference_price)+new_cash_balance
+
+        #-----------------d) delta Portfolio Value--------#
+        #Get old ref price
+        if self.cfg.reference_price_portfolio_value == "mid":
+            old_reference_price = state.mid_price/self.tick_size
+        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
+            # For a long position, use the best bid; for a short, the best ask.
+            old_reference_price = jax.lax.cond(new_inventory > 0,
+                                        lambda: state.best_bids[-1][0]/self.tick_size,
+                                        lambda: state.best_asks[-1][0]/self.tick_size)
+        else:
+            raise ValueError("Invalid reference price type.")
+        #old net worth
+        old_netWorth=old_reference_price*state.inventory+state.cash_balance
+        delta_netWorth=netWorth-old_netWorth
+        reward_delta_netWorth=delta_netWorth
+        
+
+        #===================== 03) Set reward based on config file==================#
         if self.cfg.reward_space == "portfolio_value":
-            reward = (new_inventory * reference_price//self.tick_size) + new_cash_balance
+            reward = reward_portfolio_value
         elif self.cfg.reward_space == "pnl":
-            ##This will just force sales...
             reward = PnL
         elif self.cfg.reward_space == "complex":
-            reward = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl + inventoryPnL_lambda * jnp.minimum(InventoryPnL, InventoryPnL * asymmetrically_dampened_lambda)
+            reward =reward_complex
         elif self.cfg.reward_space == "zero_inv":
             reward = -jnp.abs(new_inventory)
+        elif self.cfg.reward_space=="spooner":
+            reward=reward_spooner
+        elif self.cfg.reward_space=="spooner_damped":
+            reward=reward_spooner_damped
+        elif self.cfg.reward_space=="spooner_scaled":
+            reward=reward_spooner_scaled
+        elif self.cfg.reward_space=="delta_netWorth":
+            reward=reward_delta_netWorth
         else:
             raise ValueError("Invalid reward_space specified.")
         
@@ -1637,18 +1687,17 @@ class MarketMakingEnv(BaseLOBEnv):
             raise ValueError("Invalid inventory penalty specified.")
         reward = reward + inv_pen
 
-        #calculate a fraction of total market activity attributable to us.
-        other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
-        market_share = TradedVolume / (TradedVolume + other_exec_quants)
-        # ---------- normalize the reward ----------#
-        # reward /= 10_000
+        # ----------04) normalize the reward ----------#
         reward_scaled = reward / 1000
-        #reward_scaled = jnp.clip(reward_scaled, -0.1, 0.1)
-        # reward /= params.avg_twap_list[state.window_index]
-        #jax.debug.print("new_inventory:{}",new_inventory)
+
         return reward_scaled, {
+            "reward_portfolio_value":reward_portfolio_value,
+            "reward_complex":reward_complex,
+            "reward_spooner":reward_spooner,
+            "reward_spooner_damped":reward_spooner_damped,
+            "reward_spooner_scaled":reward_spooner_scaled,
+            "reward_delta_netWorth":reward_delta_netWorth,
             "market_share": market_share,
-            "undamped_reward":undamped_reward,
             "inventoryValue":inventoryValue,
             "buyPnL":buyPnL,
             "sellPnL":sellPnL,
@@ -2011,7 +2060,8 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         #test_action=env.action_space().sample(key_policy)
-        test_action = env.action_space().sample(key_policy) 
+        #test_action = env.action_space().sample(key_policy) 
+        test_action=5
         jax.debug.print("test_action :{}",test_action)
         env.action_space().sample(key_policy) // 10
         # test_action = jnp.array([100, 10])

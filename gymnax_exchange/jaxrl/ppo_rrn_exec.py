@@ -522,8 +522,8 @@ def make_train(config):
                     quant_executed_train=info_train["quant_executed"]
                     average_price_train = info_train["average_price"]
                     current_step_train = info_train["current_step"] 
-                    mkt_forced_quant_train=info_train["mkt_forced_quant"]
-                    doom_quant_train=info_train["doom_quant"]
+                    mkt_forced_quant_train=info_train["mkt_forced_quant"][info_train["returned_episode"]] 
+                    doom_quant_train=info_train["doom_quant"][info_train["returned_episode"]] #for end episodes only
                     trade_duration_train=info_train["trade_duration"]
                     advantage_reward_train=info_train["advantage_reward"]
                     drift_reward_train = info_train["drift_reward"]
@@ -535,8 +535,8 @@ def make_train(config):
                     quant_executed_eval=info_eval["quant_executed"]
                     average_price_eval = info_eval["average_price"]
                     current_step_eval = info_eval["current_step"] 
-                    mkt_forced_quant_eval=info_eval["mkt_forced_quant"]
-                    doom_quant_eval=info_eval["doom_quant"]
+                    mkt_forced_quant_eval=info_eval["mkt_forced_quant"][info_eval["returned_episode"]] 
+                    doom_quant_eval=info_eval["doom_quant"][info_eval["returned_episode"]] 
                     trade_duration_eval=info_eval["trade_duration"]
                     advantage_reward_eval=info_eval["advantage_reward"]
                     drift_reward_eval = info_eval["drift_reward"]
@@ -547,8 +547,8 @@ def make_train(config):
                     quant_executed_baseline=baseline_metric["quant_executed"]
                     average_price_baseline = baseline_metric["average_price"]
                     current_step_baseline = baseline_metric["current_step"] 
-                    mkt_forced_quant_baseline=baseline_metric["mkt_forced_quant"]
-                    doom_quant_baseline=baseline_metric["doom_quant"]
+                    mkt_forced_quant_baseline=baseline_metric["mkt_forced_quant"][baseline_metric["returned_episode"]] 
+                    doom_quant_baseline=baseline_metric["doom_quant"][baseline_metric["returned_episode"]] 
                     trade_duration_baseline=baseline_metric["trade_duration"]
                     advantage_reward_baseline=baseline_metric["advantage_reward"]
                     drift_reward_baseline = baseline_metric["drift_reward"]
@@ -738,17 +738,17 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4]},
+        "LR": {"values": [2.5e-4,1e-5]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
         "TOTAL_TIMESTEPS": {"values": [8e5]},
         "UPDATE_EPOCHS": {"values": [2,4]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.999]},
-        "GAE_LAMBDA": {"values": [0.99]},
-        "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0]},
-        "VF_COEF": {"values": [0.5]},
+        "GAMMA": {"values": [0.999,0.95]},
+        "GAE_LAMBDA": {"values": [0.99,0.99999]},
+        "CLIP_EPS": {"values": [0.2,0.15]},
+        "ENT_COEF": {"values": [0.0,0.1]},
+        "VF_COEF": {"values": [0.5,1]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
@@ -757,7 +757,7 @@ if __name__ == "__main__":
         "REWARD_LAMBDA": {"values": [1.0]},
         "EPISODE_TIME": {"values": [60*10]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "WINDOW_INDEX": {"values": [1]},
+        "WINDOW_INDEX": {"values": [-1]},
         "TRADER_UNIQUE_ID": {"values": [10]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},

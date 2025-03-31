@@ -374,6 +374,7 @@ class ExecutionEnv(BaseLOBEnv):
             "task_to_execute": state.task_to_execute,
             "average_price": jnp.nan_to_num(state.total_revenue 
                                             / state.quant_executed, 0.0),
+            "mid_price":((state.best_bids[:, 0] + state.best_asks[:, 0]) // 2).mean(),
             "current_step": state.step_counter,
             "done": done,
             "slippage_rm": state.slippage_rm,
@@ -758,7 +759,15 @@ class ExecutionEnv(BaseLOBEnv):
     def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
-        Always send 4 messages"""
+        Always send 4 messages
+        0 = No trade
+        1=      # FT
+        2=     # M
+        3=    # NT
+        4=    # PP
+        5=     # M+NT
+        6=     # NT+PP
+        7=     # M+NT+PP"""
 
         #----01 get price levels----#
 
@@ -1022,7 +1031,7 @@ class ExecutionEnv(BaseLOBEnv):
             ep_is_over & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, doom_price, side_sign*quant_left, new_time  # Inv +ve means incoming is sell so standing buy.
+            trades, doom_price, side_sign*jnp.abs(quant_left), new_time  # Inv +ve means incoming is sell so standing buy.
         )
         #Return traded amounts
         doom_quant = ep_is_over * quant_left
@@ -1210,7 +1219,7 @@ class ExecutionEnv(BaseLOBEnv):
         # reward /= params.avg_twap_list[state.window_index]
         return reward_scaled, {
             "agentQuant": agentQuant,
-            "revenue": reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
+            "revenue": revenue,#reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
             "slippage_rm": slippage_rm,
             "price_adv_rm": price_adv_rm,
             "price_drift_rm": price_drift_rm,
