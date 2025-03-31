@@ -37,6 +37,7 @@ def generate_plots(
     price_drift_rm,
     advantage_reward,
     drift_reward,
+    drift,
     trade_duration,
     valid_steps,
     output_dir
@@ -47,25 +48,25 @@ def generate_plots(
     # Trim data to valid steps
     variables = [
         rewards, total_revenue, quant_executed, average_price, vwap_rm, mid_price,
-        slippage_rm, price_adv_rm, price_drift_rm, advantage_reward, drift_reward, trade_duration
+        slippage_rm, price_adv_rm, price_drift_rm, advantage_reward, drift_reward,drift, trade_duration
     ]
     trimmed_data = [var[:valid_steps] for var in variables]
     
     # Save data to CSV
     column_names = [
         'Reward', 'Total Revenue', 'Quantity Executed', 'Average Price', 'VWAP', 'Mid Price',
-        'Slippage RM', 'Price Advantage RM', 'Price Drift RM', 'Advantage Reward', 'Drift Reward', 'Trade Duration'
+        'Slippage RM', 'Price Advantage RM', 'Price Drift RM', 'Advantage Reward', 'Drift Reward','drift', 'Trade Duration'
     ]
     df = pd.DataFrame(np.column_stack(trimmed_data), columns=column_names)
     df.to_csv(os.path.join(output_dir, 'data.csv'), index=False)
     
     # Plot setup
-    fig, axes = plt.subplots(4, 3, figsize=(18, 14))
+    fig, axes = plt.subplots(4, 4, figsize=(18, 14))
     axes = axes.flatten()
     
     # Data and Titles
     titles = column_names
-    colors = ['red', 'green', 'purple', 'orange', 'blue', 'brown', 'cyan', 'magenta', 'gray', 'pink', 'navy', 'black']
+    colors = ['red', 'green', 'purple', 'orange', 'blue', 'brown', 'cyan', 'magenta', 'gray', 'pink', 'navy','yellow', 'black']
     
     # Generate subplots
     for i, (data, title, color) in enumerate(zip(trimmed_data, titles, colors)):
@@ -122,6 +123,7 @@ if __name__ == "__main__":
     price_adv_rm=np.zeros((test_steps, 1))
     avantage_reward=np.zeros((test_steps, 1))
     drift_reward=np.zeros((test_steps, 1))
+    drift=np.zeros((test_steps, 1))
     trade_duration=np.zeros((test_steps, 1))
     advantage_reward=np.zeros((test_steps, 1))
 
@@ -148,6 +150,7 @@ if __name__ == "__main__":
         price_drift_rm[i] = info["price_drift_rm"]
         advantage_reward[i] = info["advantage_reward"]
         drift_reward[i] = info["drift_reward"]
+        drift[i]=info["drift"]
         trade_duration[i] = info["trade_duration"]
 
         valid_steps += 1
@@ -167,6 +170,7 @@ if __name__ == "__main__":
     price_drift_rm,
     advantage_reward,
     drift_reward,
+    drift,
     trade_duration,
 
     valid_steps,

@@ -518,15 +518,15 @@ def make_train(config):
                     #time=info_train["time_seconds"] 
 
                     #-----------Train info----------#
-                    revenues_train = info_train["total_revenue"]
-                    quant_executed_train=info_train["quant_executed"]
-                    average_price_train = info_train["average_price"]
-                    current_step_train = info_train["current_step"] 
-                    mkt_forced_quant_train=info_train["mkt_forced_quant"][info_train["returned_episode"]] 
-                    doom_quant_train=info_train["doom_quant"][info_train["returned_episode"]] #for end episodes only
-                    trade_duration_train=info_train["trade_duration"]
-                    advantage_reward_train=info_train["advantage_reward"]
-                    drift_reward_train = info_train["drift_reward"]
+                    episodic_revenues_train = info_train["total_revenue"][info_train["returned_episode"]] 
+                    quant_executed_train=info_train["quant_executed"][:, config["ENVID"]] 
+                    average_price_train = info_train["average_price"][:, config["ENVID"]] 
+                    current_step_train = info_train["current_step"] [:, config["ENVID"]] 
+                    mkt_forced_quant_train=info_train["mkt_forced_quant"][:, config["ENVID"]] 
+                    doom_quant_train=info_train["doom_quant"][:, config["ENVID"]] 
+                    trade_duration_train=info_train["trade_duration"][:, config["ENVID"]] 
+                    advantage_reward_train=info_train["advantage_reward"][:, config["ENVID"]] 
+                    drift_reward_train = info_train["drift_reward"][:, config["ENVID"]] 
                     
                    
 
@@ -594,9 +594,9 @@ def make_train(config):
                                 
                                 #---------Revenue and errors bars-----------#
                                 #reward
-                                "revenues_train": jnp.mean(revenues_train) if revenues_train.size > 0 else 0,
-                                "revenues_train_plus_std": (jnp.mean(revenues_train) + jnp.std(revenues_train)) if revenues_train.size > 0 else 0,
-                                "revenues_train_minus_std": (jnp.mean(revenues_train) - jnp.std(revenues_train)) if revenues_train.size > 0 else 0,
+                                "revenues_train": jnp.mean(episodic_revenues_train) if episodic_revenues_train.size > 0 else 0,
+                                #"revenues_train_plus_std": (jnp.mean(episodic_revenues_train) + jnp.std(episodic_revenues_train)) if episodic_revenues_train.size > 0 else 0,
+                                #"revenues_train_minus_std": (jnp.mean(episodic_revenues_train) - jnp.std(episodic_revenues_train)) if episodic_revenues_train.size > 0 else 0,
                                 #eval
                                 "revenues_eval": jnp.mean(revenues_eval) if revenues_eval.size > 0 else 0,
                                 "revenues_eval_plus_std": (jnp.mean(revenues_eval) + jnp.std(revenues_eval)) if revenues_eval.size > 0 else 0,
@@ -719,14 +719,14 @@ if __name__ == "__main__":
     #                                                    "reference_price_portfolio_value":ref,
     #                                                    "n_actions":n,
     #                                                    "fixed_quant_value":q})  
-    env_config_hps = [ {"task":"random",
+    env_config_hps = [ {"task":"buy",
                          "action_type":"pure",
                          "end_fn":"unwind_FT",
                          "max_task_size":50,
                          "n_actions":8,
                          "action_space":"fixed_quants"
                           }]
-    baseline_env_config_hps = [ {"task":"random",
+    baseline_env_config_hps = [ {"task":"buy",
                          "action_type":"pure",
                          "end_fn":"unwind_FT",
                          "max_task_size":50,
@@ -738,17 +738,17 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4,1e-5]},
+        "LR": {"values": [2.5e-4]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
         "TOTAL_TIMESTEPS": {"values": [8e5]},
-        "UPDATE_EPOCHS": {"values": [2,4]},
+        "UPDATE_EPOCHS": {"values": [2]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.999,0.95]},
-        "GAE_LAMBDA": {"values": [0.99,0.99999]},
-        "CLIP_EPS": {"values": [0.2,0.15]},
-        "ENT_COEF": {"values": [0.0,0.1]},
-        "VF_COEF": {"values": [0.5,1]},
+        "GAMMA": {"values": [0.999]},
+        "GAE_LAMBDA": {"values": [0.99]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.0]},
+        "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
@@ -762,7 +762,8 @@ if __name__ == "__main__":
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
-        "BASELINE_FIXED_ACTION": {"values": [1]}##Needs to be the same as n_actions in baseline..
+        "BASELINE_FIXED_ACTION": {"values": [3]},##Needs to be the same as n_actions in baseline.. Here=NT trade.
+        "ENVID":{"values":[1]}
     }    
 
     sweep_config={

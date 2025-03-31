@@ -54,6 +54,7 @@ def generate_plots(
     exe_price_drift_rm,
     exe_advantage_reward,
     exe_drift_reward,
+    exe_drift,
     exe_trade_duration,
     valid_steps,
     output_dir,
@@ -71,7 +72,7 @@ def generate_plots(
         mm_inventory, mm_total_PnL, mm_buyQuant, mm_sellQuant, mm_bid_price, mm_ask_price,
         mm_averageMidprice, mm_netWorth, exe_rewards, exe_total_revenue, exe_quant_executed,
         exe_average_price, exe_vwap_rm, exe_mid_price, exe_slippage_rm, exe_price_adv_rm,
-        exe_price_drift_rm, exe_advantage_reward, exe_drift_reward, exe_trade_duration
+        exe_price_drift_rm, exe_advantage_reward, exe_drift_reward,exe_drift, exe_trade_duration
     ]
     datasets = [data[:plot_until_step].squeeze() for data in datasets]
 
@@ -101,6 +102,7 @@ def generate_plots(
     exe_price_drift_rm = exe_price_drift_rm[:plot_until_step]
     exe_advantage_reward = exe_advantage_reward[:plot_until_step]
     exe_drift_reward = exe_drift_reward[:plot_until_step]
+    exe_drift=exe_drift[:plot_until_step]
     exe_trade_duration = exe_trade_duration[:plot_until_step]
 
     # ============================
@@ -112,7 +114,7 @@ def generate_plots(
         mm_reward_spooner_damped, mm_reward_spooner_scaled, mm_reward_delta_netWorth,
         mm_inventory, mm_total_PnL, mm_buyQuant, mm_sellQuant, mm_bid_price, mm_ask_price, mm_averageMidprice, mm_netWorth,
         exe_rewards, exe_total_revenue, exe_quant_executed, exe_average_price, exe_vwap_rm, exe_mid_price,
-        exe_slippage_rm, exe_price_adv_rm, exe_price_drift_rm, exe_advantage_reward, exe_drift_reward, exe_trade_duration
+        exe_slippage_rm, exe_price_adv_rm, exe_price_drift_rm, exe_advantage_reward, exe_drift_reward,exe_drift ,exe_trade_duration
     ])
     # Column headers for all metrics
     column_names = [
@@ -120,7 +122,7 @@ def generate_plots(
         'MM Spooner Damped Reward', 'MM Spooner Scaled Reward', 'MM Delta Net Worth Reward',
         'MM Inventory', 'MM Total PnL', 'MM Buy Quantity', 'MM Sell Quantity', 'MM Bid Price', 'MM Ask Price', 'MM Average Midprice', 'MM Net Worth',
         'Exe Reward', 'Exe Total Revenue', 'Exe Quant Executed', 'Exe Average Price', 'Exe VWAP RM', 'Exe Mid Price',
-        'Exe Slippage RM', 'Exe Price Adv RM', 'Exe Price Drift RM', 'Exe Advantage Reward', 'Exe Drift Reward', 'Exe Trade Duration'
+        'Exe Slippage RM', 'Exe Price Adv RM', 'Exe Price Drift RM', 'Exe Advantage Reward', 'Exe Drift Reward','Exe Drift','Exe Trade Duration'
     ]
     # Save data as CSV
     df = pd.DataFrame(data, columns=column_names)
@@ -202,10 +204,10 @@ def generate_plots(
     axes[3, 1].set_title("MM Prices Midprice")
     axes[3, 1].legend()
 
-    axes[3, 2].plot(range(plot_until_step), exe_mid_price, label="MM Bid Price", color='red')
-    axes[3, 2].set_title("Exec Prices Midprice")
-    axes[3, 2].legend()
 
+    axes[3, 2].plot(range(plot_until_step), exe_drift, label="Exe drift ", color='blue')
+    axes[3, 3].set_title("Exe DRIFT")
+    axes[3, 3].legend()
 
     axes[3, 3].plot(range(plot_until_step), exe_slippage_rm, label="Exe Slippage RM", color='blue')
     axes[3, 3].set_title("Exe Slippage RM")
@@ -330,6 +332,7 @@ if __name__ == "__main__":
     exe_price_adv_rm=np.zeros((test_steps, 1))
     exe_avantage_reward=np.zeros((test_steps, 1))
     exe_drift_reward=np.zeros((test_steps, 1))
+    exe_drift=np.zeros((test_steps, 1))
     exe_trade_duration=np.zeros((test_steps, 1))
     exe_advantage_reward=np.zeros((test_steps, 1))
     
@@ -389,6 +392,7 @@ if __name__ == "__main__":
         exe_price_drift_rm[i] = info["execution"]["price_drift_rm"]
         exe_advantage_reward[i] = info["execution"]["advantage_reward"]
         exe_drift_reward[i] = info["execution"]["drift_reward"]
+        exe_drift[i] = info["execution"]["drift"]
         exe_trade_duration[i] = info["execution"]["trade_duration"]
         
         # Increment valid steps
@@ -434,6 +438,7 @@ if __name__ == "__main__":
     exe_price_drift_rm,
     exe_advantage_reward,
     exe_drift_reward,
+    exe_drift,
     exe_trade_duration,
     valid_steps,
     output_dir,

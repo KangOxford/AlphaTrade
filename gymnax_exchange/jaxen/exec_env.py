@@ -386,6 +386,7 @@ class ExecutionEnv(BaseLOBEnv):
             "trade_duration": state.trade_duration,
             "mkt_forced_quant": mkt_exec_quant + doom_quant,
             "doom_quant": doom_quant,
+            "drift":extras["drift"],
             "is_sell_task": state.is_sell_task,
         }
         return self._get_obs(state, params), state, reward, done, info
@@ -1185,7 +1186,7 @@ class ExecutionEnv(BaseLOBEnv):
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_val,new_val:(average_val*state.step_counter+new_val)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
-        price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/agentQuant - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/(agentQuant+0.001) - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
         slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
         price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
         
