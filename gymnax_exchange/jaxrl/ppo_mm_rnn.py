@@ -528,13 +528,13 @@ def make_train(config):
                     #time=info_train["time_seconds"] 
 
                     #-----------Train info----------#
-                    PnL_train = info_train["total_PnL"]
+                    PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
                     inventories_train = info_train["inventory"] 
                     buyQuant_train=info_train["buyQuant"]
                     sellQuant_train=info_train["sellQuant"]
                     reward_train=info_train["reward"]
                     other_exec_quants_train=info_train["other_exec_quants"]
-                    netWorth_train = info_train["netWorth"]
+                    netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
                     averageMidprice_train=info_train["averageMidprice"]
                     #averageBestbid_train=info_train["average_best_bid"]
                     #averageBestask_train=info_train["average_best_ask"]
@@ -590,9 +590,9 @@ def make_train(config):
                                 
                                 #---------PnL and errors bars-----------#
                                 #reward
-                                "PnL_train_mean": jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
-                                "PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
-                                "PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                "Episodic_PnL_train_mean": jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
+                                "Episodic_PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                "Episodic_PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
                                 #eval
                                 "PnL_eval_mean": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
                                 "PnL_eval_plus_std": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
@@ -604,9 +604,9 @@ def make_train(config):
 
                                 #-------------NetWorth and error bars----------#
                                 #train
-                                "netWorth_train": jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
-                                "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
-                                "netWorth_train_minus_st": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                "Episodic_netWorth_train": jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
+                                "Episodic_netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                "Episodic_netWorth_train_minus_st": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
                                 #eval
                                 "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
                                 "netWorth_eval_upper": (jnp.mean(netWorth_eval) + jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
@@ -731,6 +731,24 @@ if __name__ == "__main__":
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
                          "n_actions":6,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"AvSt"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":8,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",

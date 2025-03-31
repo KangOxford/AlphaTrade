@@ -45,64 +45,39 @@ def generate_plots(
     Generates plots and saves data to CSV for execution environment metrics.
     """
     # Trim data to valid steps
-    rewards = rewards[:valid_steps]
-    total_revenue = total_revenue[:valid_steps]
-    quant_executed = quant_executed[:valid_steps]
-    average_price = average_price[:valid_steps]
-    vwap_rm = vwap_rm[:valid_steps]
-    mid_price = mid_price[:valid_steps]
-    slippage_rm = slippage_rm[:valid_steps]
-    price_adv_rm = price_adv_rm[:valid_steps]
-    price_drift_rm = price_drift_rm[:valid_steps]
-    advantage_reward = advantage_reward[:valid_steps]
-    drift_reward = drift_reward[:valid_steps]
-    trade_duration = trade_duration[:valid_steps]
+    variables = [
+        rewards, total_revenue, quant_executed, average_price, vwap_rm, mid_price,
+        slippage_rm, price_adv_rm, price_drift_rm, advantage_reward, drift_reward, trade_duration
+    ]
+    trimmed_data = [var[:valid_steps] for var in variables]
     
     # Save data to CSV
-    data = np.hstack([
-        rewards, total_revenue, quant_executed, average_price, vwap_rm, mid_price, 
-        slippage_rm, price_adv_rm, price_drift_rm, advantage_reward, drift_reward, trade_duration
-    ])
     column_names = [
         'Reward', 'Total Revenue', 'Quantity Executed', 'Average Price', 'VWAP', 'Mid Price',
         'Slippage RM', 'Price Advantage RM', 'Price Drift RM', 'Advantage Reward', 'Drift Reward', 'Trade Duration'
     ]
-    df = pd.DataFrame(data, columns=column_names)
+    df = pd.DataFrame(np.column_stack(trimmed_data), columns=column_names)
     df.to_csv(os.path.join(output_dir, 'data.csv'), index=False)
-   
     
-    # Combined plot
-    fig, axes = plt.subplots(4, 2, figsize=(14, 12))
+    # Plot setup
+    fig, axes = plt.subplots(4, 3, figsize=(18, 14))
+    axes = axes.flatten()
     
-    axes[0, 0].plot(range(valid_steps), total_revenue, label="Total Revenue", color='green')
-    axes[0, 0].set_title("Total Revenue Over Steps")
+    # Data and Titles
+    titles = column_names
+    colors = ['red', 'green', 'purple', 'orange', 'blue', 'brown', 'cyan', 'magenta', 'gray', 'pink', 'navy', 'black']
     
-    axes[0, 1].plot(range(valid_steps), quant_executed, label="Quantity Executed", color='purple')
-    axes[0, 1].set_title("Quantity Executed Over Steps")
+    # Generate subplots
+    for i, (data, title, color) in enumerate(zip(trimmed_data, titles, colors)):
+        axes[i].plot(range(valid_steps), data, label=title, color=color)
+        axes[i].set_title(f"{title} Over Steps")
+        axes[i].legend()
     
-    axes[1, 0].plot(range(valid_steps), average_price, label="Average Price", color='orange')
-    axes[1, 0].plot(range(valid_steps), vwap_rm, label="VWAP", color='blue', linestyle='dashed')
-    axes[1, 0].set_title("Average Price & VWAP Over Steps")
-    axes[1, 0].legend()
-    
-    axes[1, 1].plot(range(valid_steps), rewards, label="Reward", color='red')
-    axes[1, 1].set_title("Reward Over Steps")
-    
-    axes[2, 0].plot(range(valid_steps), mid_price, label="Mid Price", color='brown')
-    axes[2, 0].set_title("Mid Price Over Steps")
-    
-    axes[2, 1].plot(range(valid_steps), slippage_rm, label="Slippage RM", color='cyan')
-    axes[2, 1].set_title("Slippage RM Over Steps")
-    
-    axes[3, 0].plot(range(valid_steps), trade_duration, label="Trade Duration", color='black')
-    axes[3, 0].set_title("Trade Duration Over Steps")
-    
-  
-    
+    # Adjust layout and save
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'combined_plot.png'))
     plt.close()
-    print("Combined plots saved.")
+    print("All plots saved.")
 
 
 if __name__ == "__main__":

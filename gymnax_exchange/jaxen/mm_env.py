@@ -352,6 +352,8 @@ class MarketMakingEnv(BaseLOBEnv):
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
+        average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        average_best_bid = jnp.int32((state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         info = {
             "reward":reward,
             "reward_portfolio_value":extras["reward_portfolio_value"],
@@ -380,7 +382,9 @@ class MarketMakingEnv(BaseLOBEnv):
             "action_prices":action_prices,
             "InventoryPnL":extras["InventoryPnL"],
             "approx_realized_pnl":extras["approx_realized_pnl"],
-            "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
+            "approx_unrealized_pnl": extras["approx_unrealized_pnl"],
+            "average_best_bid":average_best_bid,
+            "average_best_ask":average_best_ask
         }                          
         return self.get_observation(state, params, total_messages,action_prices,executions,old_time,old_mid_price), state, reward, done, info
     
@@ -1683,9 +1687,9 @@ class MarketMakingEnv(BaseLOBEnv):
         reward = reward + inv_pen
 
         # ----------04) normalize the reward ----------#
-        reward_scaled = reward / 1000
+        
 
-        return reward_scaled, {
+        return reward, {
             "reward_portfolio_value":reward_portfolio_value,
             "reward_complex":reward_complex,
             "reward_spooner":reward_spooner,
