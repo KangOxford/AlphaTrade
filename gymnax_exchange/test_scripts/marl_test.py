@@ -192,10 +192,6 @@ def generate_plots(
     plt.close()
 
     print(f"Combined plots saved to {combined_plot_file}")
-    
-
-
-
 
 if __name__ == "__main__":
     import sys
@@ -214,7 +210,7 @@ if __name__ == "__main__":
         "EPISODE_TIME": 300,  # for example, 5 minutes
         "WINDOW_INDEX": 1,
         # sub–env parameters:
-        "MM_TRADER_ID": -9999991,
+        "MM_TRADER_ID": -4999991,
         "MM_REWARD_LAMBDA": 0.0001,
         "MM_ACTION_TYPE": "pure",
         "MM_MAX_TASK_SIZE": 500,
@@ -327,8 +323,6 @@ if __name__ == "__main__":
         mm_ask_price[i] = info["market_maker"]["action_prices"][1]
         mm_averageMidprice[i] = info["market_maker"]["averageMidprice"]  # Store mid price
         mm_netWorth[i]=info["market_maker"]["netWorth"]
-
-
         exe_rewards[i] = rewards["execution"]
         exe_total_revenue[i] = info["execution"]["total_revenue"]
         exe_quant_executed[i] = info["execution"]["quant_executed"]
@@ -344,11 +338,6 @@ if __name__ == "__main__":
         
         # Increment valid steps
         valid_steps += 1
-        
-      
-
-
-
         if done["__all__"]:
             print("Episode finished!")
             break
