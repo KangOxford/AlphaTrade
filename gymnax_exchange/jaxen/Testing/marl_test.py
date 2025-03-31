@@ -53,7 +53,6 @@ def generate_plots(
     exe_drift_reward,
     exe_trade_duration,
     valid_steps,
-    reward_file,
     output_dir,
 ):
     """
@@ -250,11 +249,7 @@ if __name__ == "__main__":
     test_steps = 15000 # Adjusted for your test case; make sure this isn't too high
     # ============================
     # Initialize data storage
-    # ============================
-    reward_file = 'gymnax_exchange/test_scripts/test_outputs/data.csv'  # Relative path
-    
-    # Ensure the directory exists, if not, create it
-    os.makedirs(os.path.dirname(reward_file), exist_ok=True)
+    # ===========================
     mm_rewards = np.zeros((test_steps, 1), dtype=int)
     mm_reward_portfolio_value = np.zeros((test_steps, 1), dtype=int)
     mm_reward_complex = np.zeros((test_steps, 1), dtype=int)
@@ -287,7 +282,7 @@ if __name__ == "__main__":
     
 
     
-    output_dir = '/home/duser/AlphaTrade/gymnax_exchange/jaxen/Testing'
+    output_dir = 'gymnax_exchange/jaxen/Testing/output/marl'
     valid_steps = 0
 
  
@@ -387,7 +382,6 @@ if __name__ == "__main__":
     exe_drift_reward,
     exe_trade_duration,
     valid_steps,
-    reward_file,
     output_dir,
  )
 

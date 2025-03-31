@@ -39,7 +39,6 @@ def generate_plots(
     drift_reward,
     trade_duration,
     valid_steps,
-    reward_file,
     output_dir
 ):
     """
@@ -69,8 +68,8 @@ def generate_plots(
         'Slippage RM', 'Price Advantage RM', 'Price Drift RM', 'Advantage Reward', 'Drift Reward', 'Trade Duration'
     ]
     df = pd.DataFrame(data, columns=column_names)
-    df.to_csv(reward_file, index=False)
-    print(f"Data saved to {reward_file}")
+    df.to_csv(os.path.join(output_dir, 'data.csv'), index=False)
+   
     
     # Combined plot
     fig, axes = plt.subplots(4, 2, figsize=(14, 12))
@@ -135,8 +134,7 @@ if __name__ == "__main__":
 
     obs, state = env.reset(key_reset, env_params)
     test_steps = 15000
-    reward_file = 'gymnax_exchange/jaxen/Testing/output/data.csv'
-    os.makedirs(os.path.dirname(reward_file), exist_ok=True)
+
 
     rewards = np.zeros((test_steps, 1))
     total_revenue = np.zeros((test_steps, 1))
@@ -153,7 +151,7 @@ if __name__ == "__main__":
     advantage_reward=np.zeros((test_steps, 1))
 
 
-    output_dir = 'gymnax_exchange/jaxen/Testing/output'
+    output_dir = 'gymnax_exchange/jaxen/Testing/output/exec'
     valid_steps = 0
 
     
@@ -197,6 +195,5 @@ if __name__ == "__main__":
     trade_duration,
 
     valid_steps,
-    reward_file,
     output_dir
     )
