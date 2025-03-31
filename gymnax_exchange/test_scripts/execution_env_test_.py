@@ -21,6 +21,10 @@ faulthandler.enable()
 # Configuration
 # ============================
 
+# ============================
+# Configuration
+# ============================
+
 def generate_plots(
     rewards,
     total_revenue,
@@ -28,6 +32,12 @@ def generate_plots(
     average_price,
     vwap_rm,
     mid_price,
+    slippage_rm,
+    price_adv_rm,
+    price_drift_rm,
+    advantage_reward,
+    drift_reward,
+    trade_duration,
     valid_steps,
     reward_file,
     output_dir
@@ -40,21 +50,31 @@ def generate_plots(
     total_revenue = total_revenue[:valid_steps]
     quant_executed = quant_executed[:valid_steps]
     average_price = average_price[:valid_steps]
-    vwap_rm=vwap_rm[:valid_steps]
-    mid_price=mid_price[:valid_steps]
-
+    vwap_rm = vwap_rm[:valid_steps]
+    mid_price = mid_price[:valid_steps]
+    slippage_rm = slippage_rm[:valid_steps]
+    price_adv_rm = price_adv_rm[:valid_steps]
+    price_drift_rm = price_drift_rm[:valid_steps]
+    advantage_reward = advantage_reward[:valid_steps]
+    drift_reward = drift_reward[:valid_steps]
+    trade_duration = trade_duration[:valid_steps]
+    
     # Save data to CSV
-    data = np.hstack([rewards, total_revenue, quant_executed, average_price])
-    column_names = ['Reward', 'Total Revenue', 'Quantity Executed', 'Average Price']
+    data = np.hstack([
+        rewards, total_revenue, quant_executed, average_price, vwap_rm, mid_price, 
+        slippage_rm, price_adv_rm, price_drift_rm, advantage_reward, drift_reward, trade_duration
+    ])
+    column_names = [
+        'Reward', 'Total Revenue', 'Quantity Executed', 'Average Price', 'VWAP', 'Mid Price',
+        'Slippage RM', 'Price Advantage RM', 'Price Drift RM', 'Advantage Reward', 'Drift Reward', 'Trade Duration'
+    ]
     df = pd.DataFrame(data, columns=column_names)
     df.to_csv(reward_file, index=False)
     print(f"Data saved to {reward_file}")
-
-    # Plot reward
     
-
     # Combined plot
-    fig, axes = plt.subplots(3, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(4, 2, figsize=(14, 12))
+    
     axes[0, 0].plot(range(valid_steps), total_revenue, label="Total Revenue", color='green')
     axes[0, 0].set_title("Total Revenue Over Steps")
     
@@ -62,23 +82,29 @@ def generate_plots(
     axes[0, 1].set_title("Quantity Executed Over Steps")
     
     axes[1, 0].plot(range(valid_steps), average_price, label="Average Price", color='orange')
-    axes[1, 0].set_title("Average Price Over Steps")
-
+    axes[1, 0].plot(range(valid_steps), vwap_rm, label="VWAP", color='blue', linestyle='dashed')
+    axes[1, 0].set_title("Average Price & VWAP Over Steps")
+    axes[1, 0].legend()
+    
     axes[1, 1].plot(range(valid_steps), rewards, label="Reward", color='red')
     axes[1, 1].set_title("Reward Over Steps")
-
-    axes[2, 0].plot(range(valid_steps), vwap_rm, label="Vwam RM", color='red')
-    axes[2, 0].set_title("Vwap RM Over Steps")
-
-    axes[2, 1].plot(range(valid_steps), mid_price, label="mid price", color='red')
-    axes[2, 1].set_title("Mid Price Over Steps")
-
-
+    
+    axes[2, 0].plot(range(valid_steps), mid_price, label="Mid Price", color='brown')
+    axes[2, 0].set_title("Mid Price Over Steps")
+    
+    axes[2, 1].plot(range(valid_steps), slippage_rm, label="Slippage RM", color='cyan')
+    axes[2, 1].set_title("Slippage RM Over Steps")
+    
+    axes[3, 0].plot(range(valid_steps), trade_duration, label="Trade Duration", color='black')
+    axes[3, 0].set_title("Trade Duration Over Steps")
+    
+  
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'combined_plot.png'))
     plt.close()
     print("Combined plots saved.")
+
 
 if __name__ == "__main__":
     ATFolder = "/home/duser/AlphaTrade/training_oneDay/val"
@@ -118,15 +144,23 @@ if __name__ == "__main__":
     average_price = np.zeros((test_steps, 1))
     mid_price=np.zeros((test_steps, 1))
     vwap_rm=np.zeros((test_steps, 1))
+    slippage_rm=np.zeros((test_steps, 1))
+    price_drift_rm=np.zeros((test_steps, 1))
+    price_adv_rm=np.zeros((test_steps, 1))
+    avantage_reward=np.zeros((test_steps, 1))
+    drift_reward=np.zeros((test_steps, 1))
+    trade_duration=np.zeros((test_steps, 1))
+    advantage_reward=np.zeros((test_steps, 1))
+
 
     output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
     valid_steps = 0
 
+    
     for i in range(test_steps):
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         test_action = env.action_space().sample(key_policy)
-        #test_action=0
         
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
         
@@ -134,13 +168,35 @@ if __name__ == "__main__":
         total_revenue[i] = info["total_revenue"]
         quant_executed[i] = info["quant_executed"]
         average_price[i] = info["average_price"]
-        vwap_rm[i]=info["vwap_rm"]
-        mid_price[i]=info["mid_price"]
-        
+        vwap_rm[i] = info["vwap_rm"]
+        mid_price[i] = info["mid_price"]
+        slippage_rm[i] = info["slippage_rm"]
+        price_adv_rm[i] = info["price_adv_rm"]
+        price_drift_rm[i] = info["price_drift_rm"]
+        advantage_reward[i] = info["advantage_reward"]
+        drift_reward[i] = info["drift_reward"]
+        trade_duration[i] = info["trade_duration"]
+
         valid_steps += 1
         if done:
             break
 
+
     generate_plots(
-        rewards, total_revenue, quant_executed, average_price,vwap_rm, mid_price, valid_steps, reward_file, output_dir
+         rewards,
+    total_revenue,
+    quant_executed,
+    average_price,
+    vwap_rm,
+    mid_price,
+    slippage_rm,
+    price_adv_rm,
+    price_drift_rm,
+    advantage_reward,
+    drift_reward,
+    trade_duration,
+
+    valid_steps,
+    reward_file,
+    output_dir
     )
