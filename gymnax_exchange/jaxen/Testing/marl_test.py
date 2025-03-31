@@ -198,12 +198,14 @@ def generate_plots(
     axes[3, 1].plot(range(plot_until_step), mm_averageMidprice, label="MM Average Midprice", color='purple')
     axes[3, 1].plot(range(plot_until_step), mm_ask_price, label="MM Ask Price", color='blue')
     axes[3, 1].plot(range(plot_until_step), mm_bid_price, label="MM Bid Price", color='red')
+
     axes[3, 1].set_title("MM Prices Midprice")
     axes[3, 1].legend()
 
-    axes[3, 2].plot(range(plot_until_step), exe_mid_price, label="Exe Mid Price", color='green')
-    axes[3, 2].set_title("Exe Mid Price")
+    axes[3, 2].plot(range(plot_until_step), exe_mid_price, label="MM Bid Price", color='red')
+    axes[3, 2].set_title("Exec Prices Midprice")
     axes[3, 2].legend()
+
 
     axes[3, 3].plot(range(plot_until_step), exe_slippage_rm, label="Exe Slippage RM", color='blue')
     axes[3, 3].set_title("Exe Slippage RM")
@@ -270,7 +272,7 @@ if __name__ == "__main__":
         "MM_MAX_TASK_SIZE": 500,
         "EXE_TRADER_ID": -9999992,
         "EXE_REWARD_LAMBDA": 1.0,
-        "EXE_TASK_SIZE": 100,
+        "EXE_TASK_SIZE": 5000,
     }
 
     rng = jax.random.PRNGKey(0)

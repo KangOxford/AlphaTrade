@@ -42,7 +42,7 @@ class EnvironmentExecutionConfig(Configuration):
     action_type: Literal["delta", "pure"]="pure"
     action_space: Literal["fixed_quants","fixed_prices"]="fixed_quants"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    max_task_size:int=100
+    max_task_size:int=500
     n_actions:int=4
     fixed_quant_value=10
     num_messages_by_agent=8####make this and the mm one programtic..
