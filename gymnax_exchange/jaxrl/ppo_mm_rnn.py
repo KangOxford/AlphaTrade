@@ -523,21 +523,28 @@ def make_train(config):
                 def callback(info_train,info_eval,baseline_metric,update_count):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
-                    return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
-                    timesteps = info_train["timestep"]#[info_train["returned_episode"]] * config["NUM_ENVS"] #changed to raw timesteps adn sum...
-                    #time=info_train["time_seconds"] 
+                    return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                    #Returns for anything done in any of the last N_steps steps. Size=N_steps by N_envs
+                    #jax.debug.print("Returned episode size:{}",info_train["returned_episode"].shape) 
+                    #jax.debug.print("Inventory size:{}",info_train["inventory"].shape)
+
+
+                   # timesteps = info_train["timestep"]
+
 
                     #-----------Train info----------#
-                    PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
-                    inventories_train = info_train["inventory"] 
-                    buyQuant_train=info_train["buyQuant"]
-                    sellQuant_train=info_train["sellQuant"]
-                    reward_train=info_train["reward"]
-                    other_exec_quants_train=info_train["other_exec_quants"]
-                    netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
-                    averageMidprice_train=info_train["averageMidprice"]
-                    #averageBestbid_train=info_train["average_best_bid"]
-                    #averageBestask_train=info_train["average_best_ask"]
+                    episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
+                    episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
+                    #Return episode ending PnL
+
+                    inventories_train = info_train["inventory"][:, config["ENVID"]]  
+                    buyQuant_train=info_train["buyQuant"][:, config["ENVID"]]  
+                    sellQuant_train=info_train["sellQuant"][:, config["ENVID"]]  
+                    reward_train=info_train["reward"][:, config["ENVID"]]  
+                    other_exec_quants_train=info_train["other_exec_quants"][:, config["ENVID"]]  
+                    averageMidprice_train=info_train["averageMidprice"][:, config["ENVID"]]  
+                    averageBestbid_train=info_train["average_best_bid"][:, config["ENVID"]]  
+                    averageBestask_train=info_train["average_best_ask"][:, config["ENVID"]]  
                    
 
                     #-------------eval info------#   
@@ -571,14 +578,14 @@ def make_train(config):
                             data={
                                 #-----time and return------------#
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                "global_step": jnp.sum(timesteps) if timesteps.size > 0 else 0,
+                               # "global_step": jnp.sum(timesteps) if timesteps.size > 0 else 0,
                                 #"time":jnp.mean(time) if time.size>0 else 0,
 
                                 #---------Reward and error bars--------#
                                 #train
                                 "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
-                                "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
-                                "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                               # "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                               # "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
                                 #eval
                                 "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
                                 "reward_eval_plus_std": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
@@ -590,9 +597,9 @@ def make_train(config):
                                 
                                 #---------PnL and errors bars-----------#
                                 #reward
-                                "Episodic_PnL_train_mean": jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
-                                "Episodic_PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
-                                "Episodic_PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                "Episodic_PnL_train_mean": jnp.mean(episodic_PnL_train) if episodic_PnL_train.size > 0 else 0,
+                                "Episodic_PnL_train_plus_std": (jnp.mean(episodic_PnL_train) + jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
+                                "Episodic_PnL_train_minus_std": (jnp.mean(episodic_PnL_train) - jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
                                 #eval
                                 "PnL_eval_mean": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
                                 "PnL_eval_plus_std": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
@@ -604,9 +611,9 @@ def make_train(config):
 
                                 #-------------NetWorth and error bars----------#
                                 #train
-                                "Episodic_netWorth_train": jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
-                                "Episodic_netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
-                                "Episodic_netWorth_train_minus_st": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
+                                "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                "Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
                                 #eval
                                 "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
                                 "netWorth_eval_upper": (jnp.mean(netWorth_eval) + jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
@@ -619,8 +626,8 @@ def make_train(config):
                                 #----------Iventory and error bars------------#
                                 #train
                                 "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
-                                "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
-                                "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                               # "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                               # "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
                                 #eval
                                 "inventory_eval": jnp.mean(inventories_eval) if inventories_eval.size > 0 else 0,
                                 "inventory_eval_plus_std":(jnp.mean(inventories_eval) + jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
@@ -667,15 +674,15 @@ def make_train(config):
                             wandb.log({"reward_histogram": wandb.Histogram(reward_train)}, commit=False)
                         if return_values.size > 0:
                             wandb.log({"episodic_return_histogram": wandb.Histogram(return_values)}, commit=False)
-                        if PnL_train.size > 0:
-                            wandb.log({"PnL_histogram": wandb.Histogram(PnL_train)}, commit=False)
+                        if episodic_PnL_train.size > 0:
+                            wandb.log({"PnL_histogram": wandb.Histogram(episodic_PnL_train)}, commit=False)
                         # Add networth histogram
-                        if netWorth_train.size > 0:
-                            wandb.log({"networth_histogram": wandb.Histogram(netWorth_train)}, commit=False)
+                        if episodic_netWorth_train.size > 0:
+                            wandb.log({"networth_histogram": wandb.Histogram(episodic_netWorth_train)}, commit=False)
                     print("Update step is",update_count, "of",config["NUM_UPDATES"])
-                    if config["VERBOSE"]:
-                        for t in range(len(timesteps)):
-                            print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
+                   # if config["VERBOSE"]:
+                    #    for t in range(len(timesteps)):
+                     #       print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
                 jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
@@ -753,27 +760,108 @@ if __name__ == "__main__":
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
                          "action_space":"spread_skew"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"spooner",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"spooner",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"AvSt"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"spooner",
+                         "inv_penalty":"none",
+                         "n_actions":6,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"spread_skew"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"linear",
+                         "n_actions":6,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"AvSt"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"portfolio_value",
+                         "inv_penalty":"none",
+                         "n_actions":6,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"spread_skew"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"spooner",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"fixed_quants"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"spooner",
+                         "inv_penalty":"none",
+                         "n_actions":8,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"AvSt"
+                          },
+                          {"observation_space":"engineered",
+                         "reward_space":"spooner",
+                         "inv_penalty":"none",
+                         "n_actions":6,
+                         "end_fn":"unwind_ref_price",
+                         "fixed_quant_value":10,
+                         "reference_price_portfolio_value":"best_bid_ask",
+                         "action_space":"spread_skew"
                           }]
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
-                            "inv_penalty":"linear",
-                            "n_actions":6,
+                            "inv_penalty":"none",
+                            "n_actions":8,
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"best_bid_ask",
-                            "action_space":"AvSt"
+                            "action_space":"spread_skew"
                             }]      
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4,5e-4,1e-3]},
-        "NUM_ENVS": {"values": [256,1]},
+        "LR": {"values": [2.5e-4]},
+        "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [50000]},
-        "UPDATE_EPOCHS": {"values": [2,4]},
+        "TOTAL_TIMESTEPS": {"values": [8e5]},
+        "UPDATE_EPOCHS": {"values": [2]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.999,0.99999,0.95]},
+        "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
         "ENT_COEF": {"values": [0.0,0.01]},
@@ -785,14 +873,14 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [-1]},
-        "MAX_TASK_SIZE": {"values": [100]},
         "EPISODE_TIME": {"values": [60*10]},
         "DATA_TYPE": {"values": ["fixed_time"]},
 
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
-        "BASELINE_FIXED_ACTION": {"values": [4]}
+        "BASELINE_FIXED_ACTION": {"values": [7]},
+        "ENVID":{"values":[1]}
     }    
 
     sweep_config={

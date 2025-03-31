@@ -399,6 +399,7 @@ class MARLEnv(BaseLOBEnv):
             "vwap_rm": new_state.exe_state.vwap_rm,
             "advantage_reward": new_state.exe_state.advantage_return,
             "drift_reward": new_state.exe_state.drift_return,
+            "drift":exe_extras["drift"],
             "trade_duration": new_state.exe_state.trade_duration,
             "mkt_forced_quant": mkt_exec_quant + doom_quant,
             "doom_quant": doom_quant,
