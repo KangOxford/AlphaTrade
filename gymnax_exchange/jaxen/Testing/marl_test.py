@@ -22,7 +22,10 @@ faulthandler.enable()
 # ============================
 # Configuration
 # ============================
-
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def generate_plots(
     mm_rewards,
@@ -44,8 +47,8 @@ def generate_plots(
     exe_total_revenue,
     exe_quant_executed,
     exe_average_price,
-    exe_mid_price,
     exe_vwap_rm,
+    exe_mid_price,
     exe_slippage_rm,
     exe_price_adv_rm,
     exe_price_drift_rm,
@@ -53,7 +56,6 @@ def generate_plots(
     exe_drift_reward,
     exe_trade_duration,
     valid_steps,
-    reward_file,
     output_dir,
 ):
     """
@@ -62,32 +64,32 @@ def generate_plots(
 
     plot_until_step = valid_steps
 
-    # Trim data to valid steps
+    # Slice all data to valid steps
     datasets = [
         mm_rewards, mm_reward_portfolio_value, mm_reward_complex, mm_reward_spooner,
         mm_reward_spooner_damped, mm_reward_spooner_scaled, mm_reward_delta_netWorth,
         mm_inventory, mm_total_PnL, mm_buyQuant, mm_sellQuant, mm_bid_price, mm_ask_price,
         mm_averageMidprice, mm_netWorth, exe_rewards, exe_total_revenue, exe_quant_executed,
-        exe_average_price, exe_mid_price, exe_vwap_rm, exe_slippage_rm, exe_price_adv_rm,
+        exe_average_price, exe_vwap_rm, exe_mid_price, exe_slippage_rm, exe_price_adv_rm,
         exe_price_drift_rm, exe_advantage_reward, exe_drift_reward, exe_trade_duration
     ]
     datasets = [data[:plot_until_step].squeeze() for data in datasets]
 
-    mm_rewards= mm_rewards[:plot_until_step]
+    mm_rewards = mm_rewards[:plot_until_step]
     mm_reward_portfolio_value = mm_reward_portfolio_value[:plot_until_step]
     mm_reward_complex = mm_reward_complex[:plot_until_step]
     mm_reward_spooner = mm_reward_spooner[:plot_until_step]
     mm_reward_spooner_scaled = mm_reward_spooner_scaled[:plot_until_step]
-    mm_reward_spooner_damped= mm_reward_spooner_damped[:plot_until_step]
+    mm_reward_spooner_damped = mm_reward_spooner_damped[:plot_until_step]
     mm_reward_delta_netWorth = mm_reward_delta_netWorth[:plot_until_step]
     mm_inventory = mm_inventory[:plot_until_step]
     mm_total_PnL = mm_total_PnL[:plot_until_step]
     mm_buyQuant = mm_buyQuant[:plot_until_step]
     mm_sellQuant = mm_sellQuant[:plot_until_step]
-    mm_bid_price = mm_bid_price[:plot_until_step]  # Store best ask
+    mm_bid_price = mm_bid_price[:plot_until_step]
     mm_ask_price = mm_ask_price[:plot_until_step]
-    mm_averageMidprice = mm_averageMidprice[:plot_until_step]  # Store mid price
-    mm_netWorth=mm_netWorth[:plot_until_step]
+    mm_averageMidprice = mm_averageMidprice[:plot_until_step]
+    mm_netWorth = mm_netWorth[:plot_until_step]
     exe_rewards = exe_rewards[:plot_until_step]
     exe_total_revenue = exe_total_revenue[:plot_until_step]
     exe_quant_executed = exe_quant_executed[:plot_until_step]
@@ -101,87 +103,142 @@ def generate_plots(
     exe_drift_reward = exe_drift_reward[:plot_until_step]
     exe_trade_duration = exe_trade_duration[:plot_until_step]
 
-    fig, axes = plt.subplots(4, 3, figsize=(14, 12))
+    # ============================
+    # Save all data to CSV
+    # ============================
+    # Combine all data into a single 2D array (each column is one metric)
+    data = np.hstack([
+        mm_rewards, mm_reward_portfolio_value, mm_reward_complex, mm_reward_spooner,
+        mm_reward_spooner_damped, mm_reward_spooner_scaled, mm_reward_delta_netWorth,
+        mm_inventory, mm_total_PnL, mm_buyQuant, mm_sellQuant, mm_bid_price, mm_ask_price, mm_averageMidprice, mm_netWorth,
+        exe_rewards, exe_total_revenue, exe_quant_executed, exe_average_price, exe_vwap_rm, exe_mid_price,
+        exe_slippage_rm, exe_price_adv_rm, exe_price_drift_rm, exe_advantage_reward, exe_drift_reward, exe_trade_duration
+    ])
+    # Column headers for all metrics
+    column_names = [
+        'MM Reward', 'MM Portfolio Value Reward', 'MM Complex Reward', 'MM Spooner Reward',
+        'MM Spooner Damped Reward', 'MM Spooner Scaled Reward', 'MM Delta Net Worth Reward',
+        'MM Inventory', 'MM Total PnL', 'MM Buy Quantity', 'MM Sell Quantity', 'MM Bid Price', 'MM Ask Price', 'MM Average Midprice', 'MM Net Worth',
+        'Exe Reward', 'Exe Total Revenue', 'Exe Quant Executed', 'Exe Average Price', 'Exe VWAP RM', 'Exe Mid Price',
+        'Exe Slippage RM', 'Exe Price Adv RM', 'Exe Price Drift RM', 'Exe Advantage Reward', 'Exe Drift Reward', 'Exe Trade Duration'
+    ]
+    # Save data as CSV
+    df = pd.DataFrame(data, columns=column_names)
+    df.to_csv(os.path.join(output_dir, 'data.csv'), index=False)
 
-    # First row
-    axes[0, 0].plot(range(valid_steps), exe_total_revenue, label="Total Revenue", color='green')
-    axes[0, 0].set_title("Total Revenue Over Steps")
-    axes[0, 0].set_xlabel("Steps")
-    axes[0, 0].set_ylabel("Total Revenue")
+    print(f"Last valid step {valid_steps}")
+    print(f"Last NetWorth: {mm_netWorth[-1]}")
+    print(f"Last PnL: {mm_total_PnL[-1]}")
+
+    # ============================
+    # Plotting All Metrics
+    # ============================
+    fig, axes = plt.subplots(6, 5, figsize=(18, 18))
+
+    # MM Rewards Plots
+    axes[0, 0].plot(range(plot_until_step), mm_rewards, label="MM Reward", color='green')
+    axes[0, 0].set_title("MM Reward Over Steps")
     axes[0, 0].legend()
 
-    axes[0, 1].plot(range(valid_steps), exe_quant_executed, label="Quantity Executed", color='purple')
-    axes[0, 1].set_title("Quantity Executed Over Steps")
-    axes[0, 1].set_xlabel("Steps")
-    axes[0, 1].set_ylabel("Quantity Executed")
+    axes[0, 1].plot(range(plot_until_step), mm_reward_portfolio_value, label="MM Portfolio Value Reward", color='blue')
+    axes[0, 1].set_title("MM Portfolio Value Reward")
     axes[0, 1].legend()
 
-    axes[0, 2].plot(range(valid_steps), mm_total_PnL, label="Total PnL", color='orange')
-    axes[0, 2].set_title("Total PnL Over Steps")
-    axes[0, 2].set_xlabel("Steps")
-    axes[0, 2].set_ylabel("Total PnL")
+    axes[0, 2].plot(range(plot_until_step), mm_reward_complex, label="MM Complex Reward", color='orange')
+    axes[0, 2].set_title("MM Complex Reward")
     axes[0, 2].legend()
 
-    # Second row
-    axes[1, 0].plot(range(valid_steps), exe_average_price, label="Average Price", color='orange')
-    axes[1, 0].plot(range(valid_steps), exe_vwap_rm, label="VWAP", color='blue', linestyle='dashed')
-    axes[1, 0].set_title("Average Price & VWAP Over Steps")
-    axes[1, 0].set_xlabel("Steps")
-    axes[1, 0].set_ylabel("Price")
+    axes[0, 3].plot(range(plot_until_step), mm_reward_spooner, label="MM Spooner Reward", color='purple')
+    axes[0, 3].set_title("MM Spooner Reward")
+    axes[0, 3].legend()
+
+    axes[0, 4].plot(range(plot_until_step), mm_reward_spooner_scaled, label="MM Spooner Scaled Reward", color='red')
+    axes[0, 4].set_title("MM Spooner Scaled Reward")
+    axes[0, 4].legend()
+
+    # EXE Rewards Plots
+    axes[1, 0].plot(range(plot_until_step), exe_rewards, label="Exe Reward", color='green')
+    axes[1, 0].set_title("Exe Reward Over Steps")
     axes[1, 0].legend()
 
-    axes[1, 1].plot(range(valid_steps), exe_rewards, label="Reward", color='red')
-    axes[1, 1].set_title("Reward Over Steps")
-    axes[1, 1].set_xlabel("Steps")
-    axes[1, 1].set_ylabel("Reward")
+    axes[1, 1].plot(range(plot_until_step), exe_total_revenue, label="Exe Total Revenue", color='blue')
+    axes[1, 1].set_title("Exe Total Revenue")
     axes[1, 1].legend()
 
-    # Combined plot for Bid Price, Ask Price, and Average Mid Price
-    axes[1, 2].plot(range(valid_steps), mm_bid_price, label="Bid Price", color='pink')
-    axes[1, 2].plot(range(valid_steps), mm_ask_price, label="Ask Price", color='cyan')
-    axes[1, 2].plot(range(valid_steps), mm_averageMidprice, label="Average Mid Price", color='magenta')
-    axes[1, 2].set_xlabel("Steps")
-    axes[1, 2].set_ylabel("Price")
-    axes[1, 2].set_title("Bid, Ask, Mid Prices Over Steps")
+    axes[1, 2].plot(range(plot_until_step), exe_quant_executed, label="Exe Quant Executed", color='orange')
+    axes[1, 2].set_title("Exe Quant Executed")
     axes[1, 2].legend()
 
-    # Third row
-    axes[2, 0].plot(range(valid_steps), exe_mid_price, label="Mid Price", color='brown')
-    axes[2, 0].set_title("Mid Price Over Steps")
-    axes[2, 0].set_xlabel("Steps")
-    axes[2, 0].set_ylabel("Mid Price")
+    axes[1, 3].plot(range(plot_until_step), exe_average_price, label="Exe Average Price", color='purple')
+    axes[1, 3].set_title("Exe Average Price")
+    axes[1, 3].legend()
+
+    axes[1, 4].plot(range(plot_until_step), exe_vwap_rm, label="Exe VWAP RM", color='red')
+    axes[1, 4].set_title("Exe VWAP RM")
+    axes[1, 4].legend()
+
+    # MM/EXE Inventory & PnL Plots
+    axes[2, 0].plot(range(plot_until_step), mm_inventory, label="MM Inventory", color='green')
+    axes[2, 0].set_title("MM Inventory")
     axes[2, 0].legend()
 
-    axes[2, 1].plot(range(valid_steps), exe_slippage_rm, label="Slippage RM", color='cyan')
-    axes[2, 1].set_title("Slippage RM Over Steps")
-    axes[2, 1].set_xlabel("Steps")
-    axes[2, 1].set_ylabel("Slippage RM")
+    axes[2, 1].plot(range(plot_until_step), mm_total_PnL, label="MM Total PnL", color='blue')
+    axes[2, 1].set_title("MM Total PnL")
     axes[2, 1].legend()
 
-    axes[2, 2].plot(range(valid_steps), mm_netWorth, label="Net Worth", color='gold')
-    axes[2, 2].set_xlabel("Steps")
-    axes[2, 2].set_ylabel("Net Worth")
-    axes[2, 2].set_title("Net Worth Over Steps")
+    axes[2, 2].plot(range(plot_until_step), mm_buyQuant, label="MM Buy Quantity", color='orange')
+    axes[2, 2].set_title("MM Buy Quantity")
     axes[2, 2].legend()
 
-    # Fourth row
-    axes[3, 0].plot(range(valid_steps), exe_trade_duration, label="Trade Duration", color='black')
-    axes[3, 0].set_title("Trade Duration Over Steps")
-    axes[3, 0].set_xlabel("Steps")
-    axes[3, 0].set_ylabel("Trade Duration")
+    axes[2, 3].plot(range(plot_until_step), mm_sellQuant, label="MM Sell Quantity", color='purple')
+    axes[2, 3].set_title("MM Sell Quantity")
+    axes[2, 3].legend()
+
+    axes[2, 4].plot(range(plot_until_step), mm_bid_price, label="MM Bid Price", color='red')
+    axes[2, 4].set_title("MM Bid Price")
+    axes[2, 4].legend()
+
+    # Combined MM/EXE Price Plots
+    axes[3, 0].plot(range(plot_until_step), mm_ask_price, label="MM Ask Price", color='blue')
+    axes[3, 0].set_title("MM Ask Price")
     axes[3, 0].legend()
 
-    axes[3, 1].plot(range(valid_steps), mm_buyQuant, label="Buy Quantity", color='red')
-    axes[3, 1].set_title("Buy Quantity Over Steps")
-    axes[3, 1].set_xlabel("Steps")
-    axes[3, 1].set_ylabel("Buy Quantity")
+    axes[3, 1].plot(range(plot_until_step), mm_averageMidprice, label="MM Average Midprice", color='purple')
+    axes[3, 1].set_title("MM Average Midprice")
     axes[3, 1].legend()
 
-    axes[3, 2].plot(range(valid_steps), mm_sellQuant, label="Sell Quantity", color='purple')
-    axes[3, 2].set_title("Sell Quantity Over Steps")
-    axes[3, 2].set_xlabel("Steps")
-    axes[3, 2].set_ylabel("Sell Quantity")
+    axes[3, 2].plot(range(plot_until_step), exe_mid_price, label="Exe Mid Price", color='green')
+    axes[3, 2].set_title("Exe Mid Price")
     axes[3, 2].legend()
+
+    axes[3, 3].plot(range(plot_until_step), exe_slippage_rm, label="Exe Slippage RM", color='blue')
+    axes[3, 3].set_title("Exe Slippage RM")
+    axes[3, 3].legend()
+
+    axes[3, 4].plot(range(plot_until_step), exe_price_adv_rm, label="Exe Price Adv RM", color='orange')
+    axes[3, 4].set_title("Exe Price Adv RM")
+    axes[3, 4].legend()
+
+    # Remaining Metrics Plots
+    axes[4, 0].plot(range(plot_until_step), exe_price_drift_rm, label="Exe Price Drift RM", color='purple')
+    axes[4, 0].set_title("Exe Price Drift RM")
+    axes[4, 0].legend()
+
+    axes[4, 1].plot(range(plot_until_step), exe_advantage_reward, label="Exe Advantage Reward", color='red')
+    axes[4, 1].set_title("Exe Advantage Reward")
+    axes[4, 1].legend()
+
+    axes[4, 2].plot(range(plot_until_step), exe_drift_reward, label="Exe Drift Reward", color='green')
+    axes[4, 2].set_title("Exe Drift Reward")
+    axes[4, 2].legend()
+
+    axes[4, 3].plot(range(plot_until_step), exe_trade_duration, label="Exe Trade Duration", color='blue')
+    axes[4, 3].set_title("Exe Trade Duration")
+    axes[4, 3].legend()
+
+    axes[4, 4].plot(range(plot_until_step), mm_netWorth, label="MM Net Worth", color='orange')
+    axes[4, 4].set_title("MM Net Worth")
+    axes[4, 4].legend()
 
     # Adjust layout to prevent overlapping
     plt.tight_layout()
@@ -192,7 +249,6 @@ def generate_plots(
     plt.close()
 
     print(f"Combined plots saved to {combined_plot_file}")
-    
 
 
 
@@ -250,11 +306,7 @@ if __name__ == "__main__":
     test_steps = 15000 # Adjusted for your test case; make sure this isn't too high
     # ============================
     # Initialize data storage
-    # ============================
-    reward_file = 'gymnax_exchange/test_scripts/test_outputs/data.csv'  # Relative path
-    
-    # Ensure the directory exists, if not, create it
-    os.makedirs(os.path.dirname(reward_file), exist_ok=True)
+    # ===========================
     mm_rewards = np.zeros((test_steps, 1), dtype=int)
     mm_reward_portfolio_value = np.zeros((test_steps, 1), dtype=int)
     mm_reward_complex = np.zeros((test_steps, 1), dtype=int)
@@ -287,7 +339,7 @@ if __name__ == "__main__":
     
 
     
-    output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
+    output_dir = 'gymnax_exchange/jaxen/Testing/output/marl'
     valid_steps = 0
 
  
@@ -387,7 +439,6 @@ if __name__ == "__main__":
     exe_drift_reward,
     exe_trade_duration,
     valid_steps,
-    reward_file,
     output_dir,
  )
 

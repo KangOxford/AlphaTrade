@@ -39,7 +39,6 @@ def generate_plots(
     averageMidprice,
     netWorth,
     valid_steps,
-    reward_file,
     output_dir,
 ):
     """
@@ -62,7 +61,6 @@ def generate_plots(
         averageMidprice: List of average mid-price values.
         netWorth: List of net worth values.
         valid_steps: Number of valid steps.
-        reward_file: Path to save the CSV data.
         output_dir: Path to save the plot images.
     """
 
@@ -102,9 +100,10 @@ def generate_plots(
 
     # Save data using pandas to handle CSV easily
     df = pd.DataFrame(data, columns=column_names)
-    df.to_csv(reward_file, index=False)
+    df.to_csv(os.path.join(output_dir, 'data.csv'), index=False)
+
  
-    print(f"Data saved to {reward_file}")
+    
     print(f"Last valid step {valid_steps}")
     print(f"Last NetWorth: {netWorth[-1]}")
     print(f"Last PnL: {total_PnL[-1]}")
@@ -133,11 +132,10 @@ def generate_plots(
         plt.legend()
 
         # Save each plot to a separate file
-        plot_file = f"gymnax_exchange/test_scripts/test_outputs/reward_{reward_name.replace(' ', '_').lower()}.png"
-        plt.savefig(plot_file)
+        plot_file_name = f"reward_{reward_name.replace(' ', '_').lower()}.png"
+        plt.savefig(os.path.join(output_dir, plot_file_name))
         plt.close()
 
-        print(f"Plot saved to {plot_file}")
 
     # ============================
     # Plotting all metrics on one page
@@ -216,11 +214,6 @@ if __name__ == "__main__":
         ATFolder = "/home/duser/AlphaTrade/training_oneDay/val"
         #ATFolder= "/home/duser/AlphaTrade/testing"
 
-        # ATFolder = '/home/duser/AlphaTrade'
-        # ATFolder = '/homes/80/kang/AlphaTrade'
-        # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
-        # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
-        # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 6,
@@ -231,7 +224,7 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     
-    # env=MarketMakingEnv(ATFolder,"sell",1)
+
 
     env_cfg = EnvironmentConfig()
 
@@ -261,10 +254,8 @@ if __name__ == "__main__":
     # ============================
     # Initialize data storage
     # ============================
-    reward_file = 'gymnax_exchange/test_scripts/test_outputs/data.csv'  # Relative path
-    
-    # Ensure the directory exists, if not, create it
-    os.makedirs(os.path.dirname(reward_file), exist_ok=True)
+    output_dir = 'gymnax_exchange/jaxen/Testing/output/mm'
+
     rewards = np.zeros((test_steps, 1), dtype=int)
     reward_portfolio_value = np.zeros((test_steps, 1), dtype=int)
     reward_complex = np.zeros((test_steps, 1), dtype=int)
@@ -284,7 +275,6 @@ if __name__ == "__main__":
    
 
 
-    output_dir = 'gymnax_exchange/test_scripts/test_outputs/'
    
     # ============================
     # Track the number of valid steps
@@ -348,7 +338,6 @@ if __name__ == "__main__":
      averageMidprice,
      netWorth,
      valid_steps,
-     reward_file,
      output_dir,
  )
 
