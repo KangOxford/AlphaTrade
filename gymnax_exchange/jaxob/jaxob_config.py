@@ -23,6 +23,8 @@ class EnvironmentConfig(Configuration):
     end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     num_messages_by_agent:int=env_cst.num_messages_by_agent
+    num_trades_by_agent=2
+    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value","spooner","spooner_damped","spooner_scaled","delta_netWorth"] =env_cst.reward_space
@@ -41,17 +43,22 @@ class EnvironmentConfig(Configuration):
         if self.action_space == "fixed_quants":
             object.__setattr__(self, 'n_actions', 8)
             object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_trades_by_agent', 2)
         elif self.action_space == "spread_skew":
             object.__setattr__(self, 'n_actions', 6)
             object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_trades_by_agent', 2)
         elif self.action_space == "directional_trading":
             object.__setattr__(self, 'n_actions', 3)
             object.__setattr__(self, 'num_messages_by_agent', 2)
+            object.__setattr__(self, 'num_trades_by_agent', 1)
         elif self.action_space == "AvSt":
             object.__setattr__(self, 'n_actions', 2)
             object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_trades_by_agent', 2)
         elif self.action_space == "fixed_prices":
             object.__setattr__(self, 'num_messages_by_agent', self.n_actions*2)
+            object.__setattr__(self, 'num_trades_by_agent', self.n_actions)
 
 
 @dataclass(frozen=True)

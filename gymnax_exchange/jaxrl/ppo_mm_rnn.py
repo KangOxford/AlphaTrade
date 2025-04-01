@@ -743,7 +743,7 @@ if __name__ == "__main__":
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"directional_trading"
+                         "action_space":"spread_skew"
                           },
                           {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
@@ -751,7 +751,7 @@ if __name__ == "__main__":
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"directional_trading"
+                         "action_space":"spread_skew"
                           }
                           ]
     baseline_env_config_hps = [{"observation_space":"engineered",

@@ -266,15 +266,16 @@ class MarketMakingEnv(BaseLOBEnv):
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_messages_by_agent//4, #over 4 because cancel on one side...
+                self.cfg.num_trades_by_agent//2, 
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_messages_by_agent//4,
+                self.cfg.num_trades_by_agent//2,
                 -1  # ask
             )
+        ##Does not work for directional trading space. Probably need to call some config checks to do this.
         
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
 
@@ -899,16 +900,17 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Create masks for valid indices
         valid_indices = price_to_index >= 0
-        if self.cfg.action_space == "fixed_quants" or self.cfg.action_space=="AvSt":
-            num_prices = 2 #2 trades for this setup.
-        elif self.cfg.action_space=="fixed_prices":
-            num_prices=self.cfg.n_actions
-        elif self.cfg.action_space=="spread_skew":
-            num_prices = 2  # 2 trades (bid and ask)
-        elif self.cfg.action_space=="directional_trading":
-            num_prices = 1  # 1 trade (bid or ask)
-        else:
-            raise ValueError("Invalid action space specified")
+        num_prices=self.cfg.num_trades_by_agent
+        #if self.cfg.action_space == "fixed_quants" or self.cfg.action_space=="AvSt":
+        #    num_prices = 2 #2 trades for this setup.
+        #elif self.cfg.action_space=="fixed_prices":
+        #    num_prices=self.cfg.n_actions
+        #elif self.cfg.action_space=="spread_skew":
+        #    num_prices = 2  # 2 trades (bid and ask)
+        #elif self.cfg.action_space=="directional_trading":
+        #    num_prices = 1  # 1 trade (bid or ask)
+        #else:
+        #    raise ValueError("Invalid action space specified")
 
         # Mask trades and indices instead of boolean indexing
         valid_trades = jnp.where(valid_indices, agent_trades[:, 1], 0)
@@ -989,8 +991,9 @@ class MarketMakingEnv(BaseLOBEnv):
         gamma = gamma_values[action]
 
         #Estimate K paramter from data
-        market_order_fraction=0.01
-        k = (100*market_order_fraction)/state.delta_time
+        executed = jnp.where((state.trades[:, 0] >= 0)[:, jnp.newaxis], state.trades, 0)
+        market_order=executed.size()
+        k = (market_order)/state.delta_time
 
         # Market volatility estimation (rolling standard deviation of mid-price)
         mid_price_history = ((state.best_asks[-50:]+state.best_bids[-50:])//2)
@@ -1495,13 +1498,13 @@ class MarketMakingEnv(BaseLOBEnv):
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_messages_by_agent//2,
+                self.cfg.num_trades_by_agent//2,
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_messages_by_agent//2,
+                self.cfg.num_trades_by_agent//2,
                 -1  # ask
             )
         
@@ -1976,7 +1979,6 @@ class MarketMakingEnv(BaseLOBEnv):
             #"remaining_ratio": 0,
             "prev_action": 0,
             "prev_executed": 0,
-            "prev_executed_ratio": 0,
         
         }
         stds = {
@@ -1999,7 +2001,6 @@ class MarketMakingEnv(BaseLOBEnv):
             "max_steps": 30,
             "prev_action": 10,
             "prev_executed": 10,
-            "prev_executed_ratio": 1,
         }
         if normalize:
             obs = self.normalize_obs(obs, means, stds)
@@ -2029,7 +2030,7 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.action_space == "fixed_prices":
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
-            return spaces.Discrete(self.cfg.n_actions)
+            return spaces.Discrete(8)
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         else:
@@ -2040,7 +2041,7 @@ class MarketMakingEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-10, 10, (20+self.cfg.num_messages_by_agent,), dtype=jnp.float32) # action_prices and prev_executions depend on the number of actions send. So for each action message, there is twice the number of action messages on the obs space, which is number of messages (cause number of messages includes action and cancellations)
+             return spaces.Box(-10, 10, (17+3*self.cfg.num_trades_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
