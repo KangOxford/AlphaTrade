@@ -737,111 +737,22 @@ if __name__ == "__main__":
     env_config_hps = [  {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
-                         "n_actions":6,
+                         "n_actions":3,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
+                         "action_space":"directional_trading"
                           },
                           {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"none",
-                         "n_actions":8,
+                         "n_actions":3,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"AvSt"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"spread_skew"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"spooner",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"spooner",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"AvSt"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"spooner",
-                         "inv_penalty":"none",
-                         "n_actions":6,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"spread_skew"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"linear",
-                         "n_actions":6,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"AvSt"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"none",
-                         "n_actions":6,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"spread_skew"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"spooner",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"spooner",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"AvSt"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"spooner",
-                         "inv_penalty":"none",
-                         "n_actions":6,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"spread_skew"
-                          }]
+                         "action_space":"directional_trading"
+                          }
+                          ]
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
                             "inv_penalty":"none",
@@ -858,7 +769,7 @@ if __name__ == "__main__":
         "LR": {"values": [2.5e-4]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [8e5]},
+        "TOTAL_TIMESTEPS": {"values": [5e5]},
         "UPDATE_EPOCHS": {"values": [2]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
@@ -915,7 +826,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_action_space_skewing_2")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
