@@ -198,6 +198,8 @@ class MarketMakingEnv(BaseLOBEnv):
             self.action_fn = self._getActionMsgs_AvSt
         elif self.cfg.action_space == "spread_skew":
             self.action_fn = self._getActionMsgs_spread_skew
+        elif self.cfg.action_space == "directional_trading":
+            self.action_fn = self._getActionMsgs_directional_trading
         else:
             raise ValueError("Invalid action_space specified.")
         
@@ -412,6 +414,9 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.action_space=="spread_skew":
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades (bid and ask)
             exections=jnp.zeros((2,2),dtype=jnp.int32)
+        elif self.cfg.action_space=="directional_trading":
+            action_prices=jnp.zeros((1,1),dtype=jnp.int32) #1 trade (bid or ask)
+            exections=jnp.zeros((1,2),dtype=jnp.int32)
         else:
             raise ValueError("Other action spaces not finished")
         
@@ -900,6 +905,8 @@ class MarketMakingEnv(BaseLOBEnv):
             num_prices=self.cfg.n_actions
         elif self.cfg.action_space=="spread_skew":
             num_prices = 2  # 2 trades (bid and ask)
+        elif self.cfg.action_space=="directional_trading":
+            num_prices = 1  # 1 trade (bid or ask)
         else:
             raise ValueError("Invalid action space specified")
 
@@ -1241,6 +1248,59 @@ class MarketMakingEnv(BaseLOBEnv):
         
         return action_msgs
 
+
+
+    def _getActionMsgs_directional_trading(self, action: jax.Array, state: EnvState, params: EnvParams):
+        '''Action space for directional trading. The agent can either:
+            - Do nothing (action = 0)
+            - Buy at best ask (action = 1)
+            - Sell at best bid (action = 2)
+        
+        Only sends a single message per action
+        '''
+        # Compute best_ask and best_bid using rolling average to reduce variance
+        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        
+        # Debug prints
+        jax.debug.print("Directional Trading Action: {}", action)
+        jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
+        
+        # Define patterns for each action
+        # Each pattern is [type, side, quant, price]
+        quant = self.cfg.fixed_quant_value
+        patterns = jnp.array([
+            [1, 0, 0, 0],           # do nothing: dummy message
+            [1, 1, quant, best_ask], # buy at ask
+            [1, -1, quant, best_bid],  # sell at bid
+        ], dtype=jnp.int32)
+        
+        # Select pattern based on action
+        selected = patterns[action]
+        
+        # Generate unique order ID
+        base_id = self.trader_unique_id + state.customIDcounter
+        
+        # Construct single message
+        msg = jnp.array([
+            selected[0],  # type (1 = limit order)
+            selected[1],  # side (-1 = ask, 1 = bid)
+            selected[2],  # quantity
+            selected[3],  # price
+            base_id,      # order ID
+            self.trader_unique_id,  # trader ID
+            *(state.time + params.time_delay_obs_act)  # time fields
+        ], dtype=jnp.int32)
+        
+        # Reshape to match expected shape (1, 8)
+        action_msgs = msg.reshape(1, -1)
+        
+        # Debug print final message
+        jax.debug.print("Final Action Message:\n{}", action_msgs)
+        return action_msgs
+
+
+
     #===================End Episode Functions=============================================#
     def end_fn_pass(self,
             time: jax.Array,
@@ -1256,6 +1316,8 @@ class MarketMakingEnv(BaseLOBEnv):
             id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
         elif self.cfg.action_space=="spread_skew":
             id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
+        elif self.cfg.action_space=="directional_trading":
+            id_counter = state.customIDcounter + 1 + 1  # 1 message
         else:
             raise ValueError("Action space not implemented yet")
         time = time + params.time_delay_obs_act
@@ -1344,6 +1406,8 @@ class MarketMakingEnv(BaseLOBEnv):
             id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
         elif self.cfg.action_space=="spread_skew":
             id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
+        elif self.cfg.action_space=="directional_trading":
+            id_counter = state.customIDcounter + 1 + 1  # 1 message
         else:
             raise ValueError("Action space not implemented yet")
         
@@ -1391,6 +1455,8 @@ class MarketMakingEnv(BaseLOBEnv):
                 id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
             elif self.cfg.action_space=="spread_skew":
                 id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
+            elif self.cfg.action_space=="directional_trading":
+                id_counter = state.customIDcounter + 1 + 1  # 1 message
             else:
                 raise ValueError("Action space not implemented yet")
             return mkt_msg, id_counter, new_time
@@ -1755,9 +1821,10 @@ class MarketMakingEnv(BaseLOBEnv):
             return self.action_fn(action, state, params)
         elif self.cfg.action_space == "spread_skew":
             return self.action_fn(action, state, params)
+        elif self.cfg.action_space == "directional_trading":
+            return self._getActionMsgs_directional_trading(action, state, params)
         else:
             raise ValueError("Invalid action sspace specified.")
-
     #=================observation functions========================#    
     def _get_obs_msg(self, state, total_msgs: chex.Array):
         return total_msgs
@@ -1957,9 +2024,11 @@ class MarketMakingEnv(BaseLOBEnv):
         self, params: Optional[EnvParams] = None
     ) -> spaces.Box:
         """ Action space of the environment. """
-        if self.cfg.action_space=="fixed_prices":
-             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
-        elif self.cfg.action_space =="fixed_quants" or self.cfg.action_space=="AvSt":
+        if self.cfg.action_space == "directional_trading":
+            return spaces.Discrete(3)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
+        elif self.cfg.action_space == "fixed_prices":
+            return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+        elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
             return spaces.Discrete(self.cfg.n_actions)
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
@@ -2059,8 +2128,7 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         #test_action=env.action_space().sample(key_policy)
-        #test_action = env.action_space().sample(key_policy) 
-        test_action=5
+        test_action = env.action_space().sample(key_policy) 
         jax.debug.print("test_action :{}",test_action)
         env.action_space().sample(key_policy) // 10
         # test_action = jnp.array([100, 10])
@@ -2125,3 +2193,4 @@ if __name__ == "__main__":
         n_obs, n_state, reward, done, _ = vmap_step(vmap_keys,
          state, test_actions, env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
+
