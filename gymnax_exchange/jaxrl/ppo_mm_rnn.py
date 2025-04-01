@@ -525,7 +525,7 @@ def make_train(config):
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
                     #Returns for anything done in any of the last N_steps steps. Size=N_steps by N_envs
-                    #jax.debug.print("Returned episode size:{}",info_train["returned_episode"].shape) 
+                    
                   
 
 
@@ -535,6 +535,9 @@ def make_train(config):
                     #-----------Train info----------#
                     episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
                     episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
+
+                    jax.debug.print("episodic_netWorth_train:{}",episodic_netWorth_train.shape)
+                    jax.debug.print("episodic_PnL_train:{}",episodic_PnL_train.shape)
                     #Return episode ending PnL
 
                     inventories_train = info_train["inventory"][:, config["ENVID"]]  
@@ -737,7 +740,6 @@ if __name__ == "__main__":
     env_config_hps = [  {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"linear",
-                         "n_actions":3,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
@@ -746,7 +748,6 @@ if __name__ == "__main__":
                           {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
                          "inv_penalty":"none",
-                         "n_actions":3,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
@@ -756,7 +757,6 @@ if __name__ == "__main__":
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
                             "inv_penalty":"none",
-                            "n_actions":8,
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"best_bid_ask",

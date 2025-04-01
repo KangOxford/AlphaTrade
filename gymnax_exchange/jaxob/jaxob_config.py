@@ -40,13 +40,18 @@ class EnvironmentConfig(Configuration):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         if self.action_space == "fixed_quants":
             object.__setattr__(self, 'n_actions', 8)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
         elif self.action_space == "spread_skew":
             object.__setattr__(self, 'n_actions', 6)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
         elif self.action_space == "directional_trading":
             object.__setattr__(self, 'n_actions', 3)
+            object.__setattr__(self, 'num_messages_by_agent', 2)
         elif self.action_space == "AvSt":
             object.__setattr__(self, 'n_actions', 2)
-
+            object.__setattr__(self, 'num_messages_by_agent', 4)
+        elif self.action_space == "fixed_prices":
+            object.__setattr__(self, 'num_messages_by_agent', self.n_actions*2)
 
 
 @dataclass(frozen=True)

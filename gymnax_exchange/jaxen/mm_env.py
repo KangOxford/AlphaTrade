@@ -1946,7 +1946,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "max_steps": state.max_steps_in_episode,
             "prev_action": action_prices,  # use quants only
             "prev_executed":executions,  # 
-            "prev_executed_ratio": jnp.where(executions==0., 0., executions /10)# state.prev_action[:, 1]), Hard code size of normal trade
+            #"prev_executed_ratio": jnp.where(executions==0., 0., executions /10)# state.prev_action[:, 1]), Hard code size of normal trade
             
         }
 
@@ -2040,7 +2040,7 @@ class MarketMakingEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-10, 10, (20+self.cfg.n_actions,), dtype=jnp.float32) 
+             return spaces.Box(-10, 10, (20+self.cfg.num_messages_by_agent,), dtype=jnp.float32) # action_prices and prev_executions depend on the number of actions send. So for each action message, there is twice the number of action messages on the obs space, which is number of messages (cause number of messages includes action and cancellations)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
@@ -2140,7 +2140,7 @@ if __name__ == "__main__":
         print("Step reward:", reward)
         #print("Step info:", info)
         print("time",info["time_seconds"])
-
+        print("obs:", obs)
 
         print("Intial Time \n", state.init_time)
         print("Time \n", state.time)
