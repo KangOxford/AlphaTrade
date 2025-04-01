@@ -766,13 +766,15 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4]},
+        "LR": {"values": [2.5e-4,5e-4,1e-3,5e-3]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
+        "UPDATE_EPOCHS": {"values": [4]},
         "TOTAL_TIMESTEPS": {"values": [5e5]},
         "UPDATE_EPOCHS": {"values": [2]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.999]},
+        "GAMMA": {"values": [0.999,0.9999999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
         "ENT_COEF": {"values": [0.0,0.01]},
@@ -784,7 +786,7 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [-1]},
-        "EPISODE_TIME": {"values": [60*10]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
 
         "ATFOLDER": {"values": [ATFolder]},
