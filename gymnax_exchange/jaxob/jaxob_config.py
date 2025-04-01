@@ -27,13 +27,26 @@ class EnvironmentConfig(Configuration):
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value","spooner","spooner_damped","spooner_scaled","delta_netWorth"] =env_cst.reward_space
     reference_price_portfolio_value: Literal["mid", "best_bid_ask"] =env_cst.reference_price_portfolio_value
-    n_actions:int=env_cst.n_actions
+    
     fixed_quant_value:int=env_cst.fixed_quant_value
     
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.002
     unrealizedPnL_lambda: float = 0.0
     asymmetrically_dampened_lambda: float = 0.05
+
+    @property
+    def n_actions(self) -> int:
+        if self.action_space == "fixed_quants":
+            return 8
+        elif self.action_space == "spread_skew":
+            return 6
+        elif self.action_space == "directional_trading":
+            return 3
+        elif self.action_space in ["fixed_prices", "AvSt"]:
+            return env_cst.n_actions  # Keep the default for fixed_prices and AvSt
+        else:
+            raise ValueError(f"Unknown action space: {self.action_space}")
 
 @dataclass(frozen=True)
 class EnvironmentExecutionConfig(Configuration):
