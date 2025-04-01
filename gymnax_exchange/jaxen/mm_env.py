@@ -2040,7 +2040,7 @@ class MarketMakingEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-10, 10, (27,), dtype=jnp.float32) 
+             return spaces.Box(-10, 10, (20+self.cfg.n_actions,), dtype=jnp.float32) 
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
