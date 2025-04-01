@@ -470,7 +470,7 @@ def make_train(config):
             _rng,
             )
             eval_runner_state, eval_traj_batch = jax.lax.scan(
-                _eval_step, eval_runner_state, None, config["NUM_STEPS"]
+                _eval_step, eval_runner_state, None,  config["NUM_STEPS_EVAL"]
             )
             eval_metric=eval_traj_batch.info
             #-----Baseline evaluation------#
@@ -505,7 +505,7 @@ def make_train(config):
             _rng,
             )
             baseline_runner_state, baseline_traj_batch = jax.lax.scan(
-                _baseline_step, baseline_runner_state, None, config["NUM_STEPS"]
+                _baseline_step, baseline_runner_state, None,  config["NUM_STEPS_EVAL"]
             )
             baseline_metric=baseline_traj_batch.info
 
@@ -531,7 +531,7 @@ def make_train(config):
                    
 
                     #-------------eval info------#   
-                    revenues_eval = info_eval["total_revenue"]
+                    episodic_revenues_eval = info_eval["total_revenue"][baseline_metric["returned_episode"]] 
                     quant_executed_eval=info_eval["quant_executed"]
                     average_price_eval = info_eval["average_price"]
                     current_step_eval = info_eval["current_step"] 
@@ -543,7 +543,7 @@ def make_train(config):
                     
                     
                     #-------------baseline info------#
-                    revenues_baseline = baseline_metric["total_revenue"]
+                    episodic_revenues_baseline = baseline_metric["total_revenue"][baseline_metric["returned_episode"]] 
                     quant_executed_baseline=baseline_metric["quant_executed"]
                     average_price_baseline = baseline_metric["average_price"]
                     current_step_baseline = baseline_metric["current_step"] 
@@ -598,13 +598,13 @@ def make_train(config):
                                 #"revenues_train_plus_std": (jnp.mean(episodic_revenues_train) + jnp.std(episodic_revenues_train)) if episodic_revenues_train.size > 0 else 0,
                                 #"revenues_train_minus_std": (jnp.mean(episodic_revenues_train) - jnp.std(episodic_revenues_train)) if episodic_revenues_train.size > 0 else 0,
                                 #eval
-                                "revenues_eval": jnp.mean(revenues_eval) if revenues_eval.size > 0 else 0,
-                                "revenues_eval_plus_std": (jnp.mean(revenues_eval) + jnp.std(revenues_eval)) if revenues_eval.size > 0 else 0,
-                                "revenues_eval_minus_std": (jnp.mean(revenues_eval) - jnp.std(revenues_eval)) if revenues_eval.size > 0 else 0,
+                                "revenues_eval": jnp.mean(episodic_revenues_eval) if episodic_revenues_eval.size > 0 else 0,
+                                "revenues_eval_plus_std": (jnp.mean(episodic_revenues_eval) + jnp.std(episodic_revenues_eval)) if episodic_revenues_eval.size > 0 else 0,
+                                "revenues_eval_minus_std": (jnp.mean(episodic_revenues_eval) - jnp.std(episodic_revenues_eval)) if episodic_revenues_eval.size > 0 else 0,
                                 #baseline
-                                "revenues_baseline": jnp.mean(revenues_baseline) if revenues_baseline.size > 0 else 0,
-                                "revenues_baseline_plus_std": (jnp.mean(revenues_baseline) + jnp.std(revenues_baseline)) if revenues_baseline.size > 0 else 0,
-                                "revenues_baseline_minus_std": (jnp.mean(revenues_baseline) - jnp.std(revenues_baseline)) if revenues_baseline.size > 0 else 0,
+                                "revenues_baseline": jnp.mean(episodic_revenues_baseline) if episodic_revenues_baseline.size > 0 else 0,
+                                "revenues_baseline_plus_std": (jnp.mean(episodic_revenues_baseline) + jnp.std(episodic_revenues_baseline)) if episodic_revenues_baseline.size > 0 else 0,
+                                "revenues_baseline_minus_std": (jnp.mean(episodic_revenues_baseline) - jnp.std(episodic_revenues_baseline)) if episodic_revenues_baseline.size > 0 else 0,
 
                                 #-------------quant_executed_train and error bars----------#
                                 #train
@@ -759,6 +759,7 @@ if __name__ == "__main__":
         "DATA_TYPE": {"values": ["fixed_time"]},
         "WINDOW_INDEX": {"values": [-1]},
         "TRADER_UNIQUE_ID": {"values": [10]},
+        "NUM_STEPS_EVAL":{"values":[160]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},

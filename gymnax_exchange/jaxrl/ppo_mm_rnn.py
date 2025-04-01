@@ -479,7 +479,7 @@ def make_train(config):
             _rng,
             )
             eval_runner_state, eval_traj_batch = jax.lax.scan(
-                _eval_step, eval_runner_state, None, config["NUM_STEPS"]
+                _eval_step, eval_runner_state, None, config["NUM_STEPS_EVAL"]
             )
             eval_metric=eval_traj_batch.info
             #-----Baseline evaluation------#
@@ -515,66 +515,72 @@ def make_train(config):
             _rng,
             )
             baseline_runner_state, baseline_traj_batch = jax.lax.scan(
-                _baseline_step, baseline_runner_state, None, config["NUM_STEPS"]
+                _baseline_step, baseline_runner_state, None, config["NUM_STEPS_EVAL"]
             )
             baseline_metric=baseline_traj_batch.info
 
             if config.get("DEBUG"):
                 def callback(info_train,info_eval,baseline_metric,update_count):
                     #------------Collect info for plotting---------------------------#
+                    #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
+
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
-                    #Returns for anything done in any of the last N_steps steps. Size=N_steps by N_envs
-                    
-                  
-
-
-                   # timesteps = info_train["timestep"]
-
-
+                    timesteps=info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
+        
                     #-----------Train info----------#
+                    ##Global episodic plots
                     episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
                     episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
-
-                    jax.debug.print("episodic_netWorth_train:{}",episodic_netWorth_train.shape)
-                    jax.debug.print("episodic_PnL_train:{}",episodic_PnL_train.shape)
                     
-                    #Return episode ending PnL
+                    #plots for a specific env
+                    PnL_train_target_env = info_train["total_PnL"][:, config["ENVID"]]
+                    inventories_train_target_env = info_train["inventory"][:, config["ENVID"]]  
+                    buyQuant_train_target_env=info_train["buyQuant"][:, config["ENVID"]]  
+                    sellQuant_train_target_env=info_train["sellQuant"][:, config["ENVID"]]  
+                    reward_train_target_env=info_train["reward"][:, config["ENVID"]]  
+                    other_exec_quants_train_target_env=info_train["other_exec_quants"][:, config["ENVID"]]  
+                    averageMidprice_train_target_env=info_train["averageMidprice"][:, config["ENVID"]]  
+                    averageBestbid_train_target_env=info_train["average_best_bid"][:, config["ENVID"]]  
+                    averageBestask_train_target_env=info_train["average_best_ask"][:, config["ENVID"]] 
 
-                    inventories_train = info_train["inventory"][:, config["ENVID"]]  
-                    jax.debug.print("inventories_train:{}",inventories_train.shape)
-                    buyQuant_train=info_train["buyQuant"][:, config["ENVID"]]  
-                    sellQuant_train=info_train["sellQuant"][:, config["ENVID"]]  
-                    reward_train=info_train["reward"][:, config["ENVID"]]  
-                    other_exec_quants_train=info_train["other_exec_quants"][:, config["ENVID"]]  
-                    averageMidprice_train=info_train["averageMidprice"][:, config["ENVID"]]  
-                    averageBestbid_train=info_train["average_best_bid"][:, config["ENVID"]]  
-                    averageBestask_train=info_train["average_best_ask"][:, config["ENVID"]]  
+
+                    #Average across all envs
+                    PnL_train= info_train["total_PnL"]
+                    netWorth_train= info_train["netWorth"]
+                    inventories_train= info_train["inventory"]  
+                    buyQuant_train=info_train["buyQuant"]  
+                    sellQuant_train=info_train["sellQuant"]  
+                    reward_train=info_train["reward"]  
+                    other_exec_quants_train=info_train["other_exec_quants"]  
+                    averageMidprice_train=info_train["averageMidprice"]  
+                    averageBestbid_train=info_train["average_best_bid"]  
+                    averageBestask_train=info_train["average_best_ask"]  
                    
 
                     #-------------eval info------#   
-                    PnL_eval = info_eval["total_PnL"]
+                    Episodic_PnL_eval = info_eval["total_PnL"][info_eval["returned_episode"]]
+                    Episodic_netWorth_eval = info_eval["netWorth"][info_eval["returned_episode"]]
                     inventories_eval = info_eval["inventory"] 
                     buyQuant_eval=info_eval["buyQuant"]
                     sellQuant_eval=info_eval["sellQuant"]
                     reward_eval=info_eval["reward"]
                     other_exec_quants_eval=info_eval["other_exec_quants"]
-                    netWorth_eval = info_eval["netWorth"]
                     averageMidprice_eval=info_eval["averageMidprice"]
-                    #averageBestbid_eval=info_eval["average_best_bid"]
-                    #averageBestask_eval=info_eval["average_best_ask"]
+                    averageBestbid_eval=info_eval["average_best_bid"]
+                    averageBestask_eval=info_eval["average_best_ask"]
                     
                     #-------------baseline info------#
-                    PnL_baseline = baseline_metric["total_PnL"]
+                    Episodic_PnL_baseline = baseline_metric["total_PnL"][baseline_metric["returned_episode"]]
+                    Episodic_netWorth_baseline = baseline_metric["netWorth"][baseline_metric["returned_episode"]]
                     inventories_baseline = baseline_metric["inventory"]
                     buyQuant_baseline=baseline_metric["buyQuant"]
                     sellQuant_baseline=baseline_metric["sellQuant"]
                     reward_baseline=baseline_metric["reward"]
                     other_exec_quants_baseline=baseline_metric["other_exec_quants"]
-                    netWorth_baseline = baseline_metric["netWorth"]
                     averageMidprice_baseline=baseline_metric["averageMidprice"]
-                    #averageBestbid_baseline=baseline_metric["average_best_bid"]
-                    #averageBestask_baseline=baseline_metric["average_best_ask"]
+                    averageBestbid_baseline=baseline_metric["average_best_bid"]
+                    averageBestask_baseline=baseline_metric["average_best_ask"]
                    
                     #-----------------Logging-------------------#
 
@@ -583,14 +589,17 @@ def make_train(config):
                             data={
                                 #-----time and return------------#
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                               # "global_step": jnp.sum(timesteps) if timesteps.size > 0 else 0,
-                                #"time":jnp.mean(time) if time.size>0 else 0,
+                                "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,# find finshed, mult by num envs, take max... gives total time step?
 
                                 #---------Reward and error bars--------#
-                                #train
+                                #train average
                                 "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
-                               # "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
-                               # "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                                "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                                "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                                #train specific
+                                "reward_train_target_env":jnp.mean(reward_train_target_env) if reward_train_target_env.size > 0 else 0,
+                                "reward_train_target_env_plus_std": (jnp.mean(reward_train_target_env) + jnp.std(reward_train_target_env)) if reward_train_target_env.size > 0 else 0,
+                                "reward_train_target_env_minus_std": (jnp.mean(reward_train_target_env) - jnp.std(reward_train_target_env)) if reward_train_target_env.size > 0 else 0,
                                 #eval
                                 "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
                                 "reward_eval_plus_std": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
@@ -601,18 +610,27 @@ def make_train(config):
                                 "reward_baseline_minus_std": (jnp.mean(reward_baseline) - jnp.std(reward_baseline)) if reward_baseline.size > 0 else 0,
                                 
                                 #---------PnL and errors bars-----------#
-                                #reward
+                                #Average, end
                                 "Episodic_PnL_train_mean": jnp.mean(episodic_PnL_train) if episodic_PnL_train.size > 0 else 0,
                                 "Episodic_PnL_train_plus_std": (jnp.mean(episodic_PnL_train) + jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
                                 "Episodic_PnL_train_minus_std": (jnp.mean(episodic_PnL_train) - jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
+                                #Average
+                                "PnL_train":jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
+                                "PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                "PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                #specific
+                                "PnL_train_target_env":jnp.mean(PnL_train_target_env) if PnL_train_target_env.size > 0 else 0,
+                                "PnL_train_target_env_plus_std": (jnp.mean(PnL_train_target_env) + jnp.std(PnL_train_target_env)) if PnL_train_target_env.size > 0 else 0,
+                                "PnL_train_target_env_minus_std": (jnp.mean(PnL_train_target_env) - jnp.std(PnL_train_target_env)) if PnL_train_target_env.size > 0 else 0,
+
                                 #eval
-                                "PnL_eval_mean": jnp.mean(PnL_eval) if PnL_eval.size > 0 else 0,
-                                "PnL_eval_plus_std": (jnp.mean(PnL_eval) + jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
-                                "PnL_eval_minus_std": (jnp.mean(PnL_eval) - jnp.std(PnL_eval)) if PnL_eval.size > 0 else 0,
+                                "Episodic_PnL_eval_mean": jnp.mean(Episodic_PnL_eval) if Episodic_PnL_eval.size > 0 else 0,
+                                "Episodic_PnL_eval_plus_std": (jnp.mean(Episodic_PnL_eval) + jnp.std(Episodic_PnL_eval)) if Episodic_PnL_eval.size > 0 else 0,
+                                "Episodic_PnL_eval_minus_std": (jnp.mean(Episodic_PnL_eval) - jnp.std(Episodic_PnL_eval)) if Episodic_PnL_eval.size > 0 else 0,
                                 #baseline
-                                "PnL_baseline_mean": jnp.mean(PnL_baseline) if PnL_baseline.size > 0 else 0,
-                                "PnL_baseline_plus_std": (jnp.mean(PnL_baseline) + jnp.std(PnL_baseline)) if PnL_baseline.size > 0 else 0,
-                                "PnL_baseline_minus_std": (jnp.mean(PnL_baseline) - jnp.std(PnL_baseline)) if PnL_baseline.size > 0 else 0,
+                                "Episodic_PnL_baseline_mean": jnp.mean(Episodic_PnL_baseline) if Episodic_PnL_baseline.size > 0 else 0,
+                                "Episodic_PnL_baseline_plus_std": (jnp.mean(Episodic_PnL_baseline) + jnp.std(Episodic_PnL_baseline)) if Episodic_PnL_baseline.size > 0 else 0,
+                                "Episodic_PnL_baseline_minus_std": (jnp.mean(Episodic_PnL_baseline) - jnp.std(Episodic_PnL_baseline)) if Episodic_PnL_baseline.size > 0 else 0,
 
                                 #-------------NetWorth and error bars----------#
                                 #train
@@ -620,19 +638,24 @@ def make_train(config):
                                 "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
                                 "Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
                                 #eval
-                                "netWorth_eval": jnp.mean(netWorth_eval) if netWorth_eval.size > 0 else 0,
-                                "netWorth_eval_upper": (jnp.mean(netWorth_eval) + jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
-                                "netWorth_eval_lower": (jnp.mean(netWorth_eval) - jnp.std(netWorth_eval)) if netWorth_eval.size > 0 else 0,
+                                "Episodic_netWorth_eval": jnp.mean(Episodic_netWorth_eval) if Episodic_netWorth_eval.size > 0 else 0,
+                                "Episodic_netWorth_eval_plus_std": (jnp.mean(Episodic_netWorth_eval) + jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
+                                "Episodic_netWorth_eval_minus_std": (jnp.mean(Episodic_netWorth_eval) - jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
                                 #baseline
-                                "netWorth_baseline": jnp.mean(netWorth_baseline) if netWorth_baseline.size > 0 else 0,
-                                "netWorth_baseline_upper": (jnp.mean(netWorth_baseline) + jnp.std(netWorth_baseline)) if netWorth_baseline.size > 0 else 0,
-                                "netWorth_baseline_lower": (jnp.mean(netWorth_baseline) - jnp.std(netWorth_baseline)) if netWorth_baseline.size > 0 else 0,
+                                "Episodic_netWorth_baseline_baseline": jnp.mean(Episodic_netWorth_baseline) if Episodic_netWorth_baseline.size > 0 else 0,
+                                "Episodic_netWorth_baseline_upper": (jnp.mean(Episodic_netWorth_baseline) + jnp.std(Episodic_netWorth_baseline)) if Episodic_netWorth_baseline.size > 0 else 0,
+                                "Episodic_netWorth_baseline_lower": (jnp.mean(Episodic_netWorth_baseline) - jnp.std(Episodic_netWorth_baseline)) if Episodic_netWorth_baseline.size > 0 else 0,
                                                                 
                                 #----------Iventory and error bars------------#
                                 #train
+                                #Average
                                 "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
-                               # "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
-                               # "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                #Specific
+                                 "inventories_train_target_env": jnp.mean(inventories_train_target_env) if inventories_train_target_env.size > 0 else 0, 
+                                "inventories_train_target_env_plus_std":(jnp.mean(inventories_train_target_env) + jnp.std(inventories_train_target_env)) if inventories_train_target_env.size > 0 else 0,
+                                "inventories_train_target_env_minus_std":(jnp.mean(inventories_train_target_env) - jnp.std(inventories_train_target_env)) if inventories_train_target_env.size > 0 else 0,
                                 #eval
                                 "inventory_eval": jnp.mean(inventories_eval) if inventories_eval.size > 0 else 0,
                                 "inventory_eval_plus_std":(jnp.mean(inventories_eval) + jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
@@ -644,27 +667,35 @@ def make_train(config):
                                 
                                 #----------Buy and Sell Quant and error bars------------#
                                 #train
+                                #Average
                                 "buyQuant_train":jnp.mean(buyQuant_train) if buyQuant_train.size > 0 else 0,
                                 "sellQuant_train":jnp.mean(sellQuant_train) if sellQuant_train.size > 0 else 0,
                                 "other_exec_quants_train":jnp.mean(other_exec_quants_train) if other_exec_quants_train.size > 0 else 0,
                                 "averageMidprice_train":jnp.mean(averageMidprice_train) if averageMidprice_train.size>0 else 0,
-                                #"averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
-                                #"averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
+                                "averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
+                                "averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
+                                #Specific
+                                 "buyQuant_train_target_env":jnp.mean(buyQuant_train_target_env) if buyQuant_train_target_env.size > 0 else 0,
+                                "sellQuant_train_target_env":jnp.mean(sellQuant_train_target_env) if sellQuant_train_target_env.size > 0 else 0,
+                                "other_exec_quants_train_target_env":jnp.mean(other_exec_quants_train_target_env) if other_exec_quants_train_target_env.size > 0 else 0,
+                                "averageMidprice_train_target_env":jnp.mean(averageMidprice_train_target_env) if averageMidprice_train_target_env.size>0 else 0,
+                                "averageBestbid_train_target_env":jnp.mean(averageBestbid_train_target_env) if averageBestbid_train_target_env.size>0 else 0,
+                                "averageBestask_train_target_env":jnp.mean(averageBestask_train_target_env) if averageBestask_train_target_env.size>0 else 0,
                                 #eval
                                 "buyQuant_eval":jnp.mean(buyQuant_eval) if buyQuant_eval.size > 0 else 0,
                                 "sellQuant_eval":jnp.mean(sellQuant_eval) if sellQuant_eval.size > 0 else 0,
                                 "other_exec_quants_eval":jnp.mean(other_exec_quants_eval) if other_exec_quants_eval.size > 0 else 0,
                                 "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
-                                #"averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
-                                #"averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,
+                                "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
+                                "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,
                                
                                 #baseline
                                 "buyQuant_baseline":jnp.mean(buyQuant_baseline) if buyQuant_baseline.size > 0 else 0,
                                 "sellQuant_baseline":jnp.mean(sellQuant_baseline) if sellQuant_baseline.size > 0 else 0,
                                 "other_exec_quants_baseline":jnp.mean(other_exec_quants_baseline) if other_exec_quants_baseline.size > 0 else 0,
                                 "averageMidprice_baseline":jnp.mean(averageMidprice_baseline) if averageMidprice_baseline.size>0 else 0,
-                                #"averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
-                               # "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
+                                "averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
+                                "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
                                 #----------Action prices------------#
                               
                                
@@ -685,9 +716,9 @@ def make_train(config):
                         if episodic_netWorth_train.size > 0:
                             wandb.log({"networth_histogram": wandb.Histogram(episodic_netWorth_train)}, commit=False)
                     print("Update step is",update_count, "of",config["NUM_UPDATES"])
-                   # if config["VERBOSE"]:
-                    #    for t in range(len(timesteps)):
-                     #       print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
+                    if config["VERBOSE"]:
+                        for t in range(len(timesteps)):
+                            print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
                 jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
 
             runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
@@ -790,7 +821,7 @@ if __name__ == "__main__":
         "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-
+        "NUM_STEPS_EVAL":{"values":[160]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
