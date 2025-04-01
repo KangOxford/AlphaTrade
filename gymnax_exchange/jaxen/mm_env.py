@@ -2001,6 +2001,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "max_steps": 30,
             "prev_action": 10,
             "prev_executed": 10,
+            #"prev_executed_ratio": 1,
         }
         if normalize:
             obs = self.normalize_obs(obs, means, stds)
