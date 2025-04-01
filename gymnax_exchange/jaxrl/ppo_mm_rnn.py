@@ -772,20 +772,12 @@ if __name__ == "__main__":
     #                                                    "fixed_quant_value":q})  
     env_config_hps = [  {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
-                         "inv_penalty":"linear",
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
-                          },
-                          {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
                          "inv_penalty":"none",
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"fixed_quants"
-                          }
+                         "action_space":"AvSt"
+                          },
                           ]
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
@@ -793,24 +785,24 @@ if __name__ == "__main__":
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"best_bid_ask",
-                            "action_space":"spread_skew"
+                            "action_space":"AvSt"
                             }]      
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4,5e-4,1e-3,5e-3]},
+        "LR": {"values": [1e-4, 3e-4, 1e-3]},
         "NUM_ENVS": {"values": [256]},
-        "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "UPDATE_EPOCHS": {"values": [4]},
-        "TOTAL_TIMESTEPS": {"values": [5e5]},
-        "UPDATE_EPOCHS": {"values": [2]},
+        "NUM_STEPS": {"values": [32]},  
+        "TOTAL_TIMESTEPS": {"values": [3e6]},
+        "UPDATE_EPOCHS": {"values": [4,10]},
+        "TOTAL_TIMESTEPS": {"values": [3e6]},
+        "UPDATE_EPOCHS": {"values": [3,5]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.999,0.9999999]},
+        "GAMMA": {"values": [0.98,0.9999]},
         "GAE_LAMBDA": {"values": [0.99]},
-        "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0,0.01]},
+        "CLIP_EPS": {"values": [0.2, 0.3]},
+        "ENT_COEF": {"values": [0.0, 0.01, 0.05, 0.1]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -861,7 +853,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_AvSt_one_day_sweep")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

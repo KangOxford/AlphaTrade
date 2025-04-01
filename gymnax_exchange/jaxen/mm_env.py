@@ -992,7 +992,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #Estimate K paramter from data
         executed = jnp.where((state.trades[:, 0] >= 0)[:, jnp.newaxis], state.trades, 0)
-        market_order=executed.size()
+        market_order=executed.shape[0]
         k = (market_order)/state.delta_time
 
         # Market volatility estimation (rolling standard deviation of mid-price)
