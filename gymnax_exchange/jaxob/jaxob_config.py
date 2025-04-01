@@ -43,7 +43,9 @@ class EnvironmentConfig(Configuration):
             return 6
         elif self.action_space == "directional_trading":
             return 3
-        elif self.action_space in ["fixed_prices", "AvSt"]:
+        elif self.action_space == "AvSt":
+            return 2
+        elif self.action_space in ["fixed_prices"]:
             return env_cst.n_actions  # Keep the default for fixed_prices and AvSt
         else:
             raise ValueError(f"Unknown action space: {self.action_space}")
