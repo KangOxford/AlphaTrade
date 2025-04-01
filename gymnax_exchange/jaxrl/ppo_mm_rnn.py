@@ -526,7 +526,7 @@ def make_train(config):
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
                     #Returns for anything done in any of the last N_steps steps. Size=N_steps by N_envs
                     #jax.debug.print("Returned episode size:{}",info_train["returned_episode"].shape) 
-                    #jax.debug.print("Inventory size:{}",info_train["inventory"].shape)
+                  
 
 
                    # timesteps = info_train["timestep"]
