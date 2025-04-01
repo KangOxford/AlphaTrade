@@ -293,6 +293,7 @@ if __name__ == "__main__":
         start = time.time()
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
         
+        
         # Store data
         rewards[i] = reward
         reward_portfolio_value[i] = info["reward_portfolio_value"]
