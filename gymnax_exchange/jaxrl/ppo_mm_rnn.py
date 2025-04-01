@@ -538,9 +538,11 @@ def make_train(config):
 
                     jax.debug.print("episodic_netWorth_train:{}",episodic_netWorth_train.shape)
                     jax.debug.print("episodic_PnL_train:{}",episodic_PnL_train.shape)
+                    
                     #Return episode ending PnL
 
                     inventories_train = info_train["inventory"][:, config["ENVID"]]  
+                    jax.debug.print("inventories_train:{}",inventories_train.shape)
                     buyQuant_train=info_train["buyQuant"][:, config["ENVID"]]  
                     sellQuant_train=info_train["sellQuant"][:, config["ENVID"]]  
                     reward_train=info_train["reward"][:, config["ENVID"]]  
@@ -743,7 +745,7 @@ if __name__ == "__main__":
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"spread_skew"
+                         "action_space":"fixed_quants"
                           },
                           {"observation_space":"engineered",
                          "reward_space":"portfolio_value",
@@ -751,7 +753,7 @@ if __name__ == "__main__":
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"spread_skew"
+                         "action_space":"fixed_quants"
                           }
                           ]
     baseline_env_config_hps = [{"observation_space":"engineered",
