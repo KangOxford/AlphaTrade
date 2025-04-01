@@ -72,7 +72,7 @@ wandb.init(project="AlphaTrade_MM_RNN_Eval", config={"run_type": "evaluation"})
 
 # Load the trained model parameters 
 
-params_filename = "/home/duser/AlphaTrade/params_file_electric-sweep-1_03-25_15-44"
+params_filename = "/home/duser/AlphaTrade/params_file_balmy-sweep-6_03-20_00-48"
 with open(params_filename, 'rb') as f:
     params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
 
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         # ATFolder = "./testing_oneDay"
         #ATFolder = "/training_oneDay"
         #ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-        ATFolder= "/home/duser/AlphaTrade/testing"
+        ATFolder= "/home/duser/AlphaTrade/training_oneDay/test"
 
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
