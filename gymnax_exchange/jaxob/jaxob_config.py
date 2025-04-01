@@ -29,26 +29,25 @@ class EnvironmentConfig(Configuration):
     reference_price_portfolio_value: Literal["mid", "best_bid_ask"] =env_cst.reference_price_portfolio_value
     
     fixed_quant_value:int=env_cst.fixed_quant_value
+    n_actions: int = env_cst.n_actions
     
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.002
     unrealizedPnL_lambda: float = 0.0
     asymmetrically_dampened_lambda: float = 0.05
 
-    @property
-    def n_actions(self) -> int:
+    def __post_init__(self):
+        # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         if self.action_space == "fixed_quants":
-            return 8
+            object.__setattr__(self, 'n_actions', 8)
         elif self.action_space == "spread_skew":
-            return 6
+            object.__setattr__(self, 'n_actions', 6)
         elif self.action_space == "directional_trading":
-            return 3
+            object.__setattr__(self, 'n_actions', 3)
         elif self.action_space == "AvSt":
-            return 2
-        elif self.action_space in ["fixed_prices"]:
-            return env_cst.n_actions  # Keep the default for fixed_prices and AvSt
-        else:
-            raise ValueError(f"Unknown action space: {self.action_space}")
+            object.__setattr__(self, 'n_actions', 2)
+
+
 
 @dataclass(frozen=True)
 class EnvironmentExecutionConfig(Configuration):
