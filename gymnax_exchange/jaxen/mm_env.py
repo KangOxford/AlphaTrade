@@ -1713,9 +1713,9 @@ class MarketMakingEnv(BaseLOBEnv):
             old_reference_price = state.mid_price/self.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask.
-            old_reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: state.best_bids[-1][0]/self.tick_size,
-                                        lambda: state.best_asks[-1][0]/self.tick_size)
+            old_reference_price = jax.lax.cond(state.inventory > 0,
+                                        lambda: state.best_bids[0][0]/self.tick_size,
+                                        lambda: state.best_asks[0][0]/self.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth
