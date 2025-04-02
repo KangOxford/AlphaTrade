@@ -40,6 +40,7 @@ class EnvironmentConfig(Configuration):
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
+        # Number of messages includes action messages and cancel messages!
         if self.action_space == "fixed_quants":
             object.__setattr__(self, 'n_actions', 8)
             object.__setattr__(self, 'num_messages_by_agent', 4)
@@ -50,8 +51,8 @@ class EnvironmentConfig(Configuration):
             object.__setattr__(self, 'num_trades_by_agent', 2)
         elif self.action_space == "directional_trading":
             object.__setattr__(self, 'n_actions', 3)
-            object.__setattr__(self, 'num_messages_by_agent', 2)
-            object.__setattr__(self, 'num_trades_by_agent', 1)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_trades_by_agent', 2)
         elif self.action_space == "AvSt":
             object.__setattr__(self, 'n_actions', 2)
             object.__setattr__(self, 'num_messages_by_agent', 4)

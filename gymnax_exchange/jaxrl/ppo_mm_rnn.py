@@ -776,8 +776,8 @@ if __name__ == "__main__":
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"best_bid_ask",
-                         "action_space":"AvSt"
-                          },
+                         "action_space":"directional_trading"
+                          }
                           ]
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
@@ -796,13 +796,11 @@ if __name__ == "__main__":
         "NUM_STEPS": {"values": [32]},  
         "TOTAL_TIMESTEPS": {"values": [3e6]},
         "UPDATE_EPOCHS": {"values": [4,10]},
-        "TOTAL_TIMESTEPS": {"values": [3e6]},
-        "UPDATE_EPOCHS": {"values": [3,5]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.98,0.9999]},
         "GAE_LAMBDA": {"values": [0.99]},
-        "CLIP_EPS": {"values": [0.2, 0.3]},
-        "ENT_COEF": {"values": [0.0, 0.01, 0.05, 0.1]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.0, 0.01, 0.1]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -810,7 +808,7 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [-1]},
+        "WINDOW_INDEX": {"values": [100]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[160]},
@@ -853,7 +851,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_AvSt_one_day_sweep")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

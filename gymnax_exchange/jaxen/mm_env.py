@@ -416,8 +416,8 @@ class MarketMakingEnv(BaseLOBEnv):
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades (bid and ask)
             exections=jnp.zeros((2,2),dtype=jnp.int32)
         elif self.cfg.action_space=="directional_trading":
-            action_prices=jnp.zeros((1,1),dtype=jnp.int32) #1 trade (bid or ask)
-            exections=jnp.zeros((1,2),dtype=jnp.int32)
+            action_prices=jnp.zeros((2,1),dtype=jnp.int32) #1 trade (bid or ask)
+            exections=jnp.zeros((2,2),dtype=jnp.int32)
         else:
             raise ValueError("Other action spaces not finished")
         
@@ -1259,47 +1259,56 @@ class MarketMakingEnv(BaseLOBEnv):
             - Buy at best ask (action = 1)
             - Sell at best bid (action = 2)
         
-        Only sends a single message per action
+        Always sends two messages for compatibility with message filtering
         '''
         # Compute best_ask and best_bid using rolling average to reduce variance
         best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         
         # Debug prints
-        jax.debug.print("Directional Trading Action: {}", action)
-        jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
+        #jax.debug.print("Directional Trading Action: {}", action)
+        #jax.debug.print("Best Ask: {}, Best Bid: {}", best_ask, best_bid)
         
-        # Define patterns for each action
-        # Each pattern is [type, side, quant, price]
         quant = self.cfg.fixed_quant_value
-        patterns = jnp.array([
-            [1, 0, 0, 0],           # do nothing: dummy message
-            [1, 1, quant, best_ask], # buy at ask
-            [1, -1, quant, best_bid],  # sell at bid
-        ], dtype=jnp.int32)
         
-        # Select pattern based on action
-        selected = patterns[action]
+        # Define mappings for each action to bid/ask orders
+        # For action 0 (do nothing): no orders
+        # For action 1 (buy at ask): only buy order
+        # For action 2 (sell at bid): only sell order
         
-        # Generate unique order ID
+        # Define which actions should place orders on each side
+        bid_active = jnp.array([0, 1, 0], dtype=jnp.int32)[action]
+        ask_active = jnp.array([0, 0, 1], dtype=jnp.int32)[action]
+        
+        # Message components (always 2 messages: bid then ask)
+        types = jnp.array([1, 1], dtype=jnp.int32)  # 1=limit order
+        sides = jnp.array([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
+        
+        # Set quantities based on action - zero quantity for inactive sides
+        bid_quant = bid_active * quant
+        ask_quant = ask_active * quant
+        quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
+        
+        # Set prices
+        prices = jnp.array([best_ask, best_bid], dtype=jnp.int32)
+        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
+        
+        # Generate unique order IDs
         base_id = self.trader_unique_id + state.customIDcounter
+        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
         
-        # Construct single message
-        msg = jnp.array([
-            selected[0],  # type (1 = limit order)
-            selected[1],  # side (-1 = ask, 1 = bid)
-            selected[2],  # quantity
-            selected[3],  # price
-            base_id,      # order ID
-            self.trader_unique_id,  # trader ID
-            *(state.time + params.time_delay_obs_act)  # time fields
-        ], dtype=jnp.int32)
+        # Time fields (replicated for each message)
+        times = jnp.resize(
+            state.time + params.time_delay_obs_act,
+            (2, 2)  # Shape (2 messages, 2 time fields)
+        )
         
-        # Reshape to match expected shape (1, 8)
-        action_msgs = msg.reshape(1, -1)
+        # Stack components into message array
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
         
-        # Debug print final message
-        jax.debug.print("Final Action Message:\n{}", action_msgs)
+        # Debug print final messages
+        #jax.debug.print("Final Action Messages:\n{}", action_msgs)
         return action_msgs
 
 
@@ -1947,8 +1956,8 @@ class MarketMakingEnv(BaseLOBEnv):
             "total_PnL" : state.total_PnL,
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
-            "prev_action": action_prices,  # use quants only
-            "prev_executed":executions,  # 
+            "prev_action": action_prices,  # the prices of our action messages
+            "prev_executed":executions,  # the quant that we executed (traded) at each action price
             #"prev_executed_ratio": jnp.where(executions==0., 0., executions /10)# state.prev_action[:, 1]), Hard code size of normal trade
             
         }
