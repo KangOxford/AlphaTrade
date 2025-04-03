@@ -446,7 +446,7 @@ if __name__ == "__main__":
 
     training_parameters = {
         "LR": {"values": [1e-4, 3e-4, 1e-3]},
-        "NUM_ENVS": {"values": [36]},
+        "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
         "TOTAL_TIMESTEPS": {"values": [3e6]},
         "UPDATE_EPOCHS": {"values": [4,10]},
