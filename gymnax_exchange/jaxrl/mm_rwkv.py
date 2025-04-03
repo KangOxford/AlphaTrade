@@ -56,6 +56,8 @@ wandbOn = True # False
 if wandbOn:
     import wandb
 
+
+##Special class to handel the flag list, Jax String.
 @jax.tree_util.register_pytree_node_class
 @dataclass
 class JString:
@@ -80,8 +82,18 @@ class JString:
     def tree_unflatten(cls, aux_data, children):
         tokens, length = children
         return cls(tokens, length)
-    
+
+#===========Define a train function so we can call it in a sweep===#
+#  
 def make_train(config):
+    """Make train function. 
+    Input: Config
+    Output: train function
+    Train(rng): returns:
+    return {"params": params, "info_train": info_train, "eval_info": eval_info}
+    Infos and params
+    """
+
     #Calculate the number of updates we will do
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -91,10 +103,16 @@ def make_train(config):
     def handle_continuous(observation):
         return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
     
-    #Define the environments
+    #========#
+    # Get Keys
+    #=========#
     rng = jax.random.key(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
     env_config=EnvironmentConfig(**config["ENV_CONFIG"])
+
+    #===========#
+    #Define Envs#
+    #==========#
     env = MarketMakingEnv(
             env_config,
             key_reset,
@@ -121,6 +139,10 @@ def make_train(config):
             env.default_params,
             episode_time=config["EPISODE_TIME"],
         )
+    
+    #====================#
+    #Apply purejaxRL wrappers#
+    #=========================#
     env = FlattenObservationWrapper(env)
     env = LogWrapper(env)
 
@@ -140,17 +162,30 @@ def make_train(config):
    #Define the JIT functions
     jit_ppo_update = get_jit_ppo(config)
 
+    #Train env jit fn
     v_env_step = jax.jit(jax.vmap(
         env.step, in_axes=(0, 0, 0, None)
     ))
 
+    #Eval env jit function
     v_eval_env_step=jax.jit(jax.vmap(
         eval_env.step, in_axes=(0, 0, 0, None)
     ))
 
 
     def train(rng):
+        """Train function
+        input rng key
+        output:
+        return {"params": params, "info_train": info_train, "eval_info": eval_info}"""
         
+
+
+        #===================================================#
+        #Intialise our model: rwkv
+        #===================================================#
+
+        #Define the vocab
         num_tokens = 1 + env.action_space(env_params).n + 256
         config["MIN_ACTION_TOK"] = 1
         config["MAX_ACTION_TOK"] = 8
@@ -161,14 +196,17 @@ def make_train(config):
         forward, params = get_ppo_agent(RWKV, params, seed=1)
         v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
     
-        #Get init state
+        #Get init state for training
         init_state = RWKV.default_state(params)
+        #returns 0s for weights, in /home/duser/AlphaTrade/jax_rwkv/src/jax_rwkv/base_rwkv.py
         if isinstance(init_state, tuple):
             init_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in init_state])
         else:
             init_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
         state = init_state
 
+
+        #Define optimiser
         solver = optax.chain(
         optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
         optax.adam(linear_schedule, eps=1e-5)
@@ -176,12 +214,17 @@ def make_train(config):
         optimizer = solver.init(params)
 
 
+
+        #Start count
         global_timestep = 1
+
+        #Reset training env
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
 
         for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
+            #Intialise lists
             initial_state = state
             tokens_list = []
             flags_list = []
@@ -195,28 +238,47 @@ def make_train(config):
             
             for t in range(config["NUM_STEPS"]):
                 rng, _rng = jax.random.split(rng)
+
+                #===============#
+                #tokenizer the obvs space
+                #=======================#
                 tokenized = handle_continuous(obsv)
+
+                #====================#
+                #Evaluate policy from model
+                #=====================#
                 pi, value, state = v_forward_jit(tokenized, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
                 pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
                 action = pi.sample(seed=_rng)
+                #log actions
                 def log_action_distribution(action):
                             unique_actions, counts = jnp.unique(action, return_counts=True)
                             action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
                             wandb.log(action_distribution)
                 if wandbOn:
                     jax.debug.callback(log_action_distribution, action)
-                ##
+
                 current_actions = jax.device_get(action)
                 all_actions.extend(current_actions.flatten().tolist())
-                ##
                 log_prob = pi.log_prob(action)
+                #============#
+                #Update the state with the new action
+                #============#
                 _, value1, state = v_forward_jit(action, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
 
+                #=============#
+                #Process action through environmnet
+                #==============#
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
                 obsv, env_state, reward, done, info_train = v_env_step(rng_step, env_state, action, env_params)
-                
+
+                #Reset state if done (rwkv state)
                 state = jax.vmap(jax.lax.select)(done, init_state, state)
+
+
+                #======Append list of actions, dones, rewards, value#
+
                 
                 tokens_list.append(tokenized)
                 tokens_list.append(action[:, None] + config["MIN_ACTION_TOK"])
@@ -241,7 +303,7 @@ def make_train(config):
                     update_returns.append(r)
                 global_timestep += 1
 
-
+            #Form lists for adv calcs
             tokens_list = jnp.concatenate(tokens_list, axis=1)
             flags_list = jnp.concatenate(flags_list, axis=1)
             values_list = jnp.concatenate(values_list, axis=1)
@@ -250,15 +312,10 @@ def make_train(config):
             dones_list = jnp.concatenate(dones_list, axis=1)
             buf = JString(tokens_list, jnp.ones_like(tokens_list[:, 0]) * tokens_list.shape[1])
         
-
-
             dones_list = jnp.cumsum(dones_list, axis=1, dtype=jnp.bool)
             flags_list = jnp.where(jnp.concatenate((dones_list[:, :1], dones_list[:, :-1]), axis=1), PAD_FLAG, flags_list)
-            # print(dones_list)
-            # print(flags_list)
-            
-            # print(tokens_list.shape, flags_list.shape, values_list.shape, rewards_list.shape, log_prob_list.shape)
-
+          
+            #Get last value from state
             _, last_value, _ = v_forward_jit(handle_continuous(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
             
             advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
@@ -270,40 +327,57 @@ def make_train(config):
             else:
                 print("None ended")
 
+            #Update weights
             for _ in range(config["UPDATE_EPOCHS"]):
                 params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
                 print(loss, value_loss, loss_actor, entropy)
 
+            #Reset state if done (rwkv state)
             state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
 
             ##==================Eval Steps================================================================#
 
+            #==================#
+            #Define fresh eval hidden state
+            #======================#
             eval_init_h_state = RWKV.default_state(params)
             if isinstance(eval_init_h_state, tuple):
                 eval_init_h_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in eval_init_h_state])
             else:
                 eval_init_h_state = jnp.repeat(eval_init_h_state[None], config["NUM_ENVS"], axis=0)
             eval_h_state = eval_init_h_state
-            eval_obsv, eval_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
 
-            for t in range(config["NUM_STEPS"]):
+            #=============#
+            #Reset eval env
+            #============#
+            eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
+
+            for t in range(config["NUM_STEPS_EVAL"]):
                 rng, _rng = jax.random.split(rng)
+
+                #Tokenize obvs
                 tokenized = handle_continuous(eval_obsv)
+
+                #Get policy from network
                 eval_pi, eval_value, eval_h_state = v_forward_jit(tokenized, eval_h_state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
                 eval_pi = distrax.Categorical(logits=eval_pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
+                #Sample eval action
                 eval_action = eval_pi.sample(seed=_rng)
-
                 current_eval_actions = jax.device_get(eval_action)
 
+                #Update h state with action
                 log_prob = pi.log_prob(current_eval_actions)
                 _, value1, eval_h_state = v_forward_jit(eval_action, eval_h_state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
 
+                #Step Eval action through env
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-                eval_obsv, eval_state, eval_reward, eval_done, eval_info = v_eval_env_step(rng_step, eval_state, eval_action, eval_env_params)
+                eval_obsv, eval_env_state, eval_reward, eval_done, eval_info = v_eval_env_step(rng_step, eval_env_state, eval_action, eval_env_params)
             
 
-            ##Call back, log every update step as in rnn:
+            ##=====================LOGGING==============#
+            # Call back, log every update step as in rnn:
+            #===========================================#
             if config.get("DEBUG"):
                         def callback(info_train,info_eval):
                             #------------Collect info for plotting---------------------------#
@@ -311,6 +385,7 @@ def make_train(config):
 
                             #1)Step and return info
                             return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                            timesteps=info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
             
                 
                             #-----------Train info----------#
@@ -352,7 +427,7 @@ def make_train(config):
                                     data={
                                         #-----time and return------------#
                                         "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                    
+                                        "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
                                         #---------Reward and error bars--------#
                                         #train average
                                         "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
@@ -468,6 +543,7 @@ if __name__ == "__main__":
         "NUM_STEPS_EVAL":{"values":[160]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
+
     }    
 
     
@@ -497,7 +573,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_SWEEP")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_PORTFOLIO_NO_DAMPING")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
