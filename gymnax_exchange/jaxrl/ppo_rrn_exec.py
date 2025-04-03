@@ -531,7 +531,7 @@ def make_train(config):
                    
 
                     #-------------eval info------#   
-                    episodic_revenues_eval = info_eval["total_revenue"][baseline_metric["returned_episode"]] 
+                    episodic_revenues_eval = info_eval["total_revenue"][info_eval["returned_episode"]] 
                     quant_executed_eval=info_eval["quant_executed"]
                     average_price_eval = info_eval["average_price"]
                     current_step_eval = info_eval["current_step"] 
