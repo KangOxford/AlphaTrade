@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.append(os.path.abspath('/home/duser/AlphaTrade')) 
 import jax.numpy as jnp
-#import flax.linen as nn
+import flax
 import datetime
 import numpy as np
 import optax
@@ -24,6 +24,7 @@ from gymnax.environments import spaces
 from gymnax_exchange.jaxrl.utils import FlattenObservationWrapper, LogWrapper
 from jax._src import dtypes
 from gymnax_exchange.jaxen.mm_env import MarketMakingEnv 
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 #import flax
 from jax.lib import xla_bridge 
 print(xla_bridge.get_backend().platform)
@@ -79,255 +80,430 @@ class JString:
     def tree_unflatten(cls, aux_data, children):
         tokens, length = children
         return cls(tokens, length)
-
-##Get the AT folder
-try:
-        ATFolder = sys.argv[1]
-        print("AlphaTrade folder:",ATFolder)
-except:
-        # ATFolder = "./testing_oneDay"
-        #ATFolder = "/training_oneDay"
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay"
-
-config = {
-    "LR": 1e-3,
-    "NUM_ENVS": 128,
-    "NUM_STEPS": 10,#128,
-    "TOTAL_TIMESTEPS": 5e6,
-    "UPDATE_EPOCHS": 4,
-    "NUM_MINIBATCHES": 4,
-    "GAMMA": 0.99 ** (1/5),
-    "GAE_LAMBDA": 0.95 ** (1/5),
-    "CLIP_EPS": 0.2,
-    "ENT_COEF": 0.1,
-    "VF_COEF": 0.5,
-    "MAX_GRAD_NORM": 0.5,
-    "ACTIVATION": "relu",
-    "ANNEAL_LR": False,
-    "DEBUG": True,
-    "WANDB": True,
-
-     "TASKSIDE": "random", # "random", "buy", "sell"
-        "REWARD_LAMBDA": 0.2, #0.001,
-        "ACTION_TYPE": "pure", # "delta"
-        "WINDOW_INDEX": 43, # 2 fix random episode #-1,
-        "EPISODE_TIME": 60*8,  # 
-        "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
-        "ATFOLDER": ATFolder
-    }
-
-
-config["NUM_UPDATES"] = (
-    config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
-)
-
-
-jit_ppo_update = get_jit_ppo(config)
-
-def handle_continuous(observation):
-    return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
-
-rng = jax.random.key(0)
-rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-
-env = MarketMakingEnv(
-        key_reset,
-        alphatradePath=config["ATFOLDER"],
-        window_index=config["WINDOW_INDEX"],
-        episode_time=config["EPISODE_TIME"],
-        ep_type=config["DATA_TYPE"],
+    
+def make_train(config):
+    #Calculate the number of updates we will do
+    config["NUM_UPDATES"] = (
+        config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
 
-env_params = dataclasses.replace(
-        env.default_params,
-        reward_lambda=config["REWARD_LAMBDA"],
-        episode_time=config["EPISODE_TIME"],
-    )
-if wandbOn:
-    run = wandb.init(
-        project="AlphaTradeJAX_rwkv_Train",
-        config=config,
-        save_code=True,
-        reinit=True  # Ensures logging works even if script restarts
-    )
-
-if wandbOn:
-    def log_all_metrics(info,global_timestep):
-        """Logs training metrics to wandb in real-time using jax.debug.callback."""
-        return_values = info["returned_episode_returns"][info["returned_episode"]]
-        timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
-        PnL = info["total_PnL"]
-        inventories = info["inventory"]
-        buyQuant = info["buyQuant"]
-        sellQuant = info["sellQuant"]
-        reward = info["reward"]
-        netWorth = info["netWorth"]
-        other_exec_quants = info["other_exec_quants"]
-        inventoryValue=info["inventoryValue"]
-
-        # Extract the last PnL per finished episode for all environments
-        final_PnL_per_env = PnL[info["returned_episode"]] if PnL.size > 0 and info["returned_episode"].size > 0 else jnp.array([])
-
-        # Compute the average final PnL across environments
-        avg_final_PnL = jnp.mean(final_PnL_per_env) if final_PnL_per_env.size > 0 else 0
-
-        # Log all existing metrics + final PnL
-        wandb.log(
-            {
-                "global_step": jnp.max(timesteps) if timesteps.size > 0 else 0,
-                "reward": jnp.mean(reward) if reward.size > 0 else 0,
-                "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,
-                "PnL": jnp.mean(PnL) if PnL.size > 0 else 0,
-                "inventory": jnp.mean(inventories) if inventories.size > 0 else 0,
-                "buyQuant": jnp.mean(buyQuant) if buyQuant.size > 0 else 0,
-                "sellQuant": jnp.mean(sellQuant) if sellQuant.size > 0 else 0,
-                "other_exec_quants": jnp.mean(other_exec_quants) if other_exec_quants.size > 0 else 0,
-                "avg_final_PnL": avg_final_PnL,  # NEW: Log average final PnL across envs
-                "netWorth":jnp.mean(netWorth)if netWorth.size>0 else 0,
-                "inventoryValue":jnp.mean(inventoryValue) if inventoryValue.size>0 else 0
-            },
-            commit=True,  # Ensures immediate update in wandb
+    #Function to process the obsveration
+    def handle_continuous(observation):
+        return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
+    
+    #Define the environments
+    rng = jax.random.key(0)
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+    env_config=EnvironmentConfig(**config["ENV_CONFIG"])
+    env = MarketMakingEnv(
+            env_config,
+            key_reset,
+            alphatradePath=config["ATFOLDER"]+"/train",
+            window_index=config["WINDOW_INDEX"],
+            episode_time=config["EPISODE_TIME"],
+            ep_type=config["DATA_TYPE"],
         )
 
-        
+    eval_env=MarketMakingEnv(
+            env_config,
+            key_reset,
+            alphatradePath=config["ATFOLDER"]+"/val",
+            window_index=config["WINDOW_INDEX"],
+            episode_time=config["EPISODE_TIME"],
+            ep_type=config["DATA_TYPE"],
+        )
+    eval_env_params = dataclasses.replace(
+            eval_env.default_params,
+            episode_time=config["EPISODE_TIME"],
+        )
+
+    env_params = dataclasses.replace(
+            env.default_params,
+            episode_time=config["EPISODE_TIME"],
+        )
+    env = FlattenObservationWrapper(env)
+    env = LogWrapper(env)
+
+    eval_env = FlattenObservationWrapper(eval_env)
+    eval_env = LogWrapper(eval_env)      
+    
+    #Define the update schedule
+    def linear_schedule(count):
+        frac = (
+            1.0
+            - (count // (config["NUM_MINIBATCHES"] * config["UPDATE_EPOCHS"]))
+            / config["NUM_UPDATES"]
+        )
+        return config["LR"] * frac
 
     
-env = FlattenObservationWrapper(env)
-env = LogWrapper(env)
+   #Define the JIT functions
+    jit_ppo_update = get_jit_ppo(config)
 
-num_tokens = 1 + env.action_space(env_params).n + 256
-config["MIN_ACTION_TOK"] = 1
-config["MAX_ACTION_TOK"] = 8
+    v_env_step = jax.jit(jax.vmap(
+        env.step, in_axes=(0, 0, 0, None)
+    ))
 
-RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
-forward, params = get_ppo_agent(RWKV, params, seed=1)
-v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
-init_state = RWKV.default_state(params)
-if isinstance(init_state, tuple):
-    init_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in init_state])
-else:
-    init_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
-state = init_state
+    v_eval_env_step=jax.jit(jax.vmap(
+        eval_env.step, in_axes=(0, 0, 0, None)
+    ))
 
-def linear_schedule(count):
-    frac = (
-        1.0
-        - (count // (config["NUM_MINIBATCHES"] * config["UPDATE_EPOCHS"]))
-        / config["NUM_UPDATES"]
-    )
-    return config["LR"] * frac
 
-solver = optax.chain(
-    optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-    optax.adam(linear_schedule, eps=1e-5)
-)
-optimizer = solver.init(params)
+    def train(rng):
+        
+        num_tokens = 1 + env.action_space(env_params).n + 256
+        config["MIN_ACTION_TOK"] = 1
+        config["MAX_ACTION_TOK"] = 8
 
-rng, _rng = jax.random.split(rng)
-reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
+        #Load the RWKV
+        RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+        #Define the forward function and jit version
+        forward, params = get_ppo_agent(RWKV, params, seed=1)
+        v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
+    
+        #Get init state
+        init_state = RWKV.default_state(params)
+        if isinstance(init_state, tuple):
+            init_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in init_state])
+        else:
+            init_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
+        state = init_state
 
-v_env_step = jax.jit(jax.vmap(
-    env.step, in_axes=(0, 0, 0, None)
-))
+        solver = optax.chain(
+        optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
+        optax.adam(linear_schedule, eps=1e-5)
+        )
+        optimizer = solver.init(params)
 
-global_timestep = 1
 
-for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
-    initial_state = state
-    tokens_list = []
-    flags_list = []
-    values_list = []
-    rewards_list = []
-    log_prob_list = []
-    dones_list = []
-
-    all_actions = []
-    update_returns = []
-    for t in range(config["NUM_STEPS"]):
+        global_timestep = 1
         rng, _rng = jax.random.split(rng)
-        tokenized = handle_continuous(obsv)
-        pi, value, state = v_forward_jit(tokenized, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
-        pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
-        action = pi.sample(seed=_rng)
-        def log_action_distribution(action):
-                    unique_actions, counts = jnp.unique(action, return_counts=True)
-                    action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
-                    wandb.log(action_distribution)
-        if wandbOn:
-            jax.debug.callback(log_action_distribution, action)
-        ##
-        current_actions = jax.device_get(action)
-        all_actions.extend(current_actions.flatten().tolist())
-        ##
-        log_prob = pi.log_prob(action)
-        _, value1, state = v_forward_jit(action, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+        reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
+        obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
 
-        rng, _rng = jax.random.split(rng)
-        rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-        obsv, env_state, reward, done, info = v_env_step(rng_step, env_state, action, env_params)
-        if wandbOn:
-            jax.debug.callback(log_all_metrics, info, global_timestep)
+        for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
+            initial_state = state
+            tokens_list = []
+            flags_list = []
+            values_list = []
+            rewards_list = []
+            log_prob_list = []
+            dones_list = []
+            all_actions = []
+            update_returns = []
 
+            
+            for t in range(config["NUM_STEPS"]):
+                rng, _rng = jax.random.split(rng)
+                tokenized = handle_continuous(obsv)
+                pi, value, state = v_forward_jit(tokenized, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
+                pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
+                action = pi.sample(seed=_rng)
+                def log_action_distribution(action):
+                            unique_actions, counts = jnp.unique(action, return_counts=True)
+                            action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
+                            wandb.log(action_distribution)
+                if wandbOn:
+                    jax.debug.callback(log_action_distribution, action)
+                ##
+                current_actions = jax.device_get(action)
+                all_actions.extend(current_actions.flatten().tolist())
+                ##
+                log_prob = pi.log_prob(action)
+                _, value1, state = v_forward_jit(action, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+
+                rng, _rng = jax.random.split(rng)
+                rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+                obsv, env_state, reward, done, info_train = v_env_step(rng_step, env_state, action, env_params)
+                
+                state = jax.vmap(jax.lax.select)(done, init_state, state)
+                
+                tokens_list.append(tokenized)
+                tokens_list.append(action[:, None] + config["MIN_ACTION_TOK"])
+                
+                flags_list.append(jnp.ones_like(tokenized) * OBS_FLAG)
+                flags_list.append(jnp.ones_like(tokenized)[:, :1] * ACT_FLAG)
+
+                values_list.append(value)
+                values_list.append(value1)
+
+                rewards_list.append(jnp.zeros(shape=tokenized.shape))
+                rewards_list.append(reward[:, None])
+
+                log_prob_list.append(jnp.zeros_like(value))
+                log_prob_list.append(log_prob[:, None])
+
+                dones_list.append(jnp.zeros(value.shape, dtype=jnp.bool))
+                dones_list.append(done[:, None])
+
+                return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                for r in return_values:
+                    update_returns.append(r)
+                global_timestep += 1
+
+
+            tokens_list = jnp.concatenate(tokens_list, axis=1)
+            flags_list = jnp.concatenate(flags_list, axis=1)
+            values_list = jnp.concatenate(values_list, axis=1)
+            rewards_list = jnp.concatenate(rewards_list, axis=1)
+            log_probs_list = jnp.concatenate(log_prob_list, axis=1)[..., 1:]
+            dones_list = jnp.concatenate(dones_list, axis=1)
+            buf = JString(tokens_list, jnp.ones_like(tokens_list[:, 0]) * tokens_list.shape[1])
         
-        state = jax.vmap(jax.lax.select)(done, init_state, state)
-        
-        tokens_list.append(tokenized)
-        tokens_list.append(action[:, None] + config["MIN_ACTION_TOK"])
-        
-        flags_list.append(jnp.ones_like(tokenized) * OBS_FLAG)
-        flags_list.append(jnp.ones_like(tokenized)[:, :1] * ACT_FLAG)
-
-        values_list.append(value)
-        values_list.append(value1)
-
-        rewards_list.append(jnp.zeros(shape=tokenized.shape))
-        rewards_list.append(reward[:, None])
-
-        log_prob_list.append(jnp.zeros_like(value))
-        log_prob_list.append(log_prob[:, None])
-
-        dones_list.append(jnp.zeros(value.shape, dtype=jnp.bool))
-        dones_list.append(done[:, None])
-
-        return_values = info["returned_episode_returns"][info["returned_episode"]]
-        # print(return_values.shape)
-        for r in return_values:
-            # print(global_timestep, ":", r)
-            update_returns.append(r)
-        global_timestep += 1
 
 
-    tokens_list = jnp.concatenate(tokens_list, axis=1)
-    flags_list = jnp.concatenate(flags_list, axis=1)
-    values_list = jnp.concatenate(values_list, axis=1)
-    rewards_list = jnp.concatenate(rewards_list, axis=1)
-    log_probs_list = jnp.concatenate(log_prob_list, axis=1)[..., 1:]
-    dones_list = jnp.concatenate(dones_list, axis=1)
-    buf = JString(tokens_list, jnp.ones_like(tokens_list[:, 0]) * tokens_list.shape[1])
-  
+            dones_list = jnp.cumsum(dones_list, axis=1, dtype=jnp.bool)
+            flags_list = jnp.where(jnp.concatenate((dones_list[:, :1], dones_list[:, :-1]), axis=1), PAD_FLAG, flags_list)
+            # print(dones_list)
+            # print(flags_list)
+            
+            # print(tokens_list.shape, flags_list.shape, values_list.shape, rewards_list.shape, log_prob_list.shape)
 
+            _, last_value, _ = v_forward_jit(handle_continuous(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+            
+            advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
+            # print("value", values_list)
+            # print("target", targets)
+            print("UPDATING")
+            if len(update_returns) > 0:
+                print("avg returns:", sum(update_returns) / len(update_returns))
+            else:
+                print("None ended")
 
-    dones_list = jnp.cumsum(dones_list, axis=1, dtype=jnp.bool)
-    flags_list = jnp.where(jnp.concatenate((dones_list[:, :1], dones_list[:, :-1]), axis=1), PAD_FLAG, flags_list)
-    # print(dones_list)
-    # print(flags_list)
+            for _ in range(config["UPDATE_EPOCHS"]):
+                params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
+                print(loss, value_loss, loss_actor, entropy)
+
+            state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
+
+            ##==================Eval Steps================================================================#
+
+            eval_init_h_state = RWKV.default_state(params)
+            if isinstance(eval_init_h_state, tuple):
+                eval_init_h_state = tuple([jnp.repeat(s[None], config["NUM_ENVS"], axis=0) for s in eval_init_h_state])
+            else:
+                eval_init_h_state = jnp.repeat(eval_init_h_state[None], config["NUM_ENVS"], axis=0)
+            eval_h_state = eval_init_h_state
+            eval_obsv, eval_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
+
+            for t in range(config["NUM_STEPS"]):
+                rng, _rng = jax.random.split(rng)
+                tokenized = handle_continuous(eval_obsv)
+                eval_pi, eval_value, eval_h_state = v_forward_jit(tokenized, eval_h_state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
+                eval_pi = distrax.Categorical(logits=eval_pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
+                eval_action = eval_pi.sample(seed=_rng)
+
+                current_eval_actions = jax.device_get(eval_action)
+
+                log_prob = pi.log_prob(current_eval_actions)
+                _, value1, eval_h_state = v_forward_jit(eval_action, eval_h_state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+
+                rng, _rng = jax.random.split(rng)
+                rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+                eval_obsv, eval_state, eval_reward, eval_done, eval_info = v_eval_env_step(rng_step, eval_state, eval_action, eval_env_params)
+            
+
+            ##Call back, log every update step as in rnn:
+            if config.get("DEBUG"):
+                        def callback(info_train,info_eval):
+                            #------------Collect info for plotting---------------------------#
+                            #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
+
+                            #1)Step and return info
+                            return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+            
+                
+                            #-----------Train info----------#
+                            ##Global episodic plots
+                            episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
+                            episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
+                            
+                        
+                            #Average across all envs
+                            PnL_train= info_train["total_PnL"]
+                            netWorth_train= info_train["netWorth"]
+                            inventories_train= info_train["inventory"]  
+                            buyQuant_train=info_train["buyQuant"]  
+                            sellQuant_train=info_train["sellQuant"]  
+                            reward_train=info_train["reward"]  
+                            other_exec_quants_train=info_train["other_exec_quants"]  
+                            averageMidprice_train=info_train["averageMidprice"]  
+                            averageBestbid_train=info_train["average_best_bid"]  
+                            averageBestask_train=info_train["average_best_ask"]  
+                        
+
+                            #-------------eval info------#   
+                            Episodic_PnL_eval = info_eval["total_PnL"][info_eval["returned_episode"]]
+                            Episodic_netWorth_eval = info_eval["netWorth"][info_eval["returned_episode"]]
+                            inventories_eval = info_eval["inventory"] 
+                            buyQuant_eval=info_eval["buyQuant"]
+                            sellQuant_eval=info_eval["sellQuant"]
+                            reward_eval=info_eval["reward"]
+                            other_exec_quants_eval=info_eval["other_exec_quants"]
+                            averageMidprice_eval=info_eval["averageMidprice"]
+                            averageBestbid_eval=info_eval["average_best_bid"]
+                            averageBestask_eval=info_eval["average_best_ask"]
+                            
+                        
+                            #-----------------Logging-------------------#
+
+                            if wandbOn:
+                                wandb.log(
+                                    data={
+                                        #-----time and return------------#
+                                        "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
+                                    
+                                        #---------Reward and error bars--------#
+                                        #train average
+                                        "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
+                                        "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                                        "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
+                        
+                                        #eval
+                                        "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
+                                        "reward_eval_plus_std": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                        "reward_eval_minus_std": (jnp.mean(reward_eval) - jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
+                                
+                                        
+                                        #---------PnL and errors bars-----------#
+                                        #Average, end
+                                        "Episodic_PnL_train_mean": jnp.mean(episodic_PnL_train) if episodic_PnL_train.size > 0 else 0,
+                                        "Episodic_PnL_train_plus_std": (jnp.mean(episodic_PnL_train) + jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
+                                        "Episodic_PnL_train_minus_std": (jnp.mean(episodic_PnL_train) - jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
+                                        #Average
+                                        "PnL_train":jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
+                                        "PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                        "PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
+                                
+                                        #eval
+                                        "Episodic_PnL_eval_mean": jnp.mean(Episodic_PnL_eval) if Episodic_PnL_eval.size > 0 else 0,
+                                        "Episodic_PnL_eval_plus_std": (jnp.mean(Episodic_PnL_eval) + jnp.std(Episodic_PnL_eval)) if Episodic_PnL_eval.size > 0 else 0,
+                                        "Episodic_PnL_eval_minus_std": (jnp.mean(Episodic_PnL_eval) - jnp.std(Episodic_PnL_eval)) if Episodic_PnL_eval.size > 0 else 0,
+                                
+                                        #-------------NetWorth and error bars----------#
+                                        #train
+                                        "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
+                                        "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                        "Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                        #eval
+                                        "Episodic_netWorth_eval": jnp.mean(Episodic_netWorth_eval) if Episodic_netWorth_eval.size > 0 else 0,
+                                        "Episodic_netWorth_eval_plus_std": (jnp.mean(Episodic_netWorth_eval) + jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
+                                        "Episodic_netWorth_eval_minus_std": (jnp.mean(Episodic_netWorth_eval) - jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
+                                
+                                                                        
+                                        #----------Iventory and error bars------------#
+                                        #train
+                                        #Average
+                                        "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
+                                        "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                        "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
+                                
+                                        #eval
+                                        "inventory_eval": jnp.mean(inventories_eval) if inventories_eval.size > 0 else 0,
+                                        "inventory_eval_plus_std":(jnp.mean(inventories_eval) + jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
+                                        "inventory_eval_minus_std":(jnp.mean(inventories_eval) - jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
+                                    
+                                        
+                                        #----------Buy and Sell Quant and error bars------------#
+                                        #train
+                                        #Average
+                                        "buyQuant_train":jnp.mean(buyQuant_train) if buyQuant_train.size > 0 else 0,
+                                        "sellQuant_train":jnp.mean(sellQuant_train) if sellQuant_train.size > 0 else 0,
+                                        "other_exec_quants_train":jnp.mean(other_exec_quants_train) if other_exec_quants_train.size > 0 else 0,
+                                        "averageMidprice_train":jnp.mean(averageMidprice_train) if averageMidprice_train.size>0 else 0,
+                                        "averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
+                                        "averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
+                                
+                                        "buyQuant_eval":jnp.mean(buyQuant_eval) if buyQuant_eval.size > 0 else 0,
+                                        "sellQuant_eval":jnp.mean(sellQuant_eval) if sellQuant_eval.size > 0 else 0,
+                                        "other_exec_quants_eval":jnp.mean(other_exec_quants_eval) if other_exec_quants_eval.size > 0 else 0,
+                                        "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
+                                        "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
+                                        "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,                          
+                                                                    },
+                                    commit=True
+                                )
+                        jax.debug.callback(callback, info_train,eval_info)
+        return {"params": params, "info_train": info_train, "eval_info": eval_info}
+    return train
+
+if __name__ == "__main__":
+    timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
+    try:
+        ATFolder = sys.argv[1]
+        print("ATFFolder:",ATFolder)
+    except:
+        ATFolder = "/home/duser/AlphaTrade/training_oneDay"
+
+    env_config_hps = [{"observation_space":"engineered",
+                            "reward_space":"portfolio_value",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"best_bid_ask",
+                            "action_space":"fixed_quants"
+                            }]
+
+    training_parameters = {
+        "LR": {"values": [1e-4, 3e-4, 1e-3]},
+        "NUM_ENVS": {"values": [36]},
+        "NUM_STEPS": {"values": [32]},  
+        "TOTAL_TIMESTEPS": {"values": [3e6]},
+        "UPDATE_EPOCHS": {"values": [4,10]},
+        "NUM_MINIBATCHES": {"values": [4]},
+        "GAMMA": {"values": [0.98,0.9999]},
+        "GAE_LAMBDA": {"values": [0.99]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.0, 0.01, 0.1]},
+        "VF_COEF": {"values": [0.5]},
+        "MAX_GRAD_NORM": {"values": [0.5]},
+        "ENV_NAME": {"values": ["AlphaTradeMM"]},
+        "ANNEAL_LR": {"values": [True]},
+        "DEBUG": {"values": [True]},
+        "VERBOSE": {"values": [False]},
+        "ACTION_TYPE": {"values": ["pure"]},
+        "WINDOW_INDEX": {"values": [100]},
+        "EPISODE_TIME": {"values": [60*5]},
+        "DATA_TYPE": {"values": ["fixed_time"]},
+        "NUM_STEPS_EVAL":{"values":[160]},
+        "ATFOLDER": {"values": [ATFolder]},
+        "ENV_CONFIG": {"values": env_config_hps},
+    }    
+
     
-    # print(tokens_list.shape, flags_list.shape, values_list.shape, rewards_list.shape, log_prob_list.shape)
+    sweep_config={
+        "method": "grid",
+        "parameters": training_parameters
+    }
 
-    _, last_value, _ = v_forward_jit(handle_continuous(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
-    
-    advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
-    # print("value", values_list)
-    # print("target", targets)
-    print("UPDATING")
-    if len(update_returns) > 0:
-        print("avg returns:", sum(update_returns) / len(update_returns))
-    else:
-        print("None ended")
+    def sweep_fun():
+            run = wandb.init(
+                project="Alphatrade_Sweeps",
+                save_code=True,  # 
+            )
+            params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+            print(f"Results will be saved to {params_file_name}")
+            # +++++ Single GPU +++++
+            rng = jax.random.PRNGKey(0)
+            train = (make_train(wandb.config))
+            # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+            out = train(rng)
+            params = out['params']
+        
+            # Save the params to a file using flax.serialization.to_bytes
+            with open(params_file_name, 'wb') as f:
+                f.write(flax.serialization.to_bytes(params))
+                print(f"params saved")
 
-    for _ in range(config["UPDATE_EPOCHS"]):
-        params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
-        print(loss, value_loss, loss_actor, entropy)
+            run.finish()
 
-    state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_SWEEP")
+    wandb.agent(sweep_id, function=sweep_fun, count=500)
+
+
+    sys.exit(0)
+
+
+
+
+   
