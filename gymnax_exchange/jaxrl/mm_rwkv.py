@@ -188,7 +188,7 @@ def make_train(config):
         #Define the vocab
         num_tokens = 1 + env.action_space(env_params).n + 256
         config["MIN_ACTION_TOK"] = 1
-        config["MAX_ACTION_TOK"] = 8
+        config["MAX_ACTION_TOK"] = env_config.n_actions
 
         #Load the RWKV
         RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
@@ -517,15 +517,31 @@ if __name__ == "__main__":
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
                             "action_space":"fixed_quants"
+                            },
+                            {"observation_space":"engineered",
+                            "reward_space":"portfolio_value",
+                            "inv_penalty":"linear",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"mid",
+                            "action_space":"fixed_quants"
+                            },
+                            {"observation_space":"engineered",
+                            "reward_space":"spooner_damped",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"mid",
+                            "action_space":"fixed_quants"
                             }]
 
     training_parameters = {
         "LR": {"values": [1e-4, 3e-4, 1e-3]},
         "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "UPDATE_EPOCHS": {"values": [4,10]},
-        "NUM_MINIBATCHES": {"values": [4]},
+        "TOTAL_TIMESTEPS": {"values": [2.5e5]},
+        "UPDATE_EPOCHS": {"values": [4]},
+        "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.98,0.9999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
@@ -573,7 +589,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_PORTFOLIO_NO_DAMPING_FULL_DAY")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_FIXED_QUANTS_FULL_DAY")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
