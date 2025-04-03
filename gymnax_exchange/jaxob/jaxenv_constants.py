@@ -1,4 +1,4 @@
-action_space= "directional_trading"
+action_space= "AvSt"
 reward_space = "portfolio_value"
 observation_space = "engineered"
 end_fn = "unwind_ref_price"
