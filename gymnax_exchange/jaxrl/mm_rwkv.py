@@ -399,7 +399,8 @@ def make_train(config):
                             #Average across all envs
                             PnL_train= info_train["total_PnL"]
                             netWorth_train= info_train["netWorth"]
-                            inventories_train= info_train["inventory"]  
+                            Episodic_inventories_train= info_train["inventory"][info_train["returned_episode"]]
+                            inventories_train= info_train["inventory"]
                             buyQuant_train=info_train["buyQuant"]  
                             sellQuant_train=info_train["sellQuant"]  
                             reward_train=info_train["reward"]  
@@ -462,6 +463,11 @@ def make_train(config):
                                         "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
                                         "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
                                         "Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                        #Average
+                                        "netWorth_train":jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
+                                        "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                        "netWorth_train_minus_std": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+
                                         #eval
                                         "Episodic_netWorth_eval": jnp.mean(Episodic_netWorth_eval) if Episodic_netWorth_eval.size > 0 else 0,
                                         "Episodic_netWorth_eval_plus_std": (jnp.mean(Episodic_netWorth_eval) + jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
@@ -471,6 +477,7 @@ def make_train(config):
                                         #----------Iventory and error bars------------#
                                         #train
                                         #Average
+                                        "Episodic_inventories_train": jnp.mean(Episodic_inventories_train) if Episodic_inventories_train.size > 0 else 0,
                                         "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
                                         "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
                                         "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
