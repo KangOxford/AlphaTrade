@@ -150,7 +150,7 @@ class EnvState(BaseEnvState):
     best_bids: chex.Array
     init_price: int
     inventory:int
-    mid_price:int
+    mid_price:float
     total_PnL: float
     price_bid_passive :int
     quant_bid_passive :int
@@ -459,8 +459,7 @@ class MarketMakingEnv(BaseLOBEnv):
         base_state = super()._get_state_from_data(key,first_message, book_data, max_steps_in_episode, window_index, start_index)
         base_vals = jtu.tree_flatten(base_state)[0]
         best_bid, best_ask = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
-        M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
-
+        M =jnp.float32((best_bid[0] + best_ask[0]) / 2)
         return EnvState(
             ##This is reset
             *base_vals,
@@ -1649,7 +1648,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #Find the new obsvered mid price at the end of the step.
         #non normalized=> going on state
-        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) //( 2 * self.tick_size) * self.tick_size
+        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) / 2# * self.tick_size) * self.tick_size
 
         #Real Revenue calcs: (actual cash flow+actual value of portfolio)
         income=(agent_sells[:, 0]* jnp.abs(agent_sells[:, 1])).sum()
@@ -2093,12 +2092,14 @@ if __name__ == "__main__":
         # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
+    
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 0,
+        "WINDOW_INDEX": 15,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*30,  
-        "TRADERID":10}
+        "EPISODE_TIME": 60*5,  
+        "TRADERID":10
+    }
         
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
