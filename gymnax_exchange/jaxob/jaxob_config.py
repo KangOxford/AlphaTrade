@@ -34,7 +34,7 @@ class EnvironmentConfig(Configuration):
     n_actions: int = env_cst.n_actions
     
     # Weights for complex reward function:
-    inventoryPnL_lambda: float = 0.002
+    inventoryPnL_lambda: float = 0.6
     unrealizedPnL_lambda: float = 0.0
     asymmetrically_dampened_lambda: float = 0.05
 

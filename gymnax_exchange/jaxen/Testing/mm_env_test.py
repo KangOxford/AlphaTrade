@@ -23,25 +23,26 @@ faulthandler.enable()
 
 
 def generate_plots(
-    rewards,
-    reward_portfolio_value,
-    reward_complex,
-    reward_spooner,
-    reward_spooner_damped,
-    reward_spooner_scaled,
-    reward_delta_netWorth,
-    inventory,
-    total_PnL,
-    buyQuant,
-    sellQuant,
-    bid_price,
-    ask_price,
-    averageMidprice,
-    netWorth,
-    average_best_bid,
-    average_best_ask,
-    valid_steps,
-    output_dir,
+      rewards,
+     reward_portfolio_value,
+     reward_complex,
+     reward_spooner,
+     reward_spooner_damped,
+     reward_spooner_scaled,
+     reward_delta_netWorth,
+     inventory,
+     total_PnL,
+     buyQuant,
+     sellQuant,
+     bid_price,
+     ask_price,
+     averageMidprice,
+     midprice,
+     netWorth,
+     average_best_bid,
+     average_best_ask,
+     valid_steps,
+     output_dir,
 ):
     """
     Generates plots and saves data to CSV for various metrics.
@@ -82,6 +83,7 @@ def generate_plots(
     bid_price = bid_price[:plot_until_step]
     ask_price = ask_price[:plot_until_step]
     averageMidprice = averageMidprice[:plot_until_step]
+    midprice=midprice[:plot_until_step]
     netWorth = netWorth[:plot_until_step]
     average_best_bid=average_best_bid[:plot_until_step]
     average_best_ask=average_best_ask[:plot_until_step]
@@ -93,13 +95,13 @@ def generate_plots(
     data = np.hstack([
         rewards, reward_portfolio_value, reward_complex, reward_spooner,
         reward_spooner_damped, reward_spooner_scaled, reward_delta_netWorth,
-        inventory, total_PnL, buyQuant, sellQuant, bid_price, ask_price, averageMidprice,average_best_bid,average_best_ask,netWorth
+        inventory, total_PnL, buyQuant, sellQuant, bid_price, ask_price, averageMidprice,midprice,average_best_bid,average_best_ask,netWorth
     ])
     # Add column headers
     column_names = [
         'Reward', 'Portfolio Value Reward', 'Complex Reward', 'Spooner Reward',
         'Spooner Damped Reward', 'Spooner Scaled Reward', 'Delta Net Worth Reward',
-        'Inventory', 'Total PnL', 'Buy Quantity', 'Sell Quantity', 'Bid Price', 'Ask Price', 'averageMidprice','average_best_bid','average_best_ask', 'netWorth'
+        'Inventory', 'Total PnL', 'Buy Quantity', 'Sell Quantity', 'Bid Price', 'Ask Price', 'averageMidprice','midprice','average_best_bid','average_best_ask', 'netWorth'
     ]
 
     # Save data using pandas to handle CSV easily
@@ -180,8 +182,8 @@ def generate_plots(
     axes[1, 1].legend()
 
     # Combined plot for Bid Price, Ask Price, and Average Mid Price
-    axes[1, 2].plot(range(plot_until_step), bid_price, label="Bid Price", color='pink')
-    axes[1, 2].plot(range(plot_until_step), ask_price, label="Ask Price", color='cyan')
+    
+    midprice
     axes[1, 2].plot(range(plot_until_step), average_best_bid, label="average_best_bid Price", color='yellow')
     axes[1, 2].plot(range(plot_until_step), average_best_ask, label="average_best_ask Price", color='orange')
     axes[1, 2].plot(range(plot_until_step), averageMidprice, label="Average Mid Price", color='magenta')
@@ -197,6 +199,11 @@ def generate_plots(
     axes[2, 0].set_title("Net Worth  Over Steps")
     axes[2, 0].legend()
 
+    axes[2, 1].plot(range(plot_until_step), bid_price, label="Bid Price", color='pink')
+    axes[2, 1].plot(range(plot_until_step), ask_price, label="Ask Price", color='cyan')
+    axes[2, 1].plot(range(plot_until_step), midprice, label="midprice Price", color='yellow')
+    axes[2, 1].set_title("End Step Prices  Over Steps")
+    axes[2, 1].legend()
     # Adjust layout to prevent overlapping
     plt.tight_layout()
 
@@ -224,7 +231,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 6,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*2,  
+        "EPISODE_TIME": 60*30,  
     }
 
     rng = jax.random.PRNGKey(0)
@@ -277,6 +284,7 @@ if __name__ == "__main__":
     ask_price = np.zeros((test_steps, 1), dtype=int)
     netWorth = np.zeros((test_steps, 1), dtype=int)
     averageMidprice = np.zeros((test_steps, 1), dtype=int)
+    midprice=np.zeros((test_steps, 1), dtype=int)
     average_best_bid=np.zeros((test_steps, 1), dtype=int)
     average_best_ask=np.zeros((test_steps, 1), dtype=int)
  
@@ -297,7 +305,7 @@ if __name__ == "__main__":
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
         #test_action = env.action_space().sample(key_policy) 
-        test_action= 5
+        test_action= 4
         start = time.time()
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
         
@@ -317,6 +325,7 @@ if __name__ == "__main__":
         bid_price[i] = info["action_prices"][0]  # Store best ask
         ask_price[i] = info["action_prices"][1]
         averageMidprice[i] = info["averageMidprice"]  # Store mid price
+        midprice[i]=state.mid_price
         netWorth[i]=info["netWorth"]
         average_best_bid[i]=info["average_best_bid"]
         average_best_ask[i]=info["average_best_ask"]
@@ -334,7 +343,7 @@ if __name__ == "__main__":
     #Plot
     # ============================
     generate_plots(
-     rewards,
+      rewards,
      reward_portfolio_value,
      reward_complex,
      reward_spooner,
@@ -348,6 +357,7 @@ if __name__ == "__main__":
      bid_price,
      ask_price,
      averageMidprice,
+     midprice,
      netWorth,
      average_best_bid,
      average_best_ask,

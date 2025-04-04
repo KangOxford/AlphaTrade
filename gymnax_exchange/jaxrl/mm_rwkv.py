@@ -378,6 +378,8 @@ def make_train(config):
             ##=====================LOGGING==============#
             # Call back, log every update step as in rnn:
             #===========================================#
+            return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+            wandb.log({"return_values:": return_values})
             if config.get("DEBUG"):
                         def callback(info_train,info_eval):
                             #------------Collect info for plotting---------------------------#

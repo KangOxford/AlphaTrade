@@ -935,8 +935,8 @@ class MarketMakingEnv(BaseLOBEnv):
         best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 0, 0, -1, 1, -1, 5, 10], dtype=jnp.int32)
-        ask_offsets = jnp.array([0, 0, -1, 0, -1, 1, 5, 10], dtype=jnp.int32)
+        bid_offsets = jnp.array([0, 0, 0, -1, 2, -1, 2, 5], dtype=jnp.int32)
+        ask_offsets = jnp.array([0, 0, -1, 0, -1, 2, 2, 5], dtype=jnp.int32)
         bid_quants = jnp.array([0, 1, 0, 1, 1, 1, 1, 1], dtype=jnp.int32)
         ask_quants = jnp.array([0, 1, 1, 0, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
