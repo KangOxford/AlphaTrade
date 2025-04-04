@@ -378,6 +378,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "sellPnL":extras["sellPnL"],
             "buyQuant":extras["buyQuant"],
             "sellQuant":extras["sellQuant"],
+            "window_index": state.window_index,
             "inventoryValue":extras["inventoryValue"],
             "other_exec_quants":extras["other_exec_quants"],
             "averageMidprice":extras["averageMidprice"],
