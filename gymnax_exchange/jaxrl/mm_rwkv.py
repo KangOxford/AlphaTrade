@@ -378,6 +378,8 @@ def make_train(config):
             ##=====================LOGGING==============#
             # Call back, log every update step as in rnn:
             #===========================================#
+            return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+            wandb.log({"return_values:": return_values})
             if config.get("DEBUG"):
                         def callback(info_train,info_eval):
                             #------------Collect info for plotting---------------------------#
@@ -387,7 +389,7 @@ def make_train(config):
                             return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
                             timesteps=info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
             
-                
+                            windowIndextrain=info_train["windowIndex"]
                             #-----------Train info----------#
                             ##Global episodic plots
                             episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
@@ -397,7 +399,8 @@ def make_train(config):
                             #Average across all envs
                             PnL_train= info_train["total_PnL"]
                             netWorth_train= info_train["netWorth"]
-                            inventories_train= info_train["inventory"]  
+                            Episodic_inventories_train= info_train["inventory"][info_train["returned_episode"]]
+                            inventories_train= info_train["inventory"]
                             buyQuant_train=info_train["buyQuant"]  
                             sellQuant_train=info_train["sellQuant"]  
                             reward_train=info_train["reward"]  
@@ -428,6 +431,8 @@ def make_train(config):
                                         #-----time and return------------#
                                         "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
                                         "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
+                                        
+                                        "windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
                                         #---------Reward and error bars--------#
                                         #train average
                                         "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
@@ -460,6 +465,11 @@ def make_train(config):
                                         "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
                                         "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
                                         "Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                        #Average
+                                        "netWorth_train":jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
+                                        "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+                                        "netWorth_train_minus_std": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
+
                                         #eval
                                         "Episodic_netWorth_eval": jnp.mean(Episodic_netWorth_eval) if Episodic_netWorth_eval.size > 0 else 0,
                                         "Episodic_netWorth_eval_plus_std": (jnp.mean(Episodic_netWorth_eval) + jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
@@ -469,6 +479,7 @@ def make_train(config):
                                         #----------Iventory and error bars------------#
                                         #train
                                         #Average
+                                        "Episodic_inventories_train": jnp.mean(Episodic_inventories_train) if Episodic_inventories_train.size > 0 else 0,
                                         "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
                                         "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
                                         "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
