@@ -775,7 +775,7 @@ if __name__ == "__main__":
                          "inv_penalty":"none",
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
+                         "reference_price_portfolio_value":"mid",
                          "action_space":"directional_trading"
                           }
                           ]
@@ -784,7 +784,7 @@ if __name__ == "__main__":
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"best_bid_ask",
+                            "reference_price_portfolio_value":"mid",
                             "action_space":"AvSt"
                             }]      
     
@@ -800,7 +800,7 @@ if __name__ == "__main__":
         "GAMMA": {"values": [0.98,0.9999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0, 0.01, 0.1]},
+        "ENT_COEF": {"values": [0.01, 0.1]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -851,7 +851,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading_overfitting_one_epsiode_mid")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

@@ -266,13 +266,13 @@ class MarketMakingEnv(BaseLOBEnv):
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_trades_by_agent//2, 
+                self.cfg.num_action_messages_by_agent//2, 
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_trades_by_agent//2,
+                self.cfg.num_action_messages_by_agent//2,
                 -1  # ask
             )
         ##Does not work for directional trading space. Probably need to call some config checks to do this.
@@ -900,7 +900,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         # Create masks for valid indices
         valid_indices = price_to_index >= 0
-        num_prices=self.cfg.num_trades_by_agent
+        num_prices=self.cfg.num_action_messages_by_agent
         #if self.cfg.action_space == "fixed_quants" or self.cfg.action_space=="AvSt":
         #    num_prices = 2 #2 trades for this setup.
         #elif self.cfg.action_space=="fixed_prices":
@@ -930,9 +930,9 @@ class MarketMakingEnv(BaseLOBEnv):
     
     def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
-        # Compute best_ask and best_bid using a rolling average to reduce variance
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        # Use the most recent best_ask and best_bid values
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
         
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 0, 0, -1, 2, -1, 2, 5], dtype=jnp.int32)
@@ -981,9 +981,9 @@ class MarketMakingEnv(BaseLOBEnv):
         '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
         0-7, with lower giving more aggresive bid and asks
         '''
-        # Compute best_ask, best_bid, and mid-price using a rolling average
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        # Use the most recent best_ask and best_bid values
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
         mid_price = (best_ask + best_bid) // 2
 
         #Select aaggresion parameter
@@ -1135,9 +1135,9 @@ class MarketMakingEnv(BaseLOBEnv):
         
         # --------------- 02 info for deciding prices ---------------
    
-        #Trade off the average over the last 10 messages to avoid the variance:
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        # Use the most recent best_ask and best_bid values
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
 
 
         sell_levels=sell_task_prices(best_ask, best_bid)
@@ -1175,9 +1175,9 @@ class MarketMakingEnv(BaseLOBEnv):
         4: wide spread, neutral
         5: wide spread, ask skew
         '''
-        # Compute best_ask, best_bid, and mid-price using a rolling average
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        # Use the most recent best_ask and best_bid values
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
         mid_price = (best_ask + best_bid) / 2
 
 
@@ -1261,9 +1261,9 @@ class MarketMakingEnv(BaseLOBEnv):
         
         Always sends two messages for compatibility with message filtering
         '''
-        # Compute best_ask and best_bid using rolling average to reduce variance
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        # Use the most recent best_ask and best_bid values
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
         
         # Debug prints
         #jax.debug.print("Directional Trading Action: {}", action)
@@ -1507,13 +1507,13 @@ class MarketMakingEnv(BaseLOBEnv):
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_trades_by_agent//2,
+                self.cfg.num_action_messages_by_agent//2,
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
                 self.trader_unique_id,
-                self.cfg.num_trades_by_agent//2,
+                self.cfg.num_action_messages_by_agent//2,
                 -1  # ask
             )
         
@@ -2051,7 +2051,7 @@ class MarketMakingEnv(BaseLOBEnv):
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-10, 10, (17+3*self.cfg.num_trades_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
+             return spaces.Box(-10, 10, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
