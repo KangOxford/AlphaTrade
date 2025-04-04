@@ -250,7 +250,7 @@ class ExecutionEnv(BaseLOBEnv):
         cnl_msgs = job.getCancelMsgs(
             raw_order_side,
             self.trader_unique_id,
-            self.cfg.num_messages_by_agent//2,  # max number of orders to cancel
+            self.cfg.num_action_messages_by_agent,
             1 - state.is_sell_task * 2
         )
         
@@ -377,6 +377,7 @@ class ExecutionEnv(BaseLOBEnv):
             "mid_price":((state.best_bids[:, 0] + state.best_asks[:, 0]) // 2).mean(),
             "current_step": state.step_counter,
             "done": done,
+            "window_index": state.window_index,
             "slippage_rm": state.slippage_rm,
             "price_adv_rm": state.price_adv_rm,
             "price_drift_rm": state.price_drift_rm,
@@ -691,10 +692,7 @@ class ExecutionEnv(BaseLOBEnv):
 
         # Create masks for valid indices
         valid_indices = price_to_index >= 0
-        if self.cfg.action_space == "fixed_quants":
-            num_prices = 4 #always 4 trades for fixed quants
-        elif self.cfg.action_space=="fixed_prices":
-            num_prices=self.cfg.n_actions
+        num_prices=self.cfg.num_action_messages_by_agent
 
         # Mask trades and indices instead of boolean indexing
         valid_trades = jnp.where(valid_indices, agent_trades[:, 1], 0)
@@ -766,14 +764,11 @@ class ExecutionEnv(BaseLOBEnv):
         2=     # M
         3=    # NT
         4=    # PP
-        5=     # M+NT
-        6=     # NT+PP
-        7=     # M+NT+PP"""
+       """
 
         #----01 get price levels----#
-
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
         #jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
 
         def buy_task_prices(best_ask, best_bid):
@@ -808,21 +803,18 @@ class ExecutionEnv(BaseLOBEnv):
             [0, 1, 0, 0],  # M
             [0, 0, 1, 0],  # NT
             [0, 0, 0, 1],  # PP
-            [0, 1, 1, 0],  # M+NT
-            [0, 0, 1, 1],  # NT+PP
-            [0, 1, 1, 1]   # M+NT+PP
         ])
         quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
         #----03 get the rest of the message----#
-        types = jnp.ones((4,), jnp.int32)##Always send 4 orders!
-        sides = (1 - state.is_sell_task*2) * jnp.ones((4,), jnp.int32)
-        trader_ids = jnp.ones((4,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((4,), jnp.int32) *
+        types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
+        sides = (1 - state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
+        trader_ids = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids = (jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) *
                     (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, 4) #Each message has a unique ID
+                    + jnp.arange(0, self.cfg.num_action_messages_by_agent) #Each message has a unique ID
         times = jnp.resize(
             state.time + params.time_delay_obs_act,
-            (4, 2)#4 trades, 2 times
+            (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
         )
         #------Check quants dont exceed inv----#
         quant_left=state.task_to_execute-state.quant_executed
@@ -1267,7 +1259,7 @@ class ExecutionEnv(BaseLOBEnv):
             "step_counter": state.step_counter,
             "max_steps": state.max_steps_in_episode,
             # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
-            "remaining_ratio": jnp.where(state.max_steps_in_episode==0, 0., 1. - state.step_counter / state.max_steps_in_episode),
+            "remaining_ratio": jnp.where(state.max_steps_in_episode==0, 0., 1. - state.step_counter / state.max_steps_in_episode),#17
             "prev_action": state.prev_action[:, 1],  # use quants only
             "prev_executed": state.prev_executed,  # use quants only
             "prev_executed_ratio": jnp.where(state.prev_action[:, 1]==0., 0., state.prev_executed / state.prev_action[:, 1]),
@@ -1433,7 +1425,7 @@ class ExecutionEnv(BaseLOBEnv):
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self, params: EnvParams):
         """Observation space of the environment."""
-        space = spaces.Box(-10, 10, (29,), dtype=jnp.float32) 
+        space = spaces.Box(-10, 10, (17+self.cfg.num_action_messages_by_agent*3,), dtype=jnp.float32) ##17 ints and then 3 objects of size action messages (msgs sent)
         return space
 
     def state_space(self, params: EnvParams) -> spaces.Dict:

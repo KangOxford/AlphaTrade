@@ -385,8 +385,8 @@ def make_train(config):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
-                    timesteps = info_train["timestep"]#[info_train["returned_episode"]] * config["NUM_ENVS"] #changed to raw timesteps adn sum...
-                    #time=info_train["time_seconds"] 
+                    timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"] 
+                    windowIndextrain = info_train["window_index"][:, config["ENVID"]] 
 
                     #-----------Train info----------#
                     episodic_revenues_train = info_train["total_revenue"][info_train["returned_episode"]] 
@@ -420,8 +420,8 @@ def make_train(config):
                             data={
                                 #-----time and return------------#
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                "global_step": jnp.sum(timesteps) if timesteps.size > 0 else 0,
-                                #"time":jnp.mean(time) if time.size>0 else 0,
+                                "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
+                                "windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
 
                                 #---------Reward and error bars--------#
                                 #train
@@ -513,14 +513,15 @@ if __name__ == "__main__":
     except:
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
-    env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"fixed_quants"
-                            }]
+    env_config_hps = [ {"task":"random",
+                        "action_type":"pure",
+                        "action_space":"fixed_quants",
+                        "end_fn":"unwind_FT",
+                        "max_task_size":500,
+                        "n_actions":8,
+                        "fixed_quant_value":10,
+                        "num_messages_by_agent":8,}
+                        ]
 
     training_parameters = {
         "LR": {"values": [1e-4, 3e-4, 1e-3]},
