@@ -526,14 +526,6 @@ if __name__ == "__main__":
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"linear",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
                             "action_space":"directional_trading"
                             }
                             ]
@@ -543,12 +535,12 @@ if __name__ == "__main__":
         "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
         "TOTAL_TIMESTEPS": {"values": [4e5]},
-        "UPDATE_EPOCHS": {"values": [4]},
-        "NUM_MINIBATCHES": {"values": [16]},
+        "UPDATE_EPOCHS": {"values": [4,8]},
+        "NUM_MINIBATCHES": {"values": [16,32]},
         "GAMMA": {"values": [0.95,0.98,0.9999]},
         "GAE_LAMBDA": {"values": [0,95,0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.01, 0.1]},
+        "ENT_COEF": {"values": [0.01, 0.1,0]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -556,7 +548,7 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [-1]},
+        "WINDOW_INDEX": {"values": [20]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[160]},
@@ -567,7 +559,11 @@ if __name__ == "__main__":
 
     
     sweep_config={
-        "method": "grid",
+        "method": "bayes",
+        "metric": {
+            "name": "netWorth_train",  # Choose the metric you want to optimize
+            "goal": "maximize"          # "maximize" or "minimize"
+        },
         "parameters": training_parameters
     }
 
@@ -592,7 +588,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_spread_skew_longer_eval")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_one_day_longer_eval_bayes")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
