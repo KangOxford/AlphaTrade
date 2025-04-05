@@ -527,7 +527,7 @@ if __name__ == "__main__":
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
-                            "action_space":"directional_trading"
+                            "action_space":"spread_skew"
                             },
                             {"observation_space":"engineered",
                             "reward_space":"portfolio_value",
@@ -536,25 +536,18 @@ if __name__ == "__main__":
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
                             "action_space":"directional_trading"
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"complex",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"directional_trading"
-                            }]
+                            }
+                            ]
 
     training_parameters = {
         "LR": {"values": [1e-4, 3e-4, 1e-3]},
         "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [2.5e5]},
+        "TOTAL_TIMESTEPS": {"values": [4e5]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.95,0.98,0.9999]},
-        "GAE_LAMBDA": {"values": [0.99]},
+        "GAE_LAMBDA": {"values": [0,95,0.99]},
         "CLIP_EPS": {"values": [0.2]},
         "ENT_COEF": {"values": [0.01, 0.1]},
         "VF_COEF": {"values": [0.5]},
@@ -564,10 +557,10 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [100]},
+        "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[32]},
+        "NUM_STEPS_EVAL":{"values":[160]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
 
@@ -600,7 +593,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_one_episode_overfit")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_spread_skew_longer_eval")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
