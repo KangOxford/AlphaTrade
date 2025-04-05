@@ -378,6 +378,7 @@ class ExecutionEnv(BaseLOBEnv):
             "current_step": state.step_counter,
             "done": done,
             "window_index": state.window_index,
+            "reward_lam1":extras["reward_lam1"],
             "slippage_rm": state.slippage_rm,
             "price_adv_rm": state.price_adv_rm,
             "price_drift_rm": state.price_drift_rm,
@@ -1212,7 +1213,8 @@ class ExecutionEnv(BaseLOBEnv):
         # reward /= params.avg_twap_list[state.window_index]
         return reward_scaled, {
             "agentQuant": agentQuant,
-            "revenue": revenue,#reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
+            "revenue": revenue,
+            "reward_lam1":reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
             "slippage_rm": slippage_rm,
             "price_adv_rm": price_adv_rm,
             "price_drift_rm": price_drift_rm,

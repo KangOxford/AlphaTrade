@@ -423,7 +423,7 @@ def make_train(config):
                                 #-----time and return------------#
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
                                 "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
-                                "windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
+                                #"windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
 
                                 #---------Reward and error bars--------#
                                 #train
@@ -456,6 +456,12 @@ def make_train(config):
                                 "revenues_eval": jnp.mean(episodic_revenues_eval) if episodic_revenues_eval.size > 0 else 0,
                                 "revenues_eval_plus_std": (jnp.mean(episodic_revenues_eval) + jnp.std(episodic_revenues_eval)) if episodic_revenues_eval.size > 0 else 0,
                                 "revenues_eval_minus_std": (jnp.mean(episodic_revenues_eval) - jnp.std(episodic_revenues_eval)) if episodic_revenues_eval.size > 0 else 0,
+
+
+                              #  "reward_lam1_train":jnp.mean(reward_lam1_train) if reward_lam1_train.size > 0 else 0,
+                               # "reward_lam1_eval":jnp.mean(reward_lam1_eval) if reward_lam1_eval.size > 0 else 0,
+
+
                                 
 
                                 #-------------quant_executed_train and error bars----------#
@@ -535,7 +541,7 @@ if __name__ == "__main__":
         "GAMMA": {"values": [0.98,0.9999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0, 0.01, 0.1]},
+        "ENT_COEF": {"values": [0.01, 0.1]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -546,9 +552,11 @@ if __name__ == "__main__":
         "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[32]},
+        "NUM_STEPS_EVAL":{"values":[160]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
+        "TRADER_UNIQUE_ID": {"values": [10]},
+        "ENVID": {"values": [1]},
 
     }    
 
@@ -579,7 +587,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_PORTFOLIO_NO_DAMPING_FULL_DAY")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_EXEC")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
