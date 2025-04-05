@@ -386,23 +386,25 @@ def make_train(config):
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
                     timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"] 
-                    windowIndextrain = info_train["window_index"][:, config["ENVID"]] 
+                    #windowIndextrain = info_train["window_index"][:, config["ENVID"]] 
 
                     #-----------Train info----------#
                     episodic_revenues_train = info_train["total_revenue"][info_train["returned_episode"]] 
-                    quant_executed_train=info_train["quant_executed"][:, config["ENVID"]] 
-                    average_price_train = info_train["average_price"][:, config["ENVID"]] 
-                    current_step_train = info_train["current_step"] [:, config["ENVID"]] 
-                    mkt_forced_quant_train=info_train["mkt_forced_quant"][:, config["ENVID"]] 
-                    doom_quant_train=info_train["doom_quant"][:, config["ENVID"]] 
-                    trade_duration_train=info_train["trade_duration"][:, config["ENVID"]] 
-                    advantage_reward_train=info_train["advantage_reward"][:, config["ENVID"]] 
-                    drift_reward_train = info_train["drift_reward"][:, config["ENVID"]] 
+                #    reward_lam1_train=info_train["reward_lam1"][:, config["ENVID"]]
+                    quant_executed_train=info_train["quant_executed"]
+                    average_price_train = info_train["average_price"]
+                    current_step_train = info_train["current_step"] 
+                    mkt_forced_quant_train=info_train["mkt_forced_quant"]
+                    doom_quant_train=info_train["doom_quant"]
+                    trade_duration_train=info_train["trade_duration"]
+                    advantage_reward_train=info_train["advantage_reward"]
+                    drift_reward_train = info_train["drift_reward"] 
                     
                    
 
                     #-------------eval info------#   
                     episodic_revenues_eval = info_eval["total_revenue"][info_eval["returned_episode"]] 
+                 #   reward_lam1_eval=info_eval["reward_lam1"][:, config["ENVID"]]
                     quant_executed_eval=info_eval["quant_executed"]
                     average_price_eval = info_eval["average_price"]
                     current_step_eval = info_eval["current_step"] 

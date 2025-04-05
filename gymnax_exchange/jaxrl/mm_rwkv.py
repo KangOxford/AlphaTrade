@@ -389,7 +389,6 @@ def make_train(config):
                             return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
                             timesteps=info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
             
-                            windowIndextrain=info_train["windowIndex"]
                             #-----------Train info----------#
                             ##Global episodic plots
                             episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
@@ -432,7 +431,7 @@ def make_train(config):
                                         "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
                                         "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
                                         
-                                        "windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
+                                        #"windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
                                         #---------Reward and error bars--------#
                                         #train average
                                         "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
