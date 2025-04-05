@@ -119,18 +119,21 @@ def make_train(config):
         alphatradePath=config["ATFOLDER"]+"/train",
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
-        ep_type=config["DATA_TYPE"],
+        rewardLambda=config["REWARD_LAMDA"],
         trader_unique_id=config["TRADER_UNIQUE_ID"],
+        ep_type=config["DATA_TYPE"],
+        
     )
 
     eval_env=ExecutionEnv(
         env_config,
         key_reset,
         alphatradePath=config["ATFOLDER"]+"/val",
-        window_index=config["WINDOW_INDEX"],
+       window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
-        ep_type=config["DATA_TYPE"],
+        rewardLambda=config["REWARD_LAMDA"],
         trader_unique_id=config["TRADER_UNIQUE_ID"],
+        ep_type=config["DATA_TYPE"],
     )
     eval_env_params = dataclasses.replace(
             eval_env.default_params,
@@ -390,7 +393,7 @@ def make_train(config):
 
                     #-----------Train info----------#
                     episodic_revenues_train = info_train["total_revenue"][info_train["returned_episode"]] 
-                #    reward_lam1_train=info_train["reward_lam1"][:, config["ENVID"]]
+                    reward_lam1_train=info_train["reward_lam1"]
                     quant_executed_train=info_train["quant_executed"]
                     average_price_train = info_train["average_price"]
                     current_step_train = info_train["current_step"] 
@@ -404,7 +407,7 @@ def make_train(config):
 
                     #-------------eval info------#   
                     episodic_revenues_eval = info_eval["total_revenue"][info_eval["returned_episode"]] 
-                 #   reward_lam1_eval=info_eval["reward_lam1"][:, config["ENVID"]]
+                    reward_lam1_eval=info_eval["reward_lam1"]
                     quant_executed_eval=info_eval["quant_executed"]
                     average_price_eval = info_eval["average_price"]
                     current_step_eval = info_eval["current_step"] 
@@ -458,8 +461,8 @@ def make_train(config):
                                 "revenues_eval_minus_std": (jnp.mean(episodic_revenues_eval) - jnp.std(episodic_revenues_eval)) if episodic_revenues_eval.size > 0 else 0,
 
 
-                              #  "reward_lam1_train":jnp.mean(reward_lam1_train) if reward_lam1_train.size > 0 else 0,
-                               # "reward_lam1_eval":jnp.mean(reward_lam1_eval) if reward_lam1_eval.size > 0 else 0,
+                                "reward_lam1_train":jnp.mean(reward_lam1_train) if reward_lam1_train.size > 0 else 0,
+                                "reward_lam1_eval":jnp.mean(reward_lam1_eval) if reward_lam1_eval.size > 0 else 0,
 
 
                                 
@@ -521,11 +524,11 @@ if __name__ == "__main__":
     except:
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
-    env_config_hps = [ {"task":"random",
+    env_config_hps = [ {"task":"buy",
                         "action_type":"pure",
                         "action_space":"fixed_quants",
                         "end_fn":"unwind_FT",
-                        "max_task_size":500,
+                        "max_task_size":100,
                         "n_actions":8,
                         "fixed_quant_value":10,
                         "num_messages_by_agent":8,}
@@ -533,18 +536,18 @@ if __name__ == "__main__":
 
     training_parameters = {
         "LR": {"values": [1e-4, 3e-4, 1e-3]},
-        "NUM_ENVS": {"values": [64]},
+        "NUM_ENVS": {"values": [32]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "UPDATE_EPOCHS": {"values": [4,10]},
+        "TOTAL_TIMESTEPS": {"values": [1e5]},
+        "UPDATE_EPOCHS": {"values": [4,10]},#
         "NUM_MINIBATCHES": {"values": [4]},
-        "GAMMA": {"values": [0.98,0.9999]},
-        "GAE_LAMBDA": {"values": [0.99]},
-        "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.01, 0.1]},
-        "VF_COEF": {"values": [0.5]},
-        "MAX_GRAD_NORM": {"values": [0.5]},
-        "ENV_NAME": {"values": ["AlphaTradeMM"]},
+        "GAMMA": {"values": [0.9999,0.99]},
+        "GAE_LAMBDA": {"values": [0.99,0.95]},#
+        "CLIP_EPS": {"values": [0.15]},
+        "ENT_COEF": {"values": [0.01,0.0,0.1]},#
+        "VF_COEF": {"values": [1,0.5]},#,0.5
+        "MAX_GRAD_NORM": {"values": [5,1,0.5]},
+        "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
@@ -552,18 +555,20 @@ if __name__ == "__main__":
         "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[160]},
+        "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "TRADER_UNIQUE_ID": {"values": [10]},
+        "REWARD_LAMDA": {"values": [0.2]},
         "ENVID": {"values": [1]},
 
     }    
 
     
     sweep_config={
-        "method": "grid",
-        "parameters": training_parameters
+        "method": "bayes",
+        "parameters": training_parameters,
+        "metric": {'goal': 'maximize', 'name': 'episodic_return'},
     }
 
     def sweep_fun():
@@ -587,7 +592,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_EXEC")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RWKV_FULL_DAY")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

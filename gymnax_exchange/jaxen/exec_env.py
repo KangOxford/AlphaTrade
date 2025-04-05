@@ -202,6 +202,8 @@ class ExecutionEnv(BaseLOBEnv):
             self.action_fn = self._getActionMsgs_fixedQuant
         elif self.cfg.action_space == "fixed_prices":
             self.action_fn = self._getActionMsgs_fixedPrice
+        elif self.cfg.action_space == "fixed_quants_complex":
+            self.action_fn = self._getActionMsgs_fixedQuant_complex
         else:
             raise ValueError("Invalid action_space specified.")
 
@@ -472,13 +474,7 @@ class ExecutionEnv(BaseLOBEnv):
         # if task is 'random', this will be randomly picked at env reset
         is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0
         # HERE...
-        if self.cfg.action_space=="fixed_prices":
-            n_trades=self.cfg.n_actions
-        elif self.cfg.action_space=="fixed_quants":
-            n_trades=4##always send 4
-        else:
-            raise ValueError("Invalid Action Space")
-
+        n_trades=self.cfg.num_action_messages_by_agent
         return EnvState(
             *base_vals,
             prev_action=jnp.zeros((n_trades, 2), jnp.int32),
@@ -538,6 +534,8 @@ class ExecutionEnv(BaseLOBEnv):
                 action = twapV3(state, params) + action
             action = truncate_action(action, state.task_to_execute - state.quant_executed)
         elif self.cfg.action_space=="fixed_quants":
+            action=action
+        elif self.cfg.action_space=="fixed_quants_complex":
             action=action
         else:
             raise ValueError("Invalid Action Space")
@@ -832,6 +830,102 @@ class ExecutionEnv(BaseLOBEnv):
         #---form messages---#
         action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
+        return action_msgs 
+
+    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: EnvState, params: EnvParams):
+        """Action function for the fixed Quant Action space
+        Pick for a ladder of quant execution options
+        Always send 4 messages
+        0 = No trade
+        1=      # FT
+        2=     # M
+        3=    # NT
+        4=    # PP
+        5=    # FT*2 quant
+        6=    # M*2 quant
+        7=    # NT*2 quant
+        8=    # PP*2 quant
+        9=    # FT*5 quant
+        10=   # M*5 quant
+        11=   # NT*5 quant
+        12=   # PP*5 quant
+
+        
+       """
+
+        #----01 get price levels----#
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        #jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
+
+        def buy_task_prices(best_ask, best_bid):
+            FT = best_ask
+            # mid defaults to one tick more passive if between ticks
+            M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
+            NT = best_bid
+            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
+            return FT, M, NT, PP
+        def sell_task_prices(best_ask, best_bid):
+            FT = best_bid
+            # mid defaults to one tick more passive if between ticks
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
+                 * self.tick_size).astype(jnp.int32)
+            NT = best_ask
+            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
+            return FT, M, NT, PP
+        
+        price_levels = jax.lax.cond(
+            state.is_sell_task,
+            sell_task_prices,
+            buy_task_prices,
+            best_ask, best_bid
+        )
+
+        #----02 get quants----#
+        #jax.debug.print("action:{}",action)
+        
+        quant_array = jnp.array([
+            [0, 0, 0, 0],  # No trade
+            [1, 0, 0, 0],  # FT
+            [0, 1, 0, 0],  # M
+            [0, 0, 1, 0],  # NT
+            [0, 0, 0, 1],  # PP
+            [2, 0, 0, 0],  # FT*2 quant
+            [0, 2, 0, 0],  # M*2 quant
+            [0, 0, 2, 0],  # NT*2 quant
+            [0, 0, 0, 2],  # PP*2 quant
+            [5, 0, 0, 0],  # FT*3 quant
+            [0, 5, 0, 0],  # M*3 quant
+            [0, 0, 5, 0],  # NT*3 quant
+            [0, 0, 0, 5],  # PP*3 quant
+        ])
+        quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
+        #----03 get the rest of the message----#
+        types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
+        sides = (1 - state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
+        trader_ids = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
+        order_ids = (jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) *
+                    (self.trader_unique_id + state.customIDcounter)) \
+                    + jnp.arange(0, self.cfg.num_action_messages_by_agent) #Each message has a unique ID
+        times = jnp.resize(
+            state.time + params.time_delay_obs_act,
+            (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
+        )
+        #------Check quants dont exceed inv----#
+        quant_left=state.task_to_execute-state.quant_executed
+        total_quant=quants.sum()
+        quants = jnp.where(
+                total_quant <= quant_left,
+                quants,
+                jnp.floor(quant_array[1]*quant_left)##spread evely across choices
+            ).astype(jnp.int32)
+        #--make arrays--#
+        quants=jnp.array(quants)
+        #jax.debug.print("quants:{}",quants)
+        price_levels=jnp.array(price_levels)
+        #---form messages---#
+        action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         return action_msgs         
 
 
@@ -973,6 +1067,8 @@ class ExecutionEnv(BaseLOBEnv):
         if self.cfg.action_space == "fixed_quants":
             return self.action_fn(action, state, params)
         elif self.cfg.action_space == "fixed_prices":
+            return self.action_fn(action, state, params)
+        elif self.cfg.action_space == "fixed_quants_complex":
             return self.action_fn(action, state, params)
         else:
             raise ValueError("Invalid action sspace specified.")    
@@ -1420,6 +1516,8 @@ class ExecutionEnv(BaseLOBEnv):
             else:
                 raise ValueError("Invalid action_type specified.")
         elif self.cfg.action_space=="fixed_quants":
+            return spaces.Discrete(self.cfg.n_actions)
+        elif self.cfg.action_space=="fixed_quants_complex":
             return spaces.Discrete(self.cfg.n_actions)
         else:    
             raise ValueError("Invalid action_space specified.")

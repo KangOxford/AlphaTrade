@@ -231,7 +231,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 15,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*5,  
+        "EPISODE_TIME": 60*30,  
     }
 
     rng = jax.random.PRNGKey(0)
@@ -304,8 +304,8 @@ if __name__ == "__main__":
         # ==================== ACTION ====================
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
-        test_action = env.action_space().sample(key_policy) 
-        #test_action= 4
+        #test_action = env.action_space().sample(key_policy) 
+        test_action= 4
         start = time.time()
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
         

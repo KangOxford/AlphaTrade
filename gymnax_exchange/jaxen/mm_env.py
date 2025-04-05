@@ -993,22 +993,25 @@ class MarketMakingEnv(BaseLOBEnv):
         #Estimate K paramter from data
         executed = jnp.where((state.trades[:, 0] >= 0)[:, jnp.newaxis], state.trades, 0)
         market_order=executed.shape[0]
-        k = (market_order)/state.delta_time
+        k = (market_order)/state.delta_time+0.1#ensure non zero for div later
 
         # Market volatility estimation (rolling standard deviation of mid-price)
-        mid_price_history = ((state.best_asks[-50:]+state.best_bids[-50:])//2)
+        mid_price_history = ((state.best_asks[-100:]+state.best_bids[-100:])/2)
         returns= jnp.log(mid_price_history[1:] / mid_price_history[:-1])
         vol = jnp.std(returns)
+        vol=jnp.clip(vol,0.001,0.2)#clip for large data point smoothing
+        varaince=vol**2 #variance
+        #jax.debug.print("vol:{}",vol)
         
         #Get time until ep end
         time_left = params.episode_time - (state.time - state.init_time)[0]
         normalized_time = time_left / params.episode_time
 
         #Reservation price
-        res_price = (mid_price - ((state.inventory)) * gamma * (vol) * normalized_time)
+        res_price = (mid_price - ((state.inventory)) * gamma * (varaince) * normalized_time)
 
         #Spread
-        spread = (gamma*vol*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.tick_size
+        spread = (gamma*varaince*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.tick_size
         spread=jnp.clip(spread,self.tick_size,self.cfg.maxint)#make sure spread is at least a tick
 
         bid_price= res_price-spread

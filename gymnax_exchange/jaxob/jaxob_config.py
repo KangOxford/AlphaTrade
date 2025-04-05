@@ -34,9 +34,9 @@ class EnvironmentConfig(Configuration):
     n_actions: int = env_cst.n_actions
     
     # Weights for complex reward function:
-    inventoryPnL_lambda: float = 0.6
-    unrealizedPnL_lambda: float = 0.6
-    asymmetrically_dampened_lambda: float = 0.6
+    inventoryPnL_lambda: float = 0.01
+    unrealizedPnL_lambda: float = 0.2
+    asymmetrically_dampened_lambda: float = 0.01
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -67,7 +67,7 @@ class EnvironmentExecutionConfig(Configuration):
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     task: Literal["random", "buy", "sell"]="buy"
     action_type: Literal["delta", "pure"]="pure"
-    action_space: Literal["fixed_quants","fixed_prices"]="fixed_quants"
+    action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants_complex"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     max_task_size:int=500
     n_actions:int=5
@@ -84,6 +84,10 @@ class EnvironmentExecutionConfig(Configuration):
         elif self.action_space == "fixed_prices":
             object.__setattr__(self, 'num_messages_by_agent', self.n_actions*2)
             object.__setattr__(self, 'num_action_messages_by_agent', self.n_actions)
+        elif self.action_space == "fixed_quants_complex":
+            object.__setattr__(self, 'n_actions', 13)
+            object.__setattr__(self, 'num_messages_by_agent', 8)
+            object.__setattr__(self, 'num_action_messages_by_agent', 4)
     
 
 

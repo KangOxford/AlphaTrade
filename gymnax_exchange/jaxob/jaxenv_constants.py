@@ -1,5 +1,5 @@
-action_space= "directional_trading"
-reward_space = "portfolio_value"
+action_space= "fixed_quants"
+reward_space = "complex"
 observation_space = "engineered"
 end_fn = "unwind_ref_price"
 n_ticks_in_book =1
