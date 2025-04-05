@@ -35,8 +35,8 @@ class EnvironmentConfig(Configuration):
     
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.6
-    unrealizedPnL_lambda: float = 0.0
-    asymmetrically_dampened_lambda: float = 0.05
+    unrealizedPnL_lambda: float = 0.6
+    asymmetrically_dampened_lambda: float = 0.6
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
