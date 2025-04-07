@@ -382,6 +382,7 @@ class MarketMakingEnv(BaseLOBEnv):
             "inventoryValue":extras["inventoryValue"],
             "other_exec_quants":extras["other_exec_quants"],
             "averageMidprice":extras["averageMidprice"],
+            "end_mid_price":extras["mid_price"],
             "Step_PnL":extras["PnL"],
             "action_prices":action_prices,
             "InventoryPnL":extras["InventoryPnL"],

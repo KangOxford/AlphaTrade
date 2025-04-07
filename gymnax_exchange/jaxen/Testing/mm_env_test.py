@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 15,
+        "WINDOW_INDEX": 25,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*30,  
     }
@@ -325,7 +325,7 @@ if __name__ == "__main__":
         bid_price[i] = info["action_prices"][0]  # Store best ask
         ask_price[i] = info["action_prices"][1]
         averageMidprice[i] = info["averageMidprice"]  # Store mid price
-        midprice[i]=state.mid_price
+        midprice[i]=info["end_mid_price"]
         netWorth[i]=info["netWorth"]
         average_best_bid[i]=info["average_best_bid"]
         average_best_ask[i]=info["average_best_ask"]
