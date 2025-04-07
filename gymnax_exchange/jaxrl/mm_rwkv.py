@@ -381,7 +381,7 @@ def make_train(config):
             return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
             wandb.log({"return_values:": return_values})
             if config.get("DEBUG"):
-                        def callback(info_train,info_eval):
+                        def callback(info_train, info_eval, loss=None, value_loss=None, loss_actor=None, entropy=None):
                             #------------Collect info for plotting---------------------------#
                             #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
 
@@ -505,10 +505,16 @@ def make_train(config):
                                         "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
                                         "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
                                         "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,                          
+                                        
+                                        # PPO Loss components
+                                        "ppo_loss": float(loss) if loss is not None else 0,
+                                        "ppo_value_loss": float(value_loss) if value_loss is not None else 0,
+                                        "ppo_actor_loss": float(loss_actor) if loss_actor is not None else 0,
+                                        "ppo_entropy": float(entropy) if entropy is not None else 0,
                                                                     },
                                     commit=True
                                 )
-                        jax.debug.callback(callback, info_train,eval_info)
+                        jax.debug.callback(callback, info_train, eval_info, loss, value_loss, loss_actor, entropy)
         return {"params": params, "info_train": info_train, "eval_info": eval_info}
     return train
 
@@ -526,7 +532,23 @@ if __name__ == "__main__":
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
-                            "action_space":"directional_trading"
+                            "action_space":"spread_skew"
+                            },
+                            {"observation_space":"engineered",
+                            "reward_space":"portfolio_value",
+                            "inv_penalty":"linear",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"mid",
+                            "action_space":"spread_skew"
+                            },
+                            {"observation_space":"engineered",
+                            "reward_space":"complex",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"mid",
+                            "action_space":"spread_skew"
                             }
                             ]
 
@@ -534,13 +556,13 @@ if __name__ == "__main__":
         "LR": {"values": [1e-4, 3e-4, 1e-3]},
         "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [4e5]},
-        "UPDATE_EPOCHS": {"values": [4,8]},
-        "NUM_MINIBATCHES": {"values": [16,32]},
-        "GAMMA": {"values": [0.95,0.98,0.9999]},
-        "GAE_LAMBDA": {"values": [0,95,0.99]},
+        "TOTAL_TIMESTEPS": {"values": [5e5]},
+        "UPDATE_EPOCHS": {"values": [4]},
+        "NUM_MINIBATCHES": {"values": [16]},
+        "GAMMA": {"values": [0.97,0.99,0.999]},
+        "GAE_LAMBDA": {"values": [0,95,0.99,0.999]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.01, 0.1,0]},
+        "ENT_COEF": {"values": [1, 0.01, 0.1,0]},
         "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
@@ -548,10 +570,10 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [20]},
+        "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[160]},
+        "NUM_STEPS_EVAL":{"values":[16]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
 
@@ -588,7 +610,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_one_day_longer_eval_bayes")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_ppo_loss")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
