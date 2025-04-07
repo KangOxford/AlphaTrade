@@ -511,6 +511,10 @@ def make_train(config):
                                         "ppo_value_loss": float(value_loss) if value_loss is not None else 0,
                                         "ppo_actor_loss": float(loss_actor) if loss_actor is not None else 0,
                                         "ppo_entropy": float(entropy) if entropy is not None else 0,
+                                        # Weighted PPO Loss components
+                                        "ppo_weighted_value_loss": float(config["VF_COEF"] * value_loss) if value_loss is not None else 0,
+                                        "ppo_weighted_entropy": float(config["ENT_COEF"] * entropy) if entropy is not None else 0,
+                                        "ppo_weighted_actor_loss": float(loss_actor) if loss_actor is not None else 0,
                                                                     },
                                     commit=True
                                 )
@@ -562,8 +566,8 @@ if __name__ == "__main__":
         "GAMMA": {"values": [0.97,0.99,0.999]},
         "GAE_LAMBDA": {"values": [0,95,0.99,0.999]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [1, 0.01, 0.1,0]},
-        "VF_COEF": {"values": [0.5]},
+        "ENT_COEF": {"values": [0.1]},
+        "VF_COEF": {"values": [0.000001]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
@@ -610,7 +614,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_ppo_loss")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_spread_skew_lower_value_loss")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
