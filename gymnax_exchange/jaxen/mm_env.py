@@ -936,10 +936,10 @@ class MarketMakingEnv(BaseLOBEnv):
         best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 0, 0, -1, 2, -1, 2, 5], dtype=jnp.int32)
-        ask_offsets = jnp.array([0, 0, -1, 0, -1, 2, 2, 5], dtype=jnp.int32)
-        bid_quants = jnp.array([0, 1, 0, 1, 1, 1, 1, 1], dtype=jnp.int32)
-        ask_quants = jnp.array([0, 1, 1, 0, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
+        bid_offsets = jnp.array([0, 1, 2, 3, 0, 2, 1, 4], dtype=jnp.int32)
+        ask_offsets = jnp.array([0, 1, 2, 3, 2, 0, 4, 1], dtype=jnp.int32)
+        bid_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
+        ask_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
         tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
         
@@ -1692,6 +1692,12 @@ class MarketMakingEnv(BaseLOBEnv):
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
 
+        ##aggresive
+        aggresive_buyPnL = ((bestasks[-1][0] - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
+        aggresive_sellPnL = ((agent_sells[:, 0] - bestbids[-1][0]) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
+
+
+
         #A1)Spooner paper reward
         reward_spooner = buyPnL + sellPnL + InventoryPnL - jnp.maximum(0,InventoryPnL)
 
@@ -1700,8 +1706,7 @@ class MarketMakingEnv(BaseLOBEnv):
 
         #A3) Spooner Scaled
         scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1)
-        reward_spooner_scaled=buyPnL + sellPnL + scaledInventoryPnL -jnp.maximum(0,scaledInventoryPnL)
-
+        reward_spooner_scaled=aggresive_buyPnL + aggresive_sellPnL+ self.cfg.inventoryPnL_lambda*(InventoryPnL - (1-self.cfg.asymmetrically_dampened_lambda)*jnp.maximum(0,InventoryPnL) )
         #----------------------B) Complex reward---------------------------------------------#
         inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
         unrealizedPnL_lambda = self.cfg.unrealizedPnL_lambda
@@ -1751,7 +1756,7 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.reward_space=="spooner_damped":
             reward=reward_spooner_damped
         elif self.cfg.reward_space=="spooner_scaled":
-            reward=reward_spooner_scaled
+            reward=reward_spooner_scaled/10
         elif self.cfg.reward_space=="delta_netWorth":
             reward=reward_delta_netWorth
         else:
