@@ -1406,7 +1406,13 @@ class MarketMakingEnv(BaseLOBEnv):
             reference_price = averageMidprice
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             reference_price=FT_price
-
+        elif self.cfg.reference_price_portfolio_value == "near_touch":
+            # For a long position, use the best ask; for a short, the best bid.
+            reference_price = jax.lax.cond(new_inventory > 0,
+                                        lambda: bestasks[-1][0]/self.tick_size,
+                                        lambda: bestbids[-1][0]/self.tick_size)
+        else:
+            raise ValueError("Invalid reference price type.")
         
         trades = jax.lax.cond(
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
@@ -1669,6 +1675,11 @@ class MarketMakingEnv(BaseLOBEnv):
             reference_price = jax.lax.cond(new_inventory > 0,
                                         lambda: bestbids[-1][0]/self.tick_size,
                                         lambda: bestasks[-1][0]/self.tick_size)
+        elif self.cfg.reference_price_portfolio_value == "near_touch":
+            # For a long position, use the best ask; for a short, the best bid.
+            reference_price = jax.lax.cond(new_inventory > 0,
+                                        lambda: bestasks[-1][0]/self.tick_size,
+                                        lambda: bestbids[-1][0]/self.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
 
@@ -1730,10 +1741,15 @@ class MarketMakingEnv(BaseLOBEnv):
         if self.cfg.reference_price_portfolio_value == "mid":
             old_reference_price = state.mid_price/self.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
-            # For a long position, use the best bid; for a short, the best ask.
+            # For a long position, use the best bid; for a short, the best ask. (this is realistic)
             old_reference_price = jax.lax.cond(state.inventory > 0,
                                         lambda: state.best_bids[-1][0]/self.tick_size,
                                         lambda: state.best_asks[-1][0]/self.tick_size)
+        elif self.cfg.reference_price_portfolio_value == "near_touch":
+            # For a long position, use the best ask; for a short, the best bid. (this is not realistic, but might be useful for training)
+            old_reference_price = jax.lax.cond(state.inventory > 0,
+                                        lambda: state.best_asks[-1][0]/self.tick_size,
+                                        lambda: state.best_bids[-1][0]/self.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth
