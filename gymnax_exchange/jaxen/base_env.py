@@ -178,7 +178,7 @@ class BaseLOBEnv(environment.Environment):
         self.customIDCounter=0
         self.trader_unique_id= trader_unique_id #need to be negative now??
         self.tick_size=100
-        self.start_resolution=60*10 #Interval in seconds at which eps start
+        self.start_resolution=60*5 #Interval in seconds at which eps start
         self.cfg = cfg
         loader=LoadLOBSTER_resample(alphatradePath,
                                     self.book_depth,
