@@ -48,9 +48,14 @@ jax.numpy.set_printoptions(linewidth=250)
 import dataclasses
 import distrax
 from jax_rwkv.src.auto import get_rand_model
+
 from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, get_jit_ppo, PAD_FLAG, OBS_FLAG, ACT_FLAG
 from jax import lax
 
+
+wandbOn = True # False
+if wandbOn:
+    import wandb
 
 @jax.tree_util.register_pytree_node_class
 @dataclass
@@ -173,11 +178,11 @@ if __name__ == "__main__":
   
     config = {
         "LR": 1e-3,
-        "NUM_ENVS": 2,
+        "NUM_ENVS": 4,
         "NUM_STEPS": 1,#10,#128,
-        "TOTAL_TIMESTEPS": 12,#4e5,
-        "UPDATE_EPOCHS": 4,
-        "NUM_MINIBATCHES": 1,
+        "TOTAL_TIMESTEPS": 100000,#4e5,
+        "UPDATE_EPOCHS": 2,
+        "NUM_MINIBATCHES": 4,
         "GAMMA": 0.99,# ** (1/5),
         "GAE_LAMBDA": 0.95 ,#** (1/5),
         "CLIP_EPS": 0.2,
@@ -191,8 +196,15 @@ if __name__ == "__main__":
         "WINDOW_INDEX": 20, # 2 fix random episode #-1,
         "DATA_TYPE": "fixed_time", # "fixed_time", "fixed_steps"
         "ATFOLDER": ATFolder,
-        "MAX_SEQ_LEN":5000
+        "MAX_SEQ_LEN":4096
         }
+    
+    if wandbOn:
+        run = wandb.init(
+            project="AlphaTradeMessageInputTests",
+            config=config,
+            save_code=True,  # optional
+        )
 
 
     config["NUM_UPDATES"] = (
@@ -210,7 +222,7 @@ if __name__ == "__main__":
 
     env_config=EnvironmentConfig(observation_space="messages",
                                  reward_space="portfolio_value",
-                                 inv_penalty="none",
+                                 inv_penalty="linear",
                                  end_fn="unwind_ref_price",
                                  fixed_quant_value=10,
                                  reference_price_portfolio_value="mid",
@@ -241,36 +253,30 @@ if __name__ == "__main__":
     with open("gymnax_exchange/jaxrl/pre_trained_weights/goog2022_rwkv_6g0.1B.model", "rb") as f:
         pretrained_params = pickle.load(f)
 
-
-    # Add 8 new action tokens
-    new_actions = [f"<action_{i}>" for i in range(env.action_space(env_params).n)] 
+    #Add new action tokens to our 10k tokenizer
+    num_actions = env.action_space(env_params).n
+    new_actions = [f"<action_{i}>" for i in range(num_actions)]
     tokenizer.add_special_tokens({"additional_special_tokens": new_actions})
 
+
     # Update action token range in config
-    config["MIN_ACTION_TOK"] = tokenizer.convert_tokens_to_ids("<action_0>")
-    config["MAX_ACTION_TOK"] = tokenizer.convert_tokens_to_ids("<action_7>")
+    min_action_tok = tokenizer.convert_tokens_to_ids("<action_0>")
+    max_action_tok = tokenizer.convert_tokens_to_ids(f"<action_{num_actions - 1}>")
+    config["MIN_ACTION_TOK"] = min_action_tok
+    config["MAX_ACTION_TOK"] = max_action_tok
+    jax.debug.print("min_action_tok: {}", min_action_tok)
+    jax.debug.print("max_action_tok: {}", max_action_tok)
 
-    # Get updated vocab size (considering action tokens)
-    #potentially remove 1
-    num_tokens =  env.action_space(env_params).n + tokenizer.vocab_size
+    num_tokens =  num_actions + tokenizer.vocab_size
 
-    print(f"Updated vocab size: {num_tokens}")
-
-    old_vocab_size = pretrained_params['emb']['weight'].shape[0]
+    #Intialise new embeedings
     n_embd =  pretrained_params['emb']['weight'].shape[1]
+    new_action_embeddings = jnp.zeros((num_actions, n_embd), dtype=pretrained_params['emb']['weight'].dtype)
 
-    # Expand embeending for the new tokens
-    if num_tokens > old_vocab_size:
-        pad_shape = (num_tokens - old_vocab_size, n_embd)
-        new_embeddings = jnp.zeros(pad_shape, dtype=pretrained_params['emb']['weight'].dtype)
-
-        # Concatenate new embeddings
-        pretrained_params['emb']['weight'] = jnp.concatenate(
-            [pretrained_params['emb']['weight'], new_embeddings], axis=0
-        )
-
-    print("Embedding layer updated to size:", pretrained_params['emb']['weight'].shape)
-
+    #Put these intialised embeddings into the model
+    pretrained_params['emb']['weight'] = pretrained_params['emb']['weight'].at[min_action_tok:max_action_tok+1].set(new_action_embeddings)#+1 as slicing needs to be inclusive
+    
+    
     # Get N_layers
     n_layer =  pretrained_params['blocks']['att']['time_faaaa'].shape[0]
     print("nlayer:",n_layer)
@@ -279,19 +285,20 @@ if __name__ == "__main__":
     env = FlattenObservationWrapper(env)
     env = LogWrapper(env)
 
-
-    print("Original head layer shape:", pretrained_params['head']['weight'].shape)
-
     # Initialize the RWKV model with dynamic layer and embedding size
+    #use the load functionality to get the model, hwoever we dont load these random weights, just using the interface to get rwkv6
     RWKV, _ = get_rand_model(0, "6", n_layer, n_embd, num_tokens, dtype="float32", rwkv_type="ScanRWKV")
     params = pretrained_params 
 
-   
-
-
+    # Define a forward fn
     forward, params = get_ppo_agent(RWKV, params, seed=1)
+    #jit version
     v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
+
+    #Jitted GAE from rl_processing
     j_calculate_gae = jax.jit(jax.vmap(calculate_gae, in_axes=(0, 0, 0, 0, 0, None, None)))
+
+    #Get intial state for RWKV
     init_state = RWKV.default_state(params)
     if isinstance(init_state, tuple):
         init_state = tuple([
@@ -317,11 +324,14 @@ if __name__ == "__main__":
         optax.adam(linear_schedule, eps=1e-5)
     )
     optimizer = solver.init(params)
+    
 
+    #Reset the environment
     rng, _rng = jax.random.split(rng)
     reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
     obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
 
+    #Define a Jitted step function
     v_env_step = jax.jit(jax.vmap(
         env.step, in_axes=(0, 0, 0, None)
     ))
@@ -346,20 +356,21 @@ if __name__ == "__main__":
             obsv = obsv.reshape((config["NUM_ENVS"], 104, 8))
 
             for i in range(obsv.shape[0]):  # loop over envs
+                #non jitted np pre proc....
                 env_obsv = obsv[i]  # shape (104, 8)
-        #        jax.debug.print("env_obsv: {}", env_obsv)
+              #  jax.debug.print("env_obsv: {}", env_obsv)
 
                 # Convert to numpy for Python-side processing
                 env_obsv_np = jax.device_get(env_obsv)
 
-                # Call your existing string formatter
+                # String formatter
                 string_obs = lob_to_str(env_obsv_np)  # string output
-        #        jax.debug.print("string_obs: {}", string_obs)
+             #   jax.debug.print("string_obs: {}", string_obs)
                 
                 # Tokenize
                 tokens = tokenizer.encode(string_obs)
                 obvs_token_lengths.append(min(len(tokens), config["MAX_SEQ_LEN"]))
-                jax.debug.print("obvs_token_lengths: {}", obvs_token_lengths)
+            #    jax.debug.print("obvs_token_lengths: {}", obvs_token_lengths)
 
                 padded = tokens[:config["MAX_SEQ_LEN"]]
                 padded += [pad_token_id] * (config["MAX_SEQ_LEN"] - len(padded))
@@ -369,26 +380,27 @@ if __name__ == "__main__":
 
             obvs_tokenized = jnp.stack(obvs_list)
          #   jax.debug.print("tokenized_batch: {}", obvs_tokenized)
-            jax.debug.print("tokenized_batch shape: {}", obvs_tokenized.shape)
+          #  jax.debug.print("tokenized_batch shape: {}", obvs_tokenized.shape)
 
             obvs_token_lengths = jnp.array(obvs_token_lengths, dtype=jnp.int32)
 
             #feed in
-          #  jax.debug.print("obvs_list shape: {}", obvs_token_lengths.shape)  # (NUM_ENVS, MAX_SEQ_LEN)
-            jax.debug.print("token_lengths: {}", obvs_token_lengths)  # (NUM_ENVS,)
+           # jax.debug.print("obvs_list shape: {}", obvs_token_lengths.shape)  # (NUM_ENVS, MAX_SEQ_LEN)
+           # jax.debug.print("token_lengths: {}", obvs_token_lengths)  # (NUM_ENVS,)
 
             pi, value, state = v_forward_jit(obvs_tokenized, state, params, obvs_token_lengths)
             value=value.astype(jnp.float32)
-            #jax.debug.print("pi: {}", pi)
+            
 
             pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
             action = pi.sample(seed=_rng)
+          #  jax.debug.print("action: {}", action)
+
 
             current_actions = jax.device_get(action)
             all_actions.extend(current_actions.flatten().tolist())
             log_prob = pi.log_prob(action)
-            #jax.debug.print("action: {}", action)
-
+            
             _, value1, state = v_forward_jit(action, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
             value1=value1.astype(jnp.float32)
 
@@ -399,29 +411,29 @@ if __name__ == "__main__":
             state = jax.vmap(jax.lax.select)(done, init_state, state)
 
            
-            #jax.debug.print("obvs_tokenized shape: {}", obvs_tokenized.shape)  # (NUM_ENVS, SEQ_LEN)
+            #jax.debug.print("obvs_tokenized shape: {}", obvs_tokenized.shape)  
             
-            tokens_list.append(obvs_tokenized)
-            tokens_list.append(action[:, None] + config["MIN_ACTION_TOK"])
-            padding_length = config["MAX_SEQ_LEN"] - obvs_token_lengths
-            jax.debug.print("padding_length: {}", padding_length)  # (NUM_ENVS,)
+            tokens_list.append(obvs_tokenized)#add the obvs
+            tokens_list.append(action[:, None] + config["MIN_ACTION_TOK"])#add the action token
+            padding_length = config["MAX_SEQ_LEN"] - obvs_token_lengths#work out length of padding for each env
+        #    jax.debug.print("padding_length: {}", padding_length)  # (NUM_ENVS,)
 
            
-            padding_mask = jnp.arange(config["MAX_SEQ_LEN"]) >= obvs_token_lengths[:, None]
-            jax.debug.print("padding_mask: {}", padding_mask)  # (NUM_ENVS, SEQ_LEN)
+            padding_mask = jnp.arange(config["MAX_SEQ_LEN"]) >= obvs_token_lengths[:, None] #pad from obvs end to max seq length
+          #  jax.debug.print("padding_mask: {}", padding_mask)  
             obs_flags = jnp.ones_like(obvs_tokenized) * OBS_FLAG
             obs_pad_flags = jnp.where(padding_mask, PAD_FLAG, OBS_FLAG)
 
 
             
-            flags_list.append(obs_pad_flags)
-            flags_list.append(jnp.ones_like(obvs_tokenized)[:, :1] * ACT_FLAG)
+            flags_list.append(obs_pad_flags)#put the obvs and pad flags on
+            flags_list.append(jnp.ones_like(obvs_tokenized)[:, :1] * ACT_FLAG)#put the act flag on
 
             values_list.append(value)
             values_list.append(value1)
 
-            rewards_list.append(jnp.zeros(shape=obvs_tokenized.shape))
-            rewards_list.append(reward[:, None])
+            rewards_list.append(jnp.zeros(shape=obvs_tokenized.shape))#no reward for all obvs
+            rewards_list.append(reward[:, None])#reward for action at end
 
             log_prob_list.append(jnp.zeros_like(value))
             log_prob_list.append(log_prob[:, None])
@@ -434,15 +446,26 @@ if __name__ == "__main__":
                 update_returns.append(r)
             global_timestep += 1
 
+            if config.get("DEBUG"):
+
+                def callback(return_values):
+                    wandb.log(
+                        {"episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,
+                        }
+                    )
+
         #Form lists for adv calcs
         tokens_list = jnp.concatenate(tokens_list, axis=1)
+       # jax.debug.print("tokens_list shape: {}", tokens_list.shape) #(NUM_ENVS, MAX_SEQ_LEN+1 for action *num steps) 
         flags_list = jnp.concatenate(flags_list, axis=1)
+        #jax.debug.print("flags_list shape: {}", flags_list.shape) #(NUM_ENVS, MAX_SEQ_LEN+1 for action *num steps)
         values_list = jnp.concatenate(values_list, axis=1)
         rewards_list = jnp.concatenate(rewards_list, axis=1)
         log_probs_list = jnp.concatenate(log_prob_list, axis=1)[..., 1:]
         dones_list = jnp.concatenate(dones_list, axis=1)
         buf = JString(tokens_list, jnp.ones_like(tokens_list[:, 0]) * tokens_list.shape[1])
-    
+      
+        #some flag masking
         dones_list = jnp.cumsum(dones_list, axis=1, dtype=jnp.bool)
         flags_list = jnp.where(jnp.concatenate((dones_list[:, :1], dones_list[:, :-1]), axis=1), PAD_FLAG, flags_list)
         
@@ -451,12 +474,10 @@ if __name__ == "__main__":
         final_obsv = obsv.reshape((config["NUM_ENVS"], 104, 8))
         for i in range(final_obsv.shape[0]):  # loop over envs
             env_obsv = final_obsv[i]  # shape (104, 8)
-        #    jax.debug.print("env_obsv: {}", env_obsv)
-
             # Convert to numpy for Python-side processing
             env_obsv_np = jax.device_get(env_obsv)
 
-            # Call your existing string formatter
+            # Exisiting string formatter
             string_obs = lob_to_str(env_obsv_np)  # string output
          #   jax.debug.print("string_obs: {}", string_obs)
             
@@ -484,6 +505,7 @@ if __name__ == "__main__":
             print("avg returns:", sum(update_returns) / len(update_returns))
         else:
             print("None ended")
+        
         #Update weights
         for _ in range(config["UPDATE_EPOCHS"]):
             params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)

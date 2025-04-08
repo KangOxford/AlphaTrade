@@ -331,6 +331,12 @@ def make_train(config):
             for _ in range(config["UPDATE_EPOCHS"]):
                 params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
                 print(loss, value_loss, loss_actor, entropy)
+            trainstate_logs = {
+                "loss": loss,
+                "value_loss": value_loss,
+                "loss_actor": loss_actor,
+                "entropy": entropy,
+            }
 
             #Reset state if done (rwkv state)
             state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
@@ -381,7 +387,8 @@ def make_train(config):
             return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
             wandb.log({"return_values:": return_values})
             if config.get("DEBUG"):
-                        def callback(info_train,info_eval):
+                        def callback(metric):
+                            trainstate_logs,info_train,info_eval=metric
                             #------------Collect info for plotting---------------------------#
                             #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
 
@@ -504,11 +511,16 @@ def make_train(config):
                                         "other_exec_quants_eval":jnp.mean(other_exec_quants_eval) if other_exec_quants_eval.size > 0 else 0,
                                         "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
                                         "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
-                                        "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,                          
+                                        "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,   
+
+                                        ##train info
+                                        **trainstate_logs                       
                                                                     },
                                     commit=True
                                 )
-                        jax.debug.callback(callback, info_train,eval_info)
+                    
+                        metric=(trainstate_logs,info_train,eval_info)
+                        jax.debug.callback(callback,metric)
         return {"params": params, "info_train": info_train, "eval_info": eval_info}
     return train
 
@@ -521,37 +533,37 @@ if __name__ == "__main__":
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
     env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
+                            "reward_space":"spooner_damped",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
-                            "action_space":"directional_trading"
+                            "action_space":"spread_skew",
                             }
                             ]
 
     training_parameters = {
-        "LR": {"values": [1e-4, 3e-4, 1e-3]},
-        "NUM_ENVS": {"values": [64]},
+        "LR": {"values": [1e-4]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [32]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [4e5]},
-        "UPDATE_EPOCHS": {"values": [4,8]},
-        "NUM_MINIBATCHES": {"values": [16,32]},
-        "GAMMA": {"values": [0.95,0.98,0.9999]},
-        "GAE_LAMBDA": {"values": [0,95,0.99]},
-        "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.01, 0.1,0]},
-        "VF_COEF": {"values": [0.5]},
+        "TOTAL_TIMESTEPS": {"values": [2e5]},
+        "UPDATE_EPOCHS": {"values": [6]},#,8
+        "NUM_MINIBATCHES": {"values": [4]},
+        "GAMMA": {"values": [0.99]},#0.95,0.98
+        "GAE_LAMBDA": {"values": [0.9,0.99]},
+        "CLIP_EPS": {"values": [0.1,0.15]},
+        "ENT_COEF": {"values": [0.1]},#0.01, 0.1,0
+        "VF_COEF": {"values": [0.05,0.1,0.001]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [20]},
+        "WINDOW_INDEX": {"values": [13]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[160]},
+        "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
 
@@ -559,11 +571,8 @@ if __name__ == "__main__":
 
     
     sweep_config={
-        "method": "bayes",
-        "metric": {
-            "name": "netWorth_train",  # Choose the metric you want to optimize
-            "goal": "maximize"          # "maximize" or "minimize"
-        },
+        "method": "grid",
+
         "parameters": training_parameters
     }
 
@@ -588,7 +597,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_one_day_longer_eval_bayes")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_fixed_quants_manual_overfit")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

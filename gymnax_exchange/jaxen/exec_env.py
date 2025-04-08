@@ -1305,7 +1305,7 @@ class ExecutionEnv(BaseLOBEnv):
         
         # ---------- normalize the reward ----------
         # reward /= 10_000
-        reward_scaled = reward / 100_000
+        reward_scaled = reward / 10
         # reward /= params.avg_twap_list[state.window_index]
         return reward_scaled, {
             "agentQuant": agentQuant,

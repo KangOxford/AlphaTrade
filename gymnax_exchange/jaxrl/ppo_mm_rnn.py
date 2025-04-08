@@ -427,6 +427,14 @@ def make_train(config):
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
             train_state = update_state[0]
+            ##Add ppo info
+            trainstate_logs = {
+                "learning_rate": train_state.opt_state[1].hyperparams["learning_rate"],
+                "mean_loss": jnp.mean(loss_info[0]),
+                "mean_value_loss": jnp.mean(loss_info[1][0]),
+                "mean_actor_loss": jnp.mean(loss_info[1][1]),
+                "mean_entropy_loss": jnp.mean(loss_info[1][2]),
+            }
             metric = traj_batch.info
             rng = update_state[-1]
 
@@ -520,7 +528,7 @@ def make_train(config):
             baseline_metric=baseline_traj_batch.info
 
             if config.get("DEBUG"):
-                def callback(info_train,info_eval,baseline_metric,update_count):
+                def callback(trainstate_logs,info_train,info_eval,baseline_metric,update_count):
                     #------------Collect info for plotting---------------------------#
                     #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
 
@@ -697,6 +705,9 @@ def make_train(config):
                                 "averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
                                 "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
                                 #----------Action prices------------#
+
+                                #Training info
+                                **trainstate_logs,
                               
                                
                                  "update_count": update_count,
@@ -721,7 +732,7 @@ def make_train(config):
                             print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
                 jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
 
-            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
+            runner_state = (trainstate_logs,train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
 
             return runner_state, (metric,eval_metric)
 

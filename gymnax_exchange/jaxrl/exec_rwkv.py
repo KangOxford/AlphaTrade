@@ -535,40 +535,40 @@ if __name__ == "__main__":
                         ]
 
     training_parameters = {
-        "LR": {"values": [1e-4, 3e-4, 1e-3]},
+        "LR": {"values": [1e-4]},#, 3e-4, 1e-3]
         "NUM_ENVS": {"values": [32]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [1e5]},
-        "UPDATE_EPOCHS": {"values": [4,10]},#
+        "TOTAL_TIMESTEPS": {"values": [5e5]},
+        "UPDATE_EPOCHS": {"values": [4]},#,10
         "NUM_MINIBATCHES": {"values": [4]},
-        "GAMMA": {"values": [0.9999,0.99]},
-        "GAE_LAMBDA": {"values": [0.99,0.95]},#
+        "GAMMA": {"values": [0.9999]},#,0.99
+        "GAE_LAMBDA": {"values": [0.99]},#,0.95
         "CLIP_EPS": {"values": [0.15]},
-        "ENT_COEF": {"values": [0.01,0.0,0.1]},#
-        "VF_COEF": {"values": [1,0.5]},#,0.5
-        "MAX_GRAD_NORM": {"values": [5,1,0.5]},
+        "ENT_COEF": {"values": [0.05]},#0.01,0.0,
+        "VF_COEF": {"values": [0.5]},#,0.5
+        "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [-1]},
+        "WINDOW_INDEX": {"values": [25]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "TRADER_UNIQUE_ID": {"values": [10]},
-        "REWARD_LAMDA": {"values": [0.2]},
+        "REWARD_LAMDA": {"values": [0]},
         "ENVID": {"values": [1]},
 
     }    
 
     
     sweep_config={
-        "method": "bayes",
+        "method": "grid",
         "parameters": training_parameters,
-        "metric": {'goal': 'maximize', 'name': 'episodic_return'},
+       # "metric": {'goal': 'maximize', 'name': 'episodic_return'},
     }
 
     def sweep_fun():
@@ -592,7 +592,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RWKV_FULL_DAY")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RWKV_OVERFIT")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
