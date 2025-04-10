@@ -234,6 +234,7 @@ def make_train(config):
             dones_list = []
             all_actions = []
             update_returns = []
+            update_pnl=[]
 
             
             for t in range(config["NUM_STEPS"]):
@@ -299,8 +300,11 @@ def make_train(config):
                 dones_list.append(done[:, None])
 
                 return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                episdoic_pnl=info_train["total_PnL"][info_train["returned_episode"]]
                 for r in return_values:
                     update_returns.append(r)
+                for p in episdoic_pnl:
+                     update_pnl.append(p)                    
                 global_timestep += 1
 
             #Form lists for adv calcs
@@ -323,9 +327,25 @@ def make_train(config):
             # print("target", targets)
             print("UPDATING")
             if len(update_returns) > 0:
+                average_return=sum(update_returns) / len(update_returns)
                 print("avg returns:", sum(update_returns) / len(update_returns))
             else:
+                average_return=0
                 print("None ended")
+            if len(update_pnl) > 0:
+                average_pnl=sum(update_pnl) / len(update_pnl)
+                print("avg episodic pnl:", sum(update_pnl) / len(update_pnl))
+            else:
+                average_pnl=0
+                print("None ended")
+            wandb.log( 
+                data={
+                     "average_return":average_return,
+                     "average_pnl":average_pnl,
+                     "global_timestep":global_timestep
+                },
+                commit=True
+            )
 
             #Update weights
             for _ in range(config["UPDATE_EPOCHS"]):
@@ -387,13 +407,14 @@ def make_train(config):
                             #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
 
                             #1)Step and return info
-                            return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+                           # return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
                             timesteps=info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
-            
+                            
+                            
                             #-----------Train info----------#
                             ##Global episodic plots
-                            episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
-                            episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
+                            #episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
+                            #episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
                             
                         
                             #Average across all envs
@@ -429,8 +450,8 @@ def make_train(config):
                                 wandb.log(
                                     data={
                                         #-----time and return------------#
-                                        "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                        "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
+                                       # "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
+                                      #  "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
                                         
                                         #"windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
                                         #---------Reward and error bars--------#
@@ -447,9 +468,9 @@ def make_train(config):
                                         
                                         #---------PnL and errors bars-----------#
                                         #Average, end
-                                        "Episodic_PnL_train_mean": jnp.mean(episodic_PnL_train) if episodic_PnL_train.size > 0 else 0,
-                                        "Episodic_PnL_train_plus_std": (jnp.mean(episodic_PnL_train) + jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
-                                        "Episodic_PnL_train_minus_std": (jnp.mean(episodic_PnL_train) - jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
+                                       # "Episodic_PnL_train_mean": jnp.mean(episodic_PnL_train) if episodic_PnL_train.size > 0 else 0,
+                                       # "Episodic_PnL_train_plus_std": (jnp.mean(episodic_PnL_train) + jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
+                                       # "Episodic_PnL_train_minus_std": (jnp.mean(episodic_PnL_train) - jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
                                         #Average
                                         "PnL_train":jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
                                         "PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
@@ -462,9 +483,9 @@ def make_train(config):
                                 
                                         #-------------NetWorth and error bars----------#
                                         #train
-                                        "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
-                                        "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
-                                        "Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                      #  "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
+                                       # "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
+                                        #"Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
                                         #Average
                                         "netWorth_train":jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
                                         "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
@@ -548,7 +569,7 @@ if __name__ == "__main__":
         "LR": {"values": [5e-5]},#, 3e-4, 1e-3
         "NUM_ENVS": {"values": [32]},
         "NUM_STEPS": {"values": [64]},  
-        "TOTAL_TIMESTEPS": {"values": [5e5]},
+        "TOTAL_TIMESTEPS": {"values": [2e5]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.99]},
@@ -560,10 +581,11 @@ if __name__ == "__main__":
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
+
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [21]},
-        "EPISODE_TIME": {"values": [60*2]},
+        "WINDOW_INDEX": {"values": [13]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
@@ -586,7 +608,7 @@ if __name__ == "__main__":
             params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
             print(f"Results will be saved to {params_file_name}")
             # +++++ Single GPU +++++
-            rng = jax.random.PRNGKey(0)
+            rng = jax.random.PRNGKey(1)
             train = (make_train(wandb.config))
             # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
             out = train(rng)
