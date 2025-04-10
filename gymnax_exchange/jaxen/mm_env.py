@@ -1407,7 +1407,7 @@ class MarketMakingEnv(BaseLOBEnv):
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             reference_price=FT_price
         elif self.cfg.reference_price_portfolio_value == "near_touch":
-            # For a long position, use the best ask; for a short, the best bid.
+            # Even if we value our at the near touch price, we still want to unwind at the far touch price to be realistic
             reference_price=FT_price
         else:
             raise ValueError("Invalid reference price type.")
