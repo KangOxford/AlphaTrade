@@ -24,6 +24,7 @@ class EnvironmentConfig(Configuration):
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2
+    start_resolution: int = env_cst.start_resolution  # interval in seconds at which episodes start
     
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
@@ -74,6 +75,7 @@ class EnvironmentExecutionConfig(Configuration):
     fixed_quant_value:int=10
     num_messages_by_agent:int=8
     num_action_messages_by_agent:int=4
+    start_resolution: int = 300  # 60*5, interval in seconds at which episodes start
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!
