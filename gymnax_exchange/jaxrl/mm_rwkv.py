@@ -531,44 +531,31 @@ if __name__ == "__main__":
     except:
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
-    env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"spooner_damped",
+    env_config_hps = [ {    "observation_space":"engineered",
+                            "reward_space":"spooner_scaled",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
+                            "action_space":"fixed_quants",
+                            "asymmetrically_dampened_lambda":1,#Full Spooner damping
+                            "inventoryPnL_lambda":1.0,
                             },
-                            {"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"linear",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"complex",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
-                            }
+                            
                             ]
 
     training_parameters = {
-        "LR": {"values": [1e-4]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [32]},
+        "LR": {"values": [2.5e-4]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [5e5]},
-        "UPDATE_EPOCHS": {"values": [4]},
+        "TOTAL_TIMESTEPS": {"values": [4e6]},
+        "UPDATE_EPOCHS": {"values": [4,10]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.97,0.99,0.999]},
-        "GAE_LAMBDA": {"values": [0.95,0.99,0.999]},
-        "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.003]},
-        "VF_COEF": {"values": [0.000000005]},
+        "GAMMA": {"values": [0.99]},
+        "GAE_LAMBDA": {"values": [0.999]},
+        "CLIP_EPS": {"values": [0.25]},
+        "ENT_COEF": {"values": [0.01, 0.05]},
+        "VF_COEF": {"values": [0.1,0.05]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
@@ -576,9 +563,9 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [-1]},
-        "EPISODE_TIME": {"values": [60*5]},
+        "EPISODE_TIME": {"values": [60*10]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[16]},
+        "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
 
@@ -586,9 +573,12 @@ if __name__ == "__main__":
 
     
     sweep_config={
-        "method": "grid",
-
-        "parameters": training_parameters
+        "method": "bayes",
+        "metric": {
+            "name": "episodic_return",
+            "goal": "maximize"
+        },
+                        "parameters": training_parameters
     }
 
     def sweep_fun():
@@ -612,7 +602,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_spread_skew_lower_value_loss")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_scaled_reward")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
