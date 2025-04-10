@@ -1408,9 +1408,7 @@ class MarketMakingEnv(BaseLOBEnv):
             reference_price=FT_price
         elif self.cfg.reference_price_portfolio_value == "near_touch":
             # For a long position, use the best ask; for a short, the best bid.
-            reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestasks[-1][0]/self.tick_size,
-                                        lambda: bestbids[-1][0]/self.tick_size)
+            reference_price=FT_price
         else:
             raise ValueError("Invalid reference price type.")
         
