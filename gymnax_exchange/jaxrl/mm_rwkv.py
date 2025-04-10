@@ -538,7 +538,7 @@ if __name__ == "__main__":
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading"
+                            "action_space":"spread_skew"
                             },
                             {"observation_space":"engineered",
                             "reward_space":"delta_netWorth",
@@ -546,7 +546,7 @@ if __name__ == "__main__":
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
                             "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading"
+                            "action_space":"spread_skew"
                             },
                             ]
 
@@ -568,7 +568,7 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [-1]},
+        "WINDOW_INDEX": {"values": [13]},
         "EPISODE_TIME": {"values": [60*10]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
@@ -608,7 +608,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_trading_whole_day")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_spread_skew_near_touch_overfit")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
