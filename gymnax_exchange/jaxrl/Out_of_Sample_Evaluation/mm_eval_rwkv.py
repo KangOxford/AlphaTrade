@@ -78,13 +78,13 @@ from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, ge
 
 
 
-
 wandbOn = True # False
 if wandbOn:
     import wandb
 #----Wandb and parameters----#
 # Initialize wandb
 wandb.init(project="AlphaTrade_MM_RWKV_Eval", config={"run_type": "evaluation"})
+
 
 ##Special class to handel the flag list, Jax String.
 @jax.tree_util.register_pytree_node_class
@@ -144,20 +144,21 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": -1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*15,
-        "NUM_ENVS": 256, 
+        "EPISODE_TIME": 60*2, 
         "TRADERID": 10,
+        "NUM_EPS":20,
+        "NUM_ENVS": 64,
     }
     
     
     #-----Define testing configuration-----#
     test_env_config_hps = [{"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"linear",
+                         "reward_space":"spooner_scaled",
+                         "inv_penalty":"none",
                          "n_actions":8,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"best_bid_ask",
+                         "reference_price_portfolio_value":"mid",
                          "action_space":"fixed_quants"
                          }]
    
@@ -181,9 +182,8 @@ if __name__ == "__main__":
     )
 
     
-# Load the trained model parameters 
-
-    params_filename = "/home/duser/AlphaTrade/params_file_upbeat-sweep-1_04-08_11-16"
+    # Load the trained model parameters 
+    params_filename = "/home/duser/AlphaTrade/params_file_resilient-sweep-1_04-08_15-01"
     with open(params_filename, 'rb') as f:
         params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
         
@@ -197,8 +197,11 @@ if __name__ == "__main__":
     #Define the forward function and jit version
     forward, params = get_ppo_agent(RWKV, params, seed=1)
     v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
+    v_env_step = jax.jit(jax.vmap(
+        test_env.step, in_axes=(0, 0, 0, None)
+    ))
 
-    #Get init state
+    #Get init state for training
     init_state = RWKV.default_state(params)
     #returns 0s for weights, in /home/duser/AlphaTrade/jax_rwkv/src/jax_rwkv/base_rwkv.py
     if isinstance(init_state, tuple):
@@ -206,202 +209,130 @@ if __name__ == "__main__":
     else:
         init_state = jnp.repeat(init_state[None], config["NUM_ENVS"], axis=0)
     state = init_state
-    
 
+    returns_mean_per_ep = []
+    returns_std_per_ep = []
+    pnls_mean_per_ep = []
+    pnls_std_per_ep = []
 
-    #-'''''Define baseline configuration-------#
-    baseline_config_hps = {"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"linear",
-                            "n_actions":8,
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"best_bid_ask",
-                            "action_space":"AvSt",
-                            },
-  
-    baseline_env_config = EnvironmentConfig(**baseline_config_hps[0])
-    baseline_env=MarketMakingEnv(  
-        cfg = baseline_env_config,
-        key = key_reset,
-        alphatradePath=config["ATFOLDER"],
-        window_index=config["WINDOW_INDEX"],
-        episode_time=config["EPISODE_TIME"],
-        trader_unique_id=config["TRADERID"],
-        ep_type=config["EP_TYPE"],
-    )
-
-    baseline_env_params = dataclasses.replace(
-        baseline_env.default_params,
-        episode_time=config["EPISODE_TIME"],  # in seconds
-    )
-
-
-
-
-    reset_rng = jax.random.split(key_reset, config["NUM_ENVS"])
-
-    total_rewards = []
-    total_revenues = []
-    total_executed = []
-
-    j_calculate_gae = jax.jit(jax.vmap(calculate_gae, in_axes=(0, 0, 0, 0, 0, None, None)))
-
-    episodes = 1 # Run for multiple episodes
+    episodes = config["NUM_EPS"] # Run for multiple episodes
     for episode in range(episodes):
+        print(f"=== Starting Episode {episode} ===")
         # Reset the environments
-        #test
+        reset_rng = jax.random.split(key_reset, config["NUM_ENVS"])
         test_obsv, test_env_state = jax.vmap(test_env.reset, in_axes=(0, None))(reset_rng, test_env_params)
-        test_done = jnp.array([False])
-        #baseline
-        baseline_obsv, baseline_env_state = baseline_env.reset(key_reset, baseline_env_params)
-        baseline_done = jnp.array([False])
-
-        test_episode_reward = 0
-        baseline_episode_reward = 0
+  
         # ============================
         # Run the test loop
         # ============================
-        for step in range(100000000): 
-            rng, _rng = jax.random.split(rng)
-            #test action
-            tokenized = handle_continuous(test_obsv)
+        # Initialize per-env tracking arrays
+        test_episode_reward = jnp.zeros(config["NUM_ENVS"])
+        episode_returns = jnp.full(config["NUM_ENVS"], jnp.nan)
+        episode_pnls = jnp.full(config["NUM_ENVS"], jnp.nan)
+        test_done_mask = jnp.zeros(config["NUM_ENVS"], dtype=bool)
 
-            #====================#
-            #Evaluate policy from model
-            #=====================#
-            pi, value, state = v_forward_jit(tokenized, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
-            pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
-            action = pi.sample(seed=_rng)
-            current_actions = jax.device_get(action)
+        for step in range(100000000): 
+            # =========================== #
+            # Skip completed envs by masking observations
+            # =========================== #
+            masked_obsv = jax.tree_util.tree_map(
+                lambda x: jnp.where(test_done_mask[:, None], jnp.zeros_like(x), x), 
+                test_obsv
+            )
+
+            # Tokenize observation
+            tokenized = handle_continuous(masked_obsv)
+            #jax.debug.print("tokenized shape: {}", tokenized.shape)
+
+            # Evaluate policy
+            pi, value, state = v_forward_jit(
+                tokenized, state, params,
+                jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1]
+            )
+            pi = distrax.Categorical(
+                logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1]
+            )
+            action = pi.sample(seed=key_policy)
             log_prob = pi.log_prob(action)
 
-            #============#
-            #Update the state with the new action
-            #============#
-            _, value1, state = v_forward_jit(action, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+            # Mask action for done envs
+            action = jnp.where(test_done_mask, 0, action)  # or any no-op action
 
-            # Take a step in the environment
+            # Update state
+            _, value1, state = v_forward_jit(
+                action, state, params,
+                jnp.ones(config["NUM_ENVS"], dtype=jnp.int32)
+            )
+
+            # Step environments
             rng, _rng = jax.random.split(rng)
             rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-            test_obsv, test_env_state, test_reward, test_done, test_info = jax.vmap(test_env.step, in_axes=(0, 0, 0, None))(rng_step, test_env_state, action, test_env_params)
-            
-            test_episode_reward += test_reward.sum()
+            obsv, test_env_state, test_reward, test_done, info_train = v_env_step(
+                rng_step, test_env_state, action, test_env_params
+            )
 
-            #baseline action
-            baseline_action = 5
-            baseline_obsv, baseline_env_state, baseline_reward, baseline_done, baseline_info = baseline_env.step(key_step, baseline_env_state, baseline_action, baseline_env_params)
-            baseline_episode_reward += baseline_reward
+            # Accumulate rewards only for active envs
+            test_episode_reward += jnp.where(test_done_mask, 0, test_reward)
 
-            # Logging every N steps (to avoid spamming WandB)
+            # Identify envs that just finished this step
+            newly_done = jnp.logical_and(test_done, jnp.logical_not(test_done_mask))
+
+            # Log final return and PnL for newly finished envs
+            def get_final_pnl(info, default=0.0):
+                return info.get("total_PnL", default)
+
+            extract_pnl_vmap = jax.vmap(get_final_pnl)
+            final_pnls = extract_pnl_vmap(info_train)
+
+            # Update logs where newly done
+            episode_returns = jnp.where(newly_done, test_episode_reward, episode_returns)
+            episode_pnls = jnp.where(newly_done, final_pnls, episode_pnls)
+
+            # Update done mask
+            test_done_mask = jnp.logical_or(test_done_mask, test_done)
+
+            # Update observation
+            test_obsv = obsv
+
+            print(f"on step {step} of episode {episode} out of {episodes}")
+
+            if test_done_mask.all():
+                break   
+        print(f"\n=== Episode {episode} Results ===")
+        print("Returns:", episode_returns)
+        print("PnLs:   ", episode_pnls)
+    
+        mean_return = jnp.nanmean(episode_returns)
+        std_return = jnp.nanstd(episode_returns)
+
+        mean_pnl = jnp.nanmean(episode_pnls)
+        std_pnl = jnp.nanstd(episode_pnls)
+
+        wandb.log({
+            "mean_return": float(mean_return),
+            "std_return": float(std_return),
+            "mean_pnl": float(mean_pnl),
+            "std_pnl": float(std_pnl),
+            "episode": episode,
+        })
+        wandb.log({
+            "returns_distribution": wandb.Histogram(episode_returns),
+            "pnls_distribution": wandb.Histogram(episode_pnls),
+            "episode": episode,
+        })
+
+        # Store them
+        returns_mean_per_ep.append(mean_return)
+        returns_std_per_ep.append(std_return)
+        pnls_mean_per_ep.append(mean_pnl)
+        pnls_std_per_ep.append(std_pnl)
+
+        print(f"Mean Return: {mean_return:.2f}, Std Return: {std_return:.2f}")
+        print(f"Mean PnL: {mean_pnl:.2f}, Std PnL: {std_pnl:.2f}")
         
-        
-            # Log results
-            #-----------Train info----------#
-            PnL_test = test_info["total_PnL"]
-            inventories_test = test_info["inventory"] 
-            buyQuant_test=test_info["buyQuant"]
-            sellQuant_test=test_info["sellQuant"]
-            reward_test=test_info["reward"]
-            other_exec_quants_test=test_info["other_exec_quants"]
-            netWorth_test = test_info["netWorth"]
-            averageMidprice_test=test_info["averageMidprice"]
-            averageBestbid_test=test_info["average_best_bid"]
-            averageBestask_test=test_info["average_best_ask"]
             
 
-            #-------------Baseline info------#   
-            PnL_baseline = baseline_info["total_PnL"]
-            inventories_baseline = baseline_info["inventory"]
-            buyQuant_baseline=baseline_info["buyQuant"]
-            sellQuant_baseline=baseline_info["sellQuant"]
-            reward_baseline=baseline_info["reward"]
-            other_exec_quants_baseline=baseline_info["other_exec_quants"]
-            netWorth_baseline = baseline_info["netWorth"]
-            averageMidprice_baseline=baseline_info["averageMidprice"]
-            averageBestbid_baseline=baseline_info["average_best_bid"]
-            averageBestask_baseline=baseline_info["average_best_ask"]
-            
-            
-            
-            #-----------------Logging-------------------#
-            wandb.log(
-                    data={
-                        #-----time and return------------#
-
-                        "global_step": step,
-                        #---------Reward and error bars--------#
-                        #train
-                        "reward_test":jnp.mean(reward_test) if reward_test.size > 0 else 0,
-                        "reward_test_plus_std": (jnp.mean(reward_test) + jnp.std(reward_test)) if reward_test.size > 0 else 0,
-                        "reward__test_minus_std": (jnp.mean(reward_test) - jnp.std(reward_test)) if reward_test.size > 0 else 0,
-
-                    
-                        #baseline
-                        "reward_baseline":jnp.mean(reward_baseline) if reward_baseline.size > 0 else 0,
-                        "reward_baseline_plus_std": (jnp.mean(reward_baseline) + jnp.std(reward_baseline)) if reward_baseline.size > 0 else 0,
-                        "reward_baseline_minus_std": (jnp.mean(reward_baseline) - jnp.std(reward_baseline)) if reward_baseline.size > 0 else 0,
-                        
-                        #---------PnL and errors bars-----------#
-                        #reward
-                        "PnL_test_mean": jnp.mean(PnL_test) if PnL_test.size > 0 else 0,
-                        "PnL_test_plus_std": (jnp.mean(PnL_test) + jnp.std(PnL_test)) if PnL_test.size > 0 else 0,
-                        "PnL_test_minus_std": (jnp.mean(PnL_test) - jnp.std(PnL_test)) if PnL_test.size > 0 else 0,
-            
-                        #baseline
-                        "PnL_baseline": PnL_baseline,
-                
-
-                        #-------------NetWorth and error bars----------#
-                        #train
-                        "netWorth_test": jnp.mean(netWorth_test) if netWorth_test.size > 0 else 0,
-                        "netWorth_test_plus_std": (jnp.mean(netWorth_test) + jnp.std(netWorth_test)) if netWorth_test.size > 0 else 0,
-                        "netWorth_test_minus_st": (jnp.mean(netWorth_test) - jnp.std(netWorth_test)) if netWorth_test.size > 0 else 0,
-                    
-                        #baseline
-                        "netWorth_baseline": netWorth_baseline,
-                                                        
-                        #----------Iventory and error bars------------#
-                        #train
-                        "inventory_test": jnp.mean(inventories_test) if inventories_test.size > 0 else 0, 
-                        "inventory_test_plus_std":(jnp.mean(inventories_test) + jnp.std(inventories_test)) if inventories_test.size > 0 else 0,
-                        "inventory_test_minus_std":(jnp.mean(inventories_test) - jnp.std(inventories_test)) if inventories_test.size > 0 else 0,
-                        #eval
-
-                        #baseline
-                        "inventory_baseline": inventories_baseline,
-                        
-                        #----------Buy and Sell Quant and error bars------------#
-                        #train
-                        "buyQuant_test":jnp.mean(buyQuant_test) if buyQuant_test.size > 0 else 0,
-                        "sellQuant_test":jnp.mean(sellQuant_test) if sellQuant_test.size > 0 else 0,
-                        "other_exec_quants_test":jnp.mean(other_exec_quants_test) if other_exec_quants_test.size > 0 else 0,
-                        "averageMidprice_test":jnp.mean(averageMidprice_test) if averageMidprice_test.size>0 else 0,
-                        "averageBestbid_test":jnp.mean(averageBestbid_test) if averageBestbid_test.size>0 else 0,
-                        "averageBestask_test":jnp.mean(averageBestask_test) if averageBestask_test.size>0 else 0,
-                        
-                        
-                        #baseline
-                        "buyQuant_baseline":jnp.mean(buyQuant_baseline) if buyQuant_baseline.size > 0 else 0,
-                        "sellQuant_baseline":jnp.mean(sellQuant_baseline) if sellQuant_baseline.size > 0 else 0,
-                        "other_exec_quants_baseline":jnp.mean(other_exec_quants_baseline) if other_exec_quants_baseline.size > 0 else 0,
-                        "averageMidprice_baseline":jnp.mean(averageMidprice_baseline) if averageMidprice_baseline.size>0 else 0,
-                        "averageBestbid_baseline":jnp.mean(averageBestbid_baseline) if averageBestbid_baseline.size>0 else 0,
-                        "averageBestask_baseline":jnp.mean(averageBestask_baseline) if averageBestask_baseline.size>0 else 0,
-
-                        "reward_histogram": wandb.Histogram(reward_test),
-                        "PnL_histogram": wandb.Histogram(PnL_test),
-                        "networth_histogram": wandb.Histogram(netWorth_test),
-                        },
-                                                                                
-                    commit=True,
-                )
-            print(f"on step {step} of episode {episode} out of {episodes}")         
-            
-            if test_done.all():
-                break
-
-    print("Done epsiode", episode)   
+  
             
             
 

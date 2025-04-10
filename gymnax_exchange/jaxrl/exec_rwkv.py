@@ -549,7 +549,7 @@ if __name__ == "__main__":
          "LR": {"values": [2.5e-4]},#, 3e-4, 1e-3
         "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [4e6]},
+        "TOTAL_TIMESTEPS": {"values": [1e5]},
         "UPDATE_EPOCHS": {"values": [4,10]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.99]},
@@ -577,9 +577,9 @@ if __name__ == "__main__":
 
     
     sweep_config={
-        "method": "grid",
+        "method": "bayes",
         "parameters": training_parameters,
-       # "metric": {'goal': 'maximize', 'name': 'episodic_return'},
+        "metric": {'goal': 'maximize', 'name': 'episodic_return'},
     }
 
     def sweep_fun():

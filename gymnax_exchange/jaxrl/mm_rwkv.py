@@ -331,12 +331,7 @@ def make_train(config):
             for _ in range(config["UPDATE_EPOCHS"]):
                 params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
                 print(loss, value_loss, loss_actor, entropy)
-            trainstate_logs = {
-                "loss": loss,
-                "value_loss": value_loss,
-                "loss_actor": loss_actor,
-                "entropy": entropy,
-            }
+            
 
             #Reset state if done (rwkv state)
             state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
@@ -536,6 +531,7 @@ if __name__ == "__main__":
     except:
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
+    
     env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
                             "inv_penalty":"none",
@@ -573,9 +569,9 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [-1]},
-        "EPISODE_TIME": {"values": [60*5]},
+        "EPISODE_TIME": {"values": [60*10]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[16]},
+        "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
 
@@ -583,9 +579,12 @@ if __name__ == "__main__":
 
     
     sweep_config={
-        "method": "grid",
-
-        "parameters": training_parameters
+        "method": "bayes",
+        "metric": {
+            "name": "episodic_return",
+            "goal": "maximize"
+        },
+                        "parameters": training_parameters
     }
 
     def sweep_fun():

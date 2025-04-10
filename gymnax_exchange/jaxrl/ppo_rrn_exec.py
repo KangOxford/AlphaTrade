@@ -425,6 +425,13 @@ def make_train(config):
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
             train_state = update_state[0]
+            trainstate_logs = {
+                #"learning_rate": train_state.opt_state[1].hyperparams["learning_rate"],
+                "mean_loss": jnp.mean(loss_info[0]),
+                "mean_value_loss": jnp.mean(loss_info[1][0]),
+                "mean_actor_loss": jnp.mean(loss_info[1][1]),
+                "mean_entropy_loss": jnp.mean(loss_info[1][2]),
+            }
             metric = traj_batch.info
             rng = update_state[-1]
 
@@ -510,7 +517,7 @@ def make_train(config):
             baseline_metric=baseline_traj_batch.info
 
             if config.get("DEBUG"):
-                def callback(info_train,info_eval,baseline_metric,update_count):
+                def callback(trainstate_logs,info_train,info_eval,baseline_metric,update_count):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
@@ -656,6 +663,8 @@ def make_train(config):
                                 "current_step_eval":jnp.mean(current_step_eval) if current_step_eval.size > 0 else 0,
                                 "current_step_baseline":jnp.mean(current_step_baseline) if current_step_baseline.size > 0 else 0,
                                 #----------Action prices------------#
+                                #Training info
+                                **trainstate_logs,
                               
                                
                                  "update_count": update_count,
@@ -668,9 +677,9 @@ def make_train(config):
                     if config["VERBOSE"]:
                         for t in range(len(timesteps)):
                             print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
-                jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
+                jax.debug.callback(callback, trainstate_logs,metric,eval_metric,baseline_metric,update_count)
 
-            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
+            runner_state = (train_state,env_state, last_obs, last_done, hstate, rng,update_count+1)
 
             return runner_state, (metric,eval_metric)
 
@@ -738,28 +747,28 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4]},
+        "LR": {"values": [2.5e-4,1e-4,1e-5]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [50000]},
+        "TOTAL_TIMESTEPS": {"values": [5e5]},
         "UPDATE_EPOCHS": {"values": [2,4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
         "ENT_COEF": {"values": [0.0]},
-        "VF_COEF": {"values": [0.5]},
+        "VF_COEF": {"values": [0.05,0.1]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
-        "REWARD_LAMBDA": {"values": [1.0]},
-        "EPISODE_TIME": {"values": [60*10]},
+        "REWARD_LAMBDA": {"values": [0]},
+        "EPISODE_TIME": {"values": [60*2]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "WINDOW_INDEX": {"values": [-1]},
+        "WINDOW_INDEX": {"values": [13]},
         "TRADER_UNIQUE_ID": {"values": [10]},
-        "NUM_STEPS_EVAL":{"values":[160]},
+        "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
@@ -768,8 +777,12 @@ if __name__ == "__main__":
     }    
 
     sweep_config={
-        "method": "grid",
-        "parameters": training_parameters
+        "method": "bayes",
+        "parameters": training_parameters,
+        "metric": {
+            "name": "episodic_return",
+            "goal": "maximize"
+        },
     }
 
     def sweep_fun():
