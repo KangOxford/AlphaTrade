@@ -537,41 +537,33 @@ if __name__ == "__main__":
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
     env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"spooner_damped",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
-                            },
-                            {"observation_space":"engineered",
                             "reward_space":"portfolio_value",
-                            "inv_penalty":"linear",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"complex",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"spread_skew"
-                            }
+                            "reference_price_portfolio_value":"near_touch",
+                            "action_space":"directional_trading"
+                            },
+                            {"observation_space":"engineered",
+                            "reward_space":"delta_netWorth",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"near_touch",
+                            "action_space":"directional_trading"
+                            },
                             ]
 
     training_parameters = {
-        "LR": {"values": [1e-4]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [32]},
+        "LR": {"values": [1e-4,1e-5,1e-3]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [5e5]},
+        "TOTAL_TIMESTEPS": {"values": [2e6]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.97,0.99,0.999]},
-        "GAE_LAMBDA": {"values": [0.95,0.99,0.999]},
-        "CLIP_EPS": {"values": [0.2]},
+        "GAE_LAMBDA": {"values": [0.99,0.999]},
+        "CLIP_EPS": {"values": [0.2,0.4]},
         "ENT_COEF": {"values": [0.003]},
         "VF_COEF": {"values": [0.000000005]},
         "MAX_GRAD_NORM": {"values": [0.5]},
@@ -617,7 +609,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_spread_skew_lower_value_loss")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_trading_whole_day")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

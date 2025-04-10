@@ -781,15 +781,23 @@ if __name__ == "__main__":
     #                                                    "reference_price_portfolio_value":ref,
     #                                                    "n_actions":n,
     #                                                    "fixed_quant_value":q})  
-    env_config_hps = [  {"observation_space":"engineered",
-                         "reward_space":"portfolio_value",
-                         "inv_penalty":"none",
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"mid",
-                         "action_space":"directional_trading"
-                          }
-                          ]
+    env_config_hps = [{"observation_space":"engineered",
+                            "reward_space":"portfolio_value",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"near_touch",
+                            "action_space":"directional_trading"
+                            },
+                            {"observation_space":"engineered",
+                            "reward_space":"delta_netWorth",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"near_touch",
+                            "action_space":"directional_trading"
+                            },
+                            ]
     baseline_env_config_hps = [{"observation_space":"engineered",
                             "reward_space":"portfolio_value",
                             "inv_penalty":"none",
@@ -802,27 +810,27 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [1e-4, 3e-4, 1e-3]},
+        "LR": {"values": [1e-4,1e-5,1e-3]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [3e6]},
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
         "UPDATE_EPOCHS": {"values": [4,10]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.98,0.9999]},
-        "GAE_LAMBDA": {"values": [0.99]},
+        "GAMMA": {"values": [0.97,0.99,0.999]},
+        "GAE_LAMBDA": {"values": [0.99,0.999]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.01, 0.1]},
-        "VF_COEF": {"values": [0.5]},
+        "ENT_COEF": {"values": [0.003]},
+        "VF_COEF": {"values": [0.000000005]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [100]},
+        "WINDOW_INDEX": {"values": [13]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[160]},
+        "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
@@ -862,7 +870,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading_overfitting_one_epsiode_mid")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading_reference_near_touch")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
