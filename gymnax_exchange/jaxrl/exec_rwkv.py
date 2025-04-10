@@ -384,7 +384,7 @@ def make_train(config):
             # Call back, log every update step as in rnn:
             #===========================================#
             if config.get("DEBUG"):
-                def callback(info_train,info_eval):
+                def callback(info_train,info_eval,loss=None, value_loss=None, loss_actor=None, entropy=None):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
@@ -504,7 +504,18 @@ def make_train(config):
                                 "current_step_eval":jnp.mean(current_step_eval) if current_step_eval.size > 0 else 0,
                               
                                 #----------Action prices------------#
-                              
+
+                                #----------loss components------#
+                                # PPO Loss components
+                                "ppo_loss": float(loss) if loss is not None else 0,
+                                "ppo_value_loss": float(value_loss) if value_loss is not None else 0,
+                                "ppo_actor_loss": float(loss_actor) if loss_actor is not None else 0,
+                                "ppo_entropy": float(entropy) if entropy is not None else 0,
+                                # Weighted PPO Loss components
+                                "ppo_weighted_value_loss": float(config["VF_COEF"] * value_loss) if value_loss is not None else 0,
+                                "ppo_weighted_entropy": float(config["ENT_COEF"] * entropy) if entropy is not None else 0,
+                                "ppo_weighted_actor_loss": float(loss_actor) if loss_actor is not None else 0,
+                        
                                
                               
                             
@@ -512,7 +523,7 @@ def make_train(config):
                             commit=True
                         )
                        
-                jax.debug.callback(callback, info_train,eval_info)
+                jax.debug.callback(callback, info_train,eval_info,loss, value_loss, loss_actor, entropy)
         return {"params": params, "info_train": info_train, "eval_info": eval_info}
     return train
 
@@ -535,25 +546,25 @@ if __name__ == "__main__":
                         ]
 
     training_parameters = {
-        "LR": {"values": [1e-4]},#, 3e-4, 1e-3]
-        "NUM_ENVS": {"values": [32]},
+         "LR": {"values": [2.5e-4]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [64]},
         "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [5e5]},
-        "UPDATE_EPOCHS": {"values": [4]},#,10
-        "NUM_MINIBATCHES": {"values": [4]},
-        "GAMMA": {"values": [0.9999]},#,0.99
-        "GAE_LAMBDA": {"values": [0.99]},#,0.95
-        "CLIP_EPS": {"values": [0.15]},
-        "ENT_COEF": {"values": [0.05]},#0.01,0.0,
-        "VF_COEF": {"values": [0.5]},#,0.5
+        "TOTAL_TIMESTEPS": {"values": [4e6]},
+        "UPDATE_EPOCHS": {"values": [4,10]},
+        "NUM_MINIBATCHES": {"values": [16]},
+        "GAMMA": {"values": [0.99]},
+        "GAE_LAMBDA": {"values": [0.999]},
+        "CLIP_EPS": {"values": [0.25]},
+        "ENT_COEF": {"values": [0.01, 0.05]},
+        "VF_COEF": {"values": [0.1,0.05]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [25]},
-        "EPISODE_TIME": {"values": [60*5]},
+        "WINDOW_INDEX": {"values": [13]},
+        "EPISODE_TIME": {"values": [60*2]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},

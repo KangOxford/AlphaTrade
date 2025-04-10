@@ -149,7 +149,7 @@ if wandbOn:
 
 def make_train(config):
     env_config=EnvironmentConfig(**config["ENV_CONFIG"])
-    baseline_env_config=EnvironmentConfig(**config["BASELINE_ENV_CONFIG"])
+    baseline_env_config=EnvironmentConfig(**config["ENV_CONFIG"])
 
     # env_config = dataclasses.replace(env_config, **config["ENV_CONFIG"])
 
@@ -203,7 +203,7 @@ def make_train(config):
         baseline_env.default_params,
         episode_time=config["EPISODE_TIME"],
     )
-    baseline_action=config["BASELINE_FIXED_ACTION"]
+    baseline_action=5
 
     env = FlattenObservationWrapper(env)
     env = LogWrapper(env)
@@ -429,7 +429,7 @@ def make_train(config):
             train_state = update_state[0]
             ##Add ppo info
             trainstate_logs = {
-                "learning_rate": train_state.opt_state[1].hyperparams["learning_rate"],
+                #"learning_rate": train_state.opt_state[1].hyperparams["learning_rate"],
                 "mean_loss": jnp.mean(loss_info[0]),
                 "mean_value_loss": jnp.mean(loss_info[1][0]),
                 "mean_actor_loss": jnp.mean(loss_info[1][1]),
@@ -730,9 +730,9 @@ def make_train(config):
                     if config["VERBOSE"]:
                         for t in range(len(timesteps)):
                             print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
-                jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
+                jax.debug.callback(callback, trainstate_logs,metric,eval_metric,baseline_metric,update_count)
 
-            runner_state = (trainstate_logs,train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
+            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
 
             return runner_state, (metric,eval_metric)
 
@@ -782,30 +782,25 @@ if __name__ == "__main__":
     #                                                    "n_actions":n,
     #                                                    "fixed_quant_value":q})  
     env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading"
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"delta_netWorth",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading"
-                            },
-                            ]
+                                "reward_space":"spooner_scaled",
+                                "inv_penalty":"none",
+                                "end_fn":"unwind_ref_price",
+                                "fixed_quant_value":10,
+                                "reference_price_portfolio_value":"mid",
+                                "action_space":"fixed_quants",
+                                "asymmetrically_dampened_lambda":1,#Full Spooner damping
+                                "inventoryPnL_lambda":1.0,
+                                }]
     baseline_env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"mid",
-                            "action_space":"AvSt"
-                            }]      
+                                "reward_space":"spooner_scaled",
+                                "inv_penalty":"none",
+                                "end_fn":"unwind_ref_price",
+                                "fixed_quant_value":10,
+                                "reference_price_portfolio_value":"mid",
+                                "action_space":"fixed_quants",
+                                "asymmetrically_dampened_lambda":1,#Full Spooner damping
+                                "inventoryPnL_lambda":1.0,
+                                }]    
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
@@ -813,6 +808,7 @@ if __name__ == "__main__":
         "LR": {"values": [1e-4,1e-5,1e-3]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},  
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
         "TOTAL_TIMESTEPS": {"values": [1e6]},
         "UPDATE_EPOCHS": {"values": [4,10]},
         "NUM_MINIBATCHES": {"values": [16]},
@@ -833,16 +829,18 @@ if __name__ == "__main__":
         "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
-        "BASELINE_ENV_CONFIG": {"values": baseline_env_config_hps},
-        "BASELINE_FIXED_ACTION": {"values": [7]},
-        "ENVID":{"values":[1]}
+        "ENVID": {"values": [1]},
+
     }    
-
+    
     sweep_config={
-        "method": "grid",
-        "parameters": training_parameters
+        "method": "bayes",
+        "metric": {
+            "name": "episodic_return",
+            "goal": "maximize"
+        },
+                        "parameters": training_parameters
     }
-
     def sweep_fun():
         run = wandb.init(
             project="Alphatrade_Sweeps",

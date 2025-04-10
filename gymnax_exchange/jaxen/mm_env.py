@@ -2168,7 +2168,7 @@ if __name__ == "__main__":
         #test_action=env.action_space().sample(key_policy)
         test_action = env.action_space().sample(key_policy) 
         jax.debug.print("test_action :{}",test_action)
-        env.action_space().sample(key_policy) // 10
+        env.action_space().sample(key_policy) 
         # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
         start=time.time()
