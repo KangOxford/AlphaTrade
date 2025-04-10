@@ -425,6 +425,13 @@ def make_train(config):
                 _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
             )
             train_state = update_state[0]
+            trainstate_logs = {
+                #"learning_rate": train_state.opt_state[1].hyperparams["learning_rate"],
+                "mean_loss": jnp.mean(loss_info[0]),
+                "mean_value_loss": jnp.mean(loss_info[1][0]),
+                "mean_actor_loss": jnp.mean(loss_info[1][1]),
+                "mean_entropy_loss": jnp.mean(loss_info[1][2]),
+            }
             metric = traj_batch.info
             rng = update_state[-1]
 
@@ -510,7 +517,7 @@ def make_train(config):
             baseline_metric=baseline_traj_batch.info
 
             if config.get("DEBUG"):
-                def callback(info_train,info_eval,baseline_metric,update_count):
+                def callback(info_train,trainstate_logs,info_eval,baseline_metric,update_count):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
                     return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
@@ -656,6 +663,8 @@ def make_train(config):
                                 "current_step_eval":jnp.mean(current_step_eval) if current_step_eval.size > 0 else 0,
                                 "current_step_baseline":jnp.mean(current_step_baseline) if current_step_baseline.size > 0 else 0,
                                 #----------Action prices------------#
+                                #Training info
+                                **trainstate_logs,
                               
                                
                                  "update_count": update_count,
@@ -670,7 +679,7 @@ def make_train(config):
                             print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
                 jax.debug.callback(callback, metric,eval_metric,baseline_metric,update_count)
 
-            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng,update_count+1)
+            runner_state = (train_state,trainstate_logs, env_state, last_obs, last_done, hstate, rng,update_count+1)
 
             return runner_state, (metric,eval_metric)
 
@@ -741,7 +750,7 @@ if __name__ == "__main__":
         "LR": {"values": [2.5e-4]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [50000]},
+        "TOTAL_TIMESTEPS": {"values": [5e5]},
         "UPDATE_EPOCHS": {"values": [2,4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
@@ -754,10 +763,10 @@ if __name__ == "__main__":
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
-        "REWARD_LAMBDA": {"values": [1.0]},
-        "EPISODE_TIME": {"values": [60*10]},
+        "REWARD_LAMBDA": {"values": [0]},
+        "EPISODE_TIME": {"values": [60*2]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "WINDOW_INDEX": {"values": [-1]},
+        "WINDOW_INDEX": {"values": [13]},
         "TRADER_UNIQUE_ID": {"values": [10]},
         "NUM_STEPS_EVAL":{"values":[160]},
         "ATFOLDER": {"values": [ATFolder]},

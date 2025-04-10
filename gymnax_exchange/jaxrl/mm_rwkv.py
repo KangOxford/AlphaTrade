@@ -331,12 +331,7 @@ def make_train(config):
             for _ in range(config["UPDATE_EPOCHS"]):
                 params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
                 print(loss, value_loss, loss_actor, entropy)
-            trainstate_logs = {
-                "loss": loss,
-                "value_loss": value_loss,
-                "loss_actor": loss_actor,
-                "entropy": entropy,
-            }
+            
 
             #Reset state if done (rwkv state)
             state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
