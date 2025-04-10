@@ -313,7 +313,7 @@ class BaseLOBEnv(environment.Environment):
         print("START:  pre-reset in the initialization")
         pkl_file_name = (alphatradePath
                          + '_' + type(self).__name__
-                         + '_stateArray_idx_' + str(self.window_selector)
+                         + '_window_resolution_' + str(self.start_resolution)
                          + '_dtype_"' + self.ep_type
                          + '"_depth_' + str(self.book_depth)
                          + '.pkl')

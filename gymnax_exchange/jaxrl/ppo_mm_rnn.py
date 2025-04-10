@@ -805,17 +805,18 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [1e-5,5e-5,1e-4]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [64]},
+        "LR": {"values": [1e-4,1e-5,1e-3]},
+        "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},  
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
         "TOTAL_TIMESTEPS": {"values": [1e6]},
         "UPDATE_EPOCHS": {"values": [4,10]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.99]},
-        "GAE_LAMBDA": {"values": [0.999]},
-        "CLIP_EPS": {"values": [0.2,0.15]},
-        "ENT_COEF": {"values": [0.01, 0.05]},
-        "VF_COEF": {"values": [0.1,0.05]},
+        "GAMMA": {"values": [0.97,0.99,0.999]},
+        "GAE_LAMBDA": {"values": [0.99,0.999]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.003]},
+        "VF_COEF": {"values": [0.000000005]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
@@ -823,9 +824,9 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [13]},
-        "EPISODE_TIME": {"values": [60*10]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[2]},
+        "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "ENVID": {"values": [1]},
@@ -867,7 +868,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_spooner _scaled_rwkv_comparison")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading_reference_near_touch")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
