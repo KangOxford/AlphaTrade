@@ -1352,6 +1352,10 @@ class MarketMakingEnv(BaseLOBEnv):
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         '''Function to create an artifical trade which liquidates the agent's position.
             cfg.rerefernce price sets the price of the trade
+
+
+            NOTE: The prices in the trade here are NOT normalised by tick size. This is correct, as it is "as if" we sent
+            and order with these prices. The get_reward, will see the trade, and normalsie the prices following. No change needed.
         '''
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
@@ -1380,8 +1384,8 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() // self.tick_size * self.tick_size
-        #jax.debug.print("mid_price:{}",mid_price)
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+
         
         new_time = time + params.time_delay_obs_act
 
@@ -1393,12 +1397,11 @@ class MarketMakingEnv(BaseLOBEnv):
             lambda: (( bestasks[-1, 0])// self.tick_size * self.tick_size).astype(jnp.int32),
         )
 
-        def place_midprice_trade(trades, price, quant, time):
-            '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
-            mid_trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
-            trades = job.add_trade(trades, mid_trade)
-            #jax.debug.print("called?")
+        def place_refprice_trade(trades, price, quant, time):
+            '''Place a doom trade at a trade at specified price to close out our mm agent at the end of the episode.'''
+            trade = job.create_trade(
+                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.num_action_messages_by_agent, *time, -666666, self.trader_unique_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
+            trades = job.add_trade(trades, trade)
             return trades
 
         ##Get the price to unwind at based on the config
@@ -1414,23 +1417,14 @@ class MarketMakingEnv(BaseLOBEnv):
         
         trades = jax.lax.cond(
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
-            place_midprice_trade,  # Place a midprice trade
+            place_refprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
             trades, reference_price, jnp.sign(new_inventory) * jnp.abs(new_inventory), new_time  # Inv +ve means incoming is sell so standing buy.
         )
-        #jax.debug.print("averageMidprice :{}",averageMidprice)
 
-        if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
-            id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
-        elif self.cfg.action_space=="fixed_prices":
-            id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
-        elif self.cfg.action_space=="spread_skew":
-            id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
-        elif self.cfg.action_space=="directional_trading":
-            id_counter = state.customIDcounter + 1 + 1  # 1 message
-        else:
-            raise ValueError("Action space not implemented yet")
-        
+        #OID logic based on config
+        num_messages=self.cfg.num_action_messages_by_agent
+        id_counter=state.customIDcounter +num_messages+1
         return (asks, bids, trades),  id_counter, new_time
     
     
@@ -1697,7 +1691,7 @@ class MarketMakingEnv(BaseLOBEnv):
         InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.tick_size 
     
         #Market Making PNL:     
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() 
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
 
