@@ -13,15 +13,26 @@ import faulthandler
 import pandas as pd  
 import chex
 
+
+
+import pandas as pd
+import seaborn as sns
+import os
+
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 
 faulthandler.enable()
+''''
+Script use:
+Run mm env in debug mode for full logging test. Saves all messages, order book states and trades objects
+as well as the normal info, so a full epsiode can be traced out
 
-# ============================
-# Configuration
-# ============================
+'''
 
 
+###==================================================#
+#=========Old plotting FN: Plots all standard info stuff#
+#====================================================#
 def generate_plots(
       rewards,
      reward_portfolio_value,
@@ -217,27 +228,185 @@ def generate_plots(
 
 
 
+#==============================================================#
+#-------Plotting function for L2 State, messages and Trades---#
+#==============================================================#
+
+
+#helper fns
+
+def parse_lob_rearranged(lob_states: np.ndarray, valid_steps: int, output_dir: str):
+    lob_snapshots = []
+    price_levels = []
+
+    for step in range(valid_steps):
+        snapshot = []
+
+        # For each level, extract ask and bid prices and quantities
+        asks = []
+        bids = []
+
+        for level in range(10):
+            ask_p = lob_states[step][level * 4 + 0]
+            ask_q = lob_states[step][level * 4 + 1]
+            bid_p = lob_states[step][level * 4 + 2]
+            bid_q = lob_states[step][level * 4 + 3]
+
+        
+
+            if ask_p > 0:
+                asks.append((ask_p, ask_q, "ask", step))
+            if bid_p > 0:
+                bids.append((bid_p, bid_q, "bid", step))
+
+        # Sort asks ascending and bids descending
+        asks_sorted = sorted(asks, key=lambda x: x[0])  # Ascending asks
+        bids_sorted = sorted(bids, key=lambda x: -x[0])  # Descending bids
+
+        # Combine them: best bid to worst bid, best ask to worst ask
+        # We want to reverse the bids to have best bid in the middle
+        full_lob = bids_sorted + asks_sorted  # Bids first (highest to lowest), then asks (lowest to highest)
+
+        # Store in a snapshot
+        lob_snapshots.extend(full_lob)
+
+    # Create a DataFrame and save the results
+    lob_df = pd.DataFrame(lob_snapshots, columns=["Price", "Quantity", "Side", "Step"])
+    lob_df.to_csv(os.path.join(output_dir, "lob_states_rearranged.csv"), index=False)
+
+    return lob_df
+
+
+
+def plot_lob_heatmap_from_rearranged_df_with_midprice(lob_df: pd.DataFrame, output_dir: str):
+    # Ensure Step is an integer, which will properly organize the y-axis (time steps)
+    lob_df["Step"] = lob_df["Step"].astype(int)
+
+    # Pivot the data: Each price level (x-axis), each time step (y-axis), values are quantity
+    pivot_data = lob_df.pivot_table(index="Step", columns="Price", values="Quantity", aggfunc="first").fillna(0)
+
+    # Calculate the mid price for each step as the average of the best bid and best ask
+    # Assumes the first ask and first bid are the best ask and bid, respectively
+    mid_prices = []
+    for step in range(len(lob_df["Step"].unique())):
+        step_data = lob_df[lob_df["Step"] == step]
+        best_bid = step_data[step_data["Side"] == "bid"]["Price"].max()
+        best_ask = step_data[step_data["Side"] == "ask"]["Price"].min()
+        mid_price = (best_bid + best_ask) / 2 if best_bid > 0 and best_ask > 0 else 0
+        mid_prices.append(mid_price)
+
+    # Plotting the heatmap: y = time step, x = price level, color = quantity
+    plt.figure(figsize=(14, 6))
+    ax = sns.heatmap(pivot_data, cmap="viridis", cbar_kws={'label': 'Quantity'})
+    plt.title("Rearranged Order Book Heatmap (Price vs. Time)")
+    plt.xlabel("Price")
+    plt.ylabel("Step")
+    
+    # Reduce the number of y-axis ticks to avoid overlap
+    max_steps = len(pivot_data.index)
+    step_interval = max(1, max_steps // 10)  # Adjust this to your preference
+
+    ax.set_yticks(range(0, max_steps, step_interval))  # Set custom tick positions
+    ax.set_yticklabels(range(0, max_steps, step_interval))  # Set custom tick labels
+
+    # Add a vertical line for mid price at each step
+    for i, mid_price in enumerate(mid_prices):
+        if mid_price > 0:  # Only plot a line if the mid price is valid
+            ax.axvline(x=mid_price, color='red', linestyle='--', label='Mid Price' if i == 0 else "")
+
+    # Optional: Show the legend for the first line
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "lob_heatmap_with_midprice.png"))
+    plt.close()
+
+
+
+
+
+def analyze_and_visualize_lob_data(
+    total_messages: np.ndarray,
+    total_trades: np.ndarray,
+    lob_states: np.ndarray,
+    valid_steps: int,
+    output_dir: str,
+):
+    """
+    Saves total_messages, total_trades, and lob_states to CSVs and plots their evolution over time.
+    
+    Parameters:
+        total_messages: np.ndarray, shape (steps, 104, 8)
+        total_trades: np.ndarray, shape (steps, 100, 8)
+        lob_states: np.ndarray, shape (steps, 40)
+        valid_steps: int, number of valid time steps to use for plots
+        output_dir: str, directory to save outputs
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Trim data to valid steps
+    total_messages = total_messages[:valid_steps]
+    total_trades = total_trades[:valid_steps]
+    lob_states = lob_states[:valid_steps]
+
+    # ==== Message & Trade formatting ====
+    msg_headers = ["Type", "Side", "Quantity", "Price", "OID", "TID", "Ts", "Tns"]
+    trade_headers = ["Price", "Quantity", "OIDs", "OIDa", "T", "Ts", "TIDs", "TIDa"]
+
+    def vertical_stack_with_spacer(data: np.ndarray, headers: list[str]) -> pd.DataFrame:
+        steps, rows, cols = data.shape
+        spacer = np.full((1, cols), "00000000", dtype=object)
+
+        output = []
+        for step in range(steps):
+            chunk = data[step].astype(object)
+            output.append(chunk)
+            output.append(spacer)  # Add separator row
+        stacked = np.vstack(output[:-1])  # Drop last spacer
+        return pd.DataFrame(stacked, columns=headers)
+
+    msg_df = vertical_stack_with_spacer(total_messages, msg_headers)
+    trade_df = vertical_stack_with_spacer(total_trades, trade_headers)
+
+    msg_df.to_csv(os.path.join(output_dir, "total_messages.csv"), index=False)
+    trade_df.to_csv(os.path.join(output_dir, "total_trades.csv"), index=False)
+
+    # ==== LOB state formatting ====
+    lob_df = parse_lob_rearranged(lob_states, valid_steps, output_dir)
+    lob_df.to_csv(os.path.join(output_dir, "lob_states.csv"), index=False)
+
+     # ---- Plotting ----
+    plot_lob_heatmap_from_rearranged_df_with_midprice(lob_df, output_dir)
+
+
+   
+#############################################################
+#===================Full logging test=======================#
+
 if __name__ == "__main__":
+    #================#
+    # Load the Files#
+    #================#
     try:
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        # ATFolder = "./testing_oneDay"
-        #ATFolder = "/training_oneDay"
         ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-        #ATFolder= "/home/duser/AlphaTrade/testing"
+    
 
+    #Set keys
+    rng = jax.random.PRNGKey(0)
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+
+    #=================#
+    # Define Env Config
+    #==================#
     config = {
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 13,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*5,  
     }
-
-    rng = jax.random.PRNGKey(0)
-    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-    
-
 
     env_config_hps = [{"observation_space":"engineered",
                          "reward_space":"spooner_scaled",
@@ -246,17 +415,19 @@ if __name__ == "__main__":
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
                          "reference_price_portfolio_value":"mid",
-                         "action_space":"fixed_quants"
+                         "action_space":"fixed_quants",
+                         "debug_mode":True ########ENSURE THIS IS TRUE FOR FULL LOGGING TEST
                          }]
    
     env_cfg=EnvironmentConfig(**env_config_hps[0])
-
+    trader_id=10
     env = MarketMakingEnv(
         cfg = env_cfg,
         key = key_reset,
         alphatradePath=config["ATFOLDER"],
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
+        trader_unique_id=trader_id,
         ep_type=config["EP_TYPE"],
     )
     # env_params=env.default_params
@@ -273,12 +444,13 @@ if __name__ == "__main__":
     print("Inventory after reset: \n", state.inventory)
     print(f"Number of available windows: {env.n_windows}")
 
-    test_steps = 15000 # Adjusted for your test case; make sure this isn't too high
+    test_steps = 15000 #Max as check, aim to finish the episode
     # ============================
     # Initialize data storage
     # ============================
-    output_dir = 'gymnax_exchange/jaxen/Testing/output/mm'
+    output_dir = 'gymnax_exchange/jaxen/Testing/output/mm/full_logging'
 
+    #Log all the same as before
     rewards = np.zeros((test_steps, 1), dtype=int)
     reward_portfolio_value = np.zeros((test_steps, 1), dtype=int)
     reward_complex = np.zeros((test_steps, 1), dtype=int)
@@ -297,11 +469,12 @@ if __name__ == "__main__":
     midprice=np.zeros((test_steps, 1), dtype=int)
     average_best_bid=np.zeros((test_steps, 1), dtype=int)
     average_best_ask=np.zeros((test_steps, 1), dtype=int)
- 
-   
 
+    #Now also log: all messages, all trades, the L2 state..
+    total_messages=np.zeros((test_steps,100+env_cfg.num_messages_by_agent,8),dtype=int) #100 is fixed, then num messages by agent extra
+    total_trades=np.zeros((test_steps,100,8),dtype=int) #fixed 100 a step
+    lob_states=np.zeros((test_steps,40),)#getting 10 levels of l2 state, each gives price and quant
 
-   
     # ============================
     # Track the number of valid steps
     # ============================
@@ -318,9 +491,11 @@ if __name__ == "__main__":
         test_action= 1
         start = time.time()
         obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
-        
-        
-        # Store data
+
+
+        #====================#
+        #== Store standard data#
+        #======================#
         rewards[i] = reward
         reward_portfolio_value[i] = info["reward_portfolio_value"]
         reward_complex[i] = info["reward_complex"]
@@ -339,8 +514,14 @@ if __name__ == "__main__":
         netWorth[i]=info["netWorth"]
         average_best_bid[i]=info["average_best_bid"]
         average_best_ask[i]=info["average_best_ask"]
- 
-        
+
+
+        #===============================#
+        #=====Store the full logging data==#
+        #================================#
+        total_messages[i,:,:]=info["total_msgs"]
+        total_trades[i,:,:]=info["trades"]
+        lob_states[i,:]=info["lob_state"]       
         
         # Increment valid steps
         valid_steps += 1
@@ -349,12 +530,9 @@ if __name__ == "__main__":
             print("===" * 20)
             print(f"Episode ended at step {valid_steps}")
             break
-
-    # ============================
-    #Plot
-    # ============================
+    #Old Plotting Function
     generate_plots(
-      rewards,
+    rewards,
      reward_portfolio_value,
      reward_complex,
      reward_spooner,
@@ -374,7 +552,16 @@ if __name__ == "__main__":
      average_best_ask,
      valid_steps,
      output_dir,
- )
+    )
+
+    #full logging plots
+    analyze_and_visualize_lob_data(
+    total_messages,
+    total_trades,
+    lob_states,
+    valid_steps,
+    output_dir,
+    )
 
 
    

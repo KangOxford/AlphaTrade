@@ -13,7 +13,54 @@ import faulthandler
 import pandas as pd  
 import chex
 
+import distrax
+
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from flax import serialization
+from flax.core import frozen_dict
+
+from dataclasses import dataclass
+
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
+
+from jax_rwkv.src.auto import get_rand_model
+from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, get_jit_ppo, PAD_FLAG, OBS_FLAG, ACT_FLAG
+#from utils.jstring import JString
+
+
+
+
+##Special class to handel the flag list, Jax String.
+@jax.tree_util.register_pytree_node_class
+@dataclass
+class JString:
+    tokens: jnp.ndarray
+    length: jnp.ndarray
+
+    def __init__(self, tokens, length=None):
+        self.tokens = jnp.array(tokens)
+        self.length = (
+            length if length is not None
+            else jnp.ones_like(tokens[:, 0]) * tokens.shape[1]
+        )
+
+    def tree_flatten(self):
+        # The children are the arrays that JAX can trace.
+        children = (self.tokens, self.length)
+        # No auxiliary static data.
+        aux_data = None
+        return children, aux_data
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        tokens, length = children
+        return cls(tokens, length)
+    
+#Function to process the obsveration
+def handle_continuous(observation):
+        return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
+
+
 
 faulthandler.enable()
 
@@ -222,21 +269,18 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:",ATFolder)
     except:
-        # ATFolder = "./testing_oneDay"
-        #ATFolder = "/training_oneDay"
         ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-        #ATFolder= "/home/duser/AlphaTrade/testing"
+
 
     config = {
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 13,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*5,  
+        "EPISODE_TIME": 60*2,  
     }
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-    
 
 
     env_config_hps = [{"observation_space":"engineered",
@@ -267,11 +311,42 @@ if __name__ == "__main__":
 
     # Initialize the environment state
     start = time.time()
-    obs, state = env.reset(key_reset, env_params)
-    print(f"Starting index in data: {state.start_index}")
+    obs, env_state = env.reset(key_reset, env_params)
+    print(f"Starting index in data: {env_state.start_index}")
     print("Time for reset: \n", time.time() - start)
-    print("Inventory after reset: \n", state.inventory)
+    print("Inventory after reset: \n", env_state.inventory)
     print(f"Number of available windows: {env.n_windows}")
+
+
+    
+    #===========================================#
+    #Init the pre trained model
+    #======================================#
+    # Load the trained model parameters 
+    params_filename = "/home/duser/AlphaTrade/params_file_upbeat-sweep-1_04-08_11-16"
+    with open(params_filename, 'rb') as f:
+        params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
+        
+    # Initialize the model
+    num_tokens = 1 + env.action_space(env_params).n + 256
+    config["MIN_ACTION_TOK"] = 1
+    config["MAX_ACTION_TOK"] = env_cfg.n_actions
+
+    #Load the RWKV
+    RWKV, _ = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+    #Define the forward function and jit version
+    forward, params = get_ppo_agent(RWKV, params, seed=1)
+    v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
+
+
+    #Get init state for training
+    init_state = RWKV.default_state(params)
+    #returns 0s for weights, in /home/duser/AlphaTrade/jax_rwkv/src/jax_rwkv/base_rwkv.py
+    if isinstance(init_state, tuple):
+        init_state = tuple([jnp.repeat(s[None], 1, axis=0) for s in init_state])
+    else:
+        init_state = jnp.repeat(init_state[None], 1, axis=0)
+    rwkv_state = init_state
 
     test_steps = 15000 # Adjusted for your test case; make sure this isn't too high
     # ============================
@@ -279,6 +354,7 @@ if __name__ == "__main__":
     # ============================
     output_dir = 'gymnax_exchange/jaxen/Testing/output/mm'
 
+    #Init storage
     rewards = np.zeros((test_steps, 1), dtype=int)
     reward_portfolio_value = np.zeros((test_steps, 1), dtype=int)
     reward_complex = np.zeros((test_steps, 1), dtype=int)
@@ -297,11 +373,7 @@ if __name__ == "__main__":
     midprice=np.zeros((test_steps, 1), dtype=int)
     average_best_bid=np.zeros((test_steps, 1), dtype=int)
     average_best_ask=np.zeros((test_steps, 1), dtype=int)
- 
-   
 
-
-   
     # ============================
     # Track the number of valid steps
     # ============================
@@ -314,10 +386,27 @@ if __name__ == "__main__":
         # ==================== ACTION ====================
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
-        test_action = env.action_space().sample(key_policy) 
-        test_action= 1
-        start = time.time()
-        obs, state, reward, done, info = env.step(key_step, state, test_action, env_params)
+
+        #=========================#
+        #tokenizer the obvs space
+        #=======================#
+        tokenized = handle_continuous(obs)
+
+        #====================#
+        #Evaluate policy from model
+        #=====================#
+        tokenized_batched = tokenized[None, :] 
+        pi, _, rwkv_state =v_forward_jit(tokenized_batched, rwkv_state, params, jnp.ones(1, dtype=jnp.int32) * tokenized_batched.shape[-1])
+        pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
+        action = pi.sample(seed=key_policy)
+        action_batched=action[None, :] 
+
+        ##Roll net forward
+        _, _, rwkv_state = v_forward_jit(action_batched, rwkv_state, params, jnp.ones(1, dtype=jnp.int32))
+
+        #Step Env
+        action= action.item()
+        obs, env_state, reward, done, info = env.step(key_step, env_state, action, env_params)
         
         
         # Store data

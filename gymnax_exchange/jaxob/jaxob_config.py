@@ -39,6 +39,8 @@ class EnvironmentConfig(Configuration):
     unrealizedPnL_lambda: float =0
     asymmetrically_dampened_lambda: float =env_cst.asymmetrically_dampened_lambda
 
+    debug_mode:bool=False
+
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!

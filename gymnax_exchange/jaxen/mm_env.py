@@ -357,7 +357,9 @@ class MarketMakingEnv(BaseLOBEnv):
         done = self.is_terminal(state, params)
         average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         average_best_bid = jnp.int32((state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        info = {
+        if self.cfg.debug_mode==False:
+        #### Standard logging####
+            info = {
             "reward":reward,
             "reward_portfolio_value":extras["reward_portfolio_value"],
             "reward_complex":extras["reward_complex"],
@@ -390,7 +392,56 @@ class MarketMakingEnv(BaseLOBEnv):
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"],
             "average_best_bid":average_best_bid,
             "average_best_ask":average_best_ask
-        }                          
+            }  
+        #Debug mode logging, log all messages, trades and the L2 state every step##
+        elif self.cfg.debug_mode==True:
+            lob_state = job.get_L2_state(
+                                state.ask_raw_orders,  # Current ask orders
+                                state.bid_raw_orders,  # Current bid orders
+                                10,  # Number of levels
+                                self.cfg  
+                                )
+            
+           # jax.debug.print("l2:{}",lob_state)
+            info={
+                "trades":trades,
+                "total_msgs":total_messages,
+                "lob_state":lob_state,
+            "reward":reward,
+            "reward_portfolio_value":extras["reward_portfolio_value"],
+            "reward_complex":extras["reward_complex"],
+            "reward_spooner":extras[ "reward_spooner"],
+            "reward_spooner_damped":extras["reward_spooner_damped"],
+            "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
+            "reward_delta_netWorth":extras["reward_delta_netWorth"],
+            "window_index": state.window_index,
+            "total_PnL": state.total_PnL,                           
+            "current_step": state.step_counter,
+            "done": done,
+            "time_seconds":state.time[0],
+            "inventory": state.inventory,
+            "market_share":extras["market_share"],
+            "buyPnL":extras["buyPnL"],
+            "scaledInventoryPnL":extras["scaledInventoryPnL"],
+            "netWorth":extras["netWorth"],
+            "sellPnL":extras["sellPnL"],
+            "buyQuant":extras["buyQuant"],
+            "sellQuant":extras["sellQuant"],
+            "window_index": state.window_index,
+            "inventoryValue":extras["inventoryValue"],
+            "other_exec_quants":extras["other_exec_quants"],
+            "averageMidprice":extras["averageMidprice"],
+            "end_mid_price":extras["mid_price"],
+            "Step_PnL":extras["PnL"],
+            "action_prices":action_prices,
+            "InventoryPnL":extras["InventoryPnL"],
+            "approx_realized_pnl":extras["approx_realized_pnl"],
+            "approx_unrealized_pnl": extras["approx_unrealized_pnl"],
+            "average_best_bid":average_best_bid,
+            "average_best_ask":average_best_ask
+            }   
+        else:
+            raise ValueError("invalid mode")                     
         return self.get_observation(state, params, total_messages,action_prices,executions,old_time,old_mid_price), state, reward, done, info
     
     def reset_env(
@@ -1352,6 +1403,10 @@ class MarketMakingEnv(BaseLOBEnv):
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         '''Function to create an artifical trade which liquidates the agent's position.
             cfg.rerefernce price sets the price of the trade
+
+
+            NOTE: The prices in the trade here are NOT normalised by tick size. This is correct, as it is "as if" we sent
+            and order with these prices. The get_reward, will see the trade, and normalsie the prices following. No change needed.
         '''
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
@@ -1380,8 +1435,8 @@ class MarketMakingEnv(BaseLOBEnv):
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() // self.tick_size * self.tick_size
-        #jax.debug.print("mid_price:{}",mid_price)
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+
         
         new_time = time + params.time_delay_obs_act
 
@@ -1393,12 +1448,11 @@ class MarketMakingEnv(BaseLOBEnv):
             lambda: (( bestasks[-1, 0])// self.tick_size * self.tick_size).astype(jnp.int32),
         )
 
-        def place_midprice_trade(trades, price, quant, time):
-            '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
-            mid_trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
-            trades = job.add_trade(trades, mid_trade)
-            #jax.debug.print("called?")
+        def place_refprice_trade(trades, price, quant, time):
+            '''Place a doom trade at a trade at specified price to close out our mm agent at the end of the episode.'''
+            trade = job.create_trade(
+                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.num_action_messages_by_agent, *time, -666666, self.trader_unique_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
+            trades = job.add_trade(trades, trade)
             return trades
 
         ##Get the price to unwind at based on the config
@@ -1414,23 +1468,14 @@ class MarketMakingEnv(BaseLOBEnv):
         
         trades = jax.lax.cond(
             ep_is_over & (jnp.abs(new_inventory) > 0),  # Check if episode is over and we still have remaining quantity
-            place_midprice_trade,  # Place a midprice trade
+            place_refprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
             trades, reference_price, jnp.sign(new_inventory) * jnp.abs(new_inventory), new_time  # Inv +ve means incoming is sell so standing buy.
         )
-        #jax.debug.print("averageMidprice :{}",averageMidprice)
 
-        if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
-            id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
-        elif self.cfg.action_space=="fixed_prices":
-            id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
-        elif self.cfg.action_space=="spread_skew":
-            id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
-        elif self.cfg.action_space=="directional_trading":
-            id_counter = state.customIDcounter + 1 + 1  # 1 message
-        else:
-            raise ValueError("Action space not implemented yet")
-        
+        #OID logic based on config
+        num_messages=self.cfg.num_action_messages_by_agent
+        id_counter=state.customIDcounter +num_messages+1
         return (asks, bids, trades),  id_counter, new_time
     
     
@@ -1697,7 +1742,7 @@ class MarketMakingEnv(BaseLOBEnv):
         InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.tick_size 
     
         #Market Making PNL:     
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) // 2).mean() 
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
 
@@ -2173,6 +2218,8 @@ if __name__ == "__main__":
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
         #print(obs)
+
+        
         print("Step reward:", reward)
         #print("Step info:", info)
         print("time",info["time_seconds"])
