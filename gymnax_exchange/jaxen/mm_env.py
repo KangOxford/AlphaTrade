@@ -357,7 +357,9 @@ class MarketMakingEnv(BaseLOBEnv):
         done = self.is_terminal(state, params)
         average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
         average_best_bid = jnp.int32((state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        info = {
+        if self.cfg.debug_mode==False:
+        #### Standard logging####
+            info = {
             "reward":reward,
             "reward_portfolio_value":extras["reward_portfolio_value"],
             "reward_complex":extras["reward_complex"],
@@ -390,7 +392,56 @@ class MarketMakingEnv(BaseLOBEnv):
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"],
             "average_best_bid":average_best_bid,
             "average_best_ask":average_best_ask
-        }                          
+            }  
+        #Debug mode logging, log all messages, trades and the L2 state every step##
+        elif self.cfg.debug_mode==True:
+            lob_state = job.get_L2_state(
+                                state.ask_raw_orders,  # Current ask orders
+                                state.bid_raw_orders,  # Current bid orders
+                                10,  # Number of levels
+                                self.cfg  
+                                )
+            
+           # jax.debug.print("l2:{}",lob_state)
+            info={
+                "trades":trades,
+                "total_msgs":total_messages,
+                "lob_state":lob_state,
+            "reward":reward,
+            "reward_portfolio_value":extras["reward_portfolio_value"],
+            "reward_complex":extras["reward_complex"],
+            "reward_spooner":extras[ "reward_spooner"],
+            "reward_spooner_damped":extras["reward_spooner_damped"],
+            "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
+            "reward_delta_netWorth":extras["reward_delta_netWorth"],
+            "window_index": state.window_index,
+            "total_PnL": state.total_PnL,                           
+            "current_step": state.step_counter,
+            "done": done,
+            "time_seconds":state.time[0],
+            "inventory": state.inventory,
+            "market_share":extras["market_share"],
+            "buyPnL":extras["buyPnL"],
+            "scaledInventoryPnL":extras["scaledInventoryPnL"],
+            "netWorth":extras["netWorth"],
+            "sellPnL":extras["sellPnL"],
+            "buyQuant":extras["buyQuant"],
+            "sellQuant":extras["sellQuant"],
+            "window_index": state.window_index,
+            "inventoryValue":extras["inventoryValue"],
+            "other_exec_quants":extras["other_exec_quants"],
+            "averageMidprice":extras["averageMidprice"],
+            "end_mid_price":extras["mid_price"],
+            "Step_PnL":extras["PnL"],
+            "action_prices":action_prices,
+            "InventoryPnL":extras["InventoryPnL"],
+            "approx_realized_pnl":extras["approx_realized_pnl"],
+            "approx_unrealized_pnl": extras["approx_unrealized_pnl"],
+            "average_best_bid":average_best_bid,
+            "average_best_ask":average_best_ask
+            }   
+        else:
+            raise ValueError("invalid mode")                     
         return self.get_observation(state, params, total_messages,action_prices,executions,old_time,old_mid_price), state, reward, done, info
     
     def reset_env(
@@ -2167,6 +2218,8 @@ if __name__ == "__main__":
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
         #print(obs)
+
+        
         print("Step reward:", reward)
         #print("Step info:", info)
         print("time",info["time_seconds"])
