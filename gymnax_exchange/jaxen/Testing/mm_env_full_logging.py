@@ -285,15 +285,6 @@ def plot_lob_heatmap_from_rearranged_df_with_midprice(lob_df: pd.DataFrame, outp
     # Pivot the data: Each price level (x-axis), each time step (y-axis), values are quantity
     pivot_data = lob_df.pivot_table(index="Step", columns="Price", values="Quantity", aggfunc="first").fillna(0)
 
-    # Calculate the mid price for each step as the average of the best bid and best ask
-    # Assumes the first ask and first bid are the best ask and bid, respectively
-    mid_prices = []
-    for step in range(len(lob_df["Step"].unique())):
-        step_data = lob_df[lob_df["Step"] == step]
-        best_bid = step_data[step_data["Side"] == "bid"]["Price"].max()
-        best_ask = step_data[step_data["Side"] == "ask"]["Price"].min()
-        mid_price = (best_bid + best_ask) / 2 if best_bid > 0 and best_ask > 0 else 0
-        mid_prices.append(mid_price)
 
     # Plotting the heatmap: y = time step, x = price level, color = quantity
     plt.figure(figsize=(14, 6))
@@ -308,14 +299,6 @@ def plot_lob_heatmap_from_rearranged_df_with_midprice(lob_df: pd.DataFrame, outp
 
     ax.set_yticks(range(0, max_steps, step_interval))  # Set custom tick positions
     ax.set_yticklabels(range(0, max_steps, step_interval))  # Set custom tick labels
-
-    # Add a vertical line for mid price at each step
-    for i, mid_price in enumerate(mid_prices):
-        if mid_price > 0:  # Only plot a line if the mid price is valid
-            ax.axvline(x=mid_price, color='red', linestyle='--', label='Mid Price' if i == 0 else "")
-
-    # Optional: Show the legend for the first line
-    plt.legend()
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "lob_heatmap_with_midprice.png"))
