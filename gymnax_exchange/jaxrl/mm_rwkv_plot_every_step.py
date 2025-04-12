@@ -234,7 +234,6 @@ def make_train(config):
             dones_list = []
             all_actions = []
             update_returns = []
-            update_pnl=[]
 
             
             for t in range(config["NUM_STEPS"]):
@@ -251,14 +250,8 @@ def make_train(config):
                 pi, value, state = v_forward_jit(tokenized, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
                 pi = distrax.Categorical(logits=pi[..., -1, config["MIN_ACTION_TOK"]:config["MAX_ACTION_TOK"] + 1])
                 action = pi.sample(seed=_rng)
-                #log actions
-                def log_action_distribution(action):
-                            unique_actions, counts = jnp.unique(action, return_counts=True)
-                            action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
-                            wandb.log(action_distribution)
-                if wandbOn:
-                    jax.debug.callback(log_action_distribution, action)
-
+                
+                # Remove old action distribution logging
                 current_actions = jax.device_get(action)
                 all_actions.extend(current_actions.flatten().tolist())
                 log_prob = pi.log_prob(action)
@@ -277,6 +270,8 @@ def make_train(config):
                 #Reset state if done (rwkv state)
                 state = jax.vmap(jax.lax.select)(done, init_state, state)
 
+                # Log metrics after each step
+                log_step_metrics(info_train, reward, global_timestep, current_actions)
 
                 #======Append list of actions, dones, rewards, value#
 
@@ -300,11 +295,8 @@ def make_train(config):
                 dones_list.append(done[:, None])
 
                 return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
-                episdoic_pnl=info_train["total_PnL"][info_train["returned_episode"]]
                 for r in return_values:
                     update_returns.append(r)
-                for p in episdoic_pnl:
-                     update_pnl.append(p)                    
                 global_timestep += 1
 
             #Form lists for adv calcs
@@ -327,32 +319,15 @@ def make_train(config):
             # print("target", targets)
             print("UPDATING")
             if len(update_returns) > 0:
-                average_return=sum(update_returns) / len(update_returns)
                 print("avg returns:", sum(update_returns) / len(update_returns))
             else:
-                average_return=0
                 print("None ended")
-            if len(update_pnl) > 0:
-                average_pnl=sum(update_pnl) / len(update_pnl)
-                print("avg episodic pnl:", sum(update_pnl) / len(update_pnl))
-            else:
-                average_pnl=0
-                print("None ended")
-            wandb.log( 
-                data={
-                     "average_return":average_return,
-                     "average_pnl":average_pnl,
-                     "global_timestep":global_timestep
-                },
-                commit=True
-            )
 
             #Update weights
             for _ in range(config["UPDATE_EPOCHS"]):
                 params, optimizer, (loss, value_loss, loss_actor, entropy, state) = jit_ppo_update(solver, v_forward_jit, params, optimizer, buf, flags_list, values_list, log_probs_list, advantages, targets, initial_state)
                 print(loss, value_loss, loss_actor, entropy)
             
-
             #Reset state if done (rwkv state)
             state = jax.vmap(jax.lax.select)(dones_list[:, -1], init_state, state)
 
@@ -395,154 +370,133 @@ def make_train(config):
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
                 eval_obsv, eval_env_state, eval_reward, eval_done, eval_info = v_eval_env_step(rng_step, eval_env_state, eval_action, eval_env_params)
             
+            # After all eval steps are done, log update and eval metrics
+            log_update_metrics(loss, value_loss, loss_actor, entropy, eval_info, 
+                             config["VF_COEF"], config["ENT_COEF"])
 
             ##=====================LOGGING==============#
-            # Call back, log every update step as in rnn:
-            #===========================================#
-            return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
-            wandb.log({"return_values:": return_values})
+            # Remove old logging code since we're using the new functions
             if config.get("DEBUG"):
-                        def callback(info_train, info_eval, loss=None, value_loss=None, loss_actor=None, entropy=None):
-                            #------------Collect info for plotting---------------------------#
-                            #Matricies, size num_envs by num_steps. Mutliplying gives an array, a value for every non 0
-
-                            #1)Step and return info
-                           # return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
-                            timesteps=info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"]
-                            
-                            
-                            #-----------Train info----------#
-                            ##Global episodic plots
-                            #episodic_PnL_train = info_train["total_PnL"][info_train["returned_episode"]]
-                            #episodic_netWorth_train = info_train["netWorth"][info_train["returned_episode"]]
-                            
-                        
-                            #Average across all envs
-                            PnL_train= info_train["total_PnL"]
-                            netWorth_train= info_train["netWorth"]
-                            Episodic_inventories_train= info_train["inventory"][info_train["returned_episode"]]
-                            inventories_train= info_train["inventory"]
-                            buyQuant_train=info_train["buyQuant"]  
-                            sellQuant_train=info_train["sellQuant"]  
-                            reward_train=info_train["reward"]  
-                            other_exec_quants_train=info_train["other_exec_quants"]  
-                            averageMidprice_train=info_train["averageMidprice"]  
-                            averageBestbid_train=info_train["average_best_bid"]  
-                            averageBestask_train=info_train["average_best_ask"]  
-                        
-
-                            #-------------eval info------#   
-                            Episodic_PnL_eval = info_eval["total_PnL"][info_eval["returned_episode"]]
-                            Episodic_netWorth_eval = info_eval["netWorth"][info_eval["returned_episode"]]
-                            inventories_eval = info_eval["inventory"] 
-                            buyQuant_eval=info_eval["buyQuant"]
-                            sellQuant_eval=info_eval["sellQuant"]
-                            reward_eval=info_eval["reward"]
-                            other_exec_quants_eval=info_eval["other_exec_quants"]
-                            averageMidprice_eval=info_eval["averageMidprice"]
-                            averageBestbid_eval=info_eval["average_best_bid"]
-                            averageBestask_eval=info_eval["average_best_ask"]
-                            
-                        
-                            #-----------------Logging-------------------#
-
-                            if wandbOn:
-                                wandb.log(
-                                    data={
-                                        #-----time and return------------#
-                                       # "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                      #  "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
-                                        
-                                        #"windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
-                                        #---------Reward and error bars--------#
-                                        #train average
-                                        "reward_train":jnp.mean(reward_train) if reward_train.size > 0 else 0,
-                                        "reward_train_plus_std": (jnp.mean(reward_train) + jnp.std(reward_train)) if reward_train.size > 0 else 0,
-                                        "reward__train_minus_std": (jnp.mean(reward_train) - jnp.std(reward_train)) if reward_train.size > 0 else 0,
-                        
-                                        #eval
-                                        "reward_eval":jnp.mean(reward_eval) if reward_eval.size > 0 else 0,
-                                        "reward_eval_plus_std": (jnp.mean(reward_eval) + jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
-                                        "reward_eval_minus_std": (jnp.mean(reward_eval) - jnp.std(reward_eval)) if reward_eval.size > 0 else 0,
-                                
-                                        
-                                        #---------PnL and errors bars-----------#
-                                        #Average, end
-                                       # "Episodic_PnL_train_mean": jnp.mean(episodic_PnL_train) if episodic_PnL_train.size > 0 else 0,
-                                       # "Episodic_PnL_train_plus_std": (jnp.mean(episodic_PnL_train) + jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
-                                       # "Episodic_PnL_train_minus_std": (jnp.mean(episodic_PnL_train) - jnp.std(episodic_PnL_train)) if episodic_PnL_train.size > 0 else 0,
-                                        #Average
-                                        "PnL_train":jnp.mean(PnL_train) if PnL_train.size > 0 else 0,
-                                        "PnL_train_plus_std": (jnp.mean(PnL_train) + jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
-                                        "PnL_train_minus_std": (jnp.mean(PnL_train) - jnp.std(PnL_train)) if PnL_train.size > 0 else 0,
-                                
-                                        #eval
-                                        "Episodic_PnL_eval_mean": jnp.mean(Episodic_PnL_eval) if Episodic_PnL_eval.size > 0 else 0,
-                                        "Episodic_PnL_eval_plus_std": (jnp.mean(Episodic_PnL_eval) + jnp.std(Episodic_PnL_eval)) if Episodic_PnL_eval.size > 0 else 0,
-                                        "Episodic_PnL_eval_minus_std": (jnp.mean(Episodic_PnL_eval) - jnp.std(Episodic_PnL_eval)) if Episodic_PnL_eval.size > 0 else 0,
-                                
-                                        #-------------NetWorth and error bars----------#
-                                        #train
-                                      #  "Episodic_netWorth_train": jnp.mean(episodic_netWorth_train) if episodic_netWorth_train.size > 0 else 0,
-                                       # "Episodic_netWorth_train_plus_std": (jnp.mean(episodic_netWorth_train) + jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
-                                        #"Episodic_netWorth_train_minus_st": (jnp.mean(episodic_netWorth_train) - jnp.std(episodic_netWorth_train)) if episodic_netWorth_train.size > 0 else 0,
-                                        #Average
-                                        "netWorth_train":jnp.mean(netWorth_train) if netWorth_train.size > 0 else 0,
-                                        "netWorth_train_plus_std": (jnp.mean(netWorth_train) + jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
-                                        "netWorth_train_minus_std": (jnp.mean(netWorth_train) - jnp.std(netWorth_train)) if netWorth_train.size > 0 else 0,
-
-                                        #eval
-                                        "Episodic_netWorth_eval": jnp.mean(Episodic_netWorth_eval) if Episodic_netWorth_eval.size > 0 else 0,
-                                        "Episodic_netWorth_eval_plus_std": (jnp.mean(Episodic_netWorth_eval) + jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
-                                        "Episodic_netWorth_eval_minus_std": (jnp.mean(Episodic_netWorth_eval) - jnp.std(Episodic_netWorth_eval)) if Episodic_netWorth_eval.size > 0 else 0,
-                                
-                                                                        
-                                        #----------Iventory and error bars------------#
-                                        #train
-                                        #Average
-                                        "Episodic_inventories_train": jnp.mean(Episodic_inventories_train) if Episodic_inventories_train.size > 0 else 0,
-                                        "inventory_train": jnp.mean(inventories_train) if inventories_train.size > 0 else 0, 
-                                        "inventory_train_plus_std":(jnp.mean(inventories_train) + jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
-                                        "inventory_train_minus_std":(jnp.mean(inventories_train) - jnp.std(inventories_train)) if inventories_train.size > 0 else 0,
-                                
-                                        #eval
-                                        "inventory_eval": jnp.mean(inventories_eval) if inventories_eval.size > 0 else 0,
-                                        "inventory_eval_plus_std":(jnp.mean(inventories_eval) + jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
-                                        "inventory_eval_minus_std":(jnp.mean(inventories_eval) - jnp.std(inventories_eval)) if inventories_eval.size > 0 else 0,
-                                    
-                                        
-                                        #----------Buy and Sell Quant and error bars------------#
-                                        #train
-                                        #Average
-                                        "buyQuant_train":jnp.mean(buyQuant_train) if buyQuant_train.size > 0 else 0,
-                                        "sellQuant_train":jnp.mean(sellQuant_train) if sellQuant_train.size > 0 else 0,
-                                        "other_exec_quants_train":jnp.mean(other_exec_quants_train) if other_exec_quants_train.size > 0 else 0,
-                                        "averageMidprice_train":jnp.mean(averageMidprice_train) if averageMidprice_train.size>0 else 0,
-                                        "averageBestbid_train":jnp.mean(averageBestbid_train) if averageBestbid_train.size>0 else 0,
-                                        "averageBestask_train":jnp.mean(averageBestask_train) if averageBestask_train.size>0 else 0,
-                                
-                                        "buyQuant_eval":jnp.mean(buyQuant_eval) if buyQuant_eval.size > 0 else 0,
-                                        "sellQuant_eval":jnp.mean(sellQuant_eval) if sellQuant_eval.size > 0 else 0,
-                                        "other_exec_quants_eval":jnp.mean(other_exec_quants_eval) if other_exec_quants_eval.size > 0 else 0,
-                                        "averageMidprice_eval":jnp.mean(averageMidprice_eval) if averageMidprice_eval.size>0 else 0,
-                                        "averageBestbid_eval":jnp.mean(averageBestbid_eval) if averageBestbid_eval.size>0 else 0,
-                                        "averageBestask_eval":jnp.mean(averageBestask_eval) if averageBestask_eval.size>0 else 0,                          
-                                        
-                                        # PPO Loss components
-                                        "ppo_loss": float(loss) if loss is not None else 0,
-                                        "ppo_value_loss": float(value_loss) if value_loss is not None else 0,
-                                        "ppo_actor_loss": float(loss_actor) if loss_actor is not None else 0,
-                                        "ppo_entropy": float(entropy) if entropy is not None else 0,
-                                        # Weighted PPO Loss components
-                                        "ppo_weighted_value_loss": float(config["VF_COEF"] * value_loss) if value_loss is not None else 0,
-                                        "ppo_weighted_entropy": float(config["ENT_COEF"] * entropy) if entropy is not None else 0,
-                                        "ppo_weighted_actor_loss": float(loss_actor) if loss_actor is not None else 0,
-                                                                    },
-                                    commit=True
-                                )
-                        jax.debug.callback(callback, info_train, eval_info, loss, value_loss, loss_actor, entropy)
+                pass
         return {"params": params, "info_train": info_train, "eval_info": eval_info}
     return train
+
+def log_step_metrics(info_train, reward, timestep, action):
+    # Create the logging function that will be called by the callback
+    def _log_fn(info_train, reward, timestep, action):
+        if wandbOn:
+            # Track two specific envs
+            env_ids = [0, 1]  # First two envs
+            
+            # Get overall action distribution
+            unique_actions, counts = jnp.unique(action, return_counts=True)
+            action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
+            
+            metrics = {
+                # Global step tracking
+                "global_step": timestep,
+                
+                # Regular metrics (averaged across all envs)
+                "reward_train": jnp.mean(reward),
+                "reward_train_plus_std": (jnp.mean(reward) + jnp.std(reward)),
+                "reward_train_minus_std": (jnp.mean(reward) - jnp.std(reward)),
+                
+                "PnL_train": jnp.mean(info_train["total_PnL"]),
+                "PnL_train_plus_std": (jnp.mean(info_train["total_PnL"]) + jnp.std(info_train["total_PnL"])),
+                "PnL_train_minus_std": (jnp.mean(info_train["total_PnL"]) - jnp.std(info_train["total_PnL"])),
+                
+                "netWorth_train": jnp.mean(info_train["netWorth"]),
+                
+                "inventory_train": jnp.mean(info_train["inventory"]),
+                "inventory_train_plus_std": (jnp.mean(info_train["inventory"]) + jnp.std(info_train["inventory"])),
+                "inventory_train_minus_std": (jnp.mean(info_train["inventory"]) - jnp.std(info_train["inventory"])),
+                
+                "buyQuant_train": jnp.mean(info_train["buyQuant"]),
+                "sellQuant_train": jnp.mean(info_train["sellQuant"]),
+                "other_exec_quants_train": jnp.mean(info_train["other_exec_quants"]),
+                "averageMidprice_train": jnp.mean(info_train["averageMidprice"]),
+                "averageBestbid_train": jnp.mean(info_train["average_best_bid"]),
+                "averageBestask_train": jnp.mean(info_train["average_best_ask"]),
+            }
+            
+            # Add action distribution to metrics
+            metrics.update(action_distribution)
+            
+            # Add per-env metrics for specific envs
+            for env_id in env_ids:
+                metrics.update({
+                    f"action_env{env_id}": int(action[env_id]),  # Add individual env actions
+                    f"reward_train_env{env_id}": reward[env_id],
+                    f"PnL_train_env{env_id}": info_train["total_PnL"][env_id],
+                    f"netWorth_train_env{env_id}": info_train["netWorth"][env_id],
+                    f"inventory_train_env{env_id}": info_train["inventory"][env_id],
+                    f"buyQuant_train_env{env_id}": info_train["buyQuant"][env_id],
+                    f"sellQuant_train_env{env_id}": info_train["sellQuant"][env_id],
+                    f"other_exec_quants_train_env{env_id}": info_train["other_exec_quants"][env_id],
+                    f"averageMidprice_train_env{env_id}": info_train["averageMidprice"][env_id],
+                    f"averageBestbid_train_env{env_id}": info_train["average_best_bid"][env_id],
+                    f"averageBestask_train_env{env_id}": info_train["average_best_ask"][env_id],
+                })
+
+            # Episode completion metrics (when episodes finish)
+            if info_train["returned_episode"].any():
+                metrics.update({
+                    "episodic_return": jnp.mean(info_train["returned_episode_returns"][info_train["returned_episode"]]),
+                    "Episodic_PnL_train_mean": jnp.mean(info_train["total_PnL"][info_train["returned_episode"]]),
+                    "Episodic_netWorth_train": jnp.mean(info_train["netWorth"][info_train["returned_episode"]]),
+                })
+                
+                # Add per-env episode completion metrics
+                for env_id in env_ids:
+                    if info_train["returned_episode"][env_id]:
+                        metrics.update({
+                            f"episodic_return_env{env_id}": info_train["returned_episode_returns"][env_id],
+                            f"Episodic_PnL_train_env{env_id}": info_train["total_PnL"][env_id],
+                            f"Episodic_netWorth_train_env{env_id}": info_train["netWorth"][env_id],
+                        })
+            
+            wandb.log(metrics)
+    
+    # Use jax.debug.callback to call the logging function
+    jax.debug.callback(_log_fn, info_train, reward, timestep, action)
+
+def log_update_metrics(loss, value_loss, loss_actor, entropy, info_eval, vf_coef, ent_coef):
+    # Create the logging function that will be called by the callback
+    def _log_fn(loss, value_loss, loss_actor, entropy, info_eval, vf_coef, ent_coef):
+        if wandbOn:
+            metrics = {
+                # PPO metrics
+                "ppo_loss": float(loss),
+                "ppo_value_loss": float(value_loss),
+                "ppo_actor_loss": float(loss_actor),
+                "ppo_entropy": float(entropy),
+                "ppo_weighted_value_loss": float(vf_coef * value_loss),
+                "ppo_weighted_entropy": float(ent_coef * entropy),
+                "ppo_weighted_actor_loss": float(loss_actor),
+                
+                # Eval metrics
+                "reward_eval": jnp.mean(info_eval["reward"]),
+                "PnL_eval": jnp.mean(info_eval["total_PnL"]),
+                "inventory_eval": jnp.mean(info_eval["inventory"]),
+                "buyQuant_eval": jnp.mean(info_eval["buyQuant"]),
+                "sellQuant_eval": jnp.mean(info_eval["sellQuant"]),
+                "other_exec_quants_eval": jnp.mean(info_eval["other_exec_quants"]),
+                "averageMidprice_eval": jnp.mean(info_eval["averageMidprice"]),
+                "averageBestbid_eval": jnp.mean(info_eval["average_best_bid"]),
+                "averageBestask_eval": jnp.mean(info_eval["average_best_ask"]),
+            }
+            
+            # Add eval episode completion metrics
+            if info_eval["returned_episode"].any():
+                metrics.update({
+                    "Episodic_PnL_eval_mean": jnp.mean(info_eval["total_PnL"][info_eval["returned_episode"]]),
+                    "Episodic_netWorth_eval": jnp.mean(info_eval["netWorth"][info_eval["returned_episode"]]),
+                })
+            
+            wandb.log(metrics)
+    
+    # Use jax.debug.callback to call the logging function
+    jax.debug.callback(_log_fn, loss, value_loss, loss_actor, entropy, info_eval, vf_coef, ent_coef)
 
 if __name__ == "__main__":
     timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
@@ -587,11 +541,10 @@ if __name__ == "__main__":
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
-
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [14]},
-        "EPISODE_TIME": {"values": [60*2]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
@@ -614,7 +567,7 @@ if __name__ == "__main__":
             params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
             print(f"Results will be saved to {params_file_name}")
             # +++++ Single GPU +++++
-            rng = jax.random.PRNGKey(1)
+            rng = jax.random.PRNGKey(0)
             train = (make_train(wandb.config))
             # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
             out = train(rng)
