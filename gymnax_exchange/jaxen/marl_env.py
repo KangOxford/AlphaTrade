@@ -433,14 +433,29 @@ class MARLEnv(BaseLOBEnv):
             "averageMidprice":mm_extras["averageMidprice"],
             "average_best_bid":average_best_bid,
             "average_best_ask":average_best_ask,
+            "end_mid_price":mm_extras["mid_price"],
             "Step_PnL":mm_extras["PnL"],
             "action_prices":mm_action_prices,
             "InventoryPnL":mm_extras["InventoryPnL"],
             "approx_realized_pnl":mm_extras["approx_realized_pnl"],
             "approx_unrealized_pnl": mm_extras["approx_unrealized_pnl"]
         } 
+        if self.cfg.debug_mode==False:
+            info = {"market_maker": mm_info, "execution": exe_info}
 
-        info = {"market_maker": mm_info, "execution": exe_info}
+        ###debug mode full logging. Ensure this is off by default
+        if self.cfg.debug_mode==True:
+            lob_state = job.get_L2_state(
+                                new_state.ask_raw_orders,  # Current ask orders
+                                new_state.bid_raw_orders,  # Current bid orders
+                                10,  # Number of levels
+                                self.cfg  
+                                )
+            info = {"market_maker": mm_info, "execution": exe_info,
+                "trades":new_trades,
+                "total_msgs":combined_msgs,
+                "lob_state":lob_state,}
+            
         return obs, new_state, rewards, dones, info
 
     def _ffill_best_prices(self, prices_quants, last_valid_price):

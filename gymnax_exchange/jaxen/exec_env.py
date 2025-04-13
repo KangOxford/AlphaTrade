@@ -369,7 +369,8 @@ class ExecutionEnv(BaseLOBEnv):
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
-        info = {
+        if self.cfg.debug_mode==False:
+            info = {
             "window_index": state.window_index,
             "total_revenue": state.total_revenue,
             "quant_executed": state.quant_executed,
@@ -392,7 +393,43 @@ class ExecutionEnv(BaseLOBEnv):
             "doom_quant": doom_quant,
             "drift":extras["drift"],
             "is_sell_task": state.is_sell_task,
-        }
+            }
+        if self.cfg.debug_mode==True:
+
+            lob_state = job.get_L2_state(
+                                state.ask_raw_orders,  # Current ask orders
+                                state.bid_raw_orders,  # Current bid orders
+                                10,  # Number of levels
+                                self.cfg  
+                                )
+            info={
+                "trades":trades,
+                "total_msgs":total_messages,
+                "lob_state":lob_state,
+            "window_index": state.window_index,
+            "total_revenue": state.total_revenue,
+            "quant_executed": state.quant_executed,
+            "task_to_execute": state.task_to_execute,
+            "average_price": jnp.nan_to_num(state.total_revenue 
+                                            / state.quant_executed, 0.0),
+            "mid_price":((state.best_bids[:, 0] + state.best_asks[:, 0]) // 2).mean(),
+            "current_step": state.step_counter,
+            "done": done,
+            "window_index": state.window_index,
+            "reward_lam1":extras["reward_lam1"],
+            "slippage_rm": state.slippage_rm,
+            "price_adv_rm": state.price_adv_rm,
+            "price_drift_rm": state.price_drift_rm,
+            "vwap_rm": state.vwap_rm,
+            "advantage_reward": state.advantage_return,
+            "drift_reward": state.drift_return,
+            "trade_duration": state.trade_duration,
+            "mkt_forced_quant": mkt_exec_quant + doom_quant,
+            "doom_quant": doom_quant,
+            "drift":extras["drift"],
+            "is_sell_task": state.is_sell_task,
+            }
+
         return self._get_obs(state, params), state, reward, done, info
     
 

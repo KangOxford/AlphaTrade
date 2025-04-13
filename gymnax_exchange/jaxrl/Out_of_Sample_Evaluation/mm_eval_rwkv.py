@@ -144,7 +144,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": -1,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*2, 
+        "EPISODE_TIME": 60*5, 
         "TRADERID": 10,
         "NUM_EPS":20,
         "NUM_ENVS": 64,
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     
     # Load the trained model parameters 
-    params_filename = "/home/duser/AlphaTrade/params_file_resilient-sweep-1_04-08_15-01"
+    params_filename = "/home/duser/AlphaTrade/params_file_faithful-sweep-1_04-12_21-08"
     with open(params_filename, 'rb') as f:
         params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
         
