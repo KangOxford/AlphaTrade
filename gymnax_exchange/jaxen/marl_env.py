@@ -405,8 +405,8 @@ class MARLEnv(BaseLOBEnv):
             "doom_quant": doom_quant,
             "is_sell_task": new_state.exe_state.is_sell_task,
         }
-        average_best_ask = jnp.int32((state.mm_state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        average_best_bid = jnp.int32((state.mm_state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        average_best_ask = state.mm_state.best_asks[-100:].mean(axis=0)[0]# // self.tick_size) * self.tick_size)
+        average_best_bid = state.mm_state.best_bids[-100:].mean(axis=0)[0]#// self.tick_size) * self.tick_size)
         mm_info = {
             "reward":mm_reward,
             "reward_portfolio_value":mm_extras["reward_portfolio_value"],

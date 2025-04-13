@@ -355,8 +355,8 @@ class MarketMakingEnv(BaseLOBEnv):
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
-        average_best_ask = jnp.int32((state.best_asks[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        average_best_bid = jnp.int32((state.best_bids[-100:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        average_best_ask = state.best_asks[-100:].mean(axis=0)[0] #// self.tick_size) * self.tick_size)
+        average_best_bid = state.best_bids[-100:].mean(axis=0)[0] #// self.tick_size) * self.tick_size)
         if self.cfg.debug_mode==False:
         #### Standard logging####
             info = {
