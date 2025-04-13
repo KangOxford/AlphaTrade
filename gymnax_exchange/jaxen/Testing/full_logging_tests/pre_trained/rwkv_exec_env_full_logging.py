@@ -8,25 +8,29 @@ import jax
 import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from gymnax_exchange.jaxen.mm_env import MarketMakingEnv
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 import faulthandler
 import pandas as pd  
-import chex
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 
+faulthandler.enable()
 import distrax
-
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 from flax import serialization
 from flax.core import frozen_dict
-
 from dataclasses import dataclass
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 
+
+
 from jax_rwkv.src.auto import get_rand_model
 from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, get_jit_ppo, PAD_FLAG, OBS_FLAG, ACT_FLAG
-#from utils.jstring import JString
+''''
+Script use:
+Run mm env in debug mode for full logging test. Saves all messages, order book states and trades objects
+as well as the normal info, so a full epsiode can be traced out
 
+'''
 
 
 ##Special class to handel the flag list, Jax String.
@@ -65,75 +69,53 @@ faulthandler.enable()
 
 # ============================
 # Configuration
-# ============================
-
-
+# ==========================
 
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1]
-        print("AlphaTrade folder:",ATFolder)
-    except:
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-
-
+    ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
     config = {
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 13,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*2,  
+        "EPISODE_TIME": 60 * 2,
     }
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
-
-
-    env_config_hps = [{"observation_space":"engineered",
-                         "reward_space":"spooner_scaled",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"near_touch",
-                         "action_space":"fixed_quants",
-                         "asymmetrically_dampened_lambda":1,
-                         "inventoryPnL_lambda":0.8,
-                          "debug_mode":True ########ENSURE THIS IS TRUE FOR FULL LOGGING TEST
-                         }]
-   
-    env_cfg=EnvironmentConfig(**env_config_hps[0])
-
-    env = MarketMakingEnv(
-        cfg = env_cfg,
-        key = key_reset,
+    env_config_hps = [ {"task":"random",
+                        "action_type":"pure",
+                        "action_space":"fixed_quants",
+                        "end_fn":"unwind_FT",
+                        "max_task_size":100,
+                        "n_actions":8,
+                        "fixed_quant_value":10,
+                        "num_messages_by_agent":8,
+                        "debug_mode":True}
+                        ]
+    trader_id=10
+    env_cfg=EnvironmentExecutionConfig(**env_config_hps[0])
+    env = ExecutionEnv(
+        cfg=env_cfg,
+        key=key_reset,
         alphatradePath=config["ATFOLDER"],
         window_index=config["WINDOW_INDEX"],
         episode_time=config["EPISODE_TIME"],
-         trader_unique_id = 10,
+        trader_unique_id=trader_id,
         ep_type=config["EP_TYPE"],
     )
-    # env_params=env.default_params
+
     env_params = dataclasses.replace(
         env.default_params,
-        episode_time=config["EPISODE_TIME"],  # in seconds
+        episode_time=config["EPISODE_TIME"],
     )
 
-    # Initialize the environment state
-    start = time.time()
     obs, env_state = env.reset(key_reset, env_params)
-    print(f"Starting index in data: {env_state.start_index}")
-    print("Time for reset: \n", time.time() - start)
-    print("Inventory after reset: \n", env_state.inventory)
-    print(f"Number of available windows: {env.n_windows}")
-
-
-    
     #===========================================#
     #Init the pre trained model
     #======================================#
     # Load the trained model parameters 
    
-    params_filename = "/home/duser/AlphaTrade/params_file_upbeat-sweep-1_04-08_11-16"
+    params_filename = "/home/duser/AlphaTrade/params_file_devoted-sweep-1_04-12_21-27"
     with open(params_filename, 'rb') as f:
         params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
         
@@ -164,42 +146,36 @@ if __name__ == "__main__":
    # ============================
     # Initialize data storage
     # ============================
-    output_dir = 'gymnax_exchange/jaxen/Testing/full_logging_tests/data/mm'
 
-    #Log all the same as before
-    rewards = np.zeros((test_steps, 1), dtype=int)
-    reward_portfolio_value = np.zeros((test_steps, 1), dtype=int)
-    reward_complex = np.zeros((test_steps, 1), dtype=int)
-    reward_spooner = np.zeros((test_steps, 1), dtype=int)
-    reward_spooner_scaled = np.zeros((test_steps, 1), dtype=int)
-    reward_spooner_damped = np.zeros((test_steps, 1), dtype=int)
-    reward_delta_netWorth = np.zeros((test_steps, 1), dtype=int)
-    inventory = np.zeros((test_steps, 1), dtype=int)
-    total_PnL = np.zeros((test_steps, 1), dtype=int)
-    buyQuant = np.zeros((test_steps, 1), dtype=int)
-    sellQuant = np.zeros((test_steps, 1), dtype=int)
-    bid_price = np.zeros((test_steps, 1), dtype=int)
-    ask_price = np.zeros((test_steps, 1), dtype=int)
-    netWorth = np.zeros((test_steps, 1), dtype=int)
-    averageMidprice = np.zeros((test_steps, 1), dtype=int)
-    midprice=np.zeros((test_steps, 1), dtype=int)
-    average_best_bid=np.zeros((test_steps, 1), dtype=int)
-    average_best_ask=np.zeros((test_steps, 1), dtype=int)
+    rewards = np.zeros((test_steps, 1))
+    total_revenue = np.zeros((test_steps, 1))
+    quant_executed = np.zeros((test_steps, 1))
+    average_price = np.zeros((test_steps, 1))
+    mid_price=np.zeros((test_steps, 1))
+    vwap_rm=np.zeros((test_steps, 1))
+    slippage_rm=np.zeros((test_steps, 1))
+    price_drift_rm=np.zeros((test_steps, 1))
+    price_adv_rm=np.zeros((test_steps, 1))
+    avantage_reward=np.zeros((test_steps, 1))
+    drift_reward=np.zeros((test_steps, 1))
+    drift=np.zeros((test_steps, 1))
+    trade_duration=np.zeros((test_steps, 1))
+    advantage_reward=np.zeros((test_steps, 1))
 
+    
     #Now also log: all messages, all trades, the L2 state..
     total_messages=np.zeros((test_steps,100+env_cfg.num_messages_by_agent,8),dtype=int) #100 is fixed, then num messages by agent extra
     total_trades=np.zeros((test_steps,100,8),dtype=int) #fixed 100 a step
     lob_states=np.zeros((test_steps,40),)#getting 10 levels of l2 state, each gives price and quant
 
-    # ============================
-    # Track the number of valid steps
-    # ============================
+
+
+    output_dir = 'gymnax_exchange/jaxen/Testing/full_logging_tests/data/exec'
     valid_steps = 0
-    # ============================
-    # Run the test loop
-    # ============================
+
+    
     for i in range(test_steps):
-        # ==================== ACTION ====================
+       # ==================== ACTION ====================
         key_policy, _ = jax.random.split(key_policy, 2)
         key_step, _ = jax.random.split(key_step, 2)
 
@@ -224,29 +200,19 @@ if __name__ == "__main__":
         action= action.item()
         obs, env_state, reward, done, info = env.step(key_step, env_state, action, env_params)
         
-        
-        #====================#
-        #== Store standard data#
-        #======================#
         rewards[i] = reward
-        reward_portfolio_value[i] = info["reward_portfolio_value"]
-        reward_complex[i] = info["reward_complex"]
-        reward_spooner[i] = info["reward_spooner"]
-        reward_spooner_scaled[i] = info["reward_spooner_scaled"]
-        reward_spooner_damped[i] = info["reward_spooner_damped"]
-        reward_delta_netWorth[i] = info["reward_delta_netWorth"]
-        inventory[i] = info["inventory"]
-        total_PnL[i] = info["total_PnL"]
-        buyQuant[i] = info["buyQuant"]
-        sellQuant[i] = info["sellQuant"]
-        bid_price[i] = info["action_prices"][0]  # Store best ask
-        ask_price[i] = info["action_prices"][1]
-        averageMidprice[i] = info["averageMidprice"]  # Store mid price
-        midprice[i]=info["end_mid_price"]
-        netWorth[i]=info["netWorth"]
-        average_best_bid[i]=info["average_best_bid"]
-        average_best_ask[i]=info["average_best_ask"]
-
+        total_revenue[i] = info["total_revenue"]
+        quant_executed[i] = info["quant_executed"]
+        average_price[i] = info["average_price"]
+        vwap_rm[i] = info["vwap_rm"]
+        mid_price[i] = info["mid_price"]
+        slippage_rm[i] = info["slippage_rm"]
+        price_adv_rm[i] = info["price_adv_rm"]
+        price_drift_rm[i] = info["price_drift_rm"]
+        advantage_reward[i] = info["advantage_reward"]
+        drift_reward[i] = info["drift_reward"]
+        drift[i]=info["drift"]
+        trade_duration[i] = info["trade_duration"]
 
         #===============================#
         #=====Store the full logging data==#
@@ -255,55 +221,50 @@ if __name__ == "__main__":
         total_trades[i,:,:]=info["trades"]
         lob_states[i,:]=info["lob_state"]       
         
-        # Increment valid steps
+
         valid_steps += 1
-        
         if done:
-            print("===" * 20)
-            print(f"Episode ended at step {valid_steps}")
             break
-    
+
+
     #==================================================================#
     #----------------------Save data to CSVs---------------------------#
     #==================================================================#
     #Trim the arrays
+ 
+    total_revenue = total_revenue[:valid_steps]
+    quant_executed = quant_executed[:valid_steps]
+    vwap_rm = vwap_rm[:valid_steps]
+    average_price = average_price[:valid_steps]
+    trade_duration = trade_duration[:valid_steps]
+    drift = drift[:valid_steps]
+    drift_reward = drift_reward[:valid_steps]
+    advantage_reward=advantage_reward[:valid_steps]
+    price_drift_rm=price_drift_rm[:valid_steps]
+    slippage_rm=slippage_rm[:valid_steps]
+    price_adv_rm=price_adv_rm[:valid_steps]
+    mid_price=mid_price[:valid_steps]
     total_messages = total_messages[:valid_steps]
     total_trades = total_trades[:valid_steps]
     lob_states = lob_states[:valid_steps]
     reward = rewards[:valid_steps]
-    reward_portfolio_value = reward_portfolio_value[:valid_steps]
-    reward_complex = reward_complex[:valid_steps]
-    reward_spooner = reward_spooner[:valid_steps]
-    reward_spooner_damped = reward_spooner_damped[:valid_steps]
-    reward_spooner_scaled = reward_spooner_scaled[:valid_steps]
-    reward_delta_netWorth = reward_delta_netWorth[:valid_steps]
-    inventory = inventory[:valid_steps]
-    total_PnL = total_PnL[:valid_steps]
-    buyQuant = buyQuant[:valid_steps]
-    sellQuant = sellQuant[:valid_steps]
-    bid_price = bid_price[:valid_steps]
-    ask_price = ask_price[:valid_steps]
-    averageMidprice = averageMidprice[:valid_steps]
-    midprice=midprice[:valid_steps]
-    netWorth = netWorth[:valid_steps]
-    average_best_bid=average_best_bid[:valid_steps]
-    average_best_ask=average_best_ask[:valid_steps]
+  
 
     #Make CSVs
 
     #Reward
-    reward = np.hstack([reward, reward_portfolio_value, reward_complex, reward_spooner,reward_spooner_damped, reward_spooner_scaled, reward_delta_netWorth])
+    reward = np.hstack([reward,drift_reward,advantage_reward])
     # Add column headers
-    reward_column_names = ['Reward', 'Portfolio Value Reward', 'Complex Reward', 'Spooner Reward','Spooner Damped Reward', 'Spooner Scaled Reward', 'Delta Net Worth Reward']
+    reward_column_names = ['Reward','drift_reward','advantage_reward']
 
     reward_df = pd.DataFrame(reward, columns=reward_column_names)
     reward_df['step'] = np.arange(1, len(reward_df) + 1)#add step column
     reward_df.to_csv(os.path.join(output_dir, 'reward_data.csv'), index=False)
 
     #Environment stats
-    env_data = np.hstack([inventory, total_PnL, buyQuant, sellQuant, bid_price, ask_price, averageMidprice,midprice,average_best_bid,average_best_ask,netWorth])
+    env_data = np.hstack([total_revenue, quant_executed, vwap_rm, average_price, trade_duration, drift, price_drift_rm,slippage_rm,price_adv_rm,mid_price])
     # Add column headers
-    env_data_column_names = ['Inventory', 'Total PnL', 'Buy Quantity', 'Sell Quantity', 'Bid Price', 'Ask Price', 'averageMidprice','midprice','average_best_bid','average_best_ask', 'netWorth']
+    env_data_column_names = ['total_revenue', 'quant_executed', 'vwap_rm', 'average_price', 'trade_duration', 'drift', 'price_drift_rm','slippage_rm','price_adv_rm','mid_price']
 
     # Save data using pandas to handle CSV easily
     env_data_df = pd.DataFrame(env_data, columns=env_data_column_names)
