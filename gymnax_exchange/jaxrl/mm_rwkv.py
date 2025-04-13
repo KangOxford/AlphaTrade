@@ -340,8 +340,8 @@ def make_train(config):
                 print("None ended")
             wandb.log( 
                 data={
-                     "average_return":average_return,
-                     "average_pnl":average_pnl,
+                     "average_episodic_return":average_return,
+                     "average_episodic_pnl":average_pnl,
                      "global_timestep":global_timestep
                 },
                 commit=True
@@ -372,6 +372,8 @@ def make_train(config):
             #Reset eval env
             #============#
             eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params)
+            eval_update_returns=[]
+            eval_update_pnl=[]
 
             for t in range(config["NUM_STEPS_EVAL"]):
                 rng, _rng = jax.random.split(rng)
@@ -394,6 +396,33 @@ def make_train(config):
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
                 eval_obsv, eval_env_state, eval_reward, eval_done, eval_info = v_eval_env_step(rng_step, eval_env_state, eval_action, eval_env_params)
+
+                eval_return_values = eval_info["returned_episode_returns"][eval_info["returned_episode"]]
+                eval_episdoic_pnl=eval_info["total_PnL"][eval_info["returned_episode"]]
+                for r in eval_return_values:
+                    eval_update_returns.append(r)
+                for p in eval_episdoic_pnl:
+                     eval_update_pnl.append(p)   
+            if len(eval_update_returns) > 0:
+                eval_average_return=sum(eval_update_returns) / len(eval_update_returns)
+                print("eval_average_return:", sum(eval_update_returns) / len(eval_update_returns))
+            else:
+                eval_average_return=0
+                print("None ended")
+            if len(eval_update_pnl) > 0:
+                eval_average_pnl=sum(eval_update_pnl) / len(eval_update_pnl)
+                print("avg episodic pnl:", sum(eval_update_pnl) / len(eval_update_pnl))
+            else:
+                eval_average_pnl=0
+                print("None ended")
+            wandb.log( 
+                data={
+                     "average_episodic_return_eval":eval_average_return,
+                     "average_episodic_pnl_eval":eval_average_pnl,
+                },
+                commit=True
+            )                 
+               
             
 
             ##=====================LOGGING==============#

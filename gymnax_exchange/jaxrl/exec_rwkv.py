@@ -328,9 +328,17 @@ def make_train(config):
             # print("target", targets)
             print("UPDATING")
             if len(update_returns) > 0:
+                average_return=sum(update_returns) / len(update_returns)
                 print("avg returns:", sum(update_returns) / len(update_returns))
             else:
                 print("None ended")
+            wandb.log( 
+                data={
+                     "average_episodic_return":average_return,
+                     "global_timestep":global_timestep
+                },
+                commit=True
+            )
 
             #Update weights
             for _ in range(config["UPDATE_EPOCHS"]):
@@ -535,7 +543,7 @@ if __name__ == "__main__":
     except:
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
-    env_config_hps = [ {"task":"buy",
+    env_config_hps = [ {"task":"random",
                         "action_type":"pure",
                         "action_space":"fixed_quants",
                         "end_fn":"unwind_FT",
@@ -546,27 +554,27 @@ if __name__ == "__main__":
                         ]
 
     training_parameters = {
-         "LR": {"values": [2.5e-4]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [64]},
-        "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [1e5]},
-        "UPDATE_EPOCHS": {"values": [4,10]},
+          "LR": {"values": [5e-5]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [32]},
+        "NUM_STEPS": {"values": [64]},  
+        "TOTAL_TIMESTEPS": {"values": [1e6]},
+        "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.99]},
         "GAE_LAMBDA": {"values": [0.999]},
-        "CLIP_EPS": {"values": [0.25]},
-        "ENT_COEF": {"values": [0.01, 0.05]},
-        "VF_COEF": {"values": [0.1,0.05]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.1]},
+        "VF_COEF": {"values": [0.5]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [13]},
-        "EPISODE_TIME": {"values": [60*2]},
+        "WINDOW_INDEX": {"values": [-1]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[32]},
+        "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "TRADER_UNIQUE_ID": {"values": [10]},
@@ -577,9 +585,8 @@ if __name__ == "__main__":
 
     
     sweep_config={
-        "method": "bayes",
+        "method": "grid",
         "parameters": training_parameters,
-        "metric": {'goal': 'maximize', 'name': 'episodic_return'},
     }
 
     def sweep_fun():
@@ -603,7 +610,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RWKV_OVERFIT")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RWKV_DAY")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
