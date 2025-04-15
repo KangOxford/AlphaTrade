@@ -101,7 +101,10 @@ def make_train(config):
 
     #Function to process the obsveration
     def handle_continuous(observation):
-        return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
+        if config["FLOAT_TYPE"] == "float16":
+            return jnp.array(observation).astype(jnp.float16).view(jnp.uint16).astype(jnp.int32)
+        elif config["FLOAT_TYPE"] == "float8":
+            return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
     
     #========#
     # Get Keys
@@ -186,7 +189,10 @@ def make_train(config):
         #===================================================#
 
         #Define the vocab
-        num_tokens = 1 + env.action_space(env_params).n + 256
+        if config["FLOAT_TYPE"] == "float16":
+            num_tokens = 1 + env.action_space(env_params).n + 65536 
+        elif config["FLOAT_TYPE"] == "float8":
+            num_tokens = 1 + env.action_space(env_params).n + 256
         config["MIN_ACTION_TOK"] = 1
         config["MAX_ACTION_TOK"] = env_config.n_actions
 
@@ -604,7 +610,7 @@ if __name__ == "__main__":
         "LR": {"values": [5e-5]},#, 3e-4, 1e-3
         "NUM_ENVS": {"values": [32,64]},
         "NUM_STEPS": {"values": [64,128]},  
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
+        "TOTAL_TIMESTEPS": {"values": [3e6]},
         "UPDATE_EPOCHS": {"values": [4,8]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.99,0.999]},
@@ -620,12 +626,12 @@ if __name__ == "__main__":
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
         "WINDOW_INDEX": {"values": [14]},
-        "EPISODE_TIME": {"values": [60*2]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
-
+        "FLOAT_TYPE": {"values": ["float16"]}
     }    
 
     
@@ -656,7 +662,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_every_step_14")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_float16")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
