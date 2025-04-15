@@ -306,7 +306,7 @@ def make_train(config):
                 return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
                 for r in return_values:
                     update_returns.append(r)
-                global_timestep += 1
+                global_timestep += 1*config["NUM_ENVS"]
 
             #Form lists for adv calcs
             tokens_list = jnp.concatenate(tokens_list, axis=1)
@@ -329,12 +329,15 @@ def make_train(config):
             print("UPDATING")
             if len(update_returns) > 0:
                 average_return=sum(update_returns) / len(update_returns)
-                print("avg returns:", sum(update_returns) / len(update_returns))
+                std_return = np.std(update_returns)
+                print("avg returns:", average_return)
+                print("std returns:", std_return)
             else:
                 print("None ended")
             wandb.log( 
                 data={
                      "average_episodic_return":average_return,
+                    "std_episodic_return": std_return,
                      "global_timestep":global_timestep
                 },
                 commit=True
@@ -395,8 +398,8 @@ def make_train(config):
                 def callback(info_train,info_eval,loss=None, value_loss=None, loss_actor=None, entropy=None):
                     #------------Collect info for plotting---------------------------#
                     #1)Step and return info
-                    return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
-                    timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"] 
+                   # return_values = info_train["returned_episode_returns"][info_train["returned_episode"]] 
+                   # timesteps = info_train["timestep"][info_train["returned_episode"]] * config["NUM_ENVS"] 
                     #windowIndextrain = info_train["window_index"][:, config["ENVID"]] 
 
                     #-----------Train info----------#
@@ -433,7 +436,7 @@ def make_train(config):
                             data={
                                 #-----time and return------------#
                                 "episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,  # Handle empty arrays
-                                "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
+                               # "global_step": jnp.max(timesteps) if timesteps.size>0 else 0,
                                 #"windowIndextrain": jnp.mean(windowIndextrain) if windowIndextrain.size > 0 else 0,
 
                                 #---------Reward and error bars--------#
@@ -523,10 +526,7 @@ def make_train(config):
                                 "ppo_weighted_value_loss": float(config["VF_COEF"] * value_loss) if value_loss is not None else 0,
                                 "ppo_weighted_entropy": float(config["ENT_COEF"] * entropy) if entropy is not None else 0,
                                 "ppo_weighted_actor_loss": float(loss_actor) if loss_actor is not None else 0,
-                        
-                               
-                              
-                            
+
                                                             },
                             commit=True
                         )
@@ -545,7 +545,7 @@ if __name__ == "__main__":
 
     env_config_hps = [ {"task":"random",
                         "action_type":"pure",
-                        "action_space":"fixed_quants",
+                        "action_space":"fixed_quants_complex",
                         "end_fn":"unwind_FT",
                         "max_task_size":100,
                         "n_actions":8,
@@ -557,14 +557,14 @@ if __name__ == "__main__":
           "LR": {"values": [5e-5]},#, 3e-4, 1e-3
         "NUM_ENVS": {"values": [32]},
         "NUM_STEPS": {"values": [64]},  
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
+        "TOTAL_TIMESTEPS": {"values": [8e5]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.99]},
         "GAE_LAMBDA": {"values": [0.999]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.1]},
-        "VF_COEF": {"values": [0.5]},
+        "ENT_COEF": {"values": [0.01]},
+        "VF_COEF": {"values": [0.1]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},

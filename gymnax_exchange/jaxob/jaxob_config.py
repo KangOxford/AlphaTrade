@@ -15,7 +15,7 @@ class Configuration:
     nOrders : int =cst.NORDER_CAP
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
-    debug_mode:bool=True
+    debug_mode:bool=False
     start_resolution: int = env_cst.start_resolution#move this to base config..
 
 @dataclass(frozen=True)

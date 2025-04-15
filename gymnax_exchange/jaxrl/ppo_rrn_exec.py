@@ -728,10 +728,10 @@ if __name__ == "__main__":
     #                                                    "reference_price_portfolio_value":ref,
     #                                                    "n_actions":n,
     #                                                    "fixed_quant_value":q})  
-    env_config_hps = [ {"task":"buy",
+    env_config_hps = [ {"task":"random",
                          "action_type":"pure",
                          "end_fn":"unwind_FT",
-                         "max_task_size":50,
+                         "max_task_size":100,
                          "n_actions":8,
                          "action_space":"fixed_quants"
                           }]
@@ -747,26 +747,26 @@ if __name__ == "__main__":
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [2.5e-4,1e-4,1e-5]},
+        "LR": {"values": [5e-5]},
         "NUM_ENVS": {"values": [256]},
         "NUM_STEPS": {"values": [32]},
-        "TOTAL_TIMESTEPS": {"values": [5e5]},
-        "UPDATE_EPOCHS": {"values": [2,4]},
+        "TOTAL_TIMESTEPS": {"values": [8e5]},
+        "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
         "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.0]},
-        "VF_COEF": {"values": [0.05,0.1]},
+        "ENT_COEF": {"values": [0.01]},
+        "VF_COEF": {"values": [0.001]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeExec"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "REWARD_LAMBDA": {"values": [0]},
-        "EPISODE_TIME": {"values": [60*2]},
+        "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "WINDOW_INDEX": {"values": [13]},
+        "WINDOW_INDEX": {"values": [-1]},
         "TRADER_UNIQUE_ID": {"values": [10]},
         "NUM_STEPS_EVAL":{"values":[32]},
         "ATFOLDER": {"values": [ATFolder]},
@@ -777,12 +777,8 @@ if __name__ == "__main__":
     }    
 
     sweep_config={
-        "method": "bayes",
+        "method": "grid",
         "parameters": training_parameters,
-        "metric": {
-            "name": "episodic_return",
-            "goal": "maximize"
-        },
     }
 
     def sweep_fun():
@@ -812,7 +808,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RNN_TRAIN")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="EXEC_RNN_FULL_DAY")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

@@ -143,24 +143,15 @@ def plot_lob_heatmap(lob_states, output_dir):
 #------------4. plot trader activity---------#
 
 
-def plot_buy_sell_inventory_networth(env_data_df, trades_df, messages_df, output_dir, trader_id=10):
-    """Plots buy/sell activity with midprice (arrows) with legend, inventory, and net worth."""
-    mask_trades = (trades_df['TIDa'] == trader_id) | (trades_df['TIDs'] == trader_id)
-    trader_trades = trades_df[mask_trades].copy()
-    trader_trades['OID'] = trader_trades.apply(
-        lambda row: row['OIDs'] if row['TIDs'] == trader_id else row['OIDa'], axis=1)
-    merged_trades_messages = pd.merge(trader_trades, messages_df, how='left', on=['OID', 'step'])
-    if 'Price' not in merged_trades_messages.columns:
-        if 'Price_x' in merged_trades_messages.columns:
-            merged_trades_messages['Price'] = merged_trades_messages['Price_x']
-            merged_trades_messages.drop(columns=['Price_x'], inplace=True)
-        elif 'Price_y' in merged_trades_messages.columns:
-            merged_trades_messages['Price'] = merged_trades_messages['Price_y']
-            merged_trades_messages.drop(columns=['Price_y'], inplace=True)
-    merged_trades_messages = merged_trades_messages[~merged_trades_messages['Side'].isna()]
-    merged_trades_messages['Side'] = merged_trades_messages['Side'].astype(int)
-    buy_steps = merged_trades_messages[merged_trades_messages['Side'] == 1][['step', 'Price']]
-    sell_steps = merged_trades_messages[merged_trades_messages['Side'] == -1][['step', 'Price']]
+def plot_buy_sell_inventory_networth(env_data_df, trades_df,output_dir, trader_id=10):
+    """Plots buy/sell activity with midprice (arrows) with legend, inventory, and net worth,
+    determining buy/sell directly from the trades dataframe."""
+    trader_trades = trades_df[((trades_df['TIDa'] == trader_id) | (trades_df['TIDs'] == trader_id))].copy()
+
+    buy_steps = trader_trades[((trader_trades['TIDs'] == trader_id) & (trader_trades['Quantity'] > 0)) |
+                               ((trader_trades['TIDa'] == trader_id) & (trader_trades['Quantity'] < 0))][['step', 'Price']]
+    sell_steps = trader_trades[((trader_trades['TIDs'] == trader_id) & (trader_trades['Quantity'] < 0)) |
+                                ((trader_trades['TIDa'] == trader_id) & (trader_trades['Quantity'] > 0))][['step', 'Price']]
 
     fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharex=True, height_ratios=[2, 1])
 
@@ -230,7 +221,7 @@ def plot_agent_prices_reward(env_data_df, messages_df, reward_df, output_dir, tr
 # ---- Run visualizations ----
 plot_env_midprice_stats(env_data,output_dir)
 plot_cumulative_lob(lob_states, output_dir,step=25)
-plot_buy_sell_inventory_networth(env_data, trades_df, messages_df, output_dir, trader_id)
+plot_buy_sell_inventory_networth(env_data, trades_df, output_dir, trader_id)
 plot_agent_prices_reward(env_data, messages_df, reward_df, output_dir, trader_id)
 
 

@@ -222,6 +222,7 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
+        update_count=0
 
         for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
             #Intialise lists
@@ -305,7 +306,7 @@ def make_train(config):
                     update_returns.append(r)
                 for p in episdoic_pnl:
                      update_pnl.append(p)                    
-                global_timestep += 1
+                global_timestep += 1*config["NUM_ENVS"]
 
             #Form lists for adv calcs
             tokens_list = jnp.concatenate(tokens_list, axis=1)
@@ -327,22 +328,35 @@ def make_train(config):
             # print("target", targets)
             print("UPDATING")
             if len(update_returns) > 0:
-                average_return=sum(update_returns) / len(update_returns)
-                print("avg returns:", sum(update_returns) / len(update_returns))
+                average_return = sum(update_returns) / len(update_returns)
+                std_return = np.std(update_returns)
+                print("avg returns:", average_return)
+                print("std returns:", std_return)
             else:
-                average_return=0
+                average_return = 0
+                std_return = 0
                 print("None ended")
+
             if len(update_pnl) > 0:
-                average_pnl=sum(update_pnl) / len(update_pnl)
-                print("avg episodic pnl:", sum(update_pnl) / len(update_pnl))
+                average_pnl = sum(update_pnl) / len(update_pnl)
+                std_pnl = np.std(update_pnl)
+                print("avg episodic pnl:", average_pnl)
+                print("std episodic pnl:", std_pnl)
             else:
-                average_pnl=0
+                average_pnl = 0
+                std_pnl = 0
                 print("None ended")
-            wandb.log( 
+            update_count+=1
+            print("global_timestep",global_timestep)
+            print("update_count",update_count)
+            wandb.log(
                 data={
-                     "average_episodic_return":average_return,
-                     "average_episodic_pnl":average_pnl,
-                     "global_timestep":global_timestep
+                    "average_episodic_return": average_return,
+                    "std_episodic_return": std_return,
+                    "average_episodic_pnl": average_pnl,
+                    "std_episodic_pnl": std_pnl,
+                    "global_timestep": global_timestep,
+                    "update_count":update_count
                 },
                 commit=True
             )
@@ -408,13 +422,13 @@ def make_train(config):
                 print("eval_average_return:", sum(eval_update_returns) / len(eval_update_returns))
             else:
                 eval_average_return=0
-                print("None ended")
+              #  print("None ended")
             if len(eval_update_pnl) > 0:
                 eval_average_pnl=sum(eval_update_pnl) / len(eval_update_pnl)
                 print("avg episodic pnl:", sum(eval_update_pnl) / len(eval_update_pnl))
             else:
                 eval_average_pnl=0
-                print("None ended")
+              #  print("None ended")
             wandb.log( 
                 data={
                      "average_episodic_return_eval":eval_average_return,
@@ -428,8 +442,8 @@ def make_train(config):
             ##=====================LOGGING==============#
             # Call back, log every update step as in rnn:
             #===========================================#
-            return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
-            wandb.log({"return_values:": return_values})
+           # return_values = info_train["returned_episode_returns"][info_train["returned_episode"]]
+            #wandb.log({"return_values:": return_values})
             if config.get("DEBUG"):
                         def callback(info_train, info_eval, loss=None, value_loss=None, loss_actor=None, entropy=None):
                             #------------Collect info for plotting---------------------------#
@@ -569,7 +583,7 @@ def make_train(config):
                                                                     },
                                     commit=True
                                 )
-                        jax.debug.callback(callback, info_train, eval_info, loss, value_loss, loss_actor, entropy)
+                       #jax.debug.callback(callback, info_train, eval_info, loss, value_loss, loss_actor, entropy)
         return {"params": params, "info_train": info_train, "eval_info": eval_info}
     return train
 
@@ -583,43 +597,39 @@ if __name__ == "__main__":
 
     
     env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
+                            "reward_space":"spooner_scaled",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading",
+                            "reference_price_portfolio_value":"mid",
+                            "action_space":"fixed_quants",
+                            "inventoryPnL_lambda":0.8,
+                            "asymmetrically_dampened_lambda":1
+
                             },
-                            {"observation_space":"engineered",
-                            "reward_space":"delta_netWorth",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading",
-                            },
+
+
                             ]
 
     training_parameters = {
         "LR": {"values": [5e-5]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [32,64]},
-        "NUM_STEPS": {"values": [64,128]},  
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "UPDATE_EPOCHS": {"values": [4,8]},
+        "NUM_ENVS": {"values": [32]},
+        "NUM_STEPS": {"values": [96]},  
+        "TOTAL_TIMESTEPS": {"values": [2e6]},
+        "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.99,0.999]},
-        "GAE_LAMBDA": {"values": [0.999,0.99]},
+        "GAMMA": {"values": [0.99]},
+        "GAE_LAMBDA": {"values": [0.999]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.1,0.01]},
-        "VF_COEF": {"values": [0.0000005,0.00000005]},
+        "ENT_COEF": {"values": [0.01]},
+        "VF_COEF": {"values": [0.1]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
-
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [14]},
+        "WINDOW_INDEX": {"values": [13]},
         "EPISODE_TIME": {"values": [60*2]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
@@ -656,7 +666,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_every_step_14")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_Overfit_test_all_spaces")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
