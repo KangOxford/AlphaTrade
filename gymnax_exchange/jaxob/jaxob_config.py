@@ -59,7 +59,7 @@ class EnvironmentConfig(Configuration):
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "AvSt":
-            object.__setattr__(self, 'n_actions', 2)
+            object.__setattr__(self, 'n_actions', 8)
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "fixed_prices":
