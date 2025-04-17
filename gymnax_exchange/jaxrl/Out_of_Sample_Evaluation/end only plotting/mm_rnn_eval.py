@@ -82,8 +82,7 @@ wandbOn = True # False
 if wandbOn:
     import wandb
 #----Wandb and parameters----#
-# Initialize wandb
-wandb.init(project="AlphaTrade_MM_RNN_Eval", config={"run_type": "evaluation"})
+
 
 
 # ============================
@@ -162,195 +161,226 @@ class ActorCriticRNN(nn.Module):
         return hidden, pi, jnp.squeeze(critic, axis=-1)
 
 
-if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1]
-        print("AlphaTrade folder:",ATFolder)
-    except:
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay/val"
-
-
-    config = {
-        "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": -1,
-        "EP_TYPE": "fixed_time",
-         "NUM_ENVS": 128, 
-        "EPISODE_TIME": 60*5,
-        "NUM_EPS":10  
-    }
-
-    rng = jax.random.PRNGKey(1)
+def make_test(config):
+    """Make train function. 
+    Input: Config
+    Output: Test function
+    Train(rng): returns:
+    Infos and params
+    """
+    #=========#
+    # Get Keys
+    #=========#
+    rng = jax.random.key(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+    env_config=EnvironmentConfig(**config["ENV_CONFIG"])
 
-    params_filename = "/home/duser/AlphaTrade/params_file_mild-sweep-1_04-15_12-35"
-    with open(params_filename, 'rb') as f:
-        params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
-
-    env_config_hps = [{"observation_space":"engineered",
-                         "reward_space":"spooner_scaled",
-                         "inv_penalty":"none",
-                         "n_actions":8,
-                         "end_fn":"unwind_ref_price",
-                         "fixed_quant_value":15,
-                         "reference_price_portfolio_value":"near_touch",
-                         "action_space":"fixed_quants",
-                         "asymmetrically_dampened_lambda":1,
-                         "inventoryPnL_lambda":0.8,
-                          "debug_mode":False 
-                         }]
-   
-    env_cfg=EnvironmentConfig(**env_config_hps[0])
-
+    #===========#
+    #Define Envs#
+    #==========#
     env = MarketMakingEnv(
-        cfg = env_cfg,
-        key = key_reset,
-        alphatradePath=config["ATFOLDER"],
-        window_index=config["WINDOW_INDEX"],
-        episode_time=config["EPISODE_TIME"],
-         trader_unique_id = 10,
-        ep_type=config["EP_TYPE"],
-    )
-    # env_params=env.default_params
+            env_config,
+            key_reset,
+            alphatradePath=config["ATFOLDER"]+"/val",
+            window_index=config["WINDOW_INDEX"],
+            episode_time=config["EPISODE_TIME"],
+            ep_type=config["DATA_TYPE"],
+        )
+
     env_params = dataclasses.replace(
-        env.default_params,
-        episode_time=config["EPISODE_TIME"],  # in seconds
-    )
-
-    # Initialize the environment state
-    start = time.time()
-    obs, env_state = env.reset(key_reset, env_params)
-    print(f"Starting index in data: {env_state.start_index}")
-    print("Time for reset: \n", time.time() - start)
-    print("Inventory after reset: \n", env_state.inventory)
-    print(f"Number of available windows: {env.n_windows}")
-
-
+            env.default_params,
+            episode_time=config["EPISODE_TIME"],
+        )
     
+    #====================#
+    #Apply purejaxRL wrappers#
+    #=========================#
+    env = FlattenObservationWrapper(env)
+    env = LogWrapper(env)
+    
+
+
     #===========================================#
     #Init the pre trained model
     #======================================#
     # Load the trained model parameters 
     # Initialize the model
+    params_filename = config["params_path"]
+    with open(params_filename, 'rb') as f:
+        params = serialization.from_bytes(frozen_dict.FrozenDict, f.read())
 
-    network = ActorCriticRNN(env.action_space(env_params).n, config=config)
-    init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+    def train(rng):
+        """Train function
+        input rng key
+        output:
+        return {"params": params, "info_train": info_train, "eval_info": eval_info}"""  
 
-    reset_rng = jax.random.split(key_reset, config["NUM_ENVS"])
+        #Start count
+        global_timestep = 1
 
-
-    returns_mean_per_ep = []
-    returns_std_per_ep = []
-    pnls_mean_per_ep = []
-    pnls_std_per_ep = []
-
-    episodes = config["NUM_EPS"] # Run for multiple episodes
-    for episode in range(episodes):
-        print(f"=== Starting Episode {episode} ===")
-        # Reset the environments
-        reset_rng = jax.random.split(key_reset, config["NUM_ENVS"])
+        #Reset training env
+        rng, _rng = jax.random.split(rng)
+        reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
-  
-        # ============================
-        # Run the test loop
-        # ============================
-        # Initialize per-env tracking arrays
-        episode_reward = jnp.zeros(config["NUM_ENVS"])
-        episode_returns = jnp.full(config["NUM_ENVS"], jnp.nan)
-        episode_pnls = jnp.full(config["NUM_ENVS"], jnp.nan)
-        done_mask = jnp.zeros(config["NUM_ENVS"], dtype=bool)
+        update_count=0
 
-        for step in range(100000000): 
-            # =========================== #
-            # Skip completed envs by masking observations
-            # =========================== #
-            masked_obsv = jax.tree_util.tree_map(
-                lambda x: jnp.where(done_mask[:, None], jnp.zeros_like(x), x), 
-                obsv
+        network = ActorCriticRNN(env.action_space(env_params).n, config=config)
+        init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
+
+        
+        for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
+            #Intialise lists
+            all_actions = []
+            update_returns = []
+            update_pnl=[]
+
+            for t in range(config["NUM_STEPS"]):
+                rng, _rng = jax.random.split(rng)
+
+                ac_in = (obsv[jnp.newaxis, :], done[jnp.newaxis, :])
+                init_hstate, pi, _ = network.apply(params, init_hstate, ac_in)
+                action = pi.sample(seed=_rng)
+
+                #log actions
+                def log_action_distribution(action):
+                            unique_actions, counts = jnp.unique(action, return_counts=True)
+                            action_distribution = {f"action_{int(a)}": int(c) for a, c in zip(unique_actions, counts)}
+                            wandb.log(action_distribution)
+                if wandbOn:
+                    jax.debug.callback(log_action_distribution, action)
+                
+                # Take a step in the environment
+                rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+                obsv, env_state, _, done,_info = jax.vmap(env.step, in_axes=(0, 0, 0, None))(rng_step, env_state, action, env_params)
+                #======Append list of actions, dones, rewards, value#
+
+                return_values = _info["returned_episode_returns"][_info["returned_episode"]]
+                episdoic_pnl=_info["total_PnL"][_info["returned_episode"]]
+                for r in return_values:
+                    update_returns.append(r)
+                for p in episdoic_pnl:
+                     update_pnl.append(p)                    
+                global_timestep += 1*config["NUM_ENVS"]
+
+            #Form lists for adv calcs
+            print("Steps End")
+            if len(update_returns) > 0:
+                average_return = sum(update_returns) / len(update_returns)
+                std_return = np.std(update_returns)
+                print("avg returns:", average_return)
+                print("std returns:", std_return)
+            else:
+                average_return = 0
+                std_return = 0
+                print("None ended")
+
+            if len(update_pnl) > 0:
+                average_pnl = sum(update_pnl) / len(update_pnl)
+                std_pnl = np.std(update_pnl)
+                print("avg episodic pnl:", average_pnl)
+                print("std episodic pnl:", std_pnl)
+            else:
+                average_pnl = 0
+                std_pnl = 0
+                print("None ended")
+            update_count+=1
+            print("global_timestep",global_timestep)
+            print("update_count",update_count)
+            wandb.log(
+                data={
+                    "average_episodic_return": average_return,
+                    "std_episodic_return": std_return,
+                    "average_episodic_pnl": average_pnl,
+                    "std_episodic_pnl": std_pnl,
+                    "global_timestep": global_timestep,
+                    "update_count":update_count
+                },
+                commit=True
             )
 
-            # Tokenize observation
-            rng, _rng = jax.random.split(rng)
-            #test action
-            ac_in = (masked_obsv[jnp.newaxis, :], done_mask[jnp.newaxis, :])
-            init_hstate, pi, value = network.apply(params, init_hstate, ac_in)
-            action = pi.sample(seed=_rng)
-            log_prob = pi.log_prob(action)
-            value, action, log_prob = (
-                        value.squeeze(0),
-                        action.squeeze(0),
-                        log_prob.squeeze(0),
-                    )
-            
-            # Mask action for done envs
-            action = jnp.where(done_mask, 0, action)  # or any no-op action
-            
-            # Take a step in the environment
-            rng_step = jax.random.split(_rng, config["NUM_ENVS"])
-            obsv, env_state, reward, done, info = jax.vmap(env.step, in_axes=(0, 0, 0, None))(rng_step, env_state, action, env_params)
-        
-            # Accumulate rewards only for active envs
-            episode_reward += jnp.where(done_mask, 0, reward)
-
-           # Identify envs that just finished this step
-            newly_done = jnp.logical_and(done, jnp.logical_not(done_mask))
-
-            # Log final return and PnL for newly finished envs
-            def get_final_pnl(info, default=0.0):
-                return info.get("total_PnL", default)
-
-            extract_pnl_vmap = jax.vmap(get_final_pnl)
-            final_pnls = extract_pnl_vmap(info)
-
-            # Update logs where newly done
-            episode_returns = jnp.where(newly_done, episode_reward, episode_returns)
-            episode_pnls = jnp.where(newly_done, final_pnls, episode_pnls)
-
-            # Update done mask
-            done_mask = jnp.logical_or(done_mask, done)
-
-            # Update observation
-            obsv = obsv
-
-            print(f"on step {step} of episode {episode} out of {episodes}")
-
-            if done_mask.all():
-                break   
-        print(f"\n=== Episode {episode} Results ===")
-        print("Returns:", episode_returns)
-        print("PnLs:   ", episode_pnls)
+        return {"params": params, "info_train": _info}
+    return train
     
-        mean_return = jnp.nanmean(episode_returns)
-        std_return = jnp.nanstd(episode_returns)
+    
 
-        mean_pnl = jnp.nanmean(episode_pnls)
-        std_pnl = jnp.nanstd(episode_pnls)
 
-        wandb.log({
-            "mean_return": float(mean_return),
-            "std_return": float(std_return),
-            "mean_pnl": float(mean_pnl),
-            "std_pnl": float(std_pnl),
-            "episode": episode,
-        })
-        wandb.log({
-            "returns_distribution": wandb.Histogram(episode_returns),
-            "pnls_distribution": wandb.Histogram(episode_pnls),
-            "episode": episode,
-        })
+if __name__ == "__main__":
+    timestamp=datetime.datetime.now().strftime("%m-%d_%H-%M")
+    try:
+        ATFolder = sys.argv[1]
+        print("ATFFolder:",ATFolder)
+    except:
+        ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
-        # Store them
-        returns_mean_per_ep.append(mean_return)
-        returns_std_per_ep.append(std_return)
-        pnls_mean_per_ep.append(mean_pnl)
-        pnls_std_per_ep.append(std_pnl)
+    
+    env_config_hps = [{"observation_space":"engineered",
+                            "reward_space":"spooner_scaled",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"near_touch",
+                            "action_space":"fixed_quants",
+                            "inventoryPnL_lambda":0.8,
+                            "asymmetrically_dampened_lambda":0.2
+                            },
+                            ]
 
-        print(f"Mean Return: {mean_return:.2f}, Std Return: {std_return:.2f}")
-        print(f"Mean PnL: {mean_pnl:.2f}, Std PnL: {std_pnl:.2f}")
-        
-            
+    training_parameters = {
+        "LR": {"values": [5e-5]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [32]},
+        "NUM_STEPS": {"values": [64]},  
+        "TOTAL_TIMESTEPS": {"values": [2.5e5]},
+        "UPDATE_EPOCHS": {"values": [4]},
+        "NUM_MINIBATCHES": {"values": [16]},
+        "GAMMA": {"values": [0.99]},
+        "GAE_LAMBDA": {"values": [0.999]},
+        "CLIP_EPS": {"values": [0.2]},
+        "ENT_COEF": {"values": [0.01]},
+        "VF_COEF": {"values": [0.1]},
+        "MAX_GRAD_NORM": {"values": [0.5]},
+        "ENV_NAME": {"values": ["AlphaTradeMM"]},
+        "ANNEAL_LR": {"values": [True]},
+        "DEBUG": {"values": [True]},
+        "VERBOSE": {"values": [False]},
+        "ACTION_TYPE": {"values": ["pure"]},
+        "WINDOW_INDEX": {"values": [-1]},
+        "EPISODE_TIME": {"values": [60*5]},
+        "DATA_TYPE": {"values": ["fixed_time"]},
+        "NUM_STEPS_EVAL":{"values":[2]},
+        "ATFOLDER": {"values": [ATFolder]},
+        "ENV_CONFIG": {"values": env_config_hps},
+        "FLOAT_TYPE": {"values": ["float16"]},
+        "params_path":{"values": ["/home/duser/AlphaTrade/params_file_silver-sweep-3_04-16_12-34"]}
+    }    
 
-  
-            
-            
+    
+    sweep_config={
+        "method": "grid",
+       
+                        "parameters": training_parameters
+    }
+
+    def sweep_fun():
+            run = wandb.init(
+                project="Alphatrade_Sweeps",
+                save_code=True,  # 
+            )
+            params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+            print(f"Results will be saved to {params_file_name}")
+            # +++++ Single GPU +++++
+            rng = jax.random.PRNGKey(1)
+            train = (make_test(wandb.config))
+            # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+            out = train(rng)
+
+            run.finish()
+
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_TEST")
+    wandb.agent(sweep_id, function=sweep_fun, count=500)
+
+
+    sys.exit(0)
+
+
 
         

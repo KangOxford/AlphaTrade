@@ -644,8 +644,7 @@ if __name__ == "__main__":
     
     sweep_config={
         "method": "grid",
-       
-                        "parameters": training_parameters
+        "parameters": training_parameters
     }
 
     def sweep_fun():
