@@ -1753,10 +1753,10 @@ class MarketMakingEnv(BaseLOBEnv):
 
 
         #A1)Spooner paper reward
-        reward_spooner = buyPnL + sellPnL + InventoryPnL - jnp.maximum(0,InventoryPnL)
+        reward_spooner = aggresive_buyPnL + aggresive_sellPnL + InventoryPnL - jnp.maximum(0,InventoryPnL)
 
         #A2)spooner_damped
-        reward_spooner_damped = buyPnL + sellPnL + InventoryPnL - (1-self.cfg.inventoryPnL_lambda)*jnp.maximum(0,InventoryPnL)
+        reward_spooner_damped = aggresive_buyPnL + aggresive_sellPnL + InventoryPnL - (1-self.cfg.inventoryPnL_lambda)*jnp.maximum(0,InventoryPnL)
 
         #A3) Spooner Scaled
         scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1)
@@ -2165,7 +2165,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 15,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*5,  
+        "EPISODE_TIME": 60*30,  
         "TRADERID":10
     }
         
@@ -2202,7 +2202,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,20):
+    for i in range(1,2):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)
@@ -2251,7 +2251,7 @@ if __name__ == "__main__":
 
     # # ####### Testing the vmap abilities ########
     
-    enable_vmap=False
+    enable_vmap=True
     if enable_vmap:
         # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
@@ -2277,3 +2277,87 @@ if __name__ == "__main__":
          state, test_actions, env_params)
         print("Time for vmap step with,",num_envs, " environments : \n",time.time()-start)
 
+        #=======================================#
+        #===============Timing Test=============#
+        #=======================================#
+        # ========== VMAP TIMING TEST LOOP ==========
+
+        print("\n" + "="*60)
+        print("Starting VMAP timing test loop with detailed timing")
+        print("="*60)
+
+        num_envs = 1024
+        vmap_keys = jax.random.split(rng, num_envs)
+
+        vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
+        vmap_step = jax.vmap(env.step, in_axes=(0, 0, 0, None))
+        vmap_sample_action = jax.vmap(env.action_space().sample, in_axes=(0))
+
+        # -----------------------------------
+        # Time Full Reset + Episode Rollout
+        # -----------------------------------
+        full_start = time.time()
+
+        # RESET
+        reset_start = time.time()
+        obs, state = vmap_reset(vmap_keys, env_params)
+        reset_end = time.time()
+        reset_time = reset_end - reset_start
+
+        # ROLLOUT (track only stepping)
+        step_start = time.time()
+
+        done_flags = jnp.zeros(num_envs, dtype=bool)
+        step_counter = jnp.zeros(num_envs, dtype=int)
+
+        def cond_fn(val):
+            _, _, done_flags, _ = val
+            return jnp.any(~done_flags)
+
+        def body_fn(val):
+            state, rng, done_flags, step_counter = val
+            rng, key_action, key_step = jax.random.split(rng, 3)
+            keys_action = jax.random.split(key_action, num_envs)
+            keys_step = jax.random.split(key_step, num_envs)
+
+            actions = vmap_sample_action(keys_action)
+            obs, next_state, reward, done, info = vmap_step(keys_step, state, actions, env_params)
+
+            # Masked update for unfinished envs
+            def masked_update(s, ns):
+                mask = done_flags
+                while mask.ndim < s.ndim:
+                    mask = mask[..., None]
+                return jnp.where(mask, s, ns)
+
+            state = jax.tree_map(masked_update, state, next_state)
+
+            # Update done flags and step count
+            done_flags = jnp.logical_or(done_flags, done)
+            step_counter += jnp.where(done_flags, 0, 1)
+
+            return (state, rng, done_flags, step_counter)
+
+
+        state, rng, done_flags, step_counter = jax.lax.while_loop(
+            cond_fn, body_fn, (state, rng, done_flags, step_counter)
+        )
+
+        step_end = time.time()
+        step_time = step_end - step_start
+        full_end = time.time()
+        full_time = full_end - full_start
+
+        avg_steps_per_env = jnp.mean(step_counter)
+        avg_step_time = step_time / jnp.sum(step_counter)
+
+        # -----------------------------------
+        # Print results
+        # -----------------------------------
+        print(f"\nCompleted VMAP run with {num_envs} environments.")
+        print(f"Reset time:           {reset_time:.4f} seconds")
+        print(f"Rollout (steps) time: {step_time:.4f} seconds")
+        print(f"Total time:           {full_time:.4f} seconds")
+        print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
+        print(f"Avg time per step:    {avg_step_time:.6f} seconds")
+        print("="*60)

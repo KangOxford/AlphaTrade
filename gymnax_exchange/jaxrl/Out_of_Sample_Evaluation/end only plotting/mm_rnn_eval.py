@@ -222,24 +222,27 @@ def make_test(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         obsv, env_state = jax.vmap(env.reset, in_axes=(0, None))(reset_rng, env_params)
+        done = jnp.zeros((config["NUM_ENVS"],), dtype=bool) #init done
         update_count=0
 
         network = ActorCriticRNN(env.action_space(env_params).n, config=config)
         init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], 128)
-
+        hstate=init_hstate
         
         for _ in range(int(config["TOTAL_TIMESTEPS"]) // config["NUM_STEPS"] // config["NUM_ENVS"]):
             #Intialise lists
             all_actions = []
             update_returns = []
             update_pnl=[]
+            
 
             for t in range(config["NUM_STEPS"]):
                 rng, _rng = jax.random.split(rng)
 
                 ac_in = (obsv[jnp.newaxis, :], done[jnp.newaxis, :])
-                init_hstate, pi, _ = network.apply(params, init_hstate, ac_in)
+                hstate, pi, _ = network.apply(params, hstate, ac_in)
                 action = pi.sample(seed=_rng)
+                action = jnp.squeeze(action)
 
                 #log actions
                 def log_action_distribution(action):
@@ -253,6 +256,7 @@ def make_test(config):
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
                 obsv, env_state, _, done,_info = jax.vmap(env.step, in_axes=(0, 0, 0, None))(rng_step, env_state, action, env_params)
                 #======Append list of actions, dones, rewards, value#
+                hstate = jax.vmap(jax.lax.select)(done, init_hstate, hstate)
 
                 return_values = _info["returned_episode_returns"][_info["returned_episode"]]
                 episdoic_pnl=_info["total_PnL"][_info["returned_episode"]]
@@ -350,7 +354,7 @@ if __name__ == "__main__":
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "FLOAT_TYPE": {"values": ["float16"]},
-        "params_path":{"values": ["/home/duser/AlphaTrade/params_file_silver-sweep-3_04-16_12-34"]}
+        "params_path":{"values": ["/home/duser/AlphaTrade/params_file_mild-sweep-1_04-15_12-35"]}
     }    
 
     
