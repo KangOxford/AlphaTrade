@@ -1804,6 +1804,8 @@ class MarketMakingEnv(BaseLOBEnv):
         #===================== 03) Set reward based on config file==================#
         if self.cfg.reward_space == "portfolio_value":
             reward = reward_portfolio_value
+        elif self.cfg.reward_space == "portfolio_value_scaled":
+            reward = reward_portfolio_value/100
         elif self.cfg.reward_space == "pnl":
             reward = PnL
         elif self.cfg.reward_space == "complex":

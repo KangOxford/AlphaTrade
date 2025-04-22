@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
     config = {
         "ATFOLDER": ATFolder,
-        "WINDOW_INDEX": 13,
+        "WINDOW_INDEX": 14,
         "EP_TYPE": "fixed_time",
         "EPISODE_TIME": 60*5,  
     }
@@ -245,8 +245,8 @@ if __name__ == "__main__":
                          "n_actions":8,
                          "end_fn":"unwind_ref_price",
                          "fixed_quant_value":10,
-                         "reference_price_portfolio_value":"mid",
-                         "action_space":"fixed_quants"
+                         "reference_price_portfolio_value":"near_touch",
+                         "action_space":"directional_trading"
                          }]
    
     env_cfg=EnvironmentConfig(**env_config_hps[0])

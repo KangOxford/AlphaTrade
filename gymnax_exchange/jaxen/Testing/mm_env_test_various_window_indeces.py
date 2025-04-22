@@ -235,7 +235,7 @@ if __name__ == "__main__":
             "ATFOLDER": ATFolder,
             "WINDOW_INDEX": window_index,
             "EP_TYPE": "fixed_time",
-            "EPISODE_TIME": 60*5,  
+            "EPISODE_TIME": 60*10,  
         }
 
         rng = jax.random.PRNGKey(0)

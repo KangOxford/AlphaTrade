@@ -514,6 +514,14 @@ if __name__ == "__main__":
 
     
     env_config_hps = [{"observation_space":"engineered",
+                            "reward_space":"portfolio_value_scaled",
+                            "inv_penalty":"none",
+                            "end_fn":"unwind_ref_price",
+                            "fixed_quant_value":10,
+                            "reference_price_portfolio_value":"near_touch",
+                            "action_space":"directional_trading",
+                            },
+                            {"observation_space":"engineered",
                             "reward_space":"portfolio_value",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
@@ -532,30 +540,30 @@ if __name__ == "__main__":
                             ]
 
     training_parameters = {
-        "LR": {"values": [5e-5]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [32,64]},
-        "NUM_STEPS": {"values": [64,128]},  
+        "LR": {"values": [5e-5,3e-4,]},#, 3e-4, 1e-3
+        "NUM_ENVS": {"values": [32]},
+        "NUM_STEPS": {"values": [64]},  
         "TOTAL_TIMESTEPS": {"values": [3e6]},
-        "UPDATE_EPOCHS": {"values": [4,8]},
+        "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.99,0.999]},
-        "GAE_LAMBDA": {"values": [0.999,0.99]},
+        "GAMMA": {"values": [0.999]},
+        "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.1,0.01]},
-        "VF_COEF": {"values": [0.0000005,0.00000005]},
+        "ENT_COEF": {"values": [0.1,0,100]},
+        "VF_COEF": {"values": [0.000005]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [14]},
+        "WINDOW_INDEX": {"values": [19]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
-        "FLOAT_TYPE": {"values": ["float8"]}
+        "FLOAT_TYPE": {"values": ["float8","float16"]}
     }    
 
     
@@ -586,7 +594,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_overfit_float8")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_overfit_index_19")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
