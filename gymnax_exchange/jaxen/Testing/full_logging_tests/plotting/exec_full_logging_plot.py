@@ -141,35 +141,23 @@ def plot_lob_heatmap(lob_states, output_dir):
 
 #------------4. plot trader activity---------#
 
-
 def plot_buy_sell_task_size(env_data_df, trades_df, messages_df, output_dir, trader_id=10):
-    """Plots buy/sell activity with midprice (arrows) with legend, inventory, and net worth."""
-    mask_trades = (trades_df['TIDa'] == trader_id) | (trades_df['TIDs'] == trader_id)
-    trader_trades = trades_df[mask_trades].copy()
-    trader_trades['OID'] = trader_trades.apply(
-        lambda row: row['OIDs'] if row['TIDs'] == trader_id else row['OIDa'], axis=1)
-    merged_trades_messages = pd.merge(trader_trades, messages_df, how='left', on=['OID', 'step'])
-    if 'Price' not in merged_trades_messages.columns:
-        if 'Price_x' in merged_trades_messages.columns:
-            merged_trades_messages['Price'] = merged_trades_messages['Price_x']
-            merged_trades_messages.drop(columns=['Price_x'], inplace=True)
-        elif 'Price_y' in merged_trades_messages.columns:
-            merged_trades_messages['Price'] = merged_trades_messages['Price_y']
-            merged_trades_messages.drop(columns=['Price_y'], inplace=True)
-    merged_trades_messages = merged_trades_messages[~merged_trades_messages['Side'].isna()]
-    merged_trades_messages['Side'] = merged_trades_messages['Side'].astype(int)
-    buy_steps = merged_trades_messages[merged_trades_messages['Side'] == 1][['step', 'Price']]
-    sell_steps = merged_trades_messages[merged_trades_messages['Side'] == -1][['step', 'Price']]
+    """Plots buy/sell activity with midprice (arrows) with legend, and quant executed with task size."""
+    trader_trades = trades_df[((trades_df['TIDa'] == trader_id) | (trades_df['TIDs'] == trader_id))].copy()
+    buy_trades = trader_trades[((trader_trades['TIDs'] == trader_id) & (trader_trades['Quantity'] > 0)) |
+                               ((trader_trades['TIDa'] == trader_id) & (trader_trades['Quantity'] < 0))][['step', 'Price']]
+    sell_trades = trader_trades[((trader_trades['TIDs'] == trader_id) & (trader_trades['Quantity'] < 0)) |
+                                ((trader_trades['TIDa'] == trader_id) & (trader_trades['Quantity'] > 0))][['step', 'Price']]
 
     fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharex=True, height_ratios=[2, 1])
 
     # Top subplot: Buy/Sell Activity with Midprice
     ax1 = axs[0]
     ax1.plot(env_data_df['step'], env_data_df['mid_price'], label='Midprice', color='green', linewidth=2)
-    for _, row in buy_steps.iterrows():
+    for _, row in buy_trades.iterrows():
         ax1.annotate('', xy=(row['step'], row['Price']), xytext=(row['step'], row['Price'] + 0.5),
                      arrowprops=dict(facecolor='blue', edgecolor='blue', arrowstyle='->', lw=1.5))
-    for _, row in sell_steps.iterrows():
+    for _, row in sell_trades.iterrows():
         ax1.annotate('', xy=(row['step'], row['Price']), xytext=(row['step'], row['Price'] - 0.5),
                      arrowprops=dict(facecolor='red', edgecolor='red', arrowstyle='->', lw=1.5))
     ax1.set_ylabel('Price')
@@ -181,20 +169,21 @@ def plot_buy_sell_task_size(env_data_df, trades_df, messages_df, output_dir, tra
     sell_legend = Line2D([0], [0], marker='>', color='w', markerfacecolor='red', markersize=10, label='Sell')
     ax1.legend(handles=[buy_legend, sell_legend], loc='upper right')
 
-    # Bottom subplot: Inventory and Net Worth
-
+    # Bottom subplot: quant executed and task size
     ax2 = axs[1]
     cumulative_quant = env_data_df['quant_executed'].cumsum()
     ax2.plot(env_data_df['step'], cumulative_quant, label='Cumulative Quant Executed', color='blue', linewidth=2)
     ###Add a straight line for the max task aim
     x_values = env_data_df['step']
 
-    # Get the constant value
-    constant_value = env.cfg.max_task_size
-    # Create a list or NumPy array of the constant value with the same length as x_values
-    y_values = [constant_value] * len(x_values)
+    # Assuming 'env' is defined and accessible in this scope
+    if 'env' in locals() and hasattr(env, 'exe_env') and hasattr(env.exe_env, 'cfg') and hasattr(env.exe_env.cfg, 'max_task_size'):
+        constant_value = env.exe_env.cfg.max_task_size
+        y_values = [constant_value] * len(x_values)
+        ax2.plot(env_data_df['step'], y_values, label='Task Size', color='orange', linewidth=2)
+    else:
+        print("Warning: 'env.exe_env.cfg.max_task_size' not found. Task Size line will not be plotted.")
 
-    ax2.plot(env_data_df['step'], y_values, label='Task Size', color='orange', linewidth=2)
     ax2.set_xlabel('Step')
     ax2.set_ylabel('Value')
     ax2.set_title('Quant Executed with Task size')

@@ -2,6 +2,7 @@ import os, sys, time, dataclasses
 from typing import Tuple, Optional, Dict
 
 import jax
+from jax import vmap
 import jax.numpy as jnp
 import chex
 from flax import struct
@@ -379,7 +380,7 @@ class MARLEnv(BaseLOBEnv):
         mm_done= self.mm_env.is_terminal(state.mm_state,params.mm_params)
         exec_done=self.exe_env.is_terminal(state.exe_state,params.exe_params)
         done = jnp.logical_and(mm_done, exec_done)
-        jax.debug.print("Done: {}",done)
+        #jax.debug.print("Done: {}",done)
         dones = {"market_maker": mm_done, "execution": exec_done, "__all__": done} # ALl of them are the same done
 
         #Get infos:
@@ -536,7 +537,7 @@ if __name__ == "__main__":
 
     config = {
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 300,  # for example, 5 minutes
+        "EPISODE_TIME": 60*30,  # for example, 5 minutes
         "WINDOW_INDEX": 1,
         # sub–env parameters:
         "MM_TRADER_ID": -4999991,
@@ -610,3 +611,113 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
+        
+
+    
+    # Set number of environments to batch
+     
+    #=======================================#
+    #=========== VMAP TIMING TEST =========#
+    #=======================================#
+
+    enable_vmap = True
+    if enable_vmap:
+        NUM_ENVS = 1024
+        rng = jax.random.PRNGKey(42)
+
+        print("\n" + "="*60)
+        print("Starting VMAP timing test loop for MRL")
+        print("="*60)
+
+        #---------------------------------------
+        # Vectorized Reset
+        #---------------------------------------
+        print("\n[1] Resetting environments...")
+        keys_reset = jax.random.split(rng, NUM_ENVS)
+        batched_reset_fn = jax.vmap(env.reset_env, in_axes=(0, None))
+
+        reset_start = time.time()
+        obs, state = batched_reset_fn(keys_reset, env_params)
+        reset_end = time.time()
+        reset_time = reset_end - reset_start
+        print(f"Reset completed in {reset_time:.4f} seconds")
+
+        #---------------------------------------
+        # Prepare Dummy Actions
+        #---------------------------------------
+        print("\n[2] Preparing dummy actions...")
+        dummy_action_mm = env.mm_env.action_space().sample(jax.random.PRNGKey(0))
+        dummy_action_exe = env.exe_env.action_space().sample(jax.random.PRNGKey(1))
+
+        action_mm = jnp.zeros_like(dummy_action_mm)
+        action_exe = jnp.zeros_like(dummy_action_exe)
+
+        #---------------------------------------
+        # Define VMapped Step Function
+        #---------------------------------------
+        def step_fn(state, key):
+            actions = {
+                "market_maker": action_mm,
+                "execution": action_exe
+            }
+            return env.step(key, state, actions, env_params)
+
+        vmap_step = jax.vmap(step_fn, in_axes=(0, 0))
+
+        #---------------------------------------
+        # Rollout Loop
+        #---------------------------------------
+        print("\n[3] Starting episode rollout...")
+        max_steps = config["EPISODE_TIME"]
+        step_counter = jnp.zeros(NUM_ENVS, dtype=int)
+        done_flags = jnp.zeros(NUM_ENVS, dtype=bool)
+        rng = jax.random.PRNGKey(999)
+
+        rollout_start = time.time()
+
+        def cond_fn(val):
+            _, _, done_flags, _ = val
+            return jnp.any(~done_flags)
+
+        def body_fn(val):
+            state, rng, done_flags, step_counter = val
+            rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
+            keys = jnp.stack(keys)
+
+            obs, next_state, rewards, done, info = vmap_step(state, keys)
+
+            # Masked state update for active environments
+            def masked_update(s, ns):
+                mask = done_flags
+                while mask.ndim < s.ndim:
+                    mask = mask[..., None]
+                return jnp.where(mask, s, ns)
+
+            state = jax.tree_map(masked_update, state, next_state)
+            done_flags = jnp.logical_or(done_flags, done["__all__"])
+            step_counter += jnp.where(done_flags, 0, 1)
+
+            return (state, rng, done_flags, step_counter)
+
+        state, rng, done_flags, step_counter = jax.lax.while_loop(
+            cond_fn, body_fn, (state, rng, done_flags, step_counter)
+        )
+
+        rollout_end = time.time()
+        rollout_time = rollout_end - rollout_start
+        total_steps = jnp.sum(step_counter)
+        avg_steps_per_env = jnp.mean(step_counter)
+        avg_time_per_step = rollout_time / total_steps
+
+        #---------------------------------------
+        # Final Stats
+        #---------------------------------------
+        print("\n[4] Timing Results")
+        print("-" * 60)
+        print(f"Total Envs:           {NUM_ENVS}")
+        print(f"Reset time:           {reset_time:.4f} seconds")
+        print(f"Rollout (steps) time: {rollout_time:.4f} seconds")
+        print(f"Total steps:          {int(total_steps)}")
+        print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
+        print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
+        print("="*60)

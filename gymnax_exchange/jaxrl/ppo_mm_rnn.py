@@ -782,12 +782,12 @@ if __name__ == "__main__":
     #                                                    "n_actions":n,
     #                                                    "fixed_quant_value":q})  
     env_config_hps = [{"observation_space":"engineered",
-                                "reward_space":"spooner_scaled",
-                                "inv_penalty":"none",
+                                "reward_space":"portfolio_value",
+                                "inv_penalty":"linear",
                                 "end_fn":"unwind_ref_price",
                                 "fixed_quant_value":10,
-                                "reference_price_portfolio_value":"mid",
-                                "action_space":"fixed_quants",
+                                "reference_price_portfolio_value":"near_touch",
+                                "action_space":"directional_trading",
                                 "asymmetrically_dampened_lambda":1,#Full Spooner damping
                                 "inventoryPnL_lambda":1.0,
                                 }]
@@ -799,34 +799,34 @@ if __name__ == "__main__":
                                 "reference_price_portfolio_value":"mid",
                                 "action_space":"fixed_quants",
                                 "asymmetrically_dampened_lambda":1,#Full Spooner damping
-                                "inventoryPnL_lambda":1.0,
+                                "inventoryPnL_lambda":0.8,
                                 }]    
     
     # Model & Training parameters, should be independant of the environment config
     # TODO: Some adjustment needed, some of these are effectively environment parameters
     training_parameters = {
-        "LR": {"values": [1e-4,1e-5,1e-3]},
+        "LR": {"values": [5e-5]},
         "NUM_ENVS": {"values": [256]},
-        "NUM_STEPS": {"values": [32]},  
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "TOTAL_TIMESTEPS": {"values": [1e6]},
-        "UPDATE_EPOCHS": {"values": [4,10]},
+        "NUM_STEPS": {"values": [64]},  
+        "TOTAL_TIMESTEPS": {"values": [5e6]},
+        "UPDATE_EPOCHS": {"values": [4]},
+        
         "NUM_MINIBATCHES": {"values": [16]},
-        "GAMMA": {"values": [0.97,0.99,0.999]},
-        "GAE_LAMBDA": {"values": [0.99,0.999]},
+        "GAMMA": {"values": [0.999]},
+        "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.003]},
-        "VF_COEF": {"values": [0.000000005]},
+        "ENT_COEF": {"values": [0.01]},
+        "VF_COEF": {"values": [0.1]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [13]},
+        "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
-        "NUM_STEPS_EVAL":{"values":[32]},
+        "NUM_STEPS_EVAL":{"values":[2]},
         "ATFOLDER": {"values": [ATFolder]},
         "ENV_CONFIG": {"values": env_config_hps},
         "ENVID": {"values": [1]},
@@ -834,11 +834,8 @@ if __name__ == "__main__":
     }    
     
     sweep_config={
-        "method": "bayes",
-        "metric": {
-            "name": "episodic_return",
-            "goal": "maximize"
-        },
+        "method": "grid",
+    
                         "parameters": training_parameters
     }
     def sweep_fun():
@@ -868,7 +865,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_directional_trading_reference_near_touch")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_FULL_DAY_LONGER")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

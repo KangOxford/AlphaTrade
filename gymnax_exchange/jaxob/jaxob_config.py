@@ -15,7 +15,7 @@ class Configuration:
     nOrders : int =cst.NORDER_CAP
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
-    debug_mode:bool=True
+    debug_mode:bool=False
     start_resolution: int = env_cst.start_resolution#move this to base config..
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ class EnvironmentConfig(Configuration):
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "AvSt":
-            object.__setattr__(self, 'n_actions', 2)
+            object.__setattr__(self, 'n_actions', 8)
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "fixed_prices":
