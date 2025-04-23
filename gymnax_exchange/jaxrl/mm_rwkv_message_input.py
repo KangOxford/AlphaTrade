@@ -15,13 +15,13 @@ from dataclasses import dataclass
 import pickle
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
-os.environ['XLA_FLAGS'] = (
-    '--xla_gpu_enable_triton_softmax_fusion=true '
-    '--xla_gpu_triton_gemm_any=True '
+#os.environ['XLA_FLAGS'] = (
+#    '--xla_gpu_enable_triton_softmax_fusion=true '
+#    '--xla_gpu_triton_gemm_any=True '
     # '--xla_gpu_enable_async_collectives=true '
     # '--xla_gpu_enable_latency_hiding_scheduler=true '
     # '--xla_gpu_enable_highest_priority_async_stream=true '
-)
+#)
 
 from typing import Sequence, NamedTuple, Any, Dict, Callable, Optional
 from transformers import PreTrainedTokenizerFast
@@ -56,6 +56,7 @@ from jax import lax
 wandbOn = True # False
 if wandbOn:
     import wandb
+    from gymnax_exchange.jaxrl.mm_rwkv_plot_every_step import log_step_metrics
 
 @jax.tree_util.register_pytree_node_class
 @dataclass
@@ -201,7 +202,7 @@ if __name__ == "__main__":
     
     if wandbOn:
         run = wandb.init(
-            project="AlphaTradeMessageInputTests",
+            project="RWKV_pretrained",
             config=config,
             save_code=True,  # optional
         )
@@ -447,12 +448,7 @@ if __name__ == "__main__":
             global_timestep += 1
 
             if config.get("DEBUG"):
-
-                def callback(return_values):
-                    wandb.log(
-                        {"episodic_return": jnp.mean(return_values) if return_values.size > 0 else 0,
-                        }
-                    )
+                    log_step_metrics(info, reward, global_timestep, current_actions)
 
         #Form lists for adv calcs
         tokens_list = jnp.concatenate(tokens_list, axis=1)

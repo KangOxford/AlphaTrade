@@ -865,7 +865,7 @@ if __name__ == "__main__":
 
         run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_FULL_DAY_LONGER")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RNN_test")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
