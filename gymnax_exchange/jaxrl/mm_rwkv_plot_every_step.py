@@ -191,10 +191,12 @@ def make_train(config):
         #Define the vocab
         if config["FLOAT_TYPE"] == "float16":
             num_tokens = 1 + env.action_space(env_params).n + 65536
+            config["MIN_ACTION_TOK"] = 65536
+            config["MAX_ACTION_TOK"] = 65536 + env_config.n_actions
         elif config["FLOAT_TYPE"] == "float8":
             num_tokens = 1 + env.action_space(env_params).n + 256
-        config["MIN_ACTION_TOK"] = 1
-        config["MAX_ACTION_TOK"] = env_config.n_actions
+            config["MIN_ACTION_TOK"] = 256
+            config["MAX_ACTION_TOK"] = 256 + env_config.n_actions
 
         #Load the RWKV
         RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
@@ -557,7 +559,7 @@ if __name__ == "__main__":
         "DEBUG": {"values": [True]},
         "VERBOSE": {"values": [False]},
         "ACTION_TYPE": {"values": ["pure"]},
-        "WINDOW_INDEX": {"values": [19]},
+        "WINDOW_INDEX": {"values": [-1]},
         "EPISODE_TIME": {"values": [60*5]},
         "DATA_TYPE": {"values": ["fixed_time"]},
         "NUM_STEPS_EVAL":{"values":[2]},
@@ -594,7 +596,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_overfit_index_19")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_whole_day_new_min_action_tokens")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

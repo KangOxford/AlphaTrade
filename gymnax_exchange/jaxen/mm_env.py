@@ -298,7 +298,7 @@ class MarketMakingEnv(BaseLOBEnv):
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
-            self.stepLines
+            self.stepLines # to include our action messages increase this by cfg.num_messages_by_agent
         )
         # If best price is not available in the current step, use the last available price
         # TODO: check if we really only want the most recent stepLines prices (+1 for the additional market order)
@@ -2204,7 +2204,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,2):
+    for i in range(1,5):
          # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*200)
@@ -2216,12 +2216,13 @@ if __name__ == "__main__":
         env.action_space().sample(key_policy) 
         # test_action = jnp.array([100, 10])
         print(f"Sampled {i}th actions are: ", test_action)
+
         start=time.time()
         obs, state, reward, done, info = env.step(
             key_step, state, test_action, env_params)
         #print(obs)
 
-        
+        print(f"action message: {info['total_msgs']}")
         print("Step reward:", reward)
         #print("Step info:", info)
         print("time",info["time_seconds"])
