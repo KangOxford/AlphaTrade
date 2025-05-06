@@ -192,11 +192,11 @@ def make_train(config):
         if config["FLOAT_TYPE"] == "float16":
             num_tokens = 1 + env.action_space(env_params).n + 65536
             config["MIN_ACTION_TOK"] = 65536
-            config["MAX_ACTION_TOK"] = 65536 + env_config.n_actions
+            config["MAX_ACTION_TOK"] = 65536 + env_config.n_actions - 1
         elif config["FLOAT_TYPE"] == "float8":
             num_tokens = 1 + env.action_space(env_params).n + 256
             config["MIN_ACTION_TOK"] = 256
-            config["MAX_ACTION_TOK"] = 256 + env_config.n_actions
+            config["MAX_ACTION_TOK"] = 256 + env_config.n_actions - 1
 
         #Load the RWKV
         RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
@@ -551,8 +551,8 @@ if __name__ == "__main__":
         "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.1,0,100]},
-        "VF_COEF": {"values": [0.000005]},
+        "ENT_COEF": {"values": [0.001]},
+        "VF_COEF": {"values": [0.0000005]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
