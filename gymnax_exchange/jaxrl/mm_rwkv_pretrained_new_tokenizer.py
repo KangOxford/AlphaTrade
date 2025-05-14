@@ -41,6 +41,7 @@ import jax
 import jax.numpy as jnp
 #import optax
 import distrax
+import pickle
 
 
 from jax_rwkv.src.auto import get_rand_model
@@ -50,6 +51,11 @@ from gymnax_exchange.jaxrl.rl_processing import get_ppo_agent, calculate_gae, ge
 j_calculate_gae = jax.jit(jax.vmap(calculate_gae, in_axes=(0, 0, 0, 0, 0, None, None)))
 
 import wandb
+
+# Immport new tokenizer
+from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
+set_config( TokenizerConfig(split_vocab=True) )
+cfg = get_config()
 
 
 wandbOn = True # False
@@ -100,11 +106,11 @@ def make_train(config):
     )
 
     #Function to process the obsveration
-    def handle_continuous(observation):
-        if config["FLOAT_TYPE"] == "float16":
-            return jnp.array(observation).astype(jnp.float16).view(jnp.uint16).astype(jnp.int32)
-        elif config["FLOAT_TYPE"] == "float8":
-            return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
+    #def handle_continuous(observation):
+    #    if config["FLOAT_TYPE"] == "float16":
+    #        return jnp.array(observation).astype(jnp.float16).view(jnp.uint16).astype(jnp.int32)
+   #     elif config["FLOAT_TYPE"] == "float8":
+    #        return jnp.array(observation).astype(jnp.float8_e4m3b11fnuz).view(jnp.uint8).astype(jnp.int32)
     
     #========#
     # Get Keys
@@ -143,6 +149,11 @@ def make_train(config):
             episode_time=config["EPISODE_TIME"],
         )
     
+
+
+
+
+
     #====================#
     #Apply purejaxRL wrappers#
     #=========================#
@@ -188,18 +199,51 @@ def make_train(config):
         #Intialise our model: rwkv
         #===================================================#
 
-        #Define the vocab
-        if config["FLOAT_TYPE"] == "float16":
-            num_tokens = 1 + env.action_space(env_params).n + 65536
-            config["MIN_ACTION_TOK"] = 65536
-            config["MAX_ACTION_TOK"] = 65536 + env_config.n_actions
-        elif config["FLOAT_TYPE"] == "float8":
-            num_tokens = 1 + env.action_space(env_params).n + 256
-            config["MIN_ACTION_TOK"] = 256
-            config["MAX_ACTION_TOK"] = 256 + env_config.n_actions
+        cfg       = get_config()
+        n_actions = env.action_space(env_params).n
+        num_tokens = 1 + n_actions + cfg.TOTAL_NUM_TOKENS
 
-        #Load the RWKV
-        RWKV, params = get_rand_model(0, "6", 3, 256, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+        config["MIN_ACTION_TOK"] = cfg.TOTAL_NUM_TOKENS
+        config["MAX_ACTION_TOK"] = cfg.TOTAL_NUM_TOKENS + n_actions - 1
+
+
+        BASE = os.getcwd()  
+        MODEL_PATH = os.path.join(BASE, "AlphaTrade/mycache", "6g0.1B_bfloat16.model")
+        with open(MODEL_PATH, "rb") as f:
+            pretrained_params = pickle.load(f)
+
+        
+
+        #Load the RWKV (changed parameters to 768 cause thats what our pretrained model has)
+        RWKV, rand_params  = get_rand_model(0, "6", 3, 768, num_tokens, dtype=jnp.float32, rwkv_type="ScanRWKV")
+
+        #print("Embedding channels (n_embd):", rand_params['emb']['weight'].shape[1])
+        #print("Embedding channels pretrained (n_embd):", pretrained_params['emb']['weight'].shape[1])
+
+        old_emb = pretrained_params['emb']['weight']     # [old_vocab, emb_dim] i.e. without action tokens
+        rand_emb = rand_params['emb']['weight']          # [new_vocab, emb_dim] i.e. with action tokens
+        old_vocab = old_emb.shape[0]
+
+        # take only the new rows from rand_emb[old_vocab:]
+        new_emb = jnp.concatenate([old_emb,rand_emb[old_vocab:]], axis=0)
+        pretrained_params['emb']['weight'] = new_emb
+
+        # do the same for the final projection (head)
+        old_head = pretrained_params['head']['weight']   # [old_vocab, emb_dim]
+        rand_head = rand_params['head']['weight']        # [new_vocab, emb_dim]
+        new_head = jnp.concatenate([old_head,
+                                    rand_head[old_vocab:]], axis=0)
+        pretrained_params['head']['weight'] = new_head
+
+        #  Now `pretrained_params` has shape [new_vocab, emb_dim] everywhere
+        params = pretrained_params
+
+        assert new_emb.shape[0] == num_tokens, (
+            f"new_emb has {new_emb.shape[0]} rows but expected {num_tokens}"
+        )
+        assert new_head.shape[0] == num_tokens, (
+            f"new_head has {new_head.shape[0]} rows but expected {num_tokens}"
+)
         #Define the forward function and jit version
         forward, params = get_ppo_agent(RWKV, params, seed=1)
         v_forward_jit = jax.jit(jax.vmap(forward, in_axes=(0, 0, None, 0)))
