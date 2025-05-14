@@ -46,7 +46,7 @@ if __name__ == "__main__":
         "ATFOLDER": ATFolder,
         "WINDOW_INDEX": 13,
         "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*5,  
+        "EPISODE_TIME": 60*1,  
     }
 
     env_config_hps = [{"observation_space":"engineered",
@@ -90,6 +90,7 @@ if __name__ == "__main__":
     # Initialize data storage
     # ============================
     output_dir = 'gymnax_exchange/jaxen/Testing/full_logging_tests/data/mm'
+    output_dir = '/home/duser/AlphaTrade/gymnax_exchange/jaxen/Testing/full_logging_tests/data/mm'
 
     #Log all the same as before
     rewards = np.zeros((test_steps, 1), dtype=int)

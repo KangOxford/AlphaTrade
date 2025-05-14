@@ -253,7 +253,9 @@ class ExecutionEnv(BaseLOBEnv):
             raw_order_side,
             self.trader_unique_id,
             self.cfg.num_action_messages_by_agent,
-            1 - state.is_sell_task * 2
+            1 - state.is_sell_task * 2,
+            state.time[0],
+            state.time[1]
         )
         
         # net actions and cancellations at same price if new action is not bigger than cancellation
@@ -272,22 +274,24 @@ class ExecutionEnv(BaseLOBEnv):
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
-            self.stepLines
+            self.stepLines + self.cfg.num_messages_by_agent
         )
-        #jax.debug.print("new bids:{}",bids)
+        #
+        jax.debug.print("new best bids before:{}",bestbids.shape)
 
         # If best price is not available in the current step, use the last available price
         # TODO: check if we really only want the most recent stepLines prices (+1 for the additional market order)
         bestasks, bestbids = (
             self._ffill_best_prices(
-                bestasks[-self.stepLines+1:],
+                bestasks[-self.stepLines- self.cfg.num_messages_by_agent:],
                 state.best_asks[-1, 0]
             ),
             self._ffill_best_prices(
-                bestbids[-self.stepLines+1:],
+                bestbids[-self.stepLines- self.cfg.num_messages_by_agent:],
                 state.best_bids[-1, 0]
             )
         )
+        jax.debug.print("new best bids after:{}",bestbids.shape)
         # jax.debug.print('agent_id {}, trades {}', self.trader_unique_id, trades)
         # filter to trades by our agent (rest are 0s)
 
@@ -318,9 +322,10 @@ class ExecutionEnv(BaseLOBEnv):
             self.get_episode_end_fn(key,
                 quant_left, bestasks[-1], bestbids[-1], time, asks, bids, trades, state, params)
 
-        bestasks = jnp.concatenate([bestasks, jnp.resize(new_bestask, (1, 2))], axis=0, dtype=jnp.int32)
-        bestbids = jnp.concatenate([bestbids, jnp.resize(new_bestbid, (1, 2))], axis=0, dtype=jnp.int32)
+        #bestasks = jnp.concatenate([bestasks, jnp.resize(new_bestask, (1, 2))], axis=0, dtype=jnp.int32)
+        #bestbids = jnp.concatenate([bestbids, jnp.resize(new_bestbid, (1, 2))], axis=0, dtype=jnp.int32)
 
+        jax.debug.print("bestasks after2:{}",bestasks.shape)
         #jax.debug.print("bestasks\n {}", bestasks)
         
         price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
@@ -445,8 +450,13 @@ class ExecutionEnv(BaseLOBEnv):
             direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
         else:
             direction = 0 if self.cfg.task == 'buy' else 1
-            
-        state = dataclasses.replace(state, is_sell_task=direction)
+        # Pad best_bids and best_asks to correct shape
+        num_total_msgs = self.stepLines + self.cfg.num_messages_by_agent
+        best_bid = state.best_bids[-1]  # or whatever is the current best bid
+        best_ask = state.best_asks[-1]
+        bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
+        bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))
+        state = dataclasses.replace(state, is_sell_task=direction, best_bids=bestbids, best_asks=bestasks)
 
         # update passive prices and quants depending on task direction
         # (other features are independent)
@@ -1586,7 +1596,7 @@ if __name__ == "__main__":
         print("AlphaTrade folder:",ATFolder)
     except:
         # ATFolder = "./testing_oneDay"
-        ATFolder = "./training_oneDay/train"
+        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
         # ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay"
@@ -1632,7 +1642,7 @@ if __name__ == "__main__":
     
 
     # print(env_params.message_data.shape, env_params.book_data.shape)
-    for i in range(1,100):
+    for i in range(1,5):
         # ==================== ACTION ====================
         # ---------- acion from random sampling ----------
         print("-"*20)
@@ -1667,7 +1677,7 @@ if __name__ == "__main__":
 
     # # ####### Testing the vmap abilities ########
     
-    enable_vmap=True
+    enable_vmap=False
     if enable_vmap:
         # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))

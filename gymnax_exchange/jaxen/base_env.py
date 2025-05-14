@@ -372,6 +372,7 @@ class BaseLOBEnv(environment.Environment):
 
         messages=jnp.concatenate((m_wout_time,messages[:,-2:]),axis=1,dtype=jnp.int32)
         return messages
+    
     def _get_generative_messages(self,previous_messages,n_messages):
         """Draft Generative Loader:
         Inputs:

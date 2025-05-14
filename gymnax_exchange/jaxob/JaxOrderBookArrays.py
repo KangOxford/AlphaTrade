@@ -749,7 +749,7 @@ def scan_through_entire_array_save_bidask(cfg:Configuration,
 
 ################ GET CANCEL MESSAGES ################
 
-def getCancelMsgs(bookside,agentID,size,side):
+def getCancelMsgs(bookside, agentID, size, side, cancel_time, cancel_time_ns):
     """Obtain messages indicating cancellations based on a Trader ID.
     The aim is to cancel all orders held by a given trader (or agent).
         Parameters:
@@ -757,20 +757,24 @@ def getCancelMsgs(bookside,agentID,size,side):
                 agentID (int): Trader ID of orders to cancel. 
                 size (int): Max number of orders to cancel
                 side (int): Bid side = 1, ask side = -1
+                cancel_time (int): Current time for cancellation
+                cancel_time_ns (int): Current time_ns for cancellation
         Returns:
                 cancel_msgs: Array of messages of fixed size which
                                 represent cancel orders. 
     """  
-    bookside=jnp.concatenate([bookside,jnp.zeros((1,6),dtype=jnp.int32)],axis=0)
-    indices_to_cancel=jnp.where(bookside[:,3]==agentID,size=size,fill_value=-1)
-    cancel_msgs=jnp.concatenate([jnp.ones((1,size),dtype=jnp.int32)*2, #type
-                                 jnp.ones((1,size),dtype=jnp.int32)*side, #side
-                                bookside[indices_to_cancel,1],#q
-                                bookside[indices_to_cancel,0],#p
-                                bookside[indices_to_cancel,2],#oid
-                                bookside[indices_to_cancel,3],#tid
-                                bookside[indices_to_cancel,4],#t
-                                bookside[indices_to_cancel,5]],axis=0).transpose()#tns
+    bookside = jnp.concatenate([bookside, jnp.zeros((1, 6), dtype=jnp.int32)], axis=0)
+    indices_to_cancel = jnp.where(bookside[:, 3] == agentID, size=size, fill_value=-1)
+    cancel_msgs = jnp.concatenate([
+        jnp.ones((1, size), dtype=jnp.int32) * 2,  # type
+        jnp.ones((1, size), dtype=jnp.int32) * side,  # side
+        bookside[indices_to_cancel, 1],  # q
+        bookside[indices_to_cancel, 0],  # p
+        bookside[indices_to_cancel, 2],  # oid
+        bookside[indices_to_cancel, 3],  # tid
+        jnp.ones((1, size), dtype=jnp.int32) * cancel_time,  # t (use cancel time)
+        jnp.ones((1, size), dtype=jnp.int32) * cancel_time_ns  # tns (use cancel time ns)
+    ], axis=0).transpose()
     return cancel_msgs
 
 

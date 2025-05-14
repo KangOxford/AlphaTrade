@@ -115,6 +115,21 @@ class MARLEnv(BaseLOBEnv):
         exe_obs, exe_state = self.exe_env.reset_env(key_exe, params.exe_params)
         # The shared base state is taken from mm_state
         base_state = mm_state  
+        # Pad best_bids and best_asks to correct shape
+        num_total_msgs = self.stepLines + self.mm_env.cfg.num_messages_by_agent + self.exe_env.cfg.num_messages_by_agent
+
+        #jax.debug.print(f"num total msg: {num_total_msgs}")
+        
+        best_bid = base_state.best_bids[-1]  # or whatever is the current best bid
+        best_ask = base_state.best_asks[-1]
+        bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
+        bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))#
+        
+        #jax.debug.print(f"best bids after reset: {bestbids.shape}")
+
+        base_state = dataclasses.replace(base_state, best_bids=bestbids, best_asks=bestasks)
+        mm_state = dataclasses.replace(mm_state, best_bids=bestbids, best_asks=bestasks)
+        exe_state = dataclasses.replace(exe_state, best_bids=bestbids, best_asks=bestasks)
         # Manually copy the base state fields
         multi_state = MultiAgentState(
             ask_raw_orders = base_state.ask_raw_orders,
@@ -172,13 +187,17 @@ class MARLEnv(BaseLOBEnv):
             state.bid_raw_orders,  # using the shared order book from the base state
             self.mm_trader_id,
             self.mm_env.cfg.num_messages_by_agent//4,
-            1
+            1,
+            state.time[0],
+            state.time[1]
         )
         mm_cnl_msgs_ask = job.getCancelMsgs(
             state.ask_raw_orders,
             self.mm_trader_id,
             self.mm_env.cfg.num_messages_by_agent//4,
-            -1
+            -1,
+            state.time[0],
+            state.time[1]
         )
         mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
 
@@ -213,7 +232,9 @@ class MARLEnv(BaseLOBEnv):
             raw_order_side,
             self.exe_trader_id,
             self.exe_env.cfg.num_messages_by_agent//2, #cant be n_actions due to new space
-            side_for_exe
+            side_for_exe,
+            state.time[0],  # cancel_time
+            state.time[1],  # cancel_time_ns
         )
         exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
 
@@ -240,14 +261,15 @@ class MARLEnv(BaseLOBEnv):
             key,  
             combined_msgs,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
-            self.stepLines
+            self.stepLines + self.exe_env.cfg.num_messages_by_agent + self.mm_env.cfg.num_messages_by_agent
         )
+        #jax.debug.print(f"New best bids after LOB: {new_bestbids.shape}")
         
         # Forward-fill best prices if necessary:
-        new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines+1:], state.mm_state.best_asks[-1, 0])
-        new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines+1:], state.mm_state.best_bids[-1, 0])
+        new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_asks[-1, 0])
+        new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_bids[-1, 0])
 
-       
+        #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
 
         # Get features of previous state for mm obvs update
         old_time=state.time
@@ -279,9 +301,11 @@ class MARLEnv(BaseLOBEnv):
         (new_asks, new_bids, new_trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
             self.exe_env.get_episode_end_fn(key_exe,
                 quant_left, new_bestasks[-1], new_bestbids[-1], final_time, new_asks, new_bids, new_trades, state.exe_state, params.exe_params)
-        new_bestasks = jnp.concatenate([new_bestasks,new_bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
-        new_bestbids = jnp.concatenate([new_bestbids, new_bestbids[-1:,:]], axis=0, dtype=jnp.int32)
+        #new_bestasks = jnp.concatenate([new_bestasks,new_bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
+        #new_bestbids = jnp.concatenate([new_bestbids, new_bestbids[-1:,:]], axis=0, dtype=jnp.int32)
         
+        #jax.debug.print(f"best bids after final ep: {new_bestbids.shape}")
+
 
         # -------------------------------------------------------
         # (G) Compute agent-specific rewards and observations
@@ -509,6 +533,7 @@ class MARLEnv(BaseLOBEnv):
         key_reset = jax.random.fold_in(key, state.step_counter)
         obs_re, state_re = self.reset_env(key_reset, params)
         
+
         #  Use tree_map for dictionary handling (they do the same thing in JaxMARL )
         ep_done = dones.get("__all__", self.is_terminal(state_st, params))
         obs = jax.tree_map(
@@ -622,7 +647,7 @@ if __name__ == "__main__":
 
     enable_vmap = True
     if enable_vmap:
-        NUM_ENVS = 1024
+        NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)
 
         print("\n" + "="*60)

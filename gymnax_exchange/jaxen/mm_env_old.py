@@ -219,13 +219,18 @@ class MarketMakingEnv(BaseLOBEnv):
         # Default environment parameters
         base_params = super().default_params
 
+
+
         flat_tree = jtu.tree_flatten(base_params)[0]
         #TODO: Clean this up to not have a magic number
         # BaseEnvParams
         base_vals = flat_tree[0:5] #Considers the base parameter values other than init state.
         state_vals = flat_tree[5:] #Considers the state values
 
+        
         #jax.debug.print("state_vals shapes: {}", [getattr(leaf, "shape", None) for leaf in state_vals])
+
+
 
         return EnvParams(
             *base_vals,
@@ -308,15 +313,16 @@ class MarketMakingEnv(BaseLOBEnv):
         )
         # If best price is not available in the current step, use the last available price
         # TODO: check if we really only want the most recent stepLines prices (+1 for the additional market order)
-        bestasks = self._ffill_best_prices(bestasks[-self.stepLines-self.cfg.num_messages_by_agent:], state.best_asks[-1, 0])
-        bestbids = self._ffill_best_prices(bestbids[-self.stepLines-self.cfg.num_messages_by_agent:], state.best_bids[-1, 0])
-
-        #jax.debug.print(f"bestasks shape in function: {bestasks.shape}")
-
-        #bestasks = self._ffill_best_prices(bestasks, state.best_asks[-1, 0])
-        #bestbids = self._ffill_best_prices(bestbids, state.best_bids[-1, 0])
-        ##jax.debug.print(f"bestasks: {bestasks}")
-        #jax.debug.print(f"bestbids: {bestbids}")
+        bestasks, bestbids = (
+            self._ffill_best_prices(
+                bestasks[-self.stepLines+1:],
+                state.best_asks[-1, 0]
+            ),
+            self._ffill_best_prices(
+                bestbids[-self.stepLines+1:],
+                state.best_bids[-1, 0]
+            )
+        )
         agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
         executions = self._get_executed_by_action(agent_trades, action, state,action_prices)
         executions=jnp.abs(executions)
@@ -325,8 +331,8 @@ class MarketMakingEnv(BaseLOBEnv):
         #=======================================#
         (asks, bids, trades), new_id_counter, new_time=self.get_episode_end_fn(key,
             bestasks, bestbids, time, asks, bids, trades, state, params)
-        #bestasks = jnp.concatenate([bestasks,bestasks[:,:] ], axis=0, dtype=jnp.int32)
-        #bestbids = jnp.concatenate([bestbids, bestbids[:,:]], axis=0, dtype=jnp.int32)
+        bestasks = jnp.concatenate([bestasks,bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
+        bestbids = jnp.concatenate([bestbids, bestbids[-1:,:]], axis=0, dtype=jnp.int32)
     
         price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         # TODO: consider adding quantity before (in priority) to each price / level
@@ -460,13 +466,6 @@ class MarketMakingEnv(BaseLOBEnv):
         key_, key = jax.random.split(key)
         _, state = super().reset_env(key, params)
         state = dataclasses.replace(state, cash_balance=0.0)
-        # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.stepLines + self.cfg.num_messages_by_agent
-        best_bid = state.best_bids[-1]  # or whatever is the current best bid
-        best_ask = state.best_asks[-1]
-        bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
-        bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))
-        state = dataclasses.replace(state, best_bids=bestbids, best_asks=bestasks)
         ##remove....
         price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, price_bid_passive=price_bid_passive, quant_bid_passive=quant_bid_passive,price_ask_passive=price_ask_passive,quant_ask_passive=quant_ask_passive)
@@ -2329,15 +2328,14 @@ if __name__ == "__main__":
             key_step, state, test_action, env_params)
         #print(obs)
 
-        #print(f"Orderbook: {info['lob_state']}")
-        #print(f"action message: {info['total_msgs']}")
-        #print(f"trades: {info['trades']}")
-        #print(f"best_asks: {info['best_asks']}")
-        #print(f"best_bids: {info['best_bids']}")
-       # print("Step reward:", reward)
+        print(f"action message: {info['total_msgs']}")
+        print(f"trades: {info['trades']}")
+        print(f"best_asks: {info['best_asks']}")
+        print(f"best_bids: {info['best_bids']}")
+        print("Step reward:", reward)
         #print("Step info:", info)
-        #print("time",info["time_seconds"])
-        #print("obs:", obs)
+        print("time",info["time_seconds"])
+        print("obs:", obs)
 
         print("Intial Time \n", state.init_time)
         print("Time \n", state.time)
