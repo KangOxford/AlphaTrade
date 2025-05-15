@@ -6,7 +6,7 @@ class MaxInt(Enum):
     _32_Bit_Signed=32_767
 
 # Actual constants, will never change.
-INITID=-900000
+INITID=0
 DUMMYID=-888888
 EMPTY_SLOT=-1
 
