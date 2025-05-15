@@ -150,7 +150,6 @@ set_config(TokenizerConfig(split_vocab=True))
 class EnvState(BaseEnvState):
     best_asks: chex.Array
     best_bids: chex.Array
-    init_price: int
     inventory:int
     mid_price:float
     total_PnL: float
@@ -165,7 +164,7 @@ class EnvState(BaseEnvState):
 class EnvParams(BaseEnvParams):
     pass
 
-class MarketMakingEnv(BaseLOBEnv):
+class MarketMakingAgent(BaseLOBEnv):
     def __init__(
             self,cfg:EnvironmentConfig, key, alphatradePath, window_index,  episode_time,
               trader_unique_id=-9999997, ep_type="fixed_time"):
@@ -348,7 +347,6 @@ class MarketMakingEnv(BaseLOBEnv):
             start_index = state.start_index,
             best_asks = bestasks,
             best_bids = bestbids,
-            init_price = state.init_price,
             mid_price=extras["mid_price"],
             inventory=extras["end_inventory"],
             total_PnL = state.total_PnL + extras["PnL"],
@@ -457,6 +455,7 @@ class MarketMakingEnv(BaseLOBEnv):
             params: EnvParams
         ) -> Tuple[chex.Array, EnvState]:
         """ Reset the environment to init state (pre computed from data)."""
+        #TODO This should just reset the values for each agent
         key_, key = jax.random.split(key)
         _, state = super().reset_env(key, params)
         state = dataclasses.replace(state, cash_balance=0.0)
@@ -471,7 +470,7 @@ class MarketMakingEnv(BaseLOBEnv):
         price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, price_bid_passive=price_bid_passive, quant_bid_passive=quant_bid_passive,price_ask_passive=price_ask_passive,quant_ask_passive=quant_ask_passive)
         ##...
-        blank_messages = jnp.zeros((104, 8), dtype=jnp.int32) ##Reset for the message based obs space.
+        blank_messages = jnp.zeros((num_total_msgs, 8), dtype=jnp.int32) ##Reset for the message based obs space.
         ##FIXME: The size here needs to be size of messages sent, could change.
         if self.cfg.action_space=="fixed_quants" or self.cfg.action_space=="AvSt":
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades
@@ -526,12 +525,12 @@ class MarketMakingEnv(BaseLOBEnv):
         base_vals = jtu.tree_flatten(base_state)[0]
         best_bid, best_ask = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
         M =jnp.float32((best_bid[0] + best_ask[0]) / 2)
+        #TODO: we could do an array of all those values that we only add on reset (not loaded)
         return EnvState(
             ##This is reset
             *base_vals,
             best_asks=jnp.resize(best_ask,(self.stepLines,2)),
             best_bids=jnp.resize(best_bid,(self.stepLines,2)),
-            init_price=M,
             mid_price=M,
             inventory=0,
             total_PnL=0.,

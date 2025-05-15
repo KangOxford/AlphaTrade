@@ -15,7 +15,7 @@ jax.config.update("jax_log_compiles", False)
 
 sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
-from gymnax_exchange.jaxen.mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
+from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState, EnvParams as MMParams
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
@@ -23,12 +23,28 @@ from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 from gymnax_exchange.jaxob.jaxob_config import Configuration
 
+
+@struct.dataclass
+class WorldState(BaseState):
+    #TODO This should be the shared state for all agents
+    best_bids: jnp.ndarray
+    best_asks: jnp.ndarray
+    step_counter: int
+    time: jnp.ndarray
+    customIDcounter: jnp.ndarray
+
+
+
 # Define a combined (multi–agent) state that extends the base order book state
 @struct.dataclass
-class MultiAgentState(BaseState):
+class MultiAgentState():
     # Sub–state for market maker and execution agent.
+    world_state: WorldState
+
+    # Pytree for agent type
     mm_state: MMState
     exe_state: EXEState
+
 
 # Define a combined parameters class.
 @struct.dataclass
@@ -64,7 +80,7 @@ class MARLEnv(BaseLOBEnv):
 
         print("Initializing MM environment...")
         # Create the market making sub-env 
-        self.mm_env = MarketMakingEnv(
+        self.mm_env = MarketMakingAgent(
             key=key_mm,
             cfg=mm_config,
             alphatradePath=alphatradePath,
@@ -97,6 +113,7 @@ class MARLEnv(BaseLOBEnv):
     @property
     def default_params(self) -> MultiAgentParams:
         # Get the base parameters from BaseLOBEnv
+        #TODO This is just the Mutli Agent Params, no sub params
         base_params = super().default_params
         # Get the sub–env default parameters
         exe_params = self.exe_env.default_params
@@ -266,7 +283,7 @@ class MARLEnv(BaseLOBEnv):
         #jax.debug.print(f"New best bids after LOB: {new_bestbids.shape}")
         
         # Forward-fill best prices if necessary:
-        new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_asks[-1, 0])
+        new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_asks[-1, 0]) # TODO this should just be the entire array 
         new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_bids[-1, 0])
 
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")

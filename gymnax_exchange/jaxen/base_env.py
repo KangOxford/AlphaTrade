@@ -83,12 +83,9 @@ class EnvState:
     bid_raw_orders: chex.Array
     trades: chex.Array
     init_time: chex.Array
-    time: chex.Array
-    customIDcounter: int
     window_index:int
-    step_counter: int
     max_steps_in_episode: int
-    start_index: int
+    start_index: int # This should be here because its the same for all agents, but it changes for all agents when resetting (this is why its not in Params)
     
 
 
@@ -191,7 +188,7 @@ class BaseLOBEnv(environment.Environment):
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
         #jax.debug.print("starts:{}",starts)
         self.max_messages_in_episode_arr = max_messages_arr
-        self.messages=msgs #Is different to trad. base: all msgs concat. 
+        self.messages=msgs #Is different to trad. base: all msgs concat. TODO this should not be saved here
         self.books=books
         self.n_windows = starts.shape[0]
         self.start_indeces=starts
@@ -202,7 +199,7 @@ class BaseLOBEnv(environment.Environment):
     def default_params(self) -> EnvParams:
         # Default environment parameters
         return EnvParams(
-            message_data=self.messages,
+            message_data=self.messages, 
             book_data=self.books,
             episode_time=self.sliceTimeWindow,
             time_delay_obs_act=jnp.array([0, 0]),
