@@ -496,7 +496,8 @@ class MarketMakingEnv(BaseLOBEnv):
         price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         state = dataclasses.replace(state, price_bid_passive=price_bid_passive, quant_bid_passive=quant_bid_passive,price_ask_passive=price_ask_passive,quant_ask_passive=quant_ask_passive)
         ##...
-        blank_messages = jnp.zeros((104, 8), dtype=jnp.int32) ##Reset for the message based obs space.
+
+        blank_messages = jnp.zeros((self.cfg.num_messages_by_agent + self.stepLines, 8), dtype=jnp.int32) ##Reset for the message based obs space.
         ##FIXME: The size here needs to be size of messages sent, could change.
         if self.cfg.action_space=="fixed_quants" or self.cfg.action_space=="AvSt":
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades
@@ -2040,18 +2041,10 @@ class MarketMakingEnv(BaseLOBEnv):
     def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time, old_mid_price, lob_state_before):
         """
         Construct a tokenized observation matching the pretraining format:
-        [orderbook_tokens..., message_tokens...]
+        [orderbook_tokens..., message_tokens...] so basically the same as when pretraning the model
         """
 
-        #jax.debug.print("old_time: {}, old_mid_price: {}", old_time, old_mid_price)
-
-        jax.debug.print("lob_state_before: {}", lob_state_before)
-
         cfg = get_config()
-        num_agent_msgs = 4  # 2 cancels + 2 actions for directional trading
-        num_msgs = 100      # total messages in obs
-        num_data_msgs = num_msgs - num_agent_msgs
-
 
         #jax.debug.print("total_msgs:{}",total_msgs.shape)
         #jax.debug.print("Best bids:{}",state.best_bids[:, 0].shape)
@@ -2066,31 +2059,17 @@ class MarketMakingEnv(BaseLOBEnv):
         time_s = total_msgs[:, 6]
         time_ns = total_msgs[:, 7]
 
-        #jax.debug.print("time_s: {}", time_s)
-        #jax.debug.print("time_ns: {}", time_ns)
-
-        # event_dir
-        event_dir = direction.astype(jnp.uint8) * 4 + event.astype(jnp.uint8)
-        
-
         # delta_time: difference between consecutive time_s/time_ns
         delta_time_s = jnp.zeros_like(time_s)
         delta_time_ns = jnp.zeros_like(time_ns)
-        delta_time_s = delta_time_s.at[0].set(0) #for now just set it to 0 because the messages are initialized with 0 but the time is with the actual time => large difference
+        delta_time_s = delta_time_s.at[0].set(0) #for now just set it to 0 because the messages are initialized with 0 but the time is with the actual time => large difference for very first value
         delta_time_ns = delta_time_ns.at[0].set(0)
         delta_time_s = delta_time_s.at[1:].set(time_s[1:] - time_s[:-1])
         delta_time_ns = delta_time_ns.at[1:].set(time_ns[1:] - time_ns[:-1])
 
-
-
         ############################
         # Get the delta prices
         ############################
-
-        #jax.debug.print("state.best_bids: {}", state.best_bids)
-        #jax.debug.print("state.best_asks: {}", state.best_asks)
-        
-        
 
         # Extract best bid/ask prices (shape: [num_msgs])
         best_bid_prices = state.best_bids[:, 0] // 100 # Divide by 100 as in pretraining preprocessing
@@ -2132,47 +2111,77 @@ class MarketMakingEnv(BaseLOBEnv):
 
 
 
+        #############################
+        # Tokenization 
+        #############################
+
+        ######
+        # Messages
+        ######
+
+        event_dir_tok = direction.astype(jnp.uint8) * 4 + event.astype(jnp.uint8)
+        event_dir_tok = event_dir_tok.astype(jnp.uint32) + cfg.EVENT_START
+
+        def split_and_offset(x, offset):
+            x = x.astype(jnp.int32)  # Ensure input is really int32
+            low = (x & 0xFFFF).astype(jnp.uint16) + offset      # Lower 16 bits + offset
+            high = ((x >> 16) & 0xFFFF).astype(jnp.uint16) + offset  # Upper 16 bits + offset
+            return jnp.stack([low, high], axis=-1)  # Shape: (..., 2)
+
+        order_id_tok      = split_and_offset(order_id,      cfg.ORDER_ID_B_START)
+        price_tok         = split_and_offset(price,         cfg.PRICE_B_START)
+        size_tok          = split_and_offset(size,          cfg.SIZE_B_START)
+        delta_time_s_tok  = split_and_offset(delta_time_s,  cfg.TIME_B_START)
+        delta_time_ns_tok = split_and_offset(delta_time_ns, cfg.TIME_B_START)
+        delta_price_tok   = split_and_offset(delta_price,   cfg.PRICE_B_START)
+
+        message_tokens = jnp.concatenate([
+            event_dir_tok[:, None],  # (num_msgs, 1)
+            order_id_tok,            # (num_msgs, 2)
+            price_tok,               # (num_msgs, 2)
+            size_tok,                # (num_msgs, 2)
+            delta_time_s_tok,        # (num_msgs, 2)
+            delta_time_ns_tok,       # (num_msgs, 2)
+            delta_price_tok          # (num_msgs, 2)
+        ], axis=-1)
+        message_tokens_flat = message_tokens.reshape(-1)
+
+        ######
+        # Book
+        ######
+
+        #print("lob_state_before: {}", lob_state_before)
+
+        # add time to the lob_state_before
+        time_s = state.time[0]
+        time_ns = state.time[1]
+        lob_state_with_time = jnp.concatenate([jnp.array([time_s, time_ns]), lob_state_before]) # shape (42,)
 
 
+        #  Split into uint16 tokens
+        x_split = jax.lax.bitcast_convert_type(lob_state_with_time, jnp.uint16).reshape(-1)  # shape (84,)
+
+        #print("x_split: {}", x_split.shape)
+
+        #  Build offset array
+        orderbook_shift = jnp.array(
+            [cfg.TIME_B_START] * 4
+            + [cfg.PRICE_B_START, cfg.PRICE_B_START, cfg.SIZE_B_START, cfg.SIZE_B_START] * 2 * 10
+        )  # shape (84,)
+
+        #  Add offset
+        orderbook_tokens = x_split.astype(jnp.uint32) + orderbook_shift  # shape (84,)
 
 
-        # Stack into [num_msgs, 7] array
-        #msg_array = jnp.stack([
-        #    event_dir,
-       #     order_id,
-        #    price,
-         #   size,
-          #  delta_time_s,
-           # delta_time_ns,
-           # delta_price
-        #], axis=1).astype(jnp.int32)
+        ###################
+        #  Concatenate orderbook and message tokens
+        ###################
 
-        # 3. Get orderbook snapshot (L2 state)
-        #l2_state = job.get_L2_state(
-        #    state.ask_raw_orders,
-        #    state.bid_raw_orders,
-        #    10,
-        #    self.cfg
-        #)  # shape: (42,)
+        obs = jnp.concatenate([orderbook_tokens, message_tokens_flat], axis=0)
 
-        # 4. Tokenize orderbook and messages
-        #    You need to port the logic from single_tokenized.py to JAX.
-        #    For each int32 field (except event_dir), split into two uint16 tokens and add the correct offset.
-        #    For event_dir, just add the offset.
+        #jax.debug.print("obs: {}", obs.shape)
 
-        # Example for messages:
-        #   - event_dir: [num_msgs, 1]
-        #   - all other fields: [num_msgs, 6] -> split each int32 into two uint16, then flatten
-        #   - add field-specific offsets (from cfg)
-
-        # 5. Concatenate tokenized orderbook and messages into 1D array
-        #    obs = jnp.concatenate([orderbook_tokens, message_tokens], axis=0)
-
-        # 6. Return obs
-
-        
-
-        return 0
+        return obs
       
 
 
