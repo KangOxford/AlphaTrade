@@ -167,7 +167,7 @@ class BaseLOBEnv(environment.Environment):
         self.window_selector = window_selector
         self.ep_type = ep_type # fixed_steps, fixed_time
         self.sliceTimeWindow = sliceTimeWindow # counted by seconds, 1800s=0.5h
-        self.stepLines = 100
+        self.stepLines = 96 # In the config file there should be num_messages_per_step and then this should be num_messages_per_step-cfg.num_messages_by_agent
         self.day_start = 34200  # 09:30
         self.day_end = 57600  # 16:00
         self.nOrdersPerSide=100
