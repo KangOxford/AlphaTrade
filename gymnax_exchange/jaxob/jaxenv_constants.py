@@ -1,6 +1,6 @@
-action_space= "directional_trading"
+action_space= "spread_skew"
 reward_space = "portfolio_value"
-observation_space = "engineered"
+observation_space = "messages_new_tokenizer"
 end_fn = "unwind_ref_price"
 n_ticks_in_book =1
 n_actions=8
