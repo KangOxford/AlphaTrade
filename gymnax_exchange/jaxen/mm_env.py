@@ -597,7 +597,7 @@ class MarketMakingEnv(BaseLOBEnv):
             # action_msgs[:, 2] - rel_cnl_quants[utils.rank_rev(a_mask)])
         # set actions with 0 quant to dummy messages
         action_msgs = jnp.where(
-            (action_msgs[:, 2] == 0).T,
+            (action_msgs[:, 2] == 0)[:, None],  # shape (N, 1)
             0,
             action_msgs.T,
         ).T
