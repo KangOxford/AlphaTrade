@@ -208,7 +208,7 @@ def make_train(config):
 
 
         BASE = os.getcwd()  
-        MODEL_PATH = os.path.join(BASE, "AlphaTrade/mycache", "6g0.1B_bfloat16.model")
+        MODEL_PATH = os.path.join(BASE, "mycache", "6g0.1B_bfloat16.model")
         with open(MODEL_PATH, "rb") as f:
             pretrained_params = pickle.load(f)
 
@@ -294,7 +294,7 @@ def make_train(config):
                 #===============#
                 #tokenizer the obvs space
                 #=======================#
-                tokenized = handle_continuous(obsv)
+                tokenized = obsv
 
                 #====================#
                 #Evaluate policy from model
@@ -364,7 +364,7 @@ def make_train(config):
             flags_list = jnp.where(jnp.concatenate((dones_list[:, :1], dones_list[:, :-1]), axis=1), PAD_FLAG, flags_list)
           
             #Get last value from state
-            _, last_value, _ = v_forward_jit(handle_continuous(obsv), state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
+            _, last_value, _ = v_forward_jit(obsv, state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32))
             
             advantages, targets = j_calculate_gae(flags_list, dones_list, values_list, rewards_list, last_value[..., -1], config["GAMMA"], config["GAE_LAMBDA"])
             # print("value", values_list)
@@ -404,7 +404,7 @@ def make_train(config):
                 rng, _rng = jax.random.split(rng)
 
                 #Tokenize obvs
-                tokenized = handle_continuous(eval_obsv)
+                tokenized = eval_obsv
 
                 #Get policy from network
                 eval_pi, eval_value, eval_h_state = v_forward_jit(tokenized, eval_h_state, params, jnp.ones(config["NUM_ENVS"], dtype=jnp.int32) * tokenized.shape[-1])
@@ -559,24 +559,8 @@ if __name__ == "__main__":
         ATFolder = "/home/duser/AlphaTrade/training_oneDay"
 
     
-    env_config_hps = [{"observation_space":"engineered",
+    env_config_hps = [{"observation_space":"messages_new_tokenizer",
                             "reward_space":"portfolio_value_scaled",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading",
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading",
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"delta_netWorth",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
@@ -587,8 +571,8 @@ if __name__ == "__main__":
 
     training_parameters = {
         "LR": {"values": [5e-5,3e-4,]},#, 3e-4, 1e-3
-        "NUM_ENVS": {"values": [32]},
-        "NUM_STEPS": {"values": [64]},  
+        "NUM_ENVS": {"values": [1]},
+        "NUM_STEPS": {"values": [8]},  
         "TOTAL_TIMESTEPS": {"values": [3e6]},
         "UPDATE_EPOCHS": {"values": [4]},
         "NUM_MINIBATCHES": {"values": [16]},
@@ -640,7 +624,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_whole_day_new_min_action_tokens")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_pretrained_new_tokenizer_RL_finetuning")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
