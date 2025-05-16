@@ -484,6 +484,8 @@ class MarketMakingEnv(BaseLOBEnv):
                 10,  # Number of levels
                 self.cfg  
             )
+        else:
+            lob_state_before = None
 
         # Pad best_bids and best_asks to correct shape
         num_total_msgs = self.stepLines + self.cfg.num_messages_by_agent
@@ -2088,28 +2090,11 @@ class MarketMakingEnv(BaseLOBEnv):
         # For the very first message, use the old mid price and compare it to that (delta price is 2* best mid price change)
         delta_price = delta_price.at[0].set(2 * (mid_prices[0] - old_mid_price))
 
-        # Subsequent messages: (best_ask_prices[i] - best_ask_prices[i-1]) + (best_bid_prices[i] - best_bid_prices[i-1])
+        # Subsequent messages:
         # Interesting fact: one message can actually change both the best bid and the best ask (because we can consume a level and then be added at the level on our side)
         delta_price = delta_price.at[1:].set(
             (best_ask_prices[1:] - best_ask_prices[:-1]) + (best_bid_prices[1:] - best_bid_prices[:-1])
         )
-
-        #jax.debug.print("delta ask {}", (best_ask_prices[1:] - best_ask_prices[:-1]))
-        #jax.debug.print("delta bid {}", (best_bid_prices[1:] - best_bid_prices[:-1]))
-
-        #jax.debug.print("delta_price: {}", delta_price)
-
-
-        #nonzero_indices = jnp.where(delta_price != 0)[0]
-        #jax.debug.print("message which cause a delta price non zero: {}", jnp.where(delta_price != 0))
-        #jax.debug.print("Messages causing delta_price change: {}", total_msgs[nonzero_indices])
-        #jax.debug.print("best bids at delta price change: {}", state.best_bids[nonzero_indices])
-        #jax.debug.print("best asks at delta price change: {}", state.best_asks[nonzero_indices])
-
-        #jax.debug.print("best bid price before delta price change: {}", state.best_bids[nonzero_indices-1])
-        #jax.debug.print("best ask price before delta price change: {}", state.best_asks[nonzero_indices-1])
-
-
 
         #############################
         # Tokenization 
