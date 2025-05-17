@@ -560,7 +560,7 @@ if __name__ == "__main__":
 
     
     env_config_hps = [{"observation_space":"messages_new_tokenizer",
-                            "reward_space":"portfolio_value_scaled",
+                            "reward_space":"zero_inv",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
@@ -579,8 +579,8 @@ if __name__ == "__main__":
         "GAMMA": {"values": [0.999]},
         "GAE_LAMBDA": {"values": [0.99]},
         "CLIP_EPS": {"values": [0.2]},
-        "ENT_COEF": {"values": [0.1,0,100]},
-        "VF_COEF": {"values": [0.000005]},
+        "ENT_COEF": {"values": [0.001]},
+        "VF_COEF": {"values": [0.0000005]},
         "MAX_GRAD_NORM": {"values": [0.5]},
         "ENV_NAME": {"values": ["AlphaTradeMM"]},
         "ANNEAL_LR": {"values": [True]},
@@ -624,7 +624,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_pretrained_new_tokenizer_RL_finetuning")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_pretrained_zero_inv")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 

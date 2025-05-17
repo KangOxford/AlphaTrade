@@ -516,23 +516,7 @@ if __name__ == "__main__":
 
     
     env_config_hps = [{"observation_space":"engineered",
-                            "reward_space":"portfolio_value_scaled",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading",
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"portfolio_value",
-                            "inv_penalty":"none",
-                            "end_fn":"unwind_ref_price",
-                            "fixed_quant_value":10,
-                            "reference_price_portfolio_value":"near_touch",
-                            "action_space":"directional_trading",
-                            },
-                            {"observation_space":"engineered",
-                            "reward_space":"delta_netWorth",
+                            "reward_space":"zero_inv",
                             "inv_penalty":"none",
                             "end_fn":"unwind_ref_price",
                             "fixed_quant_value":10,
@@ -596,7 +580,7 @@ if __name__ == "__main__":
 
             run.finish()
 
-    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_directional_whole_day_new_min_action_tokens")
+    sweep_id = wandb.sweep(sweep=sweep_config, project="MM_RWKV_feature_engineered_zero_inv")
     wandb.agent(sweep_id, function=sweep_fun, count=500)
 
 
