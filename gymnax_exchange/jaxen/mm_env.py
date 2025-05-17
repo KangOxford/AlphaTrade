@@ -2043,7 +2043,7 @@ class MarketMakingEnv(BaseLOBEnv):
     def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time, old_mid_price, lob_state_before):
         """
         Construct a tokenized observation matching the pretraining format:
-        [orderbook_tokens..., message_tokens...] so basically the same as when pretraning the model
+        [orderbook_tokens, message_tokens]
         """
 
         cfg = get_config()
@@ -2109,8 +2109,8 @@ class MarketMakingEnv(BaseLOBEnv):
 
         def split_and_offset(x, offset):
             x = x.astype(jnp.int32)  # Ensure input is really int32
-            low = (x & 0xFFFF).astype(jnp.uint16) + offset      # Lower 16 bits + offset
-            high = ((x >> 16) & 0xFFFF).astype(jnp.uint16) + offset  # Upper 16 bits + offset
+            low = (x & 0xFFFF).astype(jnp.uint16) + offset      #  Lower 16 bits + offset
+            high = ((x >> 16) & 0xFFFF).astype(jnp.uint16) + offset  #Upper 16 bits + offset
             return jnp.stack([low, high], axis=-1)  # Shape: (..., 2)
 
         order_id_tok      = split_and_offset(order_id,      cfg.ORDER_ID_B_START)
