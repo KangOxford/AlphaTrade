@@ -147,21 +147,20 @@ set_config(TokenizerConfig(split_vocab=True))
 
 
 @struct.dataclass
-class EnvState(BaseEnvState):
-    best_asks: chex.Array
-    best_bids: chex.Array
+class EnvState():
     inventory:int
     mid_price:float
     total_PnL: float
-    price_bid_passive :int
-    quant_bid_passive :int
-    price_ask_passive:int
-    quant_ask_passive:int
-    delta_time: float
+
+
     cash_balance: float
+
+
+
 
 @struct.dataclass
 class EnvParams(BaseEnvParams):
+    trader_id: int
     pass
 
 class MarketMakingAgent(BaseLOBEnv):

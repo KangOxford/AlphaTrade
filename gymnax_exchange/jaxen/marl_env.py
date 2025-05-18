@@ -22,6 +22,7 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
 from gymnax_exchange.jaxob.jaxob_config import Configuration
+from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv as MultiAgentEnv
 
 
 @struct.dataclass
@@ -32,6 +33,11 @@ class WorldState(BaseState):
     step_counter: int
     time: jnp.ndarray
     customIDcounter: jnp.ndarray
+    price_bid_passive: int
+    quant_bid_passive: int
+    price_ask_passive: int
+    quant_ask_passive: int
+    delta_time: float
 
 
 
@@ -53,7 +59,7 @@ class MultiAgentParams(BaseParams):
     exe_params: EXEParams
 
 # define the MARL environment.
-class MARLEnv(BaseLOBEnv):
+class MARLEnv(MultiAgentEnv):
     def __init__(self,
                  key,
                  alphatradePath: str,
