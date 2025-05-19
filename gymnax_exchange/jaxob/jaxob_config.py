@@ -6,7 +6,7 @@ from typing import Tuple,  Literal,Union,List
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
-class Configuration:
+class JAXLOB_Configuration:
     maxint : int = cst.MaxInt._64_Bit_Signed.value
     init_id :int = cst.INITID
     cancel_mode: int= cst.CancelMode.CANCEL_UNIFORM_AND_LARGE.value
@@ -17,31 +17,46 @@ class Configuration:
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
     start_resolution: int = env_cst.start_resolution
+    alphatradePath: str = "env_cst.alphatradePath"
+
+
+#@dataclass(frozen=True)
+class World_EnvironmentConfig(JAXLOB_Configuration):
+    n_data_msg_per_step: int = 100
+    window_selector = -1 # -1 means random window
+    ep_type = "fixed_time" # fixed_steps, fixed_time
+    episode_time = 1800 # counted by seconds, 1800s=0.5h
+    day_start = 34200  # 09:30
+    day_end = 57600  # 16:00
+    nOrdersPerSide=100 #100
+    nTradesLogged=100
+    book_depth=10
+    n_actions=4
+    n_ticks_in_book = 10 # Depth of PP actions
+    customIDCounter=0
+    tick_size=100
+
 
 @dataclass(frozen=True)
-class EnvironmentConfig(Configuration):
+class MarketMaking_EnvironmentConfig():
     action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] =env_cst.action_space
     observation_space: Literal["engineered", "messages", "messages_new_tokenizer"] = env_cst.observation_space
     end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     num_messages_by_agent:int=env_cst.num_messages_by_agent
-    num_action_messages_by_agent=2
+    num_action_messages_by_agent=2 # will be set automcatically down below
+    fixed_quant_value:int=env_cst.fixed_quant_value
+    n_actions: int = env_cst.n_actions
+    debug_mode:bool=False
    
-    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
     reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value", "portfolio_value_scaled","spooner","spooner_damped","spooner_scaled","delta_netWorth"] =env_cst.reward_space
     reference_price_portfolio_value: Literal["mid", "best_bid_ask", "near_touch"] =env_cst.reference_price_portfolio_value
-    
-    fixed_quant_value:int=env_cst.fixed_quant_value
-    n_actions: int = env_cst.n_actions
-    
     # Weights for complex reward function:
     inventoryPnL_lambda: float =env_cst.inventoryPnL_lambda
     unrealizedPnL_lambda: float =0
     asymmetrically_dampened_lambda: float =env_cst.asymmetrically_dampened_lambda
-
-    debug_mode:bool=False
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -68,7 +83,7 @@ class EnvironmentConfig(Configuration):
 
 
 @dataclass(frozen=True)
-class EnvironmentExecutionConfig(Configuration):
+class Execution_EnvironmentConfig():
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     task: Literal["random", "buy", "sell"]="buy"
     action_type: Literal["delta", "pure"]="pure"

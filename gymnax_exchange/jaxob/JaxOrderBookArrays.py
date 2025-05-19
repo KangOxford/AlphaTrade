@@ -51,7 +51,7 @@ from jax import numpy as jnp
 import jax
 import chex
 
-from gymnax_exchange.jaxob.jaxob_config import Configuration
+from gymnax_exchange.jaxob.jaxob_config import JAXLOB_Configuration
 import gymnax_exchange.jaxob.jaxob_constants as cst
 
 #TODO: Get rid of these magic numbers by allowing a config dict
