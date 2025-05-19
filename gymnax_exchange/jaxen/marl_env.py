@@ -19,9 +19,10 @@ from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState,
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
-from gymnax_exchange.jaxob.jaxob_config import Configuration
+from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import JAXLOB_Configuration
+from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv as MultiAgentEnv
 
 
@@ -63,6 +64,7 @@ class MultiAgentParams(BaseParams):
 class MARLEnv(MultiAgentEnv):
     def __init__(self,
                  key,
+                 world_config: World_EnvironmentConfig,
                  alphatradePath: str,
                  window_index: int,
                  episode_time: int,
@@ -75,15 +77,15 @@ class MARLEnv(MultiAgentEnv):
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
 
         # Create config first
-        self.cfg = Configuration()
+        self.world_config = world_config
         
         # Pass config to parent class
-        self.base_env = BaseLOBEnv.__init__(self.cfg, key, alphatradePath, window_index, episode_time, ep_type=ep_type)
+        self.base_env = BaseLOBEnv.__init__(self.world_config, key)
 
          # Split the key for the sub-environments:
         key_mm, key_exe = jax.random.split(key, 2)
         
-        mm_config = EnvironmentConfig()
+        mm_config = MarketMaking_EnvironmentConfig()
 
         print("Initializing MM environment...")
         # Create the market making sub-env 
@@ -97,7 +99,7 @@ class MARLEnv(MultiAgentEnv):
             ep_type=ep_type
         )
         
-        exe_config = EnvironmentExecutionConfig()
+        exe_config = Execution_EnvironmentConfig()
 
         print("Initializing EXE environment...")
         # Create the execution sub-env
@@ -140,7 +142,7 @@ class MARLEnv(MultiAgentEnv):
         # The shared base state is taken from mm_state
         base_state = mm_state  
         # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.stepLines + self.mm_env.cfg.num_messages_by_agent + self.exe_env.cfg.num_messages_by_agent
+        num_total_msgs = self.n_data_msg_per_step + self.mm_env.cfg.num_messages_by_agent + self.exe_env.cfg.num_messages_by_agent
 
         #jax.debug.print(f"num total msg: {num_total_msgs}")
         
@@ -281,17 +283,17 @@ class MARLEnv(MultiAgentEnv):
 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
-            self.cfg,  
+            self.world_config,  
             key,  
             combined_msgs,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
-            self.stepLines + self.exe_env.cfg.num_messages_by_agent + self.mm_env.cfg.num_messages_by_agent
+            self.n_data_msg_per_step + self.exe_env.world_config.num_messages_by_agent + self.mm_env.cfg.num_messages_by_agent
         )
         #jax.debug.print(f"New best bids after LOB: {new_bestbids.shape}")
         
         # Forward-fill best prices if necessary:
-        new_bestasks = self._ffill_best_prices(new_bestasks[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_asks[-1, 0]) # TODO this should just be the entire array 
-        new_bestbids = self._ffill_best_prices(new_bestbids[-self.stepLines-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_bids[-1, 0])
+        new_bestasks = self._ffill_best_prices(new_bestasks[-self.n_data_msg_per_step-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_asks[-1, 0]) # TODO this should just be the entire array 
+        new_bestbids = self._ffill_best_prices(new_bestbids[-self.n_data_msg_per_step-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_bids[-1, 0])
 
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
 
@@ -489,16 +491,16 @@ class MARLEnv(MultiAgentEnv):
             "approx_realized_pnl":mm_extras["approx_realized_pnl"],
             "approx_unrealized_pnl": mm_extras["approx_unrealized_pnl"]
         } 
-        if self.cfg.debug_mode==False:
+        if self.world_config.debug_mode==False:
             info = {"market_maker": mm_info, "execution": exe_info}
 
         ###debug mode full logging. Ensure this is off by default
-        if self.cfg.debug_mode==True:
+        if self.world_config.debug_mode==True:
             lob_state = job.get_L2_state(
                                 new_state.ask_raw_orders,  # Current ask orders
                                 new_state.bid_raw_orders,  # Current bid orders
                                 10,  # Number of levels
-                                self.cfg  
+                                self.world_config  
                                 )
             info = {"market_maker": mm_info, "execution": exe_info,
                 "trades":new_trades,
