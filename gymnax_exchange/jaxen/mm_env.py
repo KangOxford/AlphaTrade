@@ -170,11 +170,12 @@ class MarketMakingAgent(BaseLOBEnv):
             key = key,
             alphatradePath = alphatradePath,
             window_selector = window_index,
-            sliceTimeWindow = episode_time,
+            episode_time = episode_time,
             trader_unique_id = trader_unique_id,
             ep_type = ep_type,
         )
         
+        self.n_ticks_in_book = cfg.n_ticks_in_book # Depth of PP actions
 
         ##Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
@@ -292,19 +293,19 @@ class MarketMakingAgent(BaseLOBEnv):
         # To only ever consider the trades from the last step simply replace state.trades with an array of -1s of the same size. 
         trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
 
-        #jax.debug.print(f"Number of overall messages: {self.stepLines + self.cfg.num_messages_by_agent}")
+        #jax.debug.print(f"Number of overall messages: {self.n_data_msg_per_step + self.cfg.num_messages_by_agent}")
 
         # Process messages of step (action+data) through the orderbook
         (asks, bids, trades), (bestbids, bestasks) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
-            # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
-            self.stepLines + self.cfg.num_messages_by_agent # to include our action messages increase this by cfg.num_messages_by_agent
+            # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
+            self.n_data_msg_per_step + self.cfg.num_messages_by_agent # to include our action messages increase this by cfg.num_messages_by_agent
         )
         # If best price is not available in the current step, use the last available price
-        # TODO: check if we really only want the most recent stepLines prices (+1 for the additional market order)
-        bestasks = self._ffill_best_prices(bestasks[-self.stepLines-self.cfg.num_messages_by_agent:], state.best_asks[-1, 0])
-        bestbids = self._ffill_best_prices(bestbids[-self.stepLines-self.cfg.num_messages_by_agent:], state.best_bids[-1, 0])
+        # TODO: check if we really only want the most recent n_data_msg_per_step prices (+1 for the additional market order)
+        bestasks = self._ffill_best_prices(bestasks[-self.n_data_msg_per_step-self.cfg.num_messages_by_agent:], state.best_asks[-1, 0])
+        bestbids = self._ffill_best_prices(bestbids[-self.n_data_msg_per_step-self.cfg.num_messages_by_agent:], state.best_bids[-1, 0])
 
         #jax.debug.print(f"bestasks shape in function: {bestasks.shape}")
 
@@ -456,7 +457,7 @@ class MarketMakingAgent(BaseLOBEnv):
         _, state = super().reset_env(key, params)
         state = dataclasses.replace(state, cash_balance=0.0)
         # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.stepLines + self.cfg.num_messages_by_agent
+        num_total_msgs = self.n_data_msg_per_step + self.cfg.num_messages_by_agent
         best_bid = state.best_bids[-1]  # or whatever is the current best bid
         best_ask = state.best_asks[-1]
         bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
@@ -525,8 +526,8 @@ class MarketMakingAgent(BaseLOBEnv):
         return EnvState(
             ##This is reset
             *base_vals,
-            best_asks=jnp.resize(best_ask,(self.stepLines,2)),
-            best_bids=jnp.resize(best_bid,(self.stepLines,2)),
+            best_asks=jnp.resize(best_ask,(self.n_data_msg_per_step,2)),
+            best_bids=jnp.resize(best_bid,(self.n_data_msg_per_step,2)),
             mid_price=M,
             inventory=0,
             total_PnL=0.,
@@ -1584,8 +1585,8 @@ class MarketMakingAgent(BaseLOBEnv):
         (asks, bids, trades), (new_bestbid, new_bestask) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             cnl_msgs, 
             (asks, bids, trades),
-            # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
-            self.stepLines
+            # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
+            self.n_data_msg_per_step
         )
    
         #Filter our new message through the orderbook#
@@ -1626,8 +1627,8 @@ class MarketMakingAgent(BaseLOBEnv):
         (asks, bids, trades), (new_bestbid, new_bestask) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             cnl_msgs, 
             (asks, bids, trades),
-            # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
-            self.stepLines
+            # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
+            self.n_data_msg_per_step
         )
        
         # make sure best prices use the most recent available price and are not negative
@@ -2168,7 +2169,7 @@ class MarketMakingAgent(BaseLOBEnv):
             "quant_ask_passive":100,
             "time": 1e5,
             "delta_time": 10,
-            "time_remaining": self.sliceTimeWindow, # 10 minutes = 600 seconds
+            "time_remaining": self.episode_time, # 10 minutes = 600 seconds
             "mid_price": 1e7, #p_std,
             "inventory" : 10,
             "total_PnL" : 100,
@@ -2219,11 +2220,11 @@ class MarketMakingAgent(BaseLOBEnv):
         if self.cfg.observation_space =="engineered":
              return spaces.Box(-10, 10, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
-                num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
+                num_messages_total=self.cfg.num_messages_by_agent+self.n_data_msg_per_step
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space == "messages_new_tokenizer":
             cfg               = get_config()
-            num_messages      = self.cfg.num_messages_by_agent + self.stepLines + self.nTradesLogged
+            num_messages      = self.cfg.num_messages_by_agent + self.n_data_msg_per_step + self.nTradesLogged
             toks_per_message  = 13      # we now split each int32 message‐field into two 16-bit tokens
             toks_per_book     = 84      # 42 book fields × 2 halves
             vocab_size        = cfg.TOTAL_NUM_TOKENS

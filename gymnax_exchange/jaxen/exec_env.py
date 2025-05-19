@@ -182,7 +182,7 @@ class ExecutionEnv(BaseLOBEnv):
             key = key,
             alphatradePath = alphatradePath,
             window_selector = window_index,
-            sliceTimeWindow = episode_time,
+            episode_time = episode_time,
             trader_unique_id = trader_unique_id,
             ep_type = ep_type,
         )
@@ -272,21 +272,21 @@ class ExecutionEnv(BaseLOBEnv):
         (asks, bids, trades), (bestbids, bestasks) = job.scan_through_entire_array_save_bidask(self.cfg, key,
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
-            # TODO: this returns bid/ask for last stepLines only, could miss the direct impact of actions
-            self.stepLines + self.cfg.num_messages_by_agent
+            # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
+            self.n_data_msg_per_step + self.cfg.num_messages_by_agent
         )
         #
         jax.debug.print("new best bids before:{}",bestbids.shape)
 
         # If best price is not available in the current step, use the last available price
-        # TODO: check if we really only want the most recent stepLines prices (+1 for the additional market order)
+        # TODO: check if we really only want the most recent n_data_msg_per_step prices (+1 for the additional market order)
         bestasks, bestbids = (
             self._ffill_best_prices(
-                bestasks[-self.stepLines- self.cfg.num_messages_by_agent:],
+                bestasks[-self.n_data_msg_per_step- self.cfg.num_messages_by_agent:],
                 state.best_asks[-1, 0]
             ),
             self._ffill_best_prices(
-                bestbids[-self.stepLines- self.cfg.num_messages_by_agent:],
+                bestbids[-self.n_data_msg_per_step- self.cfg.num_messages_by_agent:],
                 state.best_bids[-1, 0]
             )
         )
@@ -450,7 +450,7 @@ class ExecutionEnv(BaseLOBEnv):
         else:
             direction = 0 if self.cfg.task == 'buy' else 1
         # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.stepLines + self.cfg.num_messages_by_agent
+        num_total_msgs = self.n_data_msg_per_step + self.cfg.num_messages_by_agent
         best_bid = state.best_bids[-1]  # or whatever is the current best bid
         best_ask = state.best_asks[-1]
         bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
@@ -525,8 +525,8 @@ class ExecutionEnv(BaseLOBEnv):
             *base_vals,
             prev_action=jnp.zeros((n_trades, 2), jnp.int32),
             prev_executed=jnp.zeros((n_trades, ), jnp.int32),
-            best_asks=jnp.resize(best_ask,(self.stepLines,2)),
-            best_bids=jnp.resize(best_bid,(self.stepLines,2)),
+            best_asks=jnp.resize(best_ask,(self.n_data_msg_per_step,2)),
+            best_bids=jnp.resize(best_bid,(self.n_data_msg_per_step,2)),
             init_price=M,
             task_to_execute=self.cfg.max_task_size,
             quant_executed=0,
@@ -1450,7 +1450,7 @@ class ExecutionEnv(BaseLOBEnv):
             "time": 1e5,
             "delta_time": 10,
             # "episode_time": jnp.array([1e3, 1e9]),
-            "time_remaining": self.sliceTimeWindow, # 10 minutes = 600 seconds
+            "time_remaining": self.episode_time, # 10 minutes = 600 seconds
             "init_price": 1e7, #p_std,
             "task_size": self.cfg.max_task_size,
             "executed_quant": self.cfg.max_task_size,
