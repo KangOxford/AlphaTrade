@@ -148,11 +148,8 @@ set_config(TokenizerConfig(split_vocab=True))
 
 @struct.dataclass
 class EnvState():
-    inventory:int
-    mid_price:float
+    inventory: int
     total_PnL: float
-
-
     cash_balance: float
 
 

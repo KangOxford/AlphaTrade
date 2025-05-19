@@ -141,10 +141,7 @@ import jax.tree_util as jtu
 class EnvState(BaseEnvState):
     prev_action: chex.Array
     prev_executed: chex.Array
-    # Potentially could be moved to base,
-    # so long as saving of best ask/bids is base behaviour. 
-    best_asks: chex.Array
-    best_bids: chex.Array
+
     # Execution specific stuff
     init_price: int
     task_to_execute: int
@@ -161,7 +158,9 @@ class EnvState(BaseEnvState):
     trade_duration: float
     quant_passive_2: int
     price_passive_2: int
-    delta_time: float
+
+
+
 
 @struct.dataclass
 class EnvParams(BaseEnvParams):
