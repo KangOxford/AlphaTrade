@@ -121,7 +121,7 @@ class MARLEnv(MultiAgentEnv):
     def default_params(self) -> MultiAgentParams:
         # Get the base parameters from BaseLOBEnv
         #TODO This is just the Mutli Agent Params, no sub params
-        base_params = super().default_params
+        base_params = self.base_env.default_params
         # Get the sub–env default parameters
         exe_params = self.exe_env.default_params
         mm_params = self.mm_env.default_params
