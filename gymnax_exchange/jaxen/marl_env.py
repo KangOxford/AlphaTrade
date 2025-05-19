@@ -33,6 +33,7 @@ class WorldState(BaseState):
     step_counter: int
     time: jnp.ndarray
     customIDcounter: jnp.ndarray
+    mid_price:float
     price_bid_passive: int
     quant_bid_passive: int
     price_ask_passive: int
@@ -77,7 +78,7 @@ class MARLEnv(MultiAgentEnv):
         self.cfg = Configuration()
         
         # Pass config to parent class
-        super().__init__(self.cfg, key, alphatradePath, window_index, episode_time, ep_type=ep_type)
+        self.base_env = BaseLOBEnv.__init__(self.cfg, key, alphatradePath, window_index, episode_time, ep_type=ep_type)
 
          # Split the key for the sub-environments:
         key_mm, key_exe = jax.random.split(key, 2)
