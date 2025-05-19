@@ -99,6 +99,7 @@ class EnvParams:
     init_states_array: chex.Array
 
 
+
 class BaseLOBEnv(environment.Environment):
 
     """The basic RL environment for the limit order book (LOB) using
@@ -111,9 +112,9 @@ class BaseLOBEnv(environment.Environment):
         int in range(0,n_starts) to choose a specific window for debug. 
     data_type : str
         "fixed_steps" and "fixed_time" to defn episode end crit.
-    sliceTimeWindow : int
+    episode_time : int
         Length of episode in steps or seconds based on above.
-    stepLines : int
+    n_data_msg_per_step : int
         number of messages to process per step. 
     day_start : int
         Beginning time of day in seconds
@@ -159,28 +160,27 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self,cfg:Configuration, key, alphatradePath, window_selector, sliceTimeWindow, ep_type="fixed_time"):
+    def __init__(self,cfg:Configuration, key):
         super().__init__()
-        self.window_selector = window_selector
-        self.ep_type = ep_type # fixed_steps, fixed_time
-        self.sliceTimeWindow = sliceTimeWindow # counted by seconds, 1800s=0.5h
-        self.stepLines = 100
-        self.day_start = 34200  # 09:30
-        self.day_end = 57600  # 16:00
-        self.nOrdersPerSide=100
-        self.nTradesLogged=100
-        self.book_depth=10
-        self.n_actions=4
-        self.n_ticks_in_book = 10 # Depth of PP actions
-        self.customIDCounter=0
-        self.tick_size=100
+        self.window_selector = cfg.window_selector
+        self.ep_type = cfg.ep_type # fixed_steps, fixed_time
+        self.episode_time = cfg.episode_time # counted by seconds, 1800s=0.5h
+        self.n_data_msg_per_step = cfg.n_data_msg_per_step
+        self.day_start = cfg.day_start  # 09:30
+        self.day_end = cfg.day_end  # 16:00
+        self.nOrdersPerSide=cfg.nOrdersPerSide #100
+        self.nTradesLogged=cfg.nTradesLogged
+        self.book_depth=cfg.book_depth
+        self.n_ticks_in_book = cfg.n_ticks_in_book 
+        self.customIDCounter=cfg.customIDCounter
+        self.tick_size=cfg.tick_size
         self.start_resolution = cfg.start_resolution  # Use value from config
         self.cfg = cfg
         loader=LoadLOBSTER_resample(alphatradePath,
                                     self.book_depth,
                                     ep_type,
-                                    window_length=self.sliceTimeWindow,
-                                    n_msg_per_step=self.stepLines,
+                                    window_length=self.episode_time,
+                                    n_data_msg_per_step=self.n_data_msg_per_step,
                                     window_resolution=self.start_resolution,
                                     day_start=self.day_start,
                                     day_end=self.day_end) 
@@ -200,7 +200,7 @@ class BaseLOBEnv(environment.Environment):
         return EnvParams(
             message_data=self.messages, 
             book_data=self.books,
-            episode_time=self.sliceTimeWindow,
+            episode_time=self.episode_time,
             time_delay_obs_act=jnp.array([0, 0]),
             window_selector=self.window_selector,
             init_states_array=self.init_states_array
@@ -295,7 +295,7 @@ class BaseLOBEnv(environment.Environment):
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],
                         init_time=jnp.array([(window_index*self.start_resolution)
-                                                        %(self.day_end-self.day_start-self.sliceTimeWindow+self.start_resolution)
+                                                        %(self.day_end-self.day_start-self.episode_time+self.start_resolution)
                                                         +self.day_start,0])
                                     if self.ep_type=="fixed_time" else time,
                         time=time,
@@ -326,7 +326,7 @@ class BaseLOBEnv(environment.Environment):
                                                 self.messages[starts[i]],
                                                 self.books[i],
                                                 self.max_messages_in_episode_arr[i]
-                                                    //self.stepLines+1,
+                                                    //self.n_data_msg_per_step+1,
                                                     i,
                                                     starts[i]) 
                         for i in range(self.n_windows)]
@@ -351,12 +351,12 @@ class BaseLOBEnv(environment.Environment):
             Returns:
                     Messages (Array): 2D array of messages for step 
         """
-        index_offset=start+self.stepLines*step_counter
+        index_offset=start+self.n_data_msg_per_step*step_counter
         
-        messages=jax.lax.dynamic_slice_in_dim(messageData,index_offset,self.stepLines,axis=0)
+        messages=jax.lax.dynamic_slice_in_dim(messageData,index_offset,self.n_data_msg_per_step,axis=0)
         #jax.debug.print("{}",messages)
         #jax.debug.print("End time: {}",end_time_s)
-        #messages=messageData[index_offset:(index_offset+self.stepLines),:]
+        #messages=messageData[index_offset:(index_offset+self.n_data_msg_per_step),:]
         #Replace messages after the cutoff time with padded 0s (except time)
         #jax.debug.print("m_wout_time {}",jnp.transpose(jnp.resize(messages[:,-2]>=end_time_s,messages[:,:-2].shape[::-1])))
         m_wout_time=jnp.where(jnp.transpose(jnp.resize(
