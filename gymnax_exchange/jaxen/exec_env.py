@@ -163,9 +163,10 @@ class EnvState(BaseEnvState):
 
 
 @struct.dataclass
-class EnvParams(BaseEnvParams):
+class EnvParams():
     task_size: int 
     reward_lambda: float = 1.0
+    trader_unique_id: int = -9999998
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(

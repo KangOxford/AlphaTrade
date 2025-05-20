@@ -66,7 +66,6 @@ class MARLEnv(MultiAgentEnv):
     def __init__(self,
                  key,
                  world_config: World_EnvironmentConfig,
-                 list_of_agents: list,
                  alphatradePath: str,
                  window_index: int,
                  episode_time: int,
@@ -90,6 +89,16 @@ class MARLEnv(MultiAgentEnv):
         mm_config = MarketMaking_EnvironmentConfig()
 
         print("Initializing MM environment...")
+        self.instance_list=[]
+        for i in range(len(self.world_config.number_of_agents_per_type)):
+            num_agents_per_type = self.world_config.number_of_agents_per_type[i]
+            if isinstance(self.world_config.list_of_agents_configs[i], MarketMaking_EnvironmentConfig):
+                self.instance_list.append(MarketMakingAgent(key=key_mm,cfg=self.world_config.list_of_agents_configs[i],alphatradePath=alphatradePath,window_index=window_index,episode_time=episode_time,trader_unique_id=mm_trader_id,ep_type=ep_type))
+            elif isinstance(self.world_config.list_of_agents_configs[i], Execution_EnvironmentConfig):
+                self.instance_list.append(ExecutionEnv(cfg=self.world_config.list_of_agents_configs[i],key=key_exe,alphatradePath=alphatradePath,window_index=window_index,episode_time=episode_time,trader_unique_id=exe_trader_id,ep_type=ep_type))
+            else:
+                raise ValueError(f"Invalid agent type: {i}")
+
         # Create the market making sub-env 
         self.mm_env = MarketMakingAgent(
             key=key_mm,
@@ -127,6 +136,13 @@ class MARLEnv(MultiAgentEnv):
         #TODO This is just the Mutli Agent Params, no sub params
         base_params = self.base_env.default_params
         # Get the sub–env default parameters
+        params_list = []
+        for i in range(len(self.world_config.number_of_agents_per_type)):
+            num_agents_per_type = self.world_config.number_of_agents_per_type[i]
+            params_list.append(self.instance_list[i].default_params())
+
+
+
         exe_params = self.exe_env.default_params
         mm_params = self.mm_env.default_params
         # Combine them into a MultiAgentParams instance.

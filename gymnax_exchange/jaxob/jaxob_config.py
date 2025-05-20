@@ -20,21 +20,6 @@ class JAXLOB_Configuration:
     alphatradePath: str = "env_cst.alphatradePath"
 
 
-#@dataclass(frozen=True)
-class World_EnvironmentConfig(JAXLOB_Configuration):
-    n_data_msg_per_step: int = 100
-    window_selector = -1 # -1 means random window
-    ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 1800 # counted by seconds, 1800s=0.5h
-    day_start = 34200  # 09:30
-    day_end = 57600  # 16:00
-    nOrdersPerSide=100 #100
-    nTradesLogged=100
-    book_depth=10
-    n_actions=4
-    n_ticks_in_book = 10 # Depth of PP actions
-    customIDCounter=0
-    tick_size=100
 
 
 @dataclass(frozen=True)
@@ -96,7 +81,6 @@ class Execution_EnvironmentConfig():
     num_messages_by_agent:int=8
     num_action_messages_by_agent:int=4
     debug_mode:bool=False
-    trader_id: int = -4444444
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!
@@ -113,12 +97,31 @@ class Execution_EnvironmentConfig():
             object.__setattr__(self, 'num_action_messages_by_agent', 4)
 
 
-list_of_agents = [
-    MarketMaking_EnvironmentConfig(),
-    Execution_EnvironmentConfig(),
-    MarketMaking_EnvironmentConfig(),
-]
-    
+
+
+
+@dataclass(frozen=True)
+class World_EnvironmentConfig(JAXLOB_Configuration):
+    n_data_msg_per_step: int = 100
+    window_selector = -1 # -1 means random window
+    ep_type = "fixed_time" # fixed_steps, fixed_time
+    episode_time = 1800 # counted by seconds, 1800s=0.5h
+    day_start = 34200  # 09:30
+    day_end = 57600  # 16:00
+    nOrdersPerSide=100 #100
+    nTradesLogged=100
+    book_depth=10
+    n_actions=4
+    n_ticks_in_book = 10 # Depth of PP actions
+    customIDCounter=0
+    tick_size=100
+
+    list_of_agents_configs = [
+        MarketMaking_EnvironmentConfig(),
+        Execution_EnvironmentConfig(),
+        MarketMaking_EnvironmentConfig(),
+    ]
+    number_of_agents_per_type = [2,1,2]
 
 
 

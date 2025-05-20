@@ -156,9 +156,9 @@ class EnvState():
 
 
 @struct.dataclass
-class EnvParams(BaseEnvParams):
-    trader_id: int
-    pass
+class EnvParams():
+    trader_id: chex.Array
+    
 
 class MarketMakingAgent():
     def __init__(
@@ -198,24 +198,9 @@ class MarketMakingAgent():
             self.end_fn=self.end_fn_pass
       
 
-    @property
-    def default_params(self) -> EnvParams:
-        # Default environment parameters
-        base_params = super().default_params
-
-        flat_tree = jtu.tree_flatten(base_params)[0]
-        #TODO: Clean this up to not have a magic number
-        # BaseEnvParams
-        base_vals = flat_tree[0:5] #Considers the base parameter values other than init state.
-        state_vals = flat_tree[5:] #Considers the state values
-
-        #jax.debug.print("state_vals shapes: {}", [getattr(leaf, "shape", None) for leaf in state_vals])
-
-        return EnvParams(
-            *base_vals,
-            EnvState(*state_vals),
-        )
-
+    def default_params(self,trader_id_range_start:int, number_of_agents_per_type:int) -> EnvParams:
+        end_of_range = trader_id_range_start - number_of_agents_per_type
+        return EnvParams(trader_id=jnp.arange(trader_id_range_start,end_of_range)), end_of_range
 
 
 
