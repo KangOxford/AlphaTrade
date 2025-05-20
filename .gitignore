@@ -3,7 +3,6 @@
 **.pyc
 .idea/**
 .spyproject/**
-**.txt
 .DS_Store
 **.log
 /train/output/**
