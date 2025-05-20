@@ -163,6 +163,7 @@ class EnvParams():
 class MarketMakingAgent():
     def __init__(
             self,cfg:MarketMaking_EnvironmentConfig):
+        
         self.cfg=cfg
 
         ##Choose observation space based on config.
@@ -199,8 +200,10 @@ class MarketMakingAgent():
       
 
     def default_params(self,trader_id_range_start:int, number_of_agents_per_type:int) -> EnvParams:
-        end_of_range = trader_id_range_start - number_of_agents_per_type
-        return EnvParams(trader_id=jnp.arange(trader_id_range_start,end_of_range)), end_of_range
+        next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
+        trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
+        print(f"trader_id: {trader_id}")
+        return EnvParams(trader_id=trader_id), next_trader_id_range_start
 
 
 

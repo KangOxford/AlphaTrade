@@ -165,29 +165,18 @@ class EnvState(BaseEnvState):
 @struct.dataclass
 class EnvParams():
     task_size: int 
+    trader_id: int
     reward_lambda: float = 1.0
-    trader_unique_id: int = -9999998
+
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, cfg:Execution_EnvironmentConfig,key,alphatradePath, window_index, episode_time,
-            rewardLambda=1.,trader_unique_id=-9999998, ep_type="fixed_time"):
+            self, 
+            cfg:Execution_EnvironmentConfig):
         
         #Define the config
-        self.rewardLambda = rewardLambda 
         self.cfg=cfg
            
-        #Call base-class init function
-        super().__init__(
-            cfg = cfg,
-            key = key,
-            alphatradePath = alphatradePath,
-            window_selector = window_index,
-            episode_time = episode_time,
-            trader_unique_id = trader_unique_id,
-            ep_type = ep_type,
-        )
-
          #----------------- Set the end function -----------------#
         if self.cfg.end_fn=="force_market_order":
             self.end_fn =self._force_market_order_if_done
@@ -207,21 +196,12 @@ class ExecutionEnv(BaseLOBEnv):
         else:
             raise ValueError("Invalid action_space specified.")
 
-    @property
-    def default_params(self) -> EnvParams:
-        # Default environment parameters
-        base_params = super().default_params
-        flat_tree = jtu.tree_flatten(base_params)[0]
-        #TODO: Clean this up to not have a magic number
-        # BaseEnvParams
-        base_vals = flat_tree[0:5] #Considers the base parameter values other than init state.
-        state_vals = flat_tree[5:] #Considers the state values
-        return EnvParams(
-            *base_vals,
-            EnvState(*state_vals),
-            self.cfg.max_task_size,
-            reward_lambda=self.rewardLambda
-        )
+    def default_params(self,trader_id_range_start:int, number_of_agents_per_type:int) -> EnvParams:
+        next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
+        trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
+        print(f"trader_id: {trader_id}")
+        return EnvParams(trader_id=trader_id), next_trader_id_range_start
+
 
 
     def step_env(

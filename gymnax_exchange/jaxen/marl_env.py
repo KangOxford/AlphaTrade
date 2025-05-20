@@ -72,58 +72,33 @@ class MARLEnv(MultiAgentEnv):
 
         # Create config first
         self.world_config = world_config
+        self.num_agents = sum(self.world_config.number_of_agents_per_type)
         
-        # Pass config to parent class
+        super().__init__(num_agents=self.num_agents)
+
+
+       # Pass config to base class
         self.base_env = BaseLOBEnv(cfg=self.world_config, key=key)
 
-         # Split the key for the sub-environments:
-        key_mm, key_exe = jax.random.split(key, 2)
-        
-        mm_config = MarketMaking_EnvironmentConfig()
+
+        # Split the key for each sub-environments:
+        # TODO should we give each sub-env a different key?         for i in range(len(self.world_config.list_of_agents_configs)):
+            #key_mm, key_exe = jax.random.split(key, 2)
+            #mm_config = MarketMaking_EnvironmentConfig()
 
         
         self.instance_list=[] # List of different agent types. Each type can have several instances of it
-        for index in range(len(self.world_config.list_of_agents_configs)):
-            agent_config = self.world_config.list_of_agents_configs[index]
-            if isinstance(self.world_config.list_of_agents_configs[i], MarketMaking_EnvironmentConfig):
+        for agent_type_index in range(len(self.world_config.list_of_agents_configs)):
+            agent_config = self.world_config.list_of_agents_configs[agent_type_index]
+            if isinstance(agent_config, MarketMaking_EnvironmentConfig):
                 self.instance_list.append(MarketMakingAgent(cfg=agent_config))
-            elif isinstance(self.world_config.list_of_agents_configs[i], Execution_EnvironmentConfig):
+            elif isinstance(agent_config, Execution_EnvironmentConfig):
                 self.instance_list.append(ExecutionEnv(cfg=agent_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
 
 
-        print("Initializing MM environment...")
-
-        # Create the market making sub-env 
-        self.mm_env = MarketMakingAgent(
-            key=key_mm,
-            cfg=mm_config,
-            alphatradePath=alphatradePath,
-            window_index=window_index,
-            episode_time=episode_time,
-            trader_unique_id = mm_trader_id,
-            ep_type=ep_type
-        )
-        
-        exe_config = Execution_EnvironmentConfig()
-
-        print("Initializing EXE environment...")
-        # Create the execution sub-env
-        self.exe_env = ExecutionEnv(
-            cfg = exe_config,
-            key=key_exe,
-            alphatradePath=alphatradePath,
-            window_index=window_index,
-            episode_time=episode_time,
-            #max_task_size=exe_task_size,
-            rewardLambda=exe_reward_lambda,
-            trader_unique_id=exe_trader_id, 
-            ep_type=ep_type
-        )
-        
-        self.mm_trader_id = mm_trader_id
-        self.exe_trader_id = exe_trader_id
+        print(self.instance_list)
         print("MARL Environment initialized")
 
     @property
@@ -133,10 +108,12 @@ class MARLEnv(MultiAgentEnv):
         base_params = self.base_env.default_params
         # Get the sub–env default parameters
         params_list = []
-        for i in range(len(self.world_config.number_of_agents_per_type)):
-            num_agents_per_type = self.world_config.number_of_agents_per_type[i]
-            params_list.append(self.instance_list[i].default_params())
-
+        next_trader_id_range_start = self.world_config.trader_id_range_start #Start with trader id based on config
+        for agent_type_index in range(len(self.world_config.number_of_agents_per_type)):
+            num_agents_per_type = self.world_config.number_of_agents_per_type[agent_type_index]
+            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(next_trader_id_range_start, num_agents_per_type)
+            params_list.append(agent_params)
+            next_trader_id_range_start += num_agents_per_type
 
 
         exe_params = self.exe_env.default_params

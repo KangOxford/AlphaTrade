@@ -17,9 +17,7 @@ class JAXLOB_Configuration:
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
     start_resolution: int = env_cst.start_resolution
-    alphatradePath: str = "env_cst.alphatradePath"
-
-
+    alphatradePath: str = "/home/duser/AlphaTrade/training_oneDay/val" # TODO: rename this to data path or do we need the alphatrade path somewhere else?
 
 
 @dataclass(frozen=True)
@@ -115,6 +113,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_ticks_in_book = 10 # Depth of PP actions
     customIDCounter=0
     tick_size=100
+    trader_id_range_start=-1
 
     list_of_agents_configs = [
         MarketMaking_EnvironmentConfig(),
@@ -124,7 +123,4 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     number_of_agents_per_type = [2,1,2]
 
 
-
-
-    
     
