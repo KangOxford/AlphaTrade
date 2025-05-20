@@ -22,3 +22,13 @@ cd data/Book_10/data.tar.gz
 cd data/Book_10
 7z x data.tar.gz 
 exit
+pip --help
+git --help
+vim --help
+curl --help
+wget --help
+ca-certificates --help
+git --help
+git status
+git config --help
+exit
