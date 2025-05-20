@@ -203,6 +203,7 @@ class MarketMakingAgent():
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         print(f"trader_id: {trader_id}")
+        print(f"next_trader_id_range_start: {next_trader_id_range_start}")
         return EnvParams(trader_id=trader_id), next_trader_id_range_start
 
 

@@ -109,11 +109,14 @@ class MARLEnv(MultiAgentEnv):
         # Get the sub–env default parameters
         params_list = []
         next_trader_id_range_start = self.world_config.trader_id_range_start #Start with trader id based on config
+        print("--------------------------------")
+        print("start of agent type loop")
         for agent_type_index in range(len(self.world_config.number_of_agents_per_type)):
+            print(f"next_trader_id_range_start: {next_trader_id_range_start}")
+            print(f"agent type: {self.world_config.list_of_agents_configs[agent_type_index]}")
             num_agents_per_type = self.world_config.number_of_agents_per_type[agent_type_index]
-            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(next_trader_id_range_start, num_agents_per_type)
+            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(next_trader_id_range_start, num_agents_per_type) # TODO add config of that agent type here and add params accordingly
             params_list.append(agent_params)
-            next_trader_id_range_start += num_agents_per_type
 
 
         exe_params = self.exe_env.default_params
