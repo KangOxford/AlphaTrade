@@ -66,13 +66,6 @@ class MARLEnv(MultiAgentEnv):
     def __init__(self,
                  key,
                  world_config: World_EnvironmentConfig,
-                 alphatradePath: str,
-                 window_index: int,
-                 episode_time: int,
-                 ep_type: str = "fixed_time",
-                 mm_trader_id: int = -4999991,
-                 exe_trader_id: int = -9999992,
-                 exe_reward_lambda: float = 1.0,
                  ):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
@@ -81,23 +74,26 @@ class MARLEnv(MultiAgentEnv):
         self.world_config = world_config
         
         # Pass config to parent class
-        self.base_env = BaseLOBEnv.__init__(self.world_config, key)
+        self.base_env = BaseLOBEnv(cfg=self.world_config, key=key)
 
          # Split the key for the sub-environments:
         key_mm, key_exe = jax.random.split(key, 2)
         
         mm_config = MarketMaking_EnvironmentConfig()
 
-        print("Initializing MM environment...")
-        self.instance_list=[]
-        for i in range(len(self.world_config.number_of_agents_per_type)):
-            num_agents_per_type = self.world_config.number_of_agents_per_type[i]
+        
+        self.instance_list=[] # List of different agent types. Each type can have several instances of it
+        for index in range(len(self.world_config.list_of_agents_configs)):
+            agent_config = self.world_config.list_of_agents_configs[index]
             if isinstance(self.world_config.list_of_agents_configs[i], MarketMaking_EnvironmentConfig):
-                self.instance_list.append(MarketMakingAgent(key=key_mm,cfg=self.world_config.list_of_agents_configs[i],alphatradePath=alphatradePath,window_index=window_index,episode_time=episode_time,trader_unique_id=mm_trader_id,ep_type=ep_type))
+                self.instance_list.append(MarketMakingAgent(cfg=agent_config))
             elif isinstance(self.world_config.list_of_agents_configs[i], Execution_EnvironmentConfig):
-                self.instance_list.append(ExecutionEnv(cfg=self.world_config.list_of_agents_configs[i],key=key_exe,alphatradePath=alphatradePath,window_index=window_index,episode_time=episode_time,trader_unique_id=exe_trader_id,ep_type=ep_type))
+                self.instance_list.append(ExecutionEnv(cfg=agent_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
+
+
+        print("Initializing MM environment...")
 
         # Create the market making sub-env 
         self.mm_env = MarketMakingAgent(
@@ -593,40 +589,16 @@ class MARLEnv(MultiAgentEnv):
 
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
-    try:
-        ATFolder = sys.argv[1]
-        print("AlphaTrade folder:", ATFolder)
-    except:
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
-        print("Using default folder:", ATFolder)
 
-    config = {
-        "EP_TYPE": "fixed_time",
-        "EPISODE_TIME": 60*30,  # for example, 5 minutes
-        "WINDOW_INDEX": 1,
-        # sub–env parameters:
-        "MM_TRADER_ID": -4999991,
-        "MM_REWARD_LAMBDA": 0.0001,
-        "MM_ACTION_TYPE": "pure",
-        "MM_MAX_TASK_SIZE": 500,
-        "EXE_TRADER_ID": -9999992,
-        "EXE_REWARD_LAMBDA": 1.0,
-        "EXE_TASK_SIZE": 100,
-    }
+    world_config = World_EnvironmentConfig()
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # Instantiate the MARL environment.
     env = MARLEnv(
-        key = key_reset,
-        alphatradePath=ATFolder,
-        window_index=config["WINDOW_INDEX"],
-        episode_time=config["EPISODE_TIME"],
-        ep_type=config["EP_TYPE"],
-        mm_trader_id=config["MM_TRADER_ID"],
-        exe_trader_id=config["EXE_TRADER_ID"],
-        #mm_reward_lambda=config["MM_REWARD_LAMBDA"],
+        key=key_reset,
+        world_config=world_config,
     )
     # Get the default combined parameters.
     print("starting default parameters")
