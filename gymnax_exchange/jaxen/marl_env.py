@@ -13,7 +13,8 @@ from functools import partial
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
-sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
+sys.path.append(os.path.abspath("/home/myuser/"))
+print("sys.path:", sys.path)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams

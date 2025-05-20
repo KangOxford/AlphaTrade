@@ -82,7 +82,7 @@ class LoadLOBSTER():
                  window_length=1800,
                  n_msg_per_step=100):
         self.atpath=alphatradepath
-        self.messagePath = alphatradepath+"/data/Flow_"+str(n_Levels)+"/"
+        self.data_path = alphatradepath+"/data/Flow_"+str(n_Levels)+"/"
         self.orderbookPath = alphatradepath+"/data/Book_"+str(n_Levels)+"/"
         self.window_type=type_
         self.window_length=window_length

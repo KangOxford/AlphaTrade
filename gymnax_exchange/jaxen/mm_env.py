@@ -141,8 +141,10 @@ import jax.tree_util as jtu
 
 
 from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
-from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
-set_config(TokenizerConfig(split_vocab=True)) 
+
+# 
+# from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
+# set_config(TokenizerConfig(split_vocab=True))
 
 
 
