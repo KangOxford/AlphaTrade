@@ -327,7 +327,7 @@ class LoadLOBSTER_resample():
                  type_="fixed_time",
                  window_length=1800,
                  window_resolution=60,
-                 n_msg_per_step=100,
+                 n_data_msg_per_step=100, #TODO rename this to n_data_msg_per_step?
                  day_start=34200,  
                  day_end=57600):
         self.atpath=alphatradepath
@@ -336,7 +336,7 @@ class LoadLOBSTER_resample():
         self.window_type=type_
         self.window_length=window_length
         self.window_resolution=window_resolution
-        self.n_messages=n_msg_per_step
+        self.n_messages=n_data_msg_per_step #TODO rename this to n_data_msg_per_step?
         self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
