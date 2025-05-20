@@ -9,7 +9,13 @@ endif
 
 # Set flag for docker run command
 MYUSER=myuser
-BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) --shm-size 20G
+SERVER_NAME = $(shell hostname)
+ifeq ($(SERVER_NAME),flair-node-12)
+DATADIR=/homes/80/sascha/data
+else
+DATADIR=~/../data
+endif
+BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS)
 
 DOCKER_IMAGE_NAME = jaxmarl
