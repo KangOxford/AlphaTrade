@@ -140,7 +140,7 @@ import dataclasses
 import jax.tree_util as jtu
 
 
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
 set_config(TokenizerConfig(split_vocab=True)) 
 
@@ -160,22 +160,10 @@ class EnvParams(BaseEnvParams):
     trader_id: int
     pass
 
-class MarketMakingAgent(BaseLOBEnv):
+class MarketMakingAgent():
     def __init__(
-            self,cfg:EnvironmentConfig, key, alphatradePath, window_index,  episode_time,
-              trader_unique_id=-9999997, ep_type="fixed_time"):
+            self,cfg:MarketMaking_EnvironmentConfig):
         self.cfg=cfg
-        super().__init__(
-            cfg = cfg,
-            key = key,
-            alphatradePath = alphatradePath,
-            window_selector = window_index,
-            episode_time = episode_time,
-            trader_unique_id = trader_unique_id,
-            ep_type = ep_type,
-        )
-        
-        self.n_ticks_in_book = cfg.n_ticks_in_book # Depth of PP actions
 
         ##Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
@@ -2279,7 +2267,7 @@ if __name__ == "__main__":
     
     # env=MarketMakingEnv(ATFolder,"sell",1)
 
-    env_cfg = EnvironmentConfig()
+    env_cfg = MarketMaking_EnvironmentConfig()
 
     env = MarketMakingEnv(
         cfg = env_cfg,

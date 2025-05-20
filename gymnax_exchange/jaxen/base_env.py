@@ -75,7 +75,7 @@ import pickle
 from jax.experimental import checkify
 
 #Config File:
-from gymnax_exchange.jaxob.jaxob_config import Configuration
+from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 
 @struct.dataclass
 class EnvState:
@@ -160,7 +160,7 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self,cfg:Configuration, key):
+    def __init__(self,cfg:World_EnvironmentConfig, key):
         super().__init__()
         self.window_selector = cfg.window_selector
         self.ep_type = cfg.ep_type # fixed_steps, fixed_time
@@ -176,9 +176,9 @@ class BaseLOBEnv(environment.Environment):
         self.tick_size=cfg.tick_size
         self.start_resolution = cfg.start_resolution  # Use value from config
         self.cfg = cfg
-        loader=LoadLOBSTER_resample(alphatradePath,
+        loader=LoadLOBSTER_resample(self.cfg.alphatradePath,
                                     self.book_depth,
-                                    ep_type,
+                                    self.ep_type,
                                     window_length=self.episode_time,
                                     n_data_msg_per_step=self.n_data_msg_per_step,
                                     window_resolution=self.start_resolution,
@@ -192,7 +192,7 @@ class BaseLOBEnv(environment.Environment):
         self.n_windows = starts.shape[0]
         self.start_indeces=starts
         self.end_indeces=ends
-        self._init_states(key,alphatradePath,self.start_indeces)
+        self._init_states(key,self.cfg.alphatradePath,self.start_indeces)
     
     @property
     def default_params(self) -> EnvParams:

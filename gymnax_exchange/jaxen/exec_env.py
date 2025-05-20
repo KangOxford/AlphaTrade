@@ -133,7 +133,7 @@ from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
 from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
 from gymnax_exchange.utils import utils
 import dataclasses
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
+from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
 
 import jax.tree_util as jtu
 
@@ -169,7 +169,7 @@ class EnvParams(BaseEnvParams):
 
 class ExecutionEnv(BaseLOBEnv):
     def __init__(
-            self, cfg:EnvironmentExecutionConfig,key,alphatradePath, window_index, episode_time,
+            self, cfg:Execution_EnvironmentConfig,key,alphatradePath, window_index, episode_time,
             rewardLambda=1.,trader_unique_id=-9999998, ep_type="fixed_time"):
         
         #Define the config
@@ -1610,7 +1610,7 @@ if __name__ == "__main__":
         "trader_unique_id": 10,
     }
         
-    env_cfg = EnvironmentExecutionConfig()
+    env_cfg = Execution_EnvironmentConfig()
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)

@@ -1,6 +1,8 @@
 import os, sys, time, dataclasses
 from typing import Tuple, Optional, Dict
-
+import sys
+import time
+import dataclasses
 import jax
 from jax import vmap
 import jax.numpy as jnp
@@ -21,7 +23,6 @@ from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, En
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
-from gymnax_exchange.jaxob.jaxob_config import JAXLOB_Configuration
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv as MultiAgentEnv
 
@@ -65,6 +66,7 @@ class MARLEnv(MultiAgentEnv):
     def __init__(self,
                  key,
                  world_config: World_EnvironmentConfig,
+                 list_of_agents: list,
                  alphatradePath: str,
                  window_index: int,
                  episode_time: int,
@@ -575,10 +577,6 @@ class MARLEnv(MultiAgentEnv):
 
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
-    import sys
-    import time
-    import dataclasses
-
     try:
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:", ATFolder)
@@ -671,7 +669,7 @@ if __name__ == "__main__":
     #=========== VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap = True
+    enable_vmap = False
     if enable_vmap:
         NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)

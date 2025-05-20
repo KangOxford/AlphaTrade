@@ -48,6 +48,7 @@ class MarketMaking_EnvironmentConfig():
     fixed_quant_value:int=env_cst.fixed_quant_value
     n_actions: int = env_cst.n_actions
     debug_mode:bool=False
+    trader_id: int = -9999991
    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
@@ -95,6 +96,7 @@ class Execution_EnvironmentConfig():
     num_messages_by_agent:int=8
     num_action_messages_by_agent:int=4
     debug_mode:bool=False
+    trader_id: int = -4444444
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!
@@ -109,6 +111,13 @@ class Execution_EnvironmentConfig():
             object.__setattr__(self, 'n_actions', 13)
             object.__setattr__(self, 'num_messages_by_agent', 8)
             object.__setattr__(self, 'num_action_messages_by_agent', 4)
+
+
+list_of_agents = [
+    MarketMaking_EnvironmentConfig(),
+    Execution_EnvironmentConfig(),
+    MarketMaking_EnvironmentConfig(),
+]
     
 
 

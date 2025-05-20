@@ -114,7 +114,7 @@ def hamilton_apportionment_permuted_jax(votes, seats, key):
     return init_seats
 
 
-def create_init_book(cfg:job.Configuration,
+def create_init_book(cfg:job.JAXLOB_Configuration,
                      order_capacity=10,
                      trade_capacity=10,
                      pricerange=[2190000,2200000,2210000],
@@ -250,10 +250,10 @@ def get_random_aggressive_order(book_side,
         """
         
         if side=='bid':
-            best_price=job.get_best_bid(job.Configuration(),book_side)
+            best_price=job.get_best_bid(job.JAXLOB_Configuration(),book_side)
             best_vol=job.get_volume_at_price(book_side,best_price)
         else:
-            best_price=job.get_best_ask(job.Configuration(),book_side)
+            best_price=job.get_best_ask(job.JAXLOB_Configuration(),book_side)
             best_vol=job.get_volume_at_price(book_side,best_price)
         
         delta_times = random.randint(times_range[0], times_range[1])
@@ -302,7 +302,7 @@ def create_message_forvmap(type='limit',side='bid',price=2200000,quant=10,times=
 if __name__ == "__main__":
     # Example configuration object
 
-    cfg = job.Configuration()
+    cfg = job.JAXLOB_Configuration()
 
     key=jax.random.PRNGKey(42)
     key,subkey=jax.random.split(key)

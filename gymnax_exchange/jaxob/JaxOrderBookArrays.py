@@ -91,7 +91,7 @@ def _removeZeroNegQuant(orderside):
 
 
 @partial(jax.jit, static_argnums=(0,))
-def cancel_order(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
+def cancel_order(cfg:JAXLOB_Configuration,key:chex.PRNGKey,orderside, msg):
     """Removes quantity of an order from a given side of the orderbook.
     If the resulting order has a remaining quantity of 0 or less it is
     removed entirely. 
@@ -118,7 +118,7 @@ def cancel_order(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
 
 
 @partial(jax.jit, static_argnums=(0,))
-def get_init_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
+def get_init_id_match(cfg:JAXLOB_Configuration,key:chex.PRNGKey,orderside, msg):
     """Function to check match of an initial message. Used only 
     if the order ID of the message does not match with an 
     existing order. 
@@ -138,7 +138,7 @@ def get_init_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
     return idx
 
 @partial(jax.jit, static_argnums=(0,))
-def get_random_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
+def get_random_id_match(cfg:JAXLOB_Configuration,key:chex.PRNGKey,orderside, msg):
     price_match=((orderside[:, 0] == msg['price'])
                     & (orderside[:,1]>=msg['quantity']))
     order_ids=jnp.where(price_match,orderside[:,2],jnp.zeros_like(orderside[:,2]))
@@ -154,7 +154,7 @@ def get_random_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
     return idx
 
 @partial(jax.jit, static_argnums=(0,))
-def get_random_large_id_match(cfg:Configuration,key:chex.PRNGKey,orderside, msg):
+def get_random_large_id_match(cfg:JAXLOB_Configuration,key:chex.PRNGKey,orderside, msg):
     price_match=(orderside[:, 0] == msg['price'])
     order_ids=jnp.where(price_match,orderside[:,2],jnp.zeros_like(orderside[:,2]))
     key,_=jax.random.split(key, num=2)
@@ -220,7 +220,7 @@ def match_order(data_tuple):
 
 
 @partial(jax.jit, static_argnums=(0,))
-def _match_bid_order(cfg:Configuration,data_tuple):
+def _match_bid_order(cfg:JAXLOB_Configuration,data_tuple):
     """Wrapper to call the matching function and return the index of
       the next best bid order.
     """
@@ -229,7 +229,7 @@ def _match_bid_order(cfg:Configuration,data_tuple):
     return top_i, *matching_tuple
 
 @partial(jax.jit, static_argnums=(0,))
-def _match_ask_order(cfg:Configuration,data_tuple):
+def _match_ask_order(cfg:JAXLOB_Configuration,data_tuple):
     """Wrapper to call the matching function and return the index of
       the next best ask order.
     """
@@ -238,7 +238,7 @@ def _match_ask_order(cfg:Configuration,data_tuple):
     return top_i, *matching_tuple
 
 @partial(jax.jit, static_argnums=(0,))
-def _get_top_bid_order_idx(cfg : Configuration,orderside):
+def _get_top_bid_order_idx(cfg : JAXLOB_Configuration,orderside):
     """Identifies the index in the array representing the bid side
     which contains the best bid order. This is the order with the
     largest price, with the arrival time acting as the tie-breaker.
@@ -252,7 +252,7 @@ def _get_top_bid_order_idx(cfg : Configuration,orderside):
 
 
 @partial(jax.jit, static_argnums=(0,))
-def _get_top_ask_order_idx(cfg: Configuration,orderside):
+def _get_top_ask_order_idx(cfg: JAXLOB_Configuration,orderside):
     """Identifies the index in the array representing the ask side
     which contains the best ask order. This is the order with the
     smallest price, with the arrival time acting as the tie-breaker.
@@ -281,7 +281,7 @@ def _check_before_matching_bid(data_tuple):
     return jnp.squeeze(returnarray)
 
 @partial(jax.jit,static_argnums=0)
-def _match_against_bid_orders(cfg:Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
+def _match_against_bid_orders(cfg:JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
     """Wrapper for the while loop that gets the top bid order, and
     matches the incoming order against it whilst the 
     _check_before_matching_bid function remains true.
@@ -313,7 +313,7 @@ def _check_before_matching_ask(data_tuple):
     return jnp.squeeze(returnarray)
 
 @partial(jax.jit,static_argnums=0)
-def _match_against_ask_orders(cfg: Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
+def _match_against_ask_orders(cfg: JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
     """Wrapper for the while loop that gets the top ask order, and
     matches the incoming order against it whilst the 
     _check_before_matching_ask function remains true.
@@ -354,7 +354,7 @@ def doNothing(msg,askside,bidside,trades):
     """
     return askside,bidside,trades
 @partial(jax.jit,static_argnums=0)
-def bid_lim(cfg:Configuration,msg,askside,bidside,trades):
+def bid_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
     """Function for processing a limit order to bid. After attempting
     to match with the ask side, the remaining quantity of the order is
     added to the bid side of the limit order book.
@@ -390,7 +390,7 @@ def bid_lim(cfg:Configuration,msg,askside,bidside,trades):
     bids=add_order(bidside,msg)
     return matchtuple[0],bids,matchtuple[3]
 @partial(jax.jit,static_argnums=0)
-def bid_cancel(cfg:Configuration,key,msg,askside,bidside,trades):
+def bid_cancel(cfg:JAXLOB_Configuration,key,msg,askside,bidside,trades):
     """Function for processing a cancel order on the bid side.
     Simply calls the cancel operation on the bid side. 
 
@@ -415,7 +415,7 @@ def bid_cancel(cfg:Configuration,key,msg,askside,bidside,trades):
     return askside,cancel_order(cfg,key,bidside,msg),trades
 
 @partial(jax.jit,static_argnums=0)
-def ask_lim(cfg:Configuration,msg,askside,bidside,trades):
+def ask_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
     """Function for processing a limit order to ask. After attempting
     to match with the bid side, the remaining quantity of the order is
     added to the ask side of the limit order book.
@@ -452,7 +452,7 @@ def ask_lim(cfg:Configuration,msg,askside,bidside,trades):
     asks=add_order(askside,msg)
     return asks,matchtuple[0],matchtuple[3]
 @partial(jax.jit,static_argnums=0)
-def ask_cancel(cfg:Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
+def ask_cancel(cfg:JAXLOB_Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
     """Function for processing a cancel order on the ask side.
     Simply calls the cancel operation on the ask side. 
 
@@ -477,7 +477,7 @@ def ask_cancel(cfg:Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
     return cancel_order(cfg,key,askside,msg),bidside,trades
 
 partial(jax.jit,staticargnums=(0,1))
-def match_top_order_if_pricematch(cfg:Configuration,side,msg,askside,bidside,trades):
+def match_top_order_if_pricematch(cfg:JAXLOB_Configuration,side,msg,askside,bidside,trades):
     if side==0:
         idx = _get_top_ask_order_idx(cfg,askside)
         best_order=askside[idx].squeeze()
@@ -497,7 +497,7 @@ def match_top_order_if_pricematch(cfg:Configuration,side,msg,askside,bidside,tra
 
 ################  BRANCHING FUNCTIONS ################
 @partial(jax.jit,static_argnums=(0,))
-def cond_type_side(config : Configuration,book_state, it_data):
+def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. 
@@ -565,7 +565,7 @@ def cond_type_side(config : Configuration,book_state, it_data):
     return (ask, bid, trade), 0
 
 @partial(jax.jit,static_argnums=0)
-def cond_type_side_save_states(cfg:Configuration,book_state,it_data):
+def cond_type_side_save_states(cfg:JAXLOB_Configuration,book_state,it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. Addtionally, returns the order 
@@ -612,7 +612,7 @@ def cond_type_side_save_states(cfg:Configuration,book_state,it_data):
     return (ask,bid,trade),(ask,bid,trade)
 
 @partial(jax.jit,static_argnums=0)
-def cond_type_side_save_bidask(cfg:Configuration,book_state,it_data):
+def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
     array from data as a message Dict. Addtionally, returns the order 
@@ -660,7 +660,7 @@ def cond_type_side_save_bidask(cfg:Configuration,book_state,it_data):
 
 ################ SCAN FUNCTIONS ################
 
-def scan_through_entire_array(cfg:Configuration,
+def scan_through_entire_array(cfg:JAXLOB_Configuration,
                               key:chex.PRNGKey,
                               msg_array: chex.Array,
                               book_state: tuple):
@@ -682,7 +682,7 @@ def scan_through_entire_array(cfg:Configuration,
     book_state,_=jax.lax.scan(func,book_state,(keys,msg_array))
     return book_state
 
-def scan_through_entire_array_save_states(cfg:Configuration,
+def scan_through_entire_array_save_states(cfg:JAXLOB_Configuration,
                                           key:chex.PRNGKey,
                                           msg_array: chex.Array,
                                           book_state: tuple,
@@ -714,7 +714,7 @@ def scan_through_entire_array_save_states(cfg:Configuration,
                                        (keys,msg_array))
     return (all_states[0][-N_steps:],all_states[1][-N_steps:],last_state[2])
 
-def scan_through_entire_array_save_bidask(cfg:Configuration,
+def scan_through_entire_array_save_bidask(cfg:JAXLOB_Configuration,
                                           key:chex.PRNGKey,
                                           msg_array,
                                           book_state,
@@ -840,7 +840,7 @@ def get_volume_at_price(orderside, price):
     return jnp.sum(jnp.where(orderside[:,0]==price,orderside[:,1],0))
 
 @partial(jax.jit,static_argnums=0)
-def get_best_ask(cfg:Configuration,asks):
+def get_best_ask(cfg:JAXLOB_Configuration,asks):
     """Returns the best (lowest) ask price. If there is no ask, return -1. 
         Parameters:
                 asks (Array): All ask orders in book.
@@ -851,7 +851,7 @@ def get_best_ask(cfg:Configuration,asks):
     return jnp.where(min == cfg.maxint, -1, min)
 
 @partial(jax.jit,static_argnums=0)
-def get_best_bid(cfg:Configuration,bids):
+def get_best_bid(cfg:JAXLOB_Configuration,bids):
     """Returns the best (lowest) bid price. If there is no bid, return -1. 
         Parameters:
                 bids (Array): All bid orders in book.
@@ -861,7 +861,7 @@ def get_best_bid(cfg:Configuration,bids):
     return jnp.max(bids[:, 0])
 
 @partial(jax.jit,static_argnums=0)
-def get_best_bid_and_ask(cfg:Configuration,askside,bidside):
+def get_best_bid_and_ask(cfg:JAXLOB_Configuration,askside,bidside):
     """Returns the best bid and the best ask price given the bid
     side and the ask side. 
         Parameters:
@@ -875,7 +875,7 @@ def get_best_bid_and_ask(cfg:Configuration,askside,bidside):
     return get_best_ask(cfg,askside), get_best_bid(cfg,bidside)
 
 @partial(jax.jit,static_argnums=0)
-def get_best_bid_and_ask_inclQuants(cfg:Configuration,askside,bidside):
+def get_best_bid_and_ask_inclQuants(cfg:JAXLOB_Configuration,askside,bidside):
     """Returns the best bid and the best ask price and the volume at
     that price,given the bid side and the ask side. 
         Parameters:
@@ -907,7 +907,7 @@ def init_orderside(nOrders=100):
     return (jnp.ones((nOrders,6))*-1).astype(jnp.int32)
 
 @partial(jax.jit,static_argnums=(0,))
-def init_msgs_from_l2(cfg : Configuration,
+def init_msgs_from_l2(cfg : JAXLOB_Configuration,
                       book_l2: jnp.array,
                       time: Optional[jax.Array] = None,) -> jax.Array:
     """Creates a set of messages, limit orders, to initialise an empty
@@ -940,7 +940,7 @@ def init_msgs_from_l2(cfg : Configuration,
 @partial(jax.jit, static_argnums=(2,))
 def get_init_volume_at_price(side_array: jax.Array,
                              price: int,
-                             cfg:Configuration) -> jax.Array:
+                             cfg:JAXLOB_Configuration) -> jax.Array:
     """Returns the initial volume (orders with cfg.init_id) at a given price.
         Parameters:
                 side_array (Array): Bid or ask orders in the book
@@ -1049,7 +1049,7 @@ def get_order_ids(orderside: jax.Array,) -> jax.Array:
     return jnp.unique(orderside[:, 2], size=orderside.shape[0], fill_value=1)
 
 @partial(jax.jit, static_argnums=(0,1))
-def get_next_executable_order(config:Configuration,side, side_array):   
+def get_next_executable_order(config:JAXLOB_Configuration,side, side_array):   
     """Gets the the best ask/bid order in the book.
         Parameters:
                 side (int): 0 for ask, 1 for bid. Static arg.
@@ -1069,7 +1069,7 @@ def get_next_executable_order(config:Configuration,side, side_array):
     return side_array[idx].squeeze()
 
 @partial(jax.jit, static_argnums=(2,3))
-def get_L2_state(asks, bids, n_levels,cfg:Configuration):
+def get_L2_state(asks, bids, n_levels,cfg:JAXLOB_Configuration):
     """Returns the price levels and volumes for the first n_levels of
     the bid and ask side of the orderbook. 
         Parameters:
