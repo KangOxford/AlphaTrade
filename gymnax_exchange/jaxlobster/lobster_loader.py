@@ -64,7 +64,7 @@ class LoadLOBSTER():
         are defined by time (e.g. 30mins) or n_steps (e.g. 150)
     window_length : int
         Length of an episode window. In seconds or steps (see above)
-    n_messages : int
+    n_data_msg_per_step : int
         number of messages to process from data per step
 
     Methods
@@ -86,7 +86,7 @@ class LoadLOBSTER():
         self.orderbookPath = alphatradepath+"/data/Book_"+str(n_Levels)+"/"
         self.window_type=type_
         self.window_length=window_length
-        self.n_messages=n_msg_per_step
+        self.n_data_msg_per_step=n_msg_per_step
 
 
     def run_loading(self):
@@ -204,8 +204,8 @@ class LoadLOBSTER():
         """
         if type == "fixed_steps":
             end_index = ((end-start)
-                         // self.n_messages*self.n_messages+start+1)
-            indices = list(range(start, end_index, self.n_messages*interval))
+                         // self.n_data_msg_per_step*self.n_data_msg_per_step+start+1)
+            indices = list(range(start, end_index, self.n_data_msg_per_step*interval))
         elif type == "fixed_time":
             indices = list(range(start, end+1, interval))
         else: raise NotImplementedError('Use either "fixed_time" or' 
@@ -251,10 +251,10 @@ class LoadLOBSTER():
             elif self.window_type == "fixed_time":
                 index_s, index_e = message_day[(message_day['time'] >= start_index) &
                                             (message_day['time'] < end_index)].index[[0, -1]].tolist()
-                index_e = ((index_e // self.n_messages - 1) * self.n_messages
-                            + index_s % self.n_messages)
+                index_e = ((index_e // self.n_data_msg_per_step - 1) * self.n_data_msg_per_step
+                            + index_s % self.n_data_msg_per_step)
                 assert ((index_e - index_s) 
-                        % self.n_messages == 0), 'wrong code 31'
+                        % self.n_data_msg_per_step == 0), 'wrong code 31'
                 sliced_part = message_day.loc[np.arange(index_s, index_e)]
             sliced_parts.append(sliced_part)
             init_OBs.append(orderbook_day.iloc[start_index,:])
@@ -264,10 +264,10 @@ class LoadLOBSTER():
            # print(len(sliced_parts))
             assert len(sliced_parts) == len(indices)-1, 'wrong code 33'
             for part in sliced_parts:
-                assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
+                assert part.shape[0] % self.n_data_msg_per_step == 0, 'wrong code 34'
         elif self.window_type == "fixed_time":
             for part in sliced_parts:
-                assert part.shape[0] % self.n_messages == 0, 'wrong code 34'
+                assert part.shape[0] % self.n_data_msg_per_step == 0, 'wrong code 34'
         return sliced_parts, init_OBs
     
     def _slice_to_cube(self,sliced):
@@ -277,7 +277,7 @@ class LoadLOBSTER():
         columns = ['type','direction','qty','price',
                    'trader_id','order_id','time_s','time_ns']
         cube = sliced[columns].to_numpy()
-        cube = cube.reshape((-1, self.n_messages, 8))
+        cube = cube.reshape((-1, self.n_data_msg_per_step, 8))
         return cube
 
 
@@ -307,7 +307,7 @@ class LoadLOBSTER_resample():
     window_resolution : int 
         Places at which a window may start. Every minute, 
             or N-thousand step based on window_type. 
-    n_messages : int
+    n_data_msg_per_step : int
         number of messages to process from data per step (omits option
         to consider a fixed time per step)
     
@@ -327,16 +327,16 @@ class LoadLOBSTER_resample():
                  type_="fixed_time",
                  window_length=1800,
                  window_resolution=60,
-                 n_msg_per_step=100,
+                 n_data_msg_per_step=100, #TODO rename this to n_data_msg_per_step?
                  day_start=34200,  
                  day_end=57600):
         self.atpath=alphatradepath
-        self.messagePath = alphatradepath+"/data/Flow_"+str(n_Levels)+"/"
+        self.messagePath = alphatradepath+"/data/Flow_"+str(n_Levels)+"/" #TODO make that cleaner, that should be defined in the config
         self.orderbookPath = alphatradepath+"/data/Book_"+str(n_Levels)+"/"
         self.window_type=type_
         self.window_length=window_length
         self.window_resolution=window_resolution
-        self.n_messages=n_msg_per_step
+        self.n_data_msg_per_step=n_data_msg_per_step #TODO rename this to n_data_msg_per_step?
         self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
@@ -385,7 +385,7 @@ class LoadLOBSTER_resample():
     
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
         length_last_ep=max_msgs_in_windows_arr[-1]
-        new_length=(length_last_ep//self.n_messages+1)*self.n_messages
+        new_length=(length_last_ep//self.n_data_msg_per_step+1)*self.n_data_msg_per_step
         pad=jnp.zeros((new_length-length_last_ep,messages.shape[1]),dtype=jnp.int32)
         last_time=jnp.array([messages[-1,-2:][0]+1,0])
         pad=pad.at[:,-2:].set(last_time)
@@ -448,8 +448,8 @@ class LoadLOBSTER_resample():
         """
         if type == "fixed_steps":
             end_index = ((end-start)
-                         // self.n_messages*self.n_messages+start+1)
-            indices = list(range(start, end_index, self.n_messages*interval))
+                         // self.n_data_msg_per_step*self.n_data_msg_per_step+start+1)
+            indices = list(range(start, end_index, self.n_data_msg_per_step*interval))
         elif type == "fixed_time":
             indices = list(range(start, end+1, interval))
         else: raise NotImplementedError('Use either "fixed_time" or' 
@@ -477,7 +477,7 @@ class LoadLOBSTER_resample():
                  self.day_end
                  if self.window_type=="fixed_time"  
                  else message_day.shape[0]-
-                    self.window_length*self.n_messages)
+                    self.window_length*self.n_data_msg_per_step)
         d_start = (#message_day['time_s'].min() 
                     self.day_start
                  if self.window_type=="fixed_time"  
@@ -491,8 +491,8 @@ class LoadLOBSTER_resample():
         index_e = []
         if self.window_type == "fixed_steps":
                 index_s=np.array(indices)
-                index_e=np.array(indices)+np.ones_like(index_s)*self.n_messages*self.window_length
-                max_msgs=self.n_messages*self.window_length
+                index_e=np.array(indices)+np.ones_like(index_s)*self.n_data_msg_per_step*self.window_length
+                max_msgs=self.n_data_msg_per_step*self.window_length
 
         elif self.window_type == "fixed_time":
             for i in range(len(indices) - 1):

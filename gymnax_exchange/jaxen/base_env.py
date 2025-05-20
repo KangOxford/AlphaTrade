@@ -294,14 +294,11 @@ class BaseLOBEnv(environment.Environment):
         return EnvState(ask_raw_orders=ordersides[0],
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],
-                        init_time=jnp.array([(window_index*self.start_resolution)
+                        init_time=jnp.array([(window_index*self.start_resolution) 
                                                         %(self.day_end-self.day_start-self.episode_time+self.start_resolution)
                                                         +self.day_start,0])
                                     if self.ep_type=="fixed_time" else time,
-                        time=time,
-                        customIDcounter=0,
                         window_index=window_index,
-                        step_counter=0,
                         max_steps_in_episode=max_steps_in_episode,
                         start_index=start_index)
 
