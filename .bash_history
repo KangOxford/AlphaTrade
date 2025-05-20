@@ -11,3 +11,4 @@ hostname -d
 hostname
 exit
 exit
+exit

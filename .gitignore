@@ -10,7 +10,7 @@
 /train/wandb/**
 **/wandb/**
 /gym_exchange/outputs/**
-
+.bash_history
 jax_rwkv/**
 
 gym_exchange/.DS_Store
