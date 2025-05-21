@@ -35,10 +35,6 @@ class WorldState(BaseState):
     time: jnp.ndarray
     customIDcounter: jnp.ndarray
     mid_price:float
-    price_bid_passive: int
-    quant_bid_passive: int
-    price_ask_passive: int
-    quant_ask_passive: int
     delta_time: float
 
 
@@ -156,32 +152,27 @@ class MARLEnv(MultiAgentEnv):
         world_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.world_config)
 
         # Reset all variables in the world state that are not on the Load State
-
+        # For bet bids and ask repeat the inital best bids and ask num of messages times
         best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.world_config, askside=world_state.ask_raw_orders, bidside=world_state.bid_raw_orders)
-        print(f"best_ask: {best_ask}")
-        print(f"best_bid: {best_bid}")
-
-        #jax.debug.print(f"num total msg: {num_total_msgs}")
-        
-        best_bids = jnp.full((params.num_msgs_per_step, 2), best_bid_scalar)
-
-        best_bid = base_state.best_bids[-1]  # or whatever is the current best bid
-        best_ask = base_state.best_asks[-1]
         bestbids = jnp.tile(best_bid[None, :], (params.num_msgs_per_step, 1))
         bestasks = jnp.tile(best_ask[None, :], (params.num_msgs_per_step, 1))#
 
-
+        #print(best_bid[0])
+        #price_bid_passive = best_bid - self.world_config.tick_size * self.world_config.n_ticks_in_book
+        #price_ask_passive = best_ask + self.world_config.tick_size * self.world_config.n_ticks_in_book
+        #print(f"price_bid_passive: {price_bid_passive}")
+        #print(f"price_ask_passive: {price_ask_passive}")
+        #quant_bid_passive = job.get_volume_at_price(world_state.bid_raw_orders, price_bid_passive)
+        #quant_ask_passive = job.get_volume_at_price(world_state.ask_raw_orders, price_ask_passive)
 
 
         world_state = dataclasses.replace(world_state,
-            best_bids=jnp.zeros_like(world_state.best_bids),
-            best_asks=jnp.zeros_like(world_state.best_asks),
+            best_bids=bestbids,
+            best_asks=bestasks,
             step_counter=0,
-            time=jnp.zeros_like(world_state.time),
-            customIDcounter=0,
+            time=world_state.init_time,
+            customIDcounter=0, # TODO we should look over this and implement this independently of trader id
             )
-
-
 
         ###########################
         #Reset each agent state
@@ -190,13 +181,10 @@ class MARLEnv(MultiAgentEnv):
         agent_obs_list = []
         agent_state_list = []
 
-
-
         for i, (instance, agent_param, agent_key) in enumerate(zip(self.instance_list, params.agent_params, agent_keys)):
             obs, state = instance.reset_env(agent_key, agent_param)
             agent_obs_list.append(obs)
             agent_state_list.append(state)
-
 
         multi_obs = {f"agent_{i}": jnp.array(obs, dtype=jnp.float32) for i, obs in enumerate(agent_obs_list)}
         multi_state = MultiAgentState(
@@ -204,44 +192,8 @@ class MARLEnv(MultiAgentEnv):
             agent_states=agent_state_list
         )
 
-
-
-
-
-
-
-        mm_obs, mm_state = self.mm_env.reset_env(key_mm, params.mm_params)
-        exe_obs, exe_state = self.exe_env.reset_env(key_exe, params.exe_params)
-
-
-        # The shared base state is taken from mm_state
-        base_state = mm_state  
-        # Pad best_bids and best_asks to correct shape
-
-        
-        #jax.debug.print(f"best bids after reset: {bestbids.shape}")
-
-        base_state = dataclasses.replace(base_state, best_bids=bestbids, best_asks=bestasks)
-        mm_state = dataclasses.replace(mm_state, best_bids=bestbids, best_asks=bestasks)
-        exe_state = dataclasses.replace(exe_state, best_bids=bestbids, best_asks=bestasks)
-        # Manually copy the base state fields
-        multi_state = MultiAgentState(
-            ask_raw_orders = base_state.ask_raw_orders,
-            bid_raw_orders = base_state.bid_raw_orders,
-            trades = base_state.trades,
-            init_time = base_state.init_time,
-            time = base_state.time,
-            customIDcounter = base_state.customIDcounter,
-            window_index = base_state.window_index,
-            step_counter = base_state.step_counter,
-            max_steps_in_episode = base_state.max_steps_in_episode,
-            start_index = base_state.start_index,
-            # And now add the agent–specific states:
-            mm_state = mm_state,
-            exe_state = exe_state
-        )
-        multi_obs = {"market_maker": jnp.array(mm_obs, dtype= jnp.float32), "execution": jnp.array(exe_obs, dtype= jnp.float32)}
         return multi_obs, multi_state
+
 
 
     def step_env(self,
