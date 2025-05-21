@@ -12,6 +12,7 @@
 /gym_exchange/outputs/**
 .bash_history
 jax_rwkv/**
+.bash_history
 
 gym_exchange/.DS_Store
 gym_exchange/data_orderbook_adapter/.DS_Store
