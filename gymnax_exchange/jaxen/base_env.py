@@ -236,15 +236,14 @@ class BaseLOBEnv(environment.Environment):
 
     def reset_env(
         self, key: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
+    ) -> EnvState:
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jnp.where(
             params.window_selector == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(params.window_selector, dtype=jnp.int32))
         first_state = index_tree(params.init_states_array, idx_data_window)
-        obs = self._get_obs(first_state, params=params)
-        return obs, first_state
+        return first_state
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
         """Check whether state is terminal."""
