@@ -891,7 +891,7 @@ def get_best_bid_and_ask_inclQuants(cfg:JAXLOB_Configuration,askside,bidside):
     best_bid_Q=get_volume_at_price(bidside,best_bid)
     best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)
     best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)    
-    return best_bid,best_ask
+    return best_ask, best_bid
 
 
 @partial(jax.jit,static_argnums=0)
