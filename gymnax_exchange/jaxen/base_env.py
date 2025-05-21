@@ -73,6 +73,7 @@ from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
 from gymnax_exchange.utils.utils import *
 import pickle
 from jax.experimental import checkify
+import os
 
 #Config File:
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
@@ -176,7 +177,7 @@ class BaseLOBEnv(environment.Environment):
         self.tick_size=cfg.tick_size
         self.start_resolution = cfg.start_resolution  # Use value from config
         self.cfg = cfg
-        loader=LoadLOBSTER_resample(self.cfg.alphatradePath,
+        loader=LoadLOBSTER_resample(self.cfg.dataPath,
                                     self.book_depth,
                                     self.ep_type,
                                     window_length=self.episode_time,
@@ -304,8 +305,9 @@ class BaseLOBEnv(environment.Environment):
 
     def _init_states(self,key,alphatradePath,starts):
         print("START:  pre-reset in the initialization")
-        pkl_file_name = (alphatradePath
-                         + '_' + type(self).__name__
+        os.makedirs(alphatradePath + '/pre_reset_states/', exist_ok=True)
+        pkl_file_name = (alphatradePath + '/pre_reset_states/'
+                         + 'reset_for_' + type(self).__name__
                          + '_window_resolution_' + str(self.start_resolution)
                          + '_dtype_"' + self.ep_type
                          + '"_depth_' + str(self.book_depth)

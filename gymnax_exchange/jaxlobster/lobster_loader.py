@@ -42,7 +42,7 @@ import numpy as np
 from jax import numpy as jnp
 import jax
 from jax import lax
-
+from glob import glob
 
 class LoadLOBSTER():
     """
@@ -322,17 +322,17 @@ class LoadLOBSTER_resample():
         the lengths (horizons) of each window. 
     """
     def __init__(self,
-                 alphatradepath,
+                 datapath,
                  n_Levels=10,
                  type_="fixed_time",
                  window_length=1800,
                  window_resolution=60,
                  n_data_msg_per_step=100, #TODO rename this to n_data_msg_per_step?
                  day_start=34200,  
-                 day_end=57600):
-        self.atpath=alphatradepath
-        self.messagePath = alphatradepath+"/data/Flow_"+str(n_Levels)+"/" #TODO make that cleaner, that should be defined in the config
-        self.orderbookPath = alphatradepath+"/data/Book_"+str(n_Levels)+"/"
+                 day_end=57600,
+                 stock="AMZN",
+                 time_period="2017Jan_oneday"):
+        self.datapath=datapath+f"/rawLOBSTER/{stock}/{time_period}/"
         self.window_type=type_
         self.window_length=window_length
         self.window_resolution=window_resolution
@@ -340,6 +340,15 @@ class LoadLOBSTER_resample():
         self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
+
+
+        print("self.datapath",self.datapath)
+        self.message_files = sorted(glob(self.datapath + '*message*.csv'))
+        self.book_files = sorted(glob(self.datapath + '*orderbook*.csv'))
+
+
+        print('found', len(self.message_files), 'message files')
+        print('found', len(self.book_files), 'book files')
    
         
 
@@ -398,11 +407,10 @@ class LoadLOBSTER_resample():
         """Loads the csvs as pandas arrays. Files are seperated by days
         Could potentially be optimised to work around pandas, very slow.         
         """
-        readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-        messageFiles, orderbookFiles = readFromPath(self.messagePath), readFromPath(self.orderbookPath)
         dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
-        messageCSVs = [pd.read_csv(self.messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
-        orderbookCSVs = [pd.read_csv(self.orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
+        print("self.message_files",self.message_files)
+        messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
+        orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
         return messageCSVs, orderbookCSVs
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):

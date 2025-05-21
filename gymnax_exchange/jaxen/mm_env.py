@@ -141,8 +141,8 @@ import jax.tree_util as jtu
 
 
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
-from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
-set_config(TokenizerConfig(split_vocab=True)) 
+# from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
+# set_config(TokenizerConfig(split_vocab=True)) 
 
 
 
@@ -1993,7 +1993,7 @@ class MarketMakingAgent():
         [orderbook_tokens..., message_tokens...]
         """
 
-        cfg = get_config()
+        # cfg = get_config()
         num_agent_msgs = 4  # 2 cancels + 2 actions for directional trading
         num_msgs = 100      # total messages in obs
         num_data_msgs = num_msgs - num_agent_msgs
@@ -2204,6 +2204,7 @@ class MarketMakingAgent():
                 num_messages_total=self.cfg.num_messages_by_agent+self.n_data_msg_per_step
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space == "messages_new_tokenizer":
+            raise NotImplementedError("Currenty no access to lobgen repository.")
             cfg               = get_config()
             num_messages      = self.cfg.num_messages_by_agent + self.n_data_msg_per_step + self.nTradesLogged
             toks_per_message  = 13      # we now split each int32 message‐field into two 16-bit tokens

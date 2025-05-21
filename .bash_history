@@ -30,3 +30,12 @@ ls
 exit
 cd data/
 ls
+ls
+cd 
+cd data/
+ls
+cd ..
+python3 gymnax_exchange/jaxen/marl_env.py 
+exit
+python3 gymnax_exchange/jaxen/marl_env.py 
+exit
