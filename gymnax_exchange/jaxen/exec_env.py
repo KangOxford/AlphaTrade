@@ -164,12 +164,12 @@ class EnvState(BaseEnvState):
 
 @struct.dataclass
 class EnvParams():
-    task_size: int 
     trader_id: int
+    task_size: int 
     reward_lambda: float = 1.0
 
 
-class ExecutionEnv(BaseLOBEnv):
+class ExecutionEnv():
     def __init__(
             self, 
             cfg:Execution_EnvironmentConfig):
@@ -196,11 +196,19 @@ class ExecutionEnv(BaseLOBEnv):
         else:
             raise ValueError("Invalid action_space specified.")
 
-    def default_params(self,trader_id_range_start:int, number_of_agents_per_type:int) -> EnvParams:
+    def default_params(self,
+                       agent_config:Execution_EnvironmentConfig,
+                       trader_id_range_start:int,
+                        number_of_agents_per_type:int) -> EnvParams:
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
+        task_size = jnp.full((number_of_agents_per_type,), agent_config.task_size)
+        reward_lambda = jnp.full((number_of_agents_per_type,), agent_config.reward_lambda)
+        
+        
+        print(f"task_size: {task_size}")
         print(f"trader_id: {trader_id}")
-        return EnvParams(trader_id=trader_id), next_trader_id_range_start
+        return EnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda), next_trader_id_range_start
 
 
 
@@ -509,7 +517,7 @@ class ExecutionEnv(BaseLOBEnv):
             best_asks=jnp.resize(best_ask,(self.n_data_msg_per_step,2)),
             best_bids=jnp.resize(best_bid,(self.n_data_msg_per_step,2)),
             init_price=M,
-            task_to_execute=self.cfg.max_task_size,
+            task_to_execute=self.cfg.task_size,
             quant_executed=0,
             total_revenue=0.,
             drift_return=0.,
@@ -1378,7 +1386,7 @@ class ExecutionEnv(BaseLOBEnv):
             # "episode_time": state.time - state.init_time,
             "time_remaining": params.episode_time - time_elapsed,
             "init_price": state.init_price,
-            "task_size": state.task_to_execute,
+            "current_task_size": state.task_to_execute,
             "executed_quant": state.quant_executed,
             "remaining_quant": state.task_to_execute - state.quant_executed,
             "step_counter": state.step_counter,

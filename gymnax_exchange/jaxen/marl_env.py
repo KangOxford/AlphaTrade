@@ -10,6 +10,7 @@ import chex
 from flax import struct
 import jax.tree_util as jtu
 from functools import partial
+from typing import Any
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
@@ -19,7 +20,7 @@ sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState, EnvParams as MMParams
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as WorldParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
@@ -51,15 +52,18 @@ class MultiAgentState():
     world_state: WorldState
 
     # Pytree for agent type
-    mm_state: MMState
-    exe_state: EXEState
+    #mm_state: MMState
+    #exe_state: EXEState
+
+    agent_states: list[Any]
 
 
 # Define a combined parameters class.
 @struct.dataclass
-class MultiAgentParams(BaseParams):
-    mm_params: MMParams
-    exe_params: EXEParams
+class MultiAgentParams():
+    world_params: WorldParams
+
+    agent_params: list[Any]
 
 # define the MARL environment.
 class MARLEnv(MultiAgentEnv):
@@ -114,18 +118,16 @@ class MARLEnv(MultiAgentEnv):
         for agent_type_index in range(len(self.world_config.number_of_agents_per_type)):
             print(f"next_trader_id_range_start: {next_trader_id_range_start}")
             print(f"agent type: {self.world_config.list_of_agents_configs[agent_type_index]}")
+            agent_config = self.world_config.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.world_config.number_of_agents_per_type[agent_type_index]
-            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(next_trader_id_range_start, num_agents_per_type) # TODO add config of that agent type here and add params accordingly
+            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type) # TODO add config of that agent type here and add params accordingly
             params_list.append(agent_params)
 
 
-        exe_params = self.exe_env.default_params
-        mm_params = self.mm_env.default_params
         # Combine them into a MultiAgentParams instance.
         return MultiAgentParams(
-            **dataclasses.asdict(base_params),
-            mm_params=mm_params,
-            exe_params=exe_params
+            world_params=base_params,
+            agent_params=params_list
         )
 
     def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState]:

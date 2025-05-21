@@ -199,9 +199,13 @@ class MarketMakingAgent():
             self.end_fn=self.end_fn_pass
       
 
-    def default_params(self,trader_id_range_start:int, number_of_agents_per_type:int) -> EnvParams:
+    def default_params(self,
+                       agent_config:MarketMaking_EnvironmentConfig,
+                       trader_id_range_start:int,
+                        number_of_agents_per_type:int) -> EnvParams:
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
+
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
         return EnvParams(trader_id=trader_id), next_trader_id_range_start

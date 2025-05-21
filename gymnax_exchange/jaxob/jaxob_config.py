@@ -73,11 +73,12 @@ class Execution_EnvironmentConfig():
     action_type: Literal["delta", "pure"]="pure"
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants_complex"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    max_task_size:int=500
+    task_size:int=500
     n_actions:int=5
     fixed_quant_value:int=10
     num_messages_by_agent:int=8
     num_action_messages_by_agent:int=4
+    reward_lambda:float=1.0
     debug_mode:bool=False
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
