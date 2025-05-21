@@ -140,7 +140,7 @@ import dataclasses
 import jax.tree_util as jtu
 
 
-from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
 
 # Uncomment when obtained access to repository.
 # from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config

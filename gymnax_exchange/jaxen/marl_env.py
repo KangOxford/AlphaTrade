@@ -558,7 +558,7 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:", ATFolder)
     except:
-        ATFolder = os.path.expanduser("~") + "/training_oneDay/data/AMZN_oneday""
+        ATFolder = os.path.expanduser("~") + "/training_oneDay/data/AMZN_oneday"
         print("Using default folder:", ATFolder)
 
     config = {

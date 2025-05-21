@@ -26,7 +26,7 @@ RUN apt-get update && \
     unrar \
     htop
 # Copy requirements.txt and verify its contents
-COPY --chown=${MYUSER}:${MYUSER} requirements.txt /home/${MYUSER}/AlphaTrade/
+COPY --chown=${MYUSER}:${MYUSER} requirements2.txt /home/${MYUSER}/AlphaTrade/
 RUN ls -l && cat requirements2.txt
 
 #jaxmarl from source if needed, all the requirements
