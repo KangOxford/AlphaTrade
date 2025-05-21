@@ -158,7 +158,8 @@ class EnvState():
 @struct.dataclass
 class EnvParams():
     trader_id: chex.Array
-    
+    num_messages_by_agent: chex.Array
+    time_delay_obs_act: chex.Array
 
 class MarketMakingAgent():
     def __init__(
@@ -205,10 +206,11 @@ class MarketMakingAgent():
                         number_of_agents_per_type:int) -> EnvParams:
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
-
+        num_messages_by_agent = jnp.full((number_of_agents_per_type,), agent_config.num_messages_by_agent)
+        time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
-        return EnvParams(trader_id=trader_id), next_trader_id_range_start
+        return EnvParams(trader_id=trader_id, num_messages_by_agent=num_messages_by_agent, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
 
 
 
@@ -435,7 +437,7 @@ class MarketMakingAgent():
         """ Reset the environment to init state (pre computed from data)."""
         #TODO This should just reset the values for each agent
         key_, key = jax.random.split(key)
-        _, state = super().reset_env(key, params)
+
         state = dataclasses.replace(state, cash_balance=0.0)
         # Pad best_bids and best_asks to correct shape
         num_total_msgs = self.n_data_msg_per_step + self.cfg.num_messages_by_agent

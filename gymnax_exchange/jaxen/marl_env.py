@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState, EnvParams as MMParams
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as WorldParams
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
@@ -30,7 +30,7 @@ from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv as MultiAgentEnv
 
 @struct.dataclass
 class WorldState(BaseState):
-    #TODO This should be the shared state for all agents
+    # But everything here that is not loaded from the base config but shared by all agents
     best_bids: jnp.ndarray
     best_asks: jnp.ndarray
     step_counter: int
@@ -59,10 +59,12 @@ class MultiAgentState():
 
 
 # Define a combined parameters class.
+# Logic: All the data is in BaseParams. All the things that depend on all agents are added to it (e.g. num_msgs_per_step). The rest stays in the config
 @struct.dataclass
 class MultiAgentParams():
-    world_params: WorldParams
+    loaded_params: BaseParams
 
+    num_msgs_per_step: int
     agent_params: list[Any]
 
 # define the MARL environment.
@@ -108,36 +110,103 @@ class MARLEnv(MultiAgentEnv):
     @property
     def default_params(self) -> MultiAgentParams:
         # Get the base parameters from BaseLOBEnv
-        #TODO This is just the Mutli Agent Params, no sub params
         base_params = self.base_env.default_params
+
         # Get the sub–env default parameters
         params_list = []
         next_trader_id_range_start = self.world_config.trader_id_range_start #Start with trader id based on config
-        print("--------------------------------")
-        print("start of agent type loop")
+        num_msg_per_step = self.world_config.n_data_msg_per_step # start with data msg per step and then add the number of messages per step for each agent
+
         for agent_type_index in range(len(self.world_config.number_of_agents_per_type)):
             print(f"next_trader_id_range_start: {next_trader_id_range_start}")
             print(f"agent type: {self.world_config.list_of_agents_configs[agent_type_index]}")
             agent_config = self.world_config.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.world_config.number_of_agents_per_type[agent_type_index]
-            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type) # TODO add config of that agent type here and add params accordingly
+            agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type)
+            print(f"agent_params: {type(agent_params)}")
+            num_msg_per_step = num_msg_per_step + jnp.sum(agent_params.num_messages_by_agent) # Sum over all agents of that type
             params_list.append(agent_params)
 
+        print(f"num_msg_per_step: {num_msg_per_step}")
         # Replace episode_time (#TODO add other world params fields)
-        base_params = dataclasses.replace(base_params, episode_time=self.world_config.episode_time)
 
         # Combine them into a MultiAgentParams instance.
         return MultiAgentParams(
-            world_params=base_params,
+            loaded_params=base_params, 
+            # Add the world fields that are not loaded
+            num_msgs_per_step=num_msg_per_step,
+            # add the agent params
             agent_params=params_list
         )
 
     def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState]:
+        #################################
         # Split keys for each agent type
+        #################################
         num_agent_types = len(self.instance_list)
         keys = jax.random.split(key, num_agent_types + 1)
         agent_keys = keys[:-1]
         world_key = keys[-1]
+
+
+
+        ###########################
+        #Reset the World State
+        ###########################
+
+        # Get the Load State
+        world_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.world_config)
+
+        # Reset all variables in the world state that are not on the Load State
+
+        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.world_config, askside=world_state.ask_raw_orders, bidside=world_state.bid_raw_orders)
+        print(f"best_ask: {best_ask}")
+        print(f"best_bid: {best_bid}")
+
+        #jax.debug.print(f"num total msg: {num_total_msgs}")
+        
+        best_bids = jnp.full((params.num_msgs_per_step, 2), best_bid_scalar)
+
+        best_bid = base_state.best_bids[-1]  # or whatever is the current best bid
+        best_ask = base_state.best_asks[-1]
+        bestbids = jnp.tile(best_bid[None, :], (params.num_msgs_per_step, 1))
+        bestasks = jnp.tile(best_ask[None, :], (params.num_msgs_per_step, 1))#
+
+
+
+
+        world_state = dataclasses.replace(world_state,
+            best_bids=jnp.zeros_like(world_state.best_bids),
+            best_asks=jnp.zeros_like(world_state.best_asks),
+            step_counter=0,
+            time=jnp.zeros_like(world_state.time),
+            customIDcounter=0,
+            )
+
+
+
+        ###########################
+        #Reset each agent state
+        ###########################
+
+        agent_obs_list = []
+        agent_state_list = []
+
+
+
+        for i, (instance, agent_param, agent_key) in enumerate(zip(self.instance_list, params.agent_params, agent_keys)):
+            obs, state = instance.reset_env(agent_key, agent_param)
+            agent_obs_list.append(obs)
+            agent_state_list.append(state)
+
+
+        multi_obs = {f"agent_{i}": jnp.array(obs, dtype=jnp.float32) for i, obs in enumerate(agent_obs_list)}
+        multi_state = MultiAgentState(
+            world_state=world_state,
+            agent_states=agent_state_list
+        )
+
+
 
 
 
@@ -150,14 +219,7 @@ class MARLEnv(MultiAgentEnv):
         # The shared base state is taken from mm_state
         base_state = mm_state  
         # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.n_data_msg_per_step + self.mm_env.cfg.num_messages_by_agent + self.exe_env.cfg.num_messages_by_agent
 
-        #jax.debug.print(f"num total msg: {num_total_msgs}")
-        
-        best_bid = base_state.best_bids[-1]  # or whatever is the current best bid
-        best_ask = base_state.best_asks[-1]
-        bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
-        bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))#
         
         #jax.debug.print(f"best bids after reset: {bestbids.shape}")
 
@@ -201,7 +263,7 @@ class MARLEnv(MultiAgentEnv):
             params.message_data,
             state.start_index,
             state.step_counter,
-            state.init_time[0] + params.episode_time
+            state.init_time[0] + self.world_config.episode_time
         )
 
         # -------------------------------------------------------

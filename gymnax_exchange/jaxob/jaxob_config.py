@@ -31,7 +31,7 @@ class MarketMaking_EnvironmentConfig():
     fixed_quant_value:int=env_cst.fixed_quant_value
     n_actions: int = env_cst.n_actions
     debug_mode:bool=False
-    trader_id: int = -9999991
+    time_delay_obs_act:int=0
    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
@@ -79,7 +79,9 @@ class Execution_EnvironmentConfig():
     num_messages_by_agent:int=8
     num_action_messages_by_agent:int=4
     reward_lambda:float=1.0
+    time_delay_obs_act:int=0
     debug_mode:bool=False
+
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!
@@ -121,7 +123,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
         Execution_EnvironmentConfig(),
         MarketMaking_EnvironmentConfig(),
     ]
-    number_of_agents_per_type = [2,1,2]
+    number_of_agents_per_type = [2,1,3]
 
 
     
