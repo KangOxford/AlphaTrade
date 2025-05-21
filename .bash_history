@@ -12,3 +12,21 @@ hostname
 exit
 exit
 exit
+exit
+cd data/
+ls
+ls
+cd ..
+ls
+exit
+cd data/
+ls
+ls
+cd ..
+ls
+ls
+cd data/
+ls
+exit
+cd data/
+ls
