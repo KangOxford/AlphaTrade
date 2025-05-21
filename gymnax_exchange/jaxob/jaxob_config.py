@@ -1,6 +1,7 @@
 import gymnax_exchange.jaxob.jaxob_constants as cst
 import gymnax_exchange.jaxob.jaxenv_constants as env_cst
 import jax
+import os
 from typing import Tuple,  Literal,Union,List
 
 from dataclasses import dataclass
@@ -17,7 +18,8 @@ class JAXLOB_Configuration:
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
     start_resolution: int = env_cst.start_resolution
-    alphatradePath: str = "/home/duser/AlphaTrade/training_oneDay/val" # TODO: rename this to data path or do we need the alphatrade path somewhere else?
+    alphatradePath: str = os.path.expanduser("~")
+    dataPath: str = os.path.expanduser("~")+"/data" # TODO: rename this to data path or do we need the alphatrade path somewhere else?
 
 
 @dataclass(frozen=True)

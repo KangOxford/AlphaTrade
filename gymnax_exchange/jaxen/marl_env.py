@@ -16,8 +16,6 @@ from typing import Any
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
-sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
-
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState, EnvParams as MMParams
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
