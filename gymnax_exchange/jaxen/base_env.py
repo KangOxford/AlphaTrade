@@ -229,13 +229,13 @@ class BaseLOBEnv(environment.Environment):
         return self._get_obs(state,params),state,reward,done,{"info":0}
 
     def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams
+        self, key: chex.PRNGKey, params: EnvParams, config: World_EnvironmentConfig
     ) -> EnvState:
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jnp.where(
-            params.window_selector == -1,
+            config.window_selector == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
-            jnp.array(params.window_selector, dtype=jnp.int32))
+            jnp.array(config.window_selector, dtype=jnp.int32))
         first_state = index_tree(params.init_states_array, idx_data_window)
         return first_state
 
