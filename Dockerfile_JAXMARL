@@ -27,11 +27,11 @@ RUN apt-get update && \
     htop
 # Copy requirements.txt and verify its contents
 COPY --chown=${MYUSER}:${MYUSER} requirements.txt /home/${MYUSER}/AlphaTrade/
-RUN ls -l && cat requirements.txt
+RUN ls -l && cat requirements2.txt
 
 #jaxmarl from source if needed, all the requirements
 # RUN pip install -e .[algs,dev]
-RUN pip install -r requirements.txt
+RUN pip install -r requirements2.txt
 
 USER ${MYUSER}
 
@@ -43,6 +43,10 @@ RUN export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 # Add .local/bin to PATH
 RUN echo 'export PATH=$PATH:/home/duser/.local/bin' >> ~/.bashrc
+
+
+# Ensure home directory is on the Python path
+ENV PYTHONPATH="/home/${MYUSER}:${PYTHONPATH}"
 
 # Uncomment below if you want jupyter 
 # RUN pip install jupyterlab

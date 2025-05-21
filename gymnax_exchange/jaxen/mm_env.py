@@ -140,9 +140,9 @@ import dataclasses
 import jax.tree_util as jtu
 
 
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 
-# 
+# Uncomment when obtained access to repository.
 # from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
 # set_config(TokenizerConfig(split_vocab=True))
 
@@ -2018,7 +2018,7 @@ class MarketMakingEnv(BaseLOBEnv):
         [orderbook_tokens..., message_tokens...]
         """
 
-        cfg = get_config()
+        # cfg = get_config()  ## Removed so that we don't need get_config from lobgen. 
         num_agent_msgs = 4  # 2 cancels + 2 actions for directional trading
         num_msgs = 100      # total messages in obs
         num_data_msgs = num_msgs - num_agent_msgs
@@ -2229,11 +2229,12 @@ class MarketMakingEnv(BaseLOBEnv):
                 num_messages_total=self.cfg.num_messages_by_agent+self.stepLines
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            cfg               = get_config()
-            num_messages      = self.cfg.num_messages_by_agent + self.stepLines + self.nTradesLogged
+            # cfg               = get_config()
+            raise NotImplementedError("Cannot use tokenizer without lobgen repo, which is private and not a dependency.")
+            num_messages      = self.cfg.num_messages_by_agent + self.n_data_msg_per_step + self.nTradesLogged
             toks_per_message  = 13      # we now split each int32 message‐field into two 16-bit tokens
             toks_per_book     = 84      # 42 book fields × 2 halves
-            vocab_size        = cfg.TOTAL_NUM_TOKENS
+            # vocab_size        = cfg.TOTAL_NUM_TOKENS
             return spaces.Box(
                 low=0,
                 high=vocab_size - 1,
