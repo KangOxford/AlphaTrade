@@ -93,9 +93,6 @@ class EnvState:
 class EnvParams:
     message_data: chex.Array
     book_data: chex.Array
-    episode_time: int
-    time_delay_obs_act: chex.Array
-    window_selector : int
     init_states_array: chex.Array
 
 
@@ -200,9 +197,6 @@ class BaseLOBEnv(environment.Environment):
         return EnvParams(
             message_data=self.messages, 
             book_data=self.books,
-            episode_time=self.episode_time,
-            time_delay_obs_act=jnp.array([0, 0]),
-            window_selector=self.window_selector,
             init_states_array=self.init_states_array
         )
 
