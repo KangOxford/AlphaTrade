@@ -307,7 +307,6 @@ class MarketMakingAgent():
         #bestasks = jnp.concatenate([bestasks,bestasks[:,:] ], axis=0, dtype=jnp.int32)
         #bestbids = jnp.concatenate([bestbids, bestbids[:,:]], axis=0, dtype=jnp.int32)
     
-        price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
         # TODO: consider adding quantity before (in priority) to each price / level
 
         # TODO: use the agent quant identification from the separate function _get_executed_by_level instead of _get_reward
@@ -330,11 +329,7 @@ class MarketMakingAgent():
             mid_price=extras["mid_price"],
             inventory=extras["end_inventory"],
             total_PnL = state.total_PnL + extras["PnL"],
-            cash_balance= extras["cash_balance"],
-            price_bid_passive = price_bid_passive,
-            quant_bid_passive = quant_bid_passive,
-            price_ask_passive=price_ask_passive,
-            quant_ask_passive=quant_ask_passive,            
+            cash_balance= extras["cash_balance"],          
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
@@ -447,8 +442,7 @@ class MarketMakingAgent():
         bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))
         state = dataclasses.replace(state, best_bids=bestbids, best_asks=bestasks)
         ##remove....
-        price_bid_passive,quant_bid_passive,price_ask_passive,quant_ask_passive = self._get_pass_price_quant(state)
-        state = dataclasses.replace(state, price_bid_passive=price_bid_passive, quant_bid_passive=quant_bid_passive,price_ask_passive=price_ask_passive,quant_ask_passive=quant_ask_passive)
+    
         ##...
         blank_messages = jnp.zeros((num_total_msgs, 8), dtype=jnp.int32) ##Reset for the message based obs space.
         ##FIXME: The size here needs to be size of messages sent, could change.
@@ -515,10 +509,6 @@ class MarketMakingAgent():
             inventory=0,
             total_PnL=0.,
             # updated on reset:
-            price_bid_passive = 0,
-            quant_bid_passive = 0,
-            price_ask_passive=0,
-            quant_ask_passive=0,
             delta_time=0.,
             cash_balance=0.0
         )
@@ -2094,10 +2084,6 @@ class MarketMakingAgent():
             "spread": jnp.abs(state.best_asks[-1][0] - state.best_bids[-1][0]),
             "q_bid": state.best_bids[-1][1],
             "q_ask": state.best_asks[-1][1],
-            "price_bid_passive":state.price_bid_passive,
-            "quant_bid_passive":state.quant_bid_passive,
-            "price_ask_passive":state.price_ask_passive,
-            "quant_ask_passive":state.quant_ask_passive,
             "time": time,
             "delta_time": state.delta_time,
             "time_remaining": params.episode_time - time_elapsed,
@@ -2123,10 +2109,6 @@ class MarketMakingAgent():
             "spread": 0,
             "q_bid": 0,
             "q_ask": 0,
-            "price_bid_passive":0,
-            "quant_bid_passive":0,
-            "price_ask_passive":0,
-            "quant_ask_passive":0,
             "time": 0,
             "delta_time": 0,
             "time_remaining": 0,
@@ -2138,6 +2120,7 @@ class MarketMakingAgent():
             #"remaining_ratio": 0,
             "prev_action": 0,
             "prev_executed": 0,
+
         
         }
         stds = {
@@ -2146,10 +2129,6 @@ class MarketMakingAgent():
             "spread": 1e4,
             "q_bid": 100,
             "q_ask": 100,
-            "price_bid_passive":100,
-            "quant_bid_passive":100,
-            "price_ask_passive":100,
-            "quant_ask_passive":100,
             "time": 1e5,
             "delta_time": 10,
             "time_remaining": self.episode_time, # 10 minutes = 600 seconds

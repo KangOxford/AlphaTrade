@@ -380,6 +380,16 @@ class BaseLOBEnv(environment.Environment):
 
         return messages
     
+    def _get_pass_price_quant(self, state):
+            """Get price and quanitity n_ticks into books"""
+            bid_passive_2=state.best_bids[-1, 0] - self.tick_size * self.cfg.n_ticks_in_book
+            ask_passive_2=state.best_asks[-1, 0] + self.tick_size * self.cfg.n_ticks_in_book
+            quant_bid_passive_2 = job.get_volume_at_price(state.bid_raw_orders, bid_passive_2)
+            quant_ask_passive_2 = job.get_volume_at_price(state.ask_raw_orders, ask_passive_2)
+            return bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2
+        
+
+
     @property
     def name(self) -> str:
         """Environment name."""

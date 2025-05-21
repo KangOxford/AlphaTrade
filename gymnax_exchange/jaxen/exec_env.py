@@ -156,8 +156,6 @@ class EnvState(BaseEnvState):
     vwap_rm: float
     is_sell_task: int
     trade_duration: float
-    quant_passive_2: int
-    price_passive_2: int
 
 
 
@@ -319,8 +317,8 @@ class ExecutionEnv():
         jax.debug.print("bestasks after2:{}",bestasks.shape)
         #jax.debug.print("bestasks\n {}", bestasks)
         
-        price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
-        # jax.debug.print('price_passive_2: {}, quant_passive_2: {}', price_passive_2, quant_passive_2)
+
+
         # TODO: consider adding quantity before (in priority) to each price / level
 
         # TODO: use the agent quant identification from the separate function _get_executed_by_level instead of _get_reward
@@ -360,8 +358,6 @@ class ExecutionEnv():
             vwap_rm = extras["vwap_rm"],
             is_sell_task = state.is_sell_task,
             trade_duration = trade_duration,
-            price_passive_2 = price_passive_2,
-            quant_passive_2 = quant_passive_2,
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
@@ -452,8 +448,8 @@ class ExecutionEnv():
         # update passive prices and quants depending on task direction
         # (other features are independent)
         # TODO: save passive prices and quants on both sides and handle this in _get_obs
-        price_passive_2, quant_passive_2 = self._get_pass_price_quant(state)
-        state = dataclasses.replace(state, price_passive_2=price_passive_2, quant_passive_2=quant_passive_2)
+
+
 
         obs = self._get_obs(state, params)
         return obs, state
@@ -532,8 +528,6 @@ class ExecutionEnv():
             is_sell_task=is_sell_task, # updated on reset
             trade_duration=0.,
             # updated on reset:
-            quant_passive_2=0,
-            price_passive_2=0,
             delta_time=0.,
         )
 
@@ -1382,7 +1376,7 @@ class ExecutionEnv():
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
             "q_aggr": quote_aggr[1],
             "q_pass": quote_pass[1],
-            "q_pass2": state.quant_passive_2,
+            "q_pass2": state.quant_passive_2, # TODO add price here
             # "q_before2": None, # how much quantity lies above this price level
             "time": time,
             "delta_time": state.delta_time,
