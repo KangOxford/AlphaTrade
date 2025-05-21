@@ -51,11 +51,11 @@ class MultiAgentState():
     # Sub–state for market maker and execution agent.
     world_state: WorldState
 
+    agent_states: list[Any]
+
     # Pytree for agent type
     #mm_state: MMState
     #exe_state: EXEState
-
-    agent_states: list[Any]
 
 
 # Define a combined parameters class.
@@ -123,6 +123,8 @@ class MARLEnv(MultiAgentEnv):
             agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type) # TODO add config of that agent type here and add params accordingly
             params_list.append(agent_params)
 
+        # Replace episode_time (#TODO add other world params fields)
+        base_params = dataclasses.replace(base_params, episode_time=self.world_config.episode_time)
 
         # Combine them into a MultiAgentParams instance.
         return MultiAgentParams(
@@ -131,10 +133,20 @@ class MARLEnv(MultiAgentEnv):
         )
 
     def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState]:
-        # Split keys for each sub–env
-        key_mm, key_exe, key = jax.random.split(key, 3)
+        # Split keys for each agent type
+        num_agent_types = len(self.instance_list)
+        keys = jax.random.split(key, num_agent_types + 1)
+        agent_keys = keys[:-1]
+        world_key = keys[-1]
+
+
+
+
+
         mm_obs, mm_state = self.mm_env.reset_env(key_mm, params.mm_params)
         exe_obs, exe_state = self.exe_env.reset_env(key_exe, params.exe_params)
+
+
         # The shared base state is taken from mm_state
         base_state = mm_state  
         # Pad best_bids and best_asks to correct shape
@@ -585,8 +597,6 @@ if __name__ == "__main__":
     # Get the default combined parameters.
     print("starting default parameters")
     env_params = env.default_params
-
-    env_params = dataclasses.replace(env_params, episode_time=config["EPISODE_TIME"])
 
     # Reset the environment.
     obs, state = env.reset_env(key_reset, env_params)
