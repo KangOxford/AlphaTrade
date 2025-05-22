@@ -18,7 +18,7 @@ This module extends the base simulation environment for limit order books
  optimal trade execution strategies.
 
 Key Components
-EnvState:   Dataclass to encapsulate the current state of the environment, 
+MMEnvState:   Dataclass to encapsulate the current state of the environment, 
             including the raw order book, trades, and time information.
 EnvParams:  Configuration class for environment-specific parameters, 
             such as task details, message and book data, and episode timing.
@@ -141,13 +141,13 @@ import jax.tree_util as jtu
 
 
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
-# from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
-# set_config(TokenizerConfig(split_vocab=True)) 
+from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
+set_config(TokenizerConfig(split_vocab=True)) 
 
 
 
 @struct.dataclass
-class EnvState():
+class MMEnvState():
     inventory: int
     total_PnL: float
     cash_balance: float
@@ -205,18 +205,20 @@ class MarketMakingAgent():
                        trader_id_range_start:int,
                         number_of_agents_per_type:int) -> EnvParams:
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
+        # Return array (one for each agent)
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         num_messages_by_agent = jnp.full((number_of_agents_per_type,), agent_config.num_messages_by_agent)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
+        print(f"num_messages_by_agent: {num_messages_by_agent}")
         return EnvParams(trader_id=trader_id, num_messages_by_agent=num_messages_by_agent, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
 
 
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, input_action: jax.Array, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        self, key: chex.PRNGKey, state: MMEnvState, input_action: jax.Array, params: EnvParams
+    ) -> Tuple[chex.Array, MMEnvState, float, bool, dict]:
 
         #=======================================#
         #====Load data messages for next step===#
@@ -313,7 +315,7 @@ class MarketMakingAgent():
         reward, extras = self._get_reward(state, params, trades,bestasks,bestbids)
         old_time=state.time
         old_mid_price=state.mid_price
-        state = EnvState(
+        state = MMEnvState(
             ask_raw_orders = asks,
             bid_raw_orders = bids,
             trades = trades,
@@ -427,9 +429,49 @@ class MarketMakingAgent():
     def reset_env(
             self,
             key : chex.PRNGKey,
-            params: EnvParams
-        ) -> Tuple[chex.Array, EnvState]:
-        """ Reset the environment to init state (pre computed from data)."""
+            agent_params: EnvParams,
+            num_msgs_per_step: int
+        ) -> Tuple[chex.Array, MMEnvState]:
+        """ Reset the environment state to the initial state."""
+
+        agent_state = MMEnvState(
+            inventory=0,
+            total_PnL=0.0,
+            cash_balance=0.0
+        )
+
+        # Calculate things for the message obs space
+        if self.cfg.observation_space == "messages_new_tokenizer":
+            lob_state_before = job.get_L2_state(
+                state.ask_raw_orders,  # Current ask orders
+                state.bid_raw_orders,  # Current bid orders
+                10,  # Number of levels
+                self.cfg  
+            )
+        else:
+            lob_state_before = None
+        print(f"agent_params.num_messages_by_agent: {agent_params.num_messages_by_agent}")
+        print(f"num_msgs_per_step: {num_msgs_per_step}")
+        blank_messages = jnp.zeros((agent_params.num_messages_by_agent + num_msgs_per_step, 8), dtype=jnp.int32) # Reset for the message based obs space.
+        print(f"blank_messages shape: {blank_messages.shape}")
+
+        obs = self.get_observation(state, agent_params,blank_messages,action_prices,exections,state.time,state.mid_price)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         #TODO This should just reset the values for each agent
         key_, key = jax.random.split(key)
 
@@ -444,7 +486,8 @@ class MarketMakingAgent():
         ##remove....
     
         ##...
-        blank_messages = jnp.zeros((num_total_msgs, 8), dtype=jnp.int32) ##Reset for the message based obs space.
+        
+
         ##FIXME: The size here needs to be size of messages sent, could change.
         if self.cfg.action_space=="fixed_quants" or self.cfg.action_space=="AvSt":
             action_prices=jnp.zeros((2,1),dtype=jnp.int32) #2 trades
@@ -464,7 +507,10 @@ class MarketMakingAgent():
         obs = self.get_observation(state, params,blank_messages,action_prices,exections,state.time,state.mid_price)
         return obs, state
     
-    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
+
+
+
+    def is_terminal(self, state: MMEnvState, params: EnvParams) -> bool:
         """ Check whether state is terminal.
          For a market making task, we run untill time completes. This is hardcoded 
           as 5 seconds before the end of the episode or one step before """
@@ -500,7 +546,7 @@ class MarketMakingAgent():
         best_bid, best_ask = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
         M =jnp.float32((best_bid[0] + best_ask[0]) / 2)
         #TODO: we could do an array of all those values that we only add on reset (not loaded)
-        return EnvState(
+        return MMEnvState(
             ##This is reset
             *base_vals,
             best_asks=jnp.resize(best_ask,(self.n_data_msg_per_step,2)),
@@ -892,7 +938,7 @@ class MarketMakingAgent():
         price_quants = jnp.vstack((price_levels[1:], quant_by_price[1:])).T
         return price_quants
     
-    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: MMEnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
             NOTE: this will not work for aggressive orders eating through the book (size limited by actions)
@@ -911,7 +957,7 @@ class MarketMakingAgent():
         price_quants = price_quants[jnp.argsort(jnp.argsort(actions <= 0))]
         return price_quants
     
-    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState,action_prices:jax.Array) -> jax.Array:
+    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: MMEnvState,action_prices:jax.Array) -> jax.Array:
         """ Get executed quantity by level from trades. 
         """
         #TODO: This will have an issue if we buy and sell at the same price. This should be avoided anyway.
@@ -963,7 +1009,7 @@ class MarketMakingAgent():
         return price_quantity_pairs
       
     
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: MMEnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
         best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
@@ -1012,7 +1058,7 @@ class MarketMakingAgent():
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
         return action_msgs
     
-    def _getActionMsgs_AvSt(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_AvSt(self, action: jax.Array, state: MMEnvState, params: EnvParams):
         '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
         0-7, with lower giving more aggresive bid and asks
         '''
@@ -1093,7 +1139,7 @@ class MarketMakingAgent():
         #jax.debug.print("msg:{}",action_msgs)
         return action_msgs
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: MMEnvState, params: EnvParams):
         '''Shape the action quantities in to messages sent the order book at the 
         prices levels determined from the orderbook'''
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
@@ -1199,7 +1245,7 @@ class MarketMakingAgent():
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
-    def _getActionMsgs_spread_skew(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_spread_skew(self, action: jax.Array, state: MMEnvState, params: EnvParams):
         '''Transform discrete action into bid and ask order messages based on spread and skew parameters.
         Actions [0-5] map to combinations of:
         spread: 0 = tight spread, 1 = wide spread
@@ -1291,7 +1337,7 @@ class MarketMakingAgent():
 
 
 
-    def _getActionMsgs_directional_trading(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_directional_trading(self, action: jax.Array, state: MMEnvState, params: EnvParams):
         '''Action space for directional trading. The agent can either:
             - Do nothing (action = 0)
             - Buy at best ask (action = 1)
@@ -1357,7 +1403,7 @@ class MarketMakingAgent():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
+            state: MMEnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
@@ -1380,7 +1426,7 @@ class MarketMakingAgent():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
+            state: MMEnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -1472,7 +1518,7 @@ class MarketMakingAgent():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
+            state: MMEnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         """ Force a market order if episode is over (either in terms of time or steps).
@@ -1650,7 +1696,7 @@ class MarketMakingAgent():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
-    def _get_reward(self, state: EnvState, params: EnvParams, trades: chex.Array,bestasks :chex.Array, bestbids: chex.Array) -> jnp.int32:
+    def _get_reward(self, state: MMEnvState, params: EnvParams, trades: chex.Array,bestasks :chex.Array, bestbids: chex.Array) -> jnp.int32:
         '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
         '''
         # ====================01 get reward stats ==========================================#
@@ -1861,7 +1907,7 @@ class MarketMakingAgent():
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, state, params, total_messages, action_prices, executions,old_time,old_mid_price):
+    def get_observation(self, state, params, total_messages, action_prices, executions,old_time,old_mid_price, lob_state_before):
         """
         Wrapper function to call the appropriate observation function.
         """
@@ -1870,10 +1916,11 @@ class MarketMakingAgent():
         elif self.cfg.observation_space == "messages":
             return self.observation_fn(state, total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            return self.observation_fn(state, total_messages,old_time,old_mid_price) 
+            return self.observation_fn(state, total_messages,old_time,old_mid_price, lob_state_before) 
         else:
             raise ValueError("Invalid observation_space specified.")
         
+
     def get_action(self,action, state, params):
         """
         Wrapper function to call the appropriate action function.
@@ -1979,17 +2026,12 @@ class MarketMakingAgent():
 
 
 
-    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time, old_mid_price):
+    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time, old_mid_price, lob_state_before):
         """
         Construct a tokenized observation matching the pretraining format:
-        [orderbook_tokens..., message_tokens...]
+        [orderbook_tokens, message_tokens]
         """
-
-        # cfg = get_config()
-        num_agent_msgs = 4  # 2 cancels + 2 actions for directional trading
-        num_msgs = 100      # total messages in obs
-        num_data_msgs = num_msgs - num_agent_msgs
-
+        cfg = get_config()
 
         #jax.debug.print("total_msgs:{}",total_msgs.shape)
         #jax.debug.print("Best bids:{}",state.best_bids[:, 0].shape)
@@ -1999,67 +2041,117 @@ class MarketMakingAgent():
         event = total_msgs[:, 0]
         direction = total_msgs[:, 1]
         order_id = total_msgs[:, 4]
-        price = total_msgs[:, 3]
+        price = total_msgs[:, 3] // 100  # divide by 100 cause its also done in pretraining
         size = total_msgs[:, 2]
         time_s = total_msgs[:, 6]
         time_ns = total_msgs[:, 7]
 
-        # event_dir
-        event_dir = direction.astype(jnp.uint8) * 4 + event.astype(jnp.uint8)
-
         # delta_time: difference between consecutive time_s/time_ns
         delta_time_s = jnp.zeros_like(time_s)
         delta_time_ns = jnp.zeros_like(time_ns)
-        delta_time_s = delta_time_s.at[0].set(time_s[0] - old_time[0])
-        delta_time_ns = delta_time_ns.at[0].set(time_ns[0] - old_time[1])
+        delta_time_s = delta_time_s.at[0].set(0) #for now just set it to 0 because the messages are initialized with 0 but the time is with the actual time => large difference for very first value
+        delta_time_ns = delta_time_ns.at[0].set(0)
         delta_time_s = delta_time_s.at[1:].set(time_s[1:] - time_s[:-1])
         delta_time_ns = delta_time_ns.at[1:].set(time_ns[1:] - time_ns[:-1])
 
-        # delta_price: difference in best price after each message
-        # For this, you need the best bid/ask after each message. If you have them, do:
-        #   mid_prices = (best_bids[:, 0] + best_asks[:, 0]) // 2
-        #   delta_price = jnp.zeros_like(mid_prices)
-        #   delta_price = delta_price.at[0].set(mid_prices[0] - old_mid_price)
-        #   delta_price = delta_price.at[1:].set(mid_prices[1:] - mid_prices[:-1])
-        # If not, you can set to zero or compute from state.
+        ############################
+        # Get the delta prices
+        ############################
 
-        # Stack into [num_msgs, 7] array
-        #msg_array = jnp.stack([
-        #    event_dir,
-       #     order_id,
-        #    price,
-         #   size,
-          #  delta_time_s,
-           # delta_time_ns,
-           # delta_price
-        #], axis=1).astype(jnp.int32)
+        # Extract best bid/ask prices (shape: [num_msgs])
+        best_bid_prices = state.best_bids[:, 0] // 100 # Divide by 100 as in pretraining preprocessing
+        best_ask_prices = state.best_asks[:, 0] // 100
+        old_mid_price = old_mid_price // 100
 
-        # 3. Get orderbook snapshot (L2 state)
-        #l2_state = job.get_L2_state(
-        #    state.ask_raw_orders,
-        #    state.bid_raw_orders,
-        #    10,
-        #    self.cfg
-        #)  # shape: (42,)
+        #jax.debug.print("old_mid_price: {}", old_mid_price)
 
-        # 4. Tokenize orderbook and messages
-        #    You need to port the logic from single_tokenized.py to JAX.
-        #    For each int32 field (except event_dir), split into two uint16 tokens and add the correct offset.
-        #    For event_dir, just add the offset.
+        # Compute mid prices (shape: [num_msgs])
+        mid_prices = (best_bid_prices + best_ask_prices) // 2  # integer division
+        #jax.debug.print("mid_prices: {}", mid_prices[0])
 
-        # Example for messages:
-        #   - event_dir: [num_msgs, 1]
-        #   - all other fields: [num_msgs, 6] -> split each int32 into two uint16, then flatten
-        #   - add field-specific offsets (from cfg)
+        # Initialize delta_price array
+        delta_price = jnp.zeros_like(mid_prices)
 
-        # 5. Concatenate tokenized orderbook and messages into 1D array
-        #    obs = jnp.concatenate([orderbook_tokens, message_tokens], axis=0)
+        # For the very first message, use the old mid price and compare it to that (delta price is 2* best mid price change)
+        delta_price = delta_price.at[0].set(2 * (mid_prices[0] - old_mid_price))
 
-        # 6. Return obs
+        # Subsequent messages:
+        # Interesting fact: one message can actually change both the best bid and the best ask (because we can consume a level and then be added at the level on our side)
+        delta_price = delta_price.at[1:].set(
+            (best_ask_prices[1:] - best_ask_prices[:-1]) + (best_bid_prices[1:] - best_bid_prices[:-1])
+        )
 
-        
+        #############################
+        # Tokenization 
+        #############################
 
-        return 0
+        ######
+        # Messages
+        ######
+
+        event_dir_tok = direction.astype(jnp.uint8) * 4 + event.astype(jnp.uint8)
+        event_dir_tok = event_dir_tok.astype(jnp.uint32) + cfg.EVENT_START
+
+        def split_and_offset(x, offset):
+            x = x.astype(jnp.int32)  # Ensure input is really int32
+            low = (x & 0xFFFF).astype(jnp.uint16) + offset      #  Lower 16 bits + offset
+            high = ((x >> 16) & 0xFFFF).astype(jnp.uint16) + offset  #Upper 16 bits + offset
+            return jnp.stack([low, high], axis=-1)  # Shape: (..., 2)
+
+        order_id_tok      = split_and_offset(order_id,      cfg.ORDER_ID_B_START)
+        price_tok         = split_and_offset(price,         cfg.PRICE_B_START)
+        size_tok          = split_and_offset(size,          cfg.SIZE_B_START)
+        delta_time_s_tok  = split_and_offset(delta_time_s,  cfg.TIME_B_START)
+        delta_time_ns_tok = split_and_offset(delta_time_ns, cfg.TIME_B_START)
+        delta_price_tok   = split_and_offset(delta_price,   cfg.PRICE_B_START)
+
+        message_tokens = jnp.concatenate([
+            event_dir_tok[:, None],  # (num_msgs, 1)
+            order_id_tok,            # (num_msgs, 2)
+            price_tok,               # (num_msgs, 2)
+            size_tok,                # (num_msgs, 2)
+            delta_time_s_tok,        # (num_msgs, 2)
+            delta_time_ns_tok,       # (num_msgs, 2)
+            delta_price_tok          # (num_msgs, 2)
+        ], axis=-1)
+        message_tokens_flat = message_tokens.reshape(-1)
+
+        ######
+        # Book
+        ######
+
+        #print("lob_state_before: {}", lob_state_before)
+
+        # add time to the lob_state_before
+        time_s = state.time[0]
+        time_ns = state.time[1]
+        lob_state_with_time = jnp.concatenate([jnp.array([time_s, time_ns]), lob_state_before]) # shape (42,)
+
+
+        #  Split into uint16 tokens
+        x_split = jax.lax.bitcast_convert_type(lob_state_with_time, jnp.uint16).reshape(-1)  # shape (84,)
+
+        #print("x_split: {}", x_split.shape)
+
+        #  Build offset array
+        orderbook_shift = jnp.array(
+            [cfg.TIME_B_START] * 4
+            + [cfg.PRICE_B_START, cfg.PRICE_B_START, cfg.SIZE_B_START, cfg.SIZE_B_START] * 2 * 10
+        )  # shape (84,)
+
+        #  Add offset
+        orderbook_tokens = x_split.astype(jnp.uint32) + orderbook_shift  # shape (84,)
+
+
+        ###################
+        #  Concatenate orderbook and message tokens
+        ###################
+
+        obs = jnp.concatenate([orderbook_tokens, message_tokens_flat], axis=0)
+
+        #jax.debug.print("obs: {}", obs.shape)
+
+        return obs
       
 
 
@@ -2067,7 +2159,7 @@ class MarketMakingAgent():
     
     def _get_obs_engineered(
             self,
-            state: EnvState,
+            state: MMEnvState,
             params: EnvParams,
             action_prices: chex.Array,
             executions: chex.Array,
@@ -2148,6 +2240,9 @@ class MarketMakingAgent():
             obs, _ = jax.flatten_util.ravel_pytree(obs)
         return obs
 
+
+
+
     def normalize_obs(
             self,
             obs: Dict[str, jax.Array],
@@ -2185,7 +2280,6 @@ class MarketMakingAgent():
                 num_messages_total=self.cfg.num_messages_by_agent+self.n_data_msg_per_step
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            raise NotImplementedError("Currenty no access to lobgen repository.")
             cfg               = get_config()
             num_messages      = self.cfg.num_messages_by_agent + self.n_data_msg_per_step + self.nTradesLogged
             toks_per_message  = 13      # we now split each int32 message‐field into two 16-bit tokens

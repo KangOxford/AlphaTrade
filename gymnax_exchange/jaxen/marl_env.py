@@ -16,8 +16,8 @@ from typing import Any
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
-from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState, EnvParams as MMParams
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
+from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, MMEnvState as MMState, EnvParams as MMParams
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv, ExecEnvState as EXEState, EnvParams as EXEParams
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
@@ -111,6 +111,7 @@ class MARLEnv(MultiAgentEnv):
         next_trader_id_range_start = self.world_config.trader_id_range_start #Start with trader id based on config
         num_msg_per_step = self.world_config.n_data_msg_per_step # start with data msg per step and then add the number of messages per step for each agent
 
+        # Set trader ids and get num_msg_per_step, which both depend on all other agents
         for agent_type_index in range(len(self.world_config.number_of_agents_per_type)):
             print(f"next_trader_id_range_start: {next_trader_id_range_start}")
             print(f"agent type: {self.world_config.list_of_agents_configs[agent_type_index]}")
@@ -149,30 +150,28 @@ class MARLEnv(MultiAgentEnv):
         ###########################
 
         # Get the Load State
-        world_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.world_config)
+        load_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.world_config)
 
         # Reset all variables in the world state that are not on the Load State
         # For bet bids and ask repeat the inital best bids and ask num of messages times
-        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.world_config, askside=world_state.ask_raw_orders, bidside=world_state.bid_raw_orders)
+        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.world_config, askside=load_state.ask_raw_orders, bidside=load_state.bid_raw_orders)
         bestbids = jnp.tile(best_bid[None, :], (params.num_msgs_per_step, 1))
         bestasks = jnp.tile(best_ask[None, :], (params.num_msgs_per_step, 1))#
+        mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
+        print(f"mid_price: {mid_price}")
 
-        #print(best_bid[0])
-        #price_bid_passive = best_bid - self.world_config.tick_size * self.world_config.n_ticks_in_book
-        #price_ask_passive = best_ask + self.world_config.tick_size * self.world_config.n_ticks_in_book
-        #print(f"price_bid_passive: {price_bid_passive}")
-        #print(f"price_ask_passive: {price_ask_passive}")
-        #quant_bid_passive = job.get_volume_at_price(world_state.bid_raw_orders, price_bid_passive)
-        #quant_ask_passive = job.get_volume_at_price(world_state.ask_raw_orders, price_ask_passive)
-
-
-        world_state = dataclasses.replace(world_state,
+        # Create the world state
+        world_state = WorldState(
+            **dataclasses.asdict(load_state),  # copy all fields from the loaded state
             best_bids=bestbids,
             best_asks=bestasks,
             step_counter=0,
-            time=world_state.init_time,
-            customIDcounter=0, # TODO we should look over this and implement this independently of trader id
-            )
+            time=load_state.init_time,
+            customIDcounter=0,
+            mid_price=mid_price,      
+            delta_time=0.0,     
+        )
+
 
         ###########################
         #Reset each agent state
@@ -181,8 +180,11 @@ class MARLEnv(MultiAgentEnv):
         agent_obs_list = []
         agent_state_list = []
 
-        for i, (instance, agent_param, agent_key) in enumerate(zip(self.instance_list, params.agent_params, agent_keys)):
-            obs, state = instance.reset_env(agent_key, agent_param)
+        # TODO im working here
+        print(f"params.agent_params.num_messages_by_agent: {params.agent_params.num_messages_by_agent}")
+
+        for i, (instance, agent_param, agent_num_msgs_per_step, agent_key) in enumerate(zip(self.instance_list, params.agent_params, params.agent_params.num_messages_by_agent, agent_keys)):
+            obs, state = instance.reset_env(agent_key, agent_param, agent_num_msgs_per_step)
             agent_obs_list.append(obs)
             agent_state_list.append(state)
 

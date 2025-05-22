@@ -18,7 +18,7 @@ This module extends the base simulation environment for limit order books
  optimal trade execution strategies.
 
 Key Components
-EnvState:   Dataclass to encapsulate the current state of the environment, 
+ExecEnvState:   Dataclass to encapsulate the current state of the environment, 
             including the raw order book, trades, and time information.
 EnvParams:  Configuration class for environment-specific parameters, 
             such as task details, message and book data, and episode timing.
@@ -138,7 +138,7 @@ from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
 import jax.tree_util as jtu
 
 @struct.dataclass
-class EnvState(BaseEnvState):
+class ExecEnvState(BaseEnvState):
     prev_action: chex.Array
     prev_executed: chex.Array
 
@@ -214,8 +214,8 @@ class ExecutionEnv():
 
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, input_action: jax.Array, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        self, key: chex.PRNGKey, state: ExecEnvState, input_action: jax.Array, params: EnvParams
+    ) -> Tuple[chex.Array, ExecEnvState, float, bool, dict]:
 
         data_messages = self._get_data_messages(
             params.message_data,
@@ -329,7 +329,7 @@ class ExecutionEnv():
         trade_duration = state.trade_duration + trade_duration_step
         # jax.debug.print('trade_duration_step: {}, trade_duration: {}', trade_duration_step, trade_duration)
         # jax.debug.print('left before mkt: {}, left after mkt {}', quant_left, state.task_to_execute - state.quant_executed - extras["agentQuant"])
-        state = EnvState(
+        state = ExecEnvState(
             prev_action = jnp.vstack([action_prices, action_quants]).T,  # includes prices and quantitites  
             prev_executed = executions[:,1],#just the quants to keep same setup  
             ask_raw_orders = asks,
@@ -429,8 +429,19 @@ class ExecutionEnv():
             self,
             key : chex.PRNGKey,
             params: EnvParams
-        ) -> Tuple[chex.Array, EnvState]:
-        """ Reset the environment to init state (pre computed from data)."""
+        ) -> Tuple[chex.Array, ExecEnvState]:
+        """ Reset the agent specific environment state"""
+
+        agent_state = ExecEnvState(
+
+        )
+
+        obs = self.get_observation(agent_state, params, ...)
+
+
+
+
+
         key_, key = jax.random.split(key)
         _, state = super().reset_env(key, params)
         if self.cfg.task == 'random':
@@ -449,12 +460,15 @@ class ExecutionEnv():
         # (other features are independent)
         # TODO: save passive prices and quants on both sides and handle this in _get_obs
 
-
-
         obs = self._get_obs(state, params)
         return obs, state
     
-    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
+
+
+
+
+
+    def is_terminal(self, state: ExecEnvState, params: EnvParams) -> bool:
         """ Check whether state is terminal. """
         if self.ep_type == 'fixed_time':
             #jax.debug.print("params_episode_time:{}",params.episode_time)
@@ -509,7 +523,7 @@ class ExecutionEnv():
         is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0
         # HERE...
         n_trades=self.cfg.num_action_messages_by_agent
-        return EnvState(
+        return ExecEnvState(
             *base_vals,
             prev_action=jnp.zeros((n_trades, 2), jnp.int32),
             prev_executed=jnp.zeros((n_trades, ), jnp.int32),
@@ -531,7 +545,7 @@ class ExecutionEnv():
             delta_time=0.,
         )
 
-    def _reshape_action(self, action : jax.Array, state: EnvState, params : EnvParams, key:chex.PRNGKey) -> jax.Array:
+    def _reshape_action(self, action : jax.Array, state: ExecEnvState, params : EnvParams, key:chex.PRNGKey) -> jax.Array:
         def twapV3(state, env_params):
             # ---------- ifMarketOrder ----------
             remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -681,7 +695,7 @@ class ExecutionEnv():
         # jax.debug.print("_get_executed_by_level\n {}", price_quants)
         return price_quants
     
-    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: ExecEnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
             NOTE: this will not work for aggressive orders eating through the book (size limited by actions)
@@ -699,7 +713,7 @@ class ExecutionEnv():
         price_quants = price_quants[jnp.argsort(jnp.argsort(actions <= 0))]
         return price_quants
     
-    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState,action_prices:jax.Array) -> jax.Array:
+    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: ExecEnvState,action_prices:jax.Array) -> jax.Array:
         """ Get executed quantity by level from trades. 
         """
         #TODO: This will have an issue if we buy and sell at the same price. This should be avoided anyway.
@@ -737,7 +751,7 @@ class ExecutionEnv():
 
         return price_quantity_pairs
     
-    def _get_executed_by_action_old(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+    def _get_executed_by_action_old(self, agent_trades: jax.Array, actions: jax.Array, state: ExecEnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
             Aggressive quantities at FT and more passive are summed as the first quantity.
@@ -786,7 +800,7 @@ class ExecutionEnv():
 
 
     #-------Action Functions-------#
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: ExecEnvState, params: EnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -864,7 +878,7 @@ class ExecutionEnv():
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         return action_msgs 
 
-    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: ExecEnvState, params: EnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -962,7 +976,7 @@ class ExecutionEnv():
 
 
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: ExecEnvState, params: EnvParams):
         """get messages for action space where input is quantity at each price level"""
         
 
@@ -987,7 +1001,7 @@ class ExecutionEnv():
             else:
                 return quants, prices
         
-        # def market_quant_price(price_levels: jax.Array, state: EnvState, action: jax.Array):
+        # def market_quant_price(price_levels: jax.Array, state: ExecEnvState, action: jax.Array):
         #     mkt_quant = state.task_to_execute - state.quant_executed
         #     quants = jnp.asarray((mkt_quant, 0, 0, 0), jnp.int32) 
         #     return quants, jnp.asarray((price_levels[-1], -1, -1, -1), jnp.int32)
@@ -1116,7 +1130,7 @@ class ExecutionEnv():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
+            state: ExecEnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         
@@ -1172,7 +1186,7 @@ class ExecutionEnv():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
+            state: ExecEnvState,
             params: EnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         """ Force a market order if episode is over (either in terms of time or steps). """
@@ -1275,7 +1289,7 @@ class ExecutionEnv():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
-    def _get_reward(self, state: EnvState, params: EnvParams, trades: chex.Array) -> jnp.int32:
+    def _get_reward(self, state: ExecEnvState, params: EnvParams, trades: chex.Array) -> jnp.int32:
         # ========== get reward and revenue ==========
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -1353,7 +1367,7 @@ class ExecutionEnv():
 
     def _get_obs(
             self,
-            state: EnvState,
+            state: ExecEnvState,
             params: EnvParams,
             normalize: bool = True,
             flatten: bool = True,
@@ -1456,7 +1470,7 @@ class ExecutionEnv():
 
         return obs
 
-    def _get_obs_full(self, state: EnvState, params:EnvParams) -> chex.Array:
+    def _get_obs_full(self, state: ExecEnvState, params:EnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # Note: uses entire observation history between steps
         # TODO: if we want to use this, we need to roll forward the RNN state with every step
