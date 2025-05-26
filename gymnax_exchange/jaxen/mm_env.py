@@ -158,6 +158,8 @@ class MarketMakingAgent():
             self.observation_fn = self._get_obs_msg
         elif self.cfg.observation_space == "messages_new_tokenizer":
             self.observation_fn = self._get_obs_msg_new_tokenizer
+        elif self.cfg.observation_space == "basic":
+            self.observation_fn = self._get_obs_basic
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1891,19 +1893,23 @@ class MarketMakingAgent():
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, state, params, total_messages, action_prices, executions,old_time,old_mid_price, lob_state_before):
+    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before):
         """
         Wrapper function to call the appropriate observation function.
         """
         if self.cfg.observation_space == "engineered":
-            return self.observation_fn(state, params, action_prices, executions)
+            return self.observation_fn(world_state, agent_state, agent_param)
         elif self.cfg.observation_space == "messages":
-            return self.observation_fn(state, total_messages) 
+            return self.observation_fn(total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            return self.observation_fn(state, total_messages,old_time,old_mid_price, lob_state_before) 
+            return self.observation_fn(world_state, agent_state, total_messages, old_time, old_mid_price, lob_state_before) 
+        elif self.cfg.observation_space == "basic":
+            return self.observation_fn(world_state)
         else:
             raise ValueError("Invalid observation_space specified.")
         
+
+
 
     def get_action(self,action, state, params):
         """
@@ -2259,7 +2265,7 @@ class MarketMakingAgent():
     def observation_space(self, params: MMEnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-10, 10, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
+             return spaces.Box(-1000, 1000, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.n_data_msg_per_step
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
@@ -2275,6 +2281,8 @@ class MarketMakingAgent():
                 shape=(1, num_messages * toks_per_message + toks_per_book),
                 dtype=jnp.int32,
             )
+        elif self.cfg.observation_space == "basic":
+            return spaces.Box(low=0, high=1000000, shape=(1,), dtype=jnp.float32)
         else:
             raise ValueError("Invalid observation_space specified.")
 
