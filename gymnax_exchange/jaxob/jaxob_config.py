@@ -25,7 +25,7 @@ class JAXLOB_Configuration:
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] =env_cst.action_space
-    observation_space: Literal["engineered", "messages", "messages_new_tokenizer"] = env_cst.observation_space
+    observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = env_cst.observation_space
     end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     num_messages_by_agent:int=env_cst.num_messages_by_agent
@@ -34,6 +34,7 @@ class MarketMaking_EnvironmentConfig():
     n_actions: int = env_cst.n_actions
     debug_mode:bool=False
     time_delay_obs_act:int=0
+    normalize:bool=True
    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
@@ -83,6 +84,7 @@ class Execution_EnvironmentConfig():
     reward_lambda:float=1.0
     time_delay_obs_act:int=0
     debug_mode:bool=False
+    normalize:bool=True
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -114,11 +116,15 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     nOrdersPerSide=100 #100
     nTradesLogged=100
     book_depth=10
-    n_actions=4
     n_ticks_in_book = 10 # Depth of PP actions
     customIDCounter=0
     tick_size=100
     trader_id_range_start=-1
+
+
+@dataclass(frozen=True)
+class MultiAgentConfig():
+    world_config = World_EnvironmentConfig()
 
     list_of_agents_configs = [
         MarketMaking_EnvironmentConfig(),
