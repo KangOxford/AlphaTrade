@@ -16,9 +16,14 @@ from typing import Any
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
-from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, MMEnvState as MMState, EnvParams as MMParams
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv, ExecEnvState as EXEState, EnvParams as EXEParams
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
+from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams
+from gymnax_exchange.jaxen.StatesandParams import MMEnvState, MMEnvParams
+from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
+
+
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
@@ -26,40 +31,6 @@ from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv as MultiAgentEnv
 
 
-@struct.dataclass
-class WorldState(BaseState):
-    # But everything here that is not loaded from the base config but shared by all agents
-    best_bids: jnp.ndarray
-    best_asks: jnp.ndarray
-    step_counter: int
-    time: jnp.ndarray
-    customIDcounter: jnp.ndarray
-    mid_price:float
-    delta_time: float
-
-
-
-# Define a combined (multi–agent) state that extends the base order book state
-@struct.dataclass
-class MultiAgentState():
-    # Sub–state for market maker and execution agent.
-    world_state: WorldState
-
-    agent_states: list[Any]
-
-    # Pytree for agent type
-    #mm_state: MMState
-    #exe_state: EXEState
-
-
-# Define a combined parameters class.
-# Logic: All the data is in BaseParams. All the things that depend on all agents are added to it (e.g. num_msgs_per_step). The rest stays in the config
-@struct.dataclass
-class MultiAgentParams():
-    loaded_params: BaseParams
-
-    num_msgs_per_step: int
-    agent_params: list[Any]
 
 # define the MARL environment.
 class MARLEnv(MultiAgentEnv):
@@ -182,10 +153,11 @@ class MARLEnv(MultiAgentEnv):
         agent_state_list = []
 
         # TODO im working here
-        print(f"params.agent_params: {params.agent_params[0].num_messages_by_agent}")
+        
 
         for i, (instance, agent_param, agent_config, agent_key) in enumerate(zip(self.instance_list, params.agent_params, self.world_config.list_of_agents_configs, agent_keys)):
-            obs, state = instance.reset_env(agent_key, agent_param, agent_config.num_messages_by_agent)
+            print(f"params.agent_params: {agent_config.num_messages_by_agent}")
+            obs, state = instance.reset_env(key = agent_key, agent_param = agent_param, world_state = world_state, num_messages_by_agent = agent_config.num_messages_by_agent, num_msgs_per_step = params.num_msgs_per_step)
             agent_obs_list.append(obs)
             agent_state_list.append(state)
 

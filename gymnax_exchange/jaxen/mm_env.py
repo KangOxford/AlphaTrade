@@ -20,7 +20,7 @@ This module extends the base simulation environment for limit order books
 Key Components
 MMEnvState:   Dataclass to encapsulate the current state of the environment, 
             including the raw order book, trades, and time information.
-EnvParams:  Configuration class for environment-specific parameters, 
+MMEnvParams:  Configuration class for environment-specific parameters, 
             such as task details, message and book data, and episode timing.
 MarketMakingEnv: Environment class inheriting from BaseLOBEnv, 
               offering specialized methods for order placement and 
@@ -131,9 +131,7 @@ from typing import Tuple, Optional, Dict
 import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
-from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
+
 from gymnax_exchange.utils import utils
 import dataclasses
 
@@ -143,22 +141,9 @@ import jax.tree_util as jtu
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
 set_config(TokenizerConfig(split_vocab=True)) 
+from gymnax_exchange.jaxen.StatesandParams import MMEnvState, MMEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
 
 
-
-@struct.dataclass
-class MMEnvState():
-    inventory: int
-    total_PnL: float
-    cash_balance: float
-
-
-
-
-@struct.dataclass
-class EnvParams():
-    trader_id: chex.Array
-    time_delay_obs_act: chex.Array
 
 class MarketMakingAgent():
     def __init__(
@@ -202,19 +187,19 @@ class MarketMakingAgent():
     def default_params(self,
                        agent_config:MarketMaking_EnvironmentConfig,
                        trader_id_range_start:int,
-                        number_of_agents_per_type:int) -> EnvParams:
+                        number_of_agents_per_type:int) -> MMEnvParams:
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         # Return array (one for each agent)
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
-        return EnvParams(trader_id=trader_id, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
+        return MMEnvParams(trader_id=trader_id, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
 
 
 
     def step_env(
-        self, key: chex.PRNGKey, state: MMEnvState, input_action: jax.Array, params: EnvParams
+        self, key: chex.PRNGKey, state: MMEnvState, input_action: jax.Array, params: MMEnvParams
     ) -> Tuple[chex.Array, MMEnvState, float, bool, dict]:
 
         #=======================================#
@@ -426,7 +411,9 @@ class MarketMakingAgent():
     def reset_env(
             self,
             key : chex.PRNGKey,
-            agent_params: EnvParams,
+            agent_param: MMEnvParams,
+            world_state: WorldState,
+            num_messages_by_agent: int,
             num_msgs_per_step: int
         ) -> Tuple[chex.Array, MMEnvState]:
         """ Reset the environment state to the initial state."""
@@ -440,23 +427,23 @@ class MarketMakingAgent():
         # Calculate things for the message obs space
         if self.cfg.observation_space == "messages_new_tokenizer":
             lob_state_before = job.get_L2_state(
-                state.ask_raw_orders,  # Current ask orders
-                state.bid_raw_orders,  # Current bid orders
+                world_state.ask_raw_orders,  # Current ask orders
+                world_state.bid_raw_orders,  # Current bid orders
                 10,  # Number of levels
                 self.cfg  
             )
         else:
             lob_state_before = None
-        print(f"agent_params.num_messages_by_agent: {agent_params.num_messages_by_agent}")
+
         print(f"num_msgs_per_step: {num_msgs_per_step}")
-        blank_messages = jnp.zeros((agent_params.num_messages_by_agent + num_msgs_per_step, 8), dtype=jnp.int32) # Reset for the message based obs space.
+        blank_messages = jnp.zeros((num_messages_by_agent + num_msgs_per_step, 8), dtype=jnp.int32) # Reset for the message based obs space.
         print(f"blank_messages shape: {blank_messages.shape}")
 
-        obs = self.get_observation(state, agent_params,blank_messages,action_prices,exections,state.time,state.mid_price)
+        obs = self.get_observation(world_state, agent_param, blank_messages, world_state.time, world_state.mid_price, lob_state_before)
 
 
 
-
+        return obs, state
 
 
 
@@ -502,12 +489,12 @@ class MarketMakingAgent():
             raise ValueError("Other action spaces not finished")
         
         obs = self.get_observation(state, params,blank_messages,action_prices,exections,state.time,state.mid_price)
-        return obs, state
+
     
 
 
 
-    def is_terminal(self, state: MMEnvState, params: EnvParams) -> bool:
+    def is_terminal(self, state: MMEnvState, params: MMEnvParams) -> bool:
         """ Check whether state is terminal.
          For a market making task, we run untill time completes. This is hardcoded 
           as 5 seconds before the end of the episode or one step before """
@@ -1006,7 +993,7 @@ class MarketMakingAgent():
         return price_quantity_pairs
       
     
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: MMEnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
         best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
@@ -1055,7 +1042,7 @@ class MarketMakingAgent():
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
         return action_msgs
     
-    def _getActionMsgs_AvSt(self, action: jax.Array, state: MMEnvState, params: EnvParams):
+    def _getActionMsgs_AvSt(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
         '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
         0-7, with lower giving more aggresive bid and asks
         '''
@@ -1136,7 +1123,7 @@ class MarketMakingAgent():
         #jax.debug.print("msg:{}",action_msgs)
         return action_msgs
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: MMEnvState, params: EnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
         '''Shape the action quantities in to messages sent the order book at the 
         prices levels determined from the orderbook'''
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
@@ -1242,7 +1229,7 @@ class MarketMakingAgent():
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
-    def _getActionMsgs_spread_skew(self, action: jax.Array, state: MMEnvState, params: EnvParams):
+    def _getActionMsgs_spread_skew(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on spread and skew parameters.
         Actions [0-5] map to combinations of:
         spread: 0 = tight spread, 1 = wide spread
@@ -1334,7 +1321,7 @@ class MarketMakingAgent():
 
 
 
-    def _getActionMsgs_directional_trading(self, action: jax.Array, state: MMEnvState, params: EnvParams):
+    def _getActionMsgs_directional_trading(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
         '''Action space for directional trading. The agent can either:
             - Do nothing (action = 0)
             - Buy at best ask (action = 1)
@@ -1401,7 +1388,7 @@ class MarketMakingAgent():
             bids: jax.Array,
             trades: jax.Array,
             state: MMEnvState,
-            params: EnvParams,
+            params: MMEnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
             id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
@@ -1424,7 +1411,7 @@ class MarketMakingAgent():
             bids: jax.Array,
             trades: jax.Array,
             state: MMEnvState,
-            params: EnvParams,
+            params: MMEnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         '''Function to create an artifical trade which liquidates the agent's position.
@@ -1516,7 +1503,7 @@ class MarketMakingAgent():
             bids: jax.Array,
             trades: jax.Array,
             state: MMEnvState,
-            params: EnvParams,
+            params: MMEnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         """ Force a market order if episode is over (either in terms of time or steps).
          Cancel all agent trades and place a market trade. If this is unmatched, cancel any remaing volume
@@ -1693,7 +1680,7 @@ class MarketMakingAgent():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
-    def _get_reward(self, state: MMEnvState, params: EnvParams, trades: chex.Array,bestasks :chex.Array, bestbids: chex.Array) -> jnp.int32:
+    def _get_reward(self, state: MMEnvState, params: MMEnvParams, trades: chex.Array,bestasks :chex.Array, bestbids: chex.Array) -> jnp.int32:
         '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
         '''
         # ====================01 get reward stats ==========================================#
@@ -2157,7 +2144,7 @@ class MarketMakingAgent():
     def _get_obs_engineered(
             self,
             state: MMEnvState,
-            params: EnvParams,
+            params: MMEnvParams,
             action_prices: chex.Array,
             executions: chex.Array,
             normalize: bool = True,
@@ -2253,7 +2240,7 @@ class MarketMakingAgent():
         return obs
 
     def action_space(
-        self, params: Optional[EnvParams] = None
+        self, params: Optional[MMEnvParams] = None
     ) -> spaces.Box:
         """ Action space of the environment. """
         if self.cfg.action_space == "directional_trading":
@@ -2269,7 +2256,7 @@ class MarketMakingAgent():
        
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
-    def observation_space(self, params: EnvParams):
+    def observation_space(self, params: MMEnvParams):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
              return spaces.Box(-10, 10, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
@@ -2291,7 +2278,7 @@ class MarketMakingAgent():
         else:
             raise ValueError("Invalid observation_space specified.")
 
-    def state_space(self, params: EnvParams) -> spaces.Dict:
+    def state_space(self, params: MMEnvParams) -> spaces.Dict:
         """State space of the environment."""
         return NotImplementedError
 
