@@ -164,7 +164,6 @@ class ExecEnvState(BaseEnvState):
 class EnvParams():
     trader_id: chex.Array
     task_size: chex.Array 
-    num_messages_by_agent: chex.Array
     reward_lambda: chex.Array
     time_delay_obs_act: chex.Array
 
@@ -204,12 +203,11 @@ class ExecutionEnv():
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         task_size = jnp.full((number_of_agents_per_type,), agent_config.task_size)
         reward_lambda = jnp.full((number_of_agents_per_type,), agent_config.reward_lambda)
-        num_messages_by_agent = jnp.full((number_of_agents_per_type,), agent_config.num_messages_by_agent)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         
         print(f"task_size: {task_size}")
         print(f"trader_id: {trader_id}")
-        return EnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, num_messages_by_agent=num_messages_by_agent, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
+        return EnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
 
 
 

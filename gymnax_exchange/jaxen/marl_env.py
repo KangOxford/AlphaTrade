@@ -119,7 +119,8 @@ class MARLEnv(MultiAgentEnv):
             num_agents_per_type = self.world_config.number_of_agents_per_type[agent_type_index]
             agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type)
             print(f"agent_params: {type(agent_params)}")
-            num_msg_per_step = num_msg_per_step + jnp.sum(agent_params.num_messages_by_agent) # Sum over all agents of that type
+            num_msg_per_step = num_msg_per_step + agent_config.num_messages_by_agent * num_agents_per_type # Sum over all agents of that type
+            print(f"num_msg_per_step: {num_msg_per_step}")
             params_list.append(agent_params)
 
         print(f"num_msg_per_step: {num_msg_per_step}")
@@ -181,10 +182,10 @@ class MARLEnv(MultiAgentEnv):
         agent_state_list = []
 
         # TODO im working here
-        print(f"params.agent_params.num_messages_by_agent: {params.agent_params.num_messages_by_agent}")
+        print(f"params.agent_params: {params.agent_params[0].num_messages_by_agent}")
 
-        for i, (instance, agent_param, agent_num_msgs_per_step, agent_key) in enumerate(zip(self.instance_list, params.agent_params, params.agent_params.num_messages_by_agent, agent_keys)):
-            obs, state = instance.reset_env(agent_key, agent_param, agent_num_msgs_per_step)
+        for i, (instance, agent_param, agent_config, agent_key) in enumerate(zip(self.instance_list, params.agent_params, self.world_config.list_of_agents_configs, agent_keys)):
+            obs, state = instance.reset_env(agent_key, agent_param, agent_config.num_messages_by_agent)
             agent_obs_list.append(obs)
             agent_state_list.append(state)
 

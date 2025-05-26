@@ -158,7 +158,6 @@ class MMEnvState():
 @struct.dataclass
 class EnvParams():
     trader_id: chex.Array
-    num_messages_by_agent: chex.Array
     time_delay_obs_act: chex.Array
 
 class MarketMakingAgent():
@@ -207,12 +206,10 @@ class MarketMakingAgent():
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         # Return array (one for each agent)
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
-        num_messages_by_agent = jnp.full((number_of_agents_per_type,), agent_config.num_messages_by_agent)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
-        print(f"num_messages_by_agent: {num_messages_by_agent}")
-        return EnvParams(trader_id=trader_id, num_messages_by_agent=num_messages_by_agent, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
+        return EnvParams(trader_id=trader_id, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
 
 
 
