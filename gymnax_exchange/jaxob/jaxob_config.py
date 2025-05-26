@@ -72,8 +72,8 @@ class MarketMaking_EnvironmentConfig():
 @dataclass(frozen=True)
 class Execution_EnvironmentConfig():
     n_ticks_in_book : int = env_cst.n_ticks_in_book
-    task: Literal["random", "buy", "sell"]="buy"
-    action_type: Literal["delta", "pure"]="pure"
+    task: Literal["random", "buy", "sell"] = "buy"
+    action_type: Literal["delta", "pure"] = "pure"
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants_complex"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=500

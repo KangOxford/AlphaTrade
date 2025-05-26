@@ -90,20 +90,23 @@ class LoadedEnvParams:
     init_states_array: chex.Array
 
 
+
 # Define a combined parameters class.
 # Logic: All the data is in BaseParams. All the things that depend on all agents are added to it (e.g. num_msgs_per_step). The rest stays in the config
 @struct.dataclass
 class MultiAgentParams():
     loaded_params: LoadedEnvParams
 
+    # Put everything here that is shared by all agents, and will be determined by the world config (if its hard encoded but it in world config)
     num_msgs_per_step: int
-    agent_params: list[Any]
+    agent_params: list[Any] # List of either MMEnvParams or ExecEnvParams
 
 
 @struct.dataclass
 class MMEnvParams():
     trader_id: chex.Array
     time_delay_obs_act: chex.Array
+    normalize: chex.Array
 
 
 @struct.dataclass
@@ -112,6 +115,7 @@ class ExecEnvParams():
     task_size: chex.Array 
     reward_lambda: chex.Array
     time_delay_obs_act: chex.Array
+    normalize: chex.Array
 
 
 

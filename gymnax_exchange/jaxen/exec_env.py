@@ -133,6 +133,7 @@ from gymnax_exchange.utils import utils
 import dataclasses
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
 from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
+from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 
 import jax.tree_util as jtu
 
@@ -141,11 +142,13 @@ import jax.tree_util as jtu
 class ExecutionEnv():
     def __init__(
             self, 
-            cfg:Execution_EnvironmentConfig):
+            cfg:Execution_EnvironmentConfig,
+            world_config: World_EnvironmentConfig):
         
         #Define the config
         self.cfg=cfg
-           
+        self.world_config = world_config
+
          #----------------- Set the end function -----------------#
         if self.cfg.end_fn=="force_market_order":
             self.end_fn =self._force_market_order_if_done
@@ -174,10 +177,11 @@ class ExecutionEnv():
         task_size = jnp.full((number_of_agents_per_type,), agent_config.task_size)
         reward_lambda = jnp.full((number_of_agents_per_type,), agent_config.reward_lambda)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
+        normalize = jnp.full((number_of_agents_per_type,), agent_config.normalize)
         
         print(f"task_size: {task_size}")
         print(f"trader_id: {trader_id}")
-        return ExecEnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
+        return ExecEnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, time_delay_obs_act=time_delay_obs_act, normalize=normalize), next_trader_id_range_start
 
 
 
@@ -393,44 +397,65 @@ class ExecutionEnv():
         return self._get_obs(state, params), state, reward, done, info
     
 
+
+
     def reset_env(
             self,
             key : chex.PRNGKey,
-            params: ExecEnvParams
+            agent_param: ExecEnvParams,
+            world_state: WorldState,
+            num_msgs_per_step: int # Useful for message based obs space if we will implement that for exec aswell
         ) -> Tuple[chex.Array, ExecEnvState]:
         """ Reset the agent specific environment state"""
 
-        agent_state = ExecEnvState(
 
+        if self.cfg.task == 'random':
+            is_sell_task = jax.random.randint(key_, minval=0, maxval=2, shape=())
+        else:
+            is_sell_task = 0 if self.cfg.task == 'buy' else 1
+        n_trades=self.cfg.num_action_messages_by_agent
+
+        agent_state = ExecEnvState(
+            prev_action = jnp.zeros((n_trades, 2), jnp.int32),
+            prev_executed = jnp.zeros((n_trades, ), jnp.int32),
+
+            # Execution specific stuff
+            init_price = world_state.mid_price,
+            task_to_execute = self.cfg.task_size,
+            quant_executed = 0,
+            # Execution specific rewards. 
+            total_revenue = 0.,
+            drift_return = 0.,
+            advantage_return = 0.,
+            slippage_rm = 0.,
+            price_adv_rm = 0.,
+            price_drift_rm = 0.,
+            vwap_rm = 0.,
+            is_sell_task = is_sell_task,
+            trade_duration = 0.,
         )
 
-        obs = self.get_observation(agent_state, params, ...)
+        obs = self._get_obs(agent_state = agent_state, world_state = world_state, agent_param = agent_param, normalize = self.cfg.normalize)
+
+        return obs, agent_state
+
+
+
+        
 
 
 
 
 
-        key_, key = jax.random.split(key)
-        _, state = super().reset_env(key, params)
-        if self.cfg.task == 'random':
-            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
-        else:
-            direction = 0 if self.cfg.task == 'buy' else 1
-        # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.n_data_msg_per_step + self.cfg.num_messages_by_agent
-        best_bid = state.best_bids[-1]  # or whatever is the current best bid
-        best_ask = state.best_asks[-1]
-        bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
-        bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))
-        state = dataclasses.replace(state, is_sell_task=direction, best_bids=bestbids, best_asks=bestasks)
 
-        # update passive prices and quants depending on task direction
-        # (other features are independent)
-        # TODO: save passive prices and quants on both sides and handle this in _get_obs
 
-        obs = self._get_obs(state, params)
-        return obs, state
-    
+
+
+
+
+
+
+
 
 
 
@@ -1335,24 +1360,31 @@ class ExecutionEnv():
 
     def _get_obs(
             self,
-            state: ExecEnvState,
-            params: ExecEnvParams,
-            normalize: bool = True,
+            agent_state: ExecEnvState,
+            world_state: WorldState,
+            agent_param: ExecEnvParams,
+            normalize: bool,
             flatten: bool = True,
         ) -> chex.Array:
         """ Return observation from raw state trafo. """
+
         # NOTE: only uses most recent observation from state
-        quote_aggr, quote_pass = jax.lax.cond(
-            state.is_sell_task,
-            lambda: (state.best_bids[-1], state.best_asks[-1]),
-            lambda: (state.best_asks[-1], state.best_bids[-1]),
+        quote_aggr, quote_pass = jax.lax.cond( # Quote includes price and quantity
+            agent_state.is_sell_task,
+            lambda: (world_state.best_bids[-1], world_state.best_asks[-1]),
+            lambda: (world_state.best_asks[-1], world_state.best_bids[-1]),
         )
-        time = state.time[0] + state.time[1]/1e9
-        time_elapsed = time - (state.init_time[0] + state.init_time[1]/1e9)
-        # print('prev_action_shape', state.prev_action.shape)
-        sign_switch = 2 * state.is_sell_task - 1
+
+        print("agent_state:", agent_state.is_sell_task)
+        print(f"quite aggr: {quote_aggr}, quote pass: {quote_pass}")
+
+
+        time = world_state.time[0] + world_state.time[1]/1e9
+        time_elapsed = time - (world_state.init_time[0] + world_state.init_time[1]/1e9)
+        # print('prev_action_shape', world_state.prev_action.shape)
+        sign_switch = 2 * agent_state.is_sell_task - 1
         obs = {
-            "is_sell_task": state.is_sell_task,
+            "is_sell_task": agent_state.is_sell_task,
             "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task
             "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
@@ -1437,6 +1469,9 @@ class ExecutionEnv():
             obs, _ = jax.flatten_util.ravel_pytree(obs)
 
         return obs
+
+
+
 
     def _get_obs_full(self, state: ExecEnvState, params:ExecEnvParams) -> chex.Array:
         """Return observation from raw state trafo."""

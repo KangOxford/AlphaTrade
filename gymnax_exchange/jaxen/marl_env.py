@@ -63,9 +63,9 @@ class MARLEnv(MultiAgentEnv):
         for agent_type_index in range(len(self.multi_agent_config.list_of_agents_configs)):
             agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
             if isinstance(agent_config, MarketMaking_EnvironmentConfig):
-                self.instance_list.append(MarketMakingAgent(cfg=agent_config))
+                self.instance_list.append(MarketMakingAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             elif isinstance(agent_config, Execution_EnvironmentConfig):
-                self.instance_list.append(ExecutionEnv(cfg=agent_config))
+                self.instance_list.append(ExecutionEnv(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
 
@@ -157,9 +157,9 @@ class MARLEnv(MultiAgentEnv):
 
         # TODO im working here
         for i, (instance, agent_param, agent_key) in enumerate(zip(self.instance_list, params.agent_params, agent_keys)):
-            obs, state = instance.reset_env(key = agent_key, agent_param = agent_param, world_state = world_state, num_msgs_per_step = params.num_msgs_per_step, episode_time=self.multi_agent_config.world_config.episode_time)
-            agent_obs_list.append(obs)
-            agent_state_list.append(state)
+            agent_obs, agent_state = instance.reset_env(key = agent_key, agent_param = agent_param, world_state = world_state, num_msgs_per_step = params.num_msgs_per_step)
+            agent_obs_list.append(agent_obs)
+            agent_state_list.append(agent_state)
 
         multi_obs = {f"agent_{i}": jnp.array(obs, dtype=jnp.float32) for i, obs in enumerate(agent_obs_list)}
         multi_state = MultiAgentState(
