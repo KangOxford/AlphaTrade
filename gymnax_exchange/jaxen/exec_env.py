@@ -18,9 +18,9 @@ This module extends the base simulation environment for limit order books
  optimal trade execution strategies.
 
 Key Components
-EnvState:   Dataclass to encapsulate the current state of the environment, 
+ExecEnvState:   Dataclass to encapsulate the current state of the environment, 
             including the raw order book, trades, and time information.
-EnvParams:  Configuration class for environment-specific parameters, 
+ExecEnvParams:  Configuration class for environment-specific parameters, 
             such as task details, message and book data, and episode timing.
 ExecutionEnv: Environment class inheriting from BaseLOBEnv, 
               offering specialized methods for order placement and 
@@ -129,54 +129,26 @@ import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
-from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
 from gymnax_exchange.utils import utils
 import dataclasses
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
+from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
+from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 
 import jax.tree_util as jtu
 
-@struct.dataclass
-class EnvState(BaseEnvState):
-    prev_action: chex.Array
-    prev_executed: chex.Array
-
-    # Execution specific stuff
-    init_price: int
-    task_to_execute: int
-    quant_executed: int
-    # Execution specific rewards. 
-    total_revenue: float
-    drift_return: float
-    advantage_return: float
-    slippage_rm: float
-    price_adv_rm: float
-    price_drift_rm: float
-    vwap_rm: float
-    is_sell_task: int
-    trade_duration: float
-
-
-
-
-@struct.dataclass
-class EnvParams():
-    trader_id: chex.Array
-    task_size: chex.Array 
-    num_messages_by_agent: chex.Array
-    reward_lambda: chex.Array
-    time_delay_obs_act: chex.Array
 
 
 class ExecutionEnv():
     def __init__(
             self, 
-            cfg:Execution_EnvironmentConfig):
+            cfg:Execution_EnvironmentConfig,
+            world_config: World_EnvironmentConfig):
         
         #Define the config
         self.cfg=cfg
-           
+        self.world_config = world_config
+
          #----------------- Set the end function -----------------#
         if self.cfg.end_fn=="force_market_order":
             self.end_fn =self._force_market_order_if_done
@@ -199,23 +171,23 @@ class ExecutionEnv():
     def default_params(self,
                        agent_config:Execution_EnvironmentConfig,
                        trader_id_range_start:int,
-                        number_of_agents_per_type:int) -> EnvParams:
+                        number_of_agents_per_type:int) -> ExecEnvParams:
         next_trader_id_range_start = trader_id_range_start - number_of_agents_per_type
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         task_size = jnp.full((number_of_agents_per_type,), agent_config.task_size)
         reward_lambda = jnp.full((number_of_agents_per_type,), agent_config.reward_lambda)
-        num_messages_by_agent = jnp.full((number_of_agents_per_type,), agent_config.num_messages_by_agent)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
+        normalize = jnp.full((number_of_agents_per_type,), agent_config.normalize)
         
         print(f"task_size: {task_size}")
         print(f"trader_id: {trader_id}")
-        return EnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, num_messages_by_agent=num_messages_by_agent, time_delay_obs_act=time_delay_obs_act), next_trader_id_range_start
+        return ExecEnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, time_delay_obs_act=time_delay_obs_act, normalize=normalize), next_trader_id_range_start
 
 
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, input_action: jax.Array, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        self, key: chex.PRNGKey, state: ExecEnvState, input_action: jax.Array, params: ExecEnvParams
+    ) -> Tuple[chex.Array, ExecEnvState, float, bool, dict]:
 
         data_messages = self._get_data_messages(
             params.message_data,
@@ -329,7 +301,7 @@ class ExecutionEnv():
         trade_duration = state.trade_duration + trade_duration_step
         # jax.debug.print('trade_duration_step: {}, trade_duration: {}', trade_duration_step, trade_duration)
         # jax.debug.print('left before mkt: {}, left after mkt {}', quant_left, state.task_to_execute - state.quant_executed - extras["agentQuant"])
-        state = EnvState(
+        state = ExecEnvState(
             prev_action = jnp.vstack([action_prices, action_quants]).T,  # includes prices and quantitites  
             prev_executed = executions[:,1],#just the quants to keep same setup  
             ask_raw_orders = asks,
@@ -425,36 +397,71 @@ class ExecutionEnv():
         return self._get_obs(state, params), state, reward, done, info
     
 
+
+
     def reset_env(
             self,
             key : chex.PRNGKey,
-            params: EnvParams
-        ) -> Tuple[chex.Array, EnvState]:
-        """ Reset the environment to init state (pre computed from data)."""
-        key_, key = jax.random.split(key)
-        _, state = super().reset_env(key, params)
+            agent_param: ExecEnvParams,
+            world_state: WorldState,
+            num_msgs_per_step: int # Useful for message based obs space if we will implement that for exec aswell
+        ) -> Tuple[chex.Array, ExecEnvState]:
+        """ Reset the agent specific environment state"""
+
+
         if self.cfg.task == 'random':
-            direction = jax.random.randint(key_, minval=0, maxval=2, shape=())
+            is_sell_task = jax.random.randint(key_, minval=0, maxval=2, shape=())
         else:
-            direction = 0 if self.cfg.task == 'buy' else 1
-        # Pad best_bids and best_asks to correct shape
-        num_total_msgs = self.n_data_msg_per_step + self.cfg.num_messages_by_agent
-        best_bid = state.best_bids[-1]  # or whatever is the current best bid
-        best_ask = state.best_asks[-1]
-        bestbids = jnp.tile(best_bid[None, :], (num_total_msgs, 1))
-        bestasks = jnp.tile(best_ask[None, :], (num_total_msgs, 1))
-        state = dataclasses.replace(state, is_sell_task=direction, best_bids=bestbids, best_asks=bestasks)
+            is_sell_task = 0 if self.cfg.task == 'buy' else 1
+        n_trades=self.cfg.num_action_messages_by_agent
 
-        # update passive prices and quants depending on task direction
-        # (other features are independent)
-        # TODO: save passive prices and quants on both sides and handle this in _get_obs
+        agent_state = ExecEnvState(
+            prev_action = jnp.zeros((n_trades, 2), jnp.int32),
+            prev_executed = jnp.zeros((n_trades, ), jnp.int32),
+
+            # Execution specific stuff
+            init_price = world_state.mid_price,
+            task_to_execute = self.cfg.task_size,
+            quant_executed = 0,
+            # Execution specific rewards. 
+            total_revenue = 0.,
+            drift_return = 0.,
+            advantage_return = 0.,
+            slippage_rm = 0.,
+            price_adv_rm = 0.,
+            price_drift_rm = 0.,
+            vwap_rm = 0.,
+            is_sell_task = is_sell_task,
+            trade_duration = 0.,
+        )
+
+        obs = self._get_obs(agent_state = agent_state, world_state = world_state, agent_param = agent_param, normalize = self.cfg.normalize)
+
+        return obs, agent_state
 
 
 
-        obs = self._get_obs(state, params)
-        return obs, state
-    
-    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def is_terminal(self, state: ExecEnvState, params: ExecEnvParams) -> bool:
         """ Check whether state is terminal. """
         if self.ep_type == 'fixed_time':
             #jax.debug.print("params_episode_time:{}",params.episode_time)
@@ -509,7 +516,7 @@ class ExecutionEnv():
         is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0
         # HERE...
         n_trades=self.cfg.num_action_messages_by_agent
-        return EnvState(
+        return ExecEnvState(
             *base_vals,
             prev_action=jnp.zeros((n_trades, 2), jnp.int32),
             prev_executed=jnp.zeros((n_trades, ), jnp.int32),
@@ -531,7 +538,7 @@ class ExecutionEnv():
             delta_time=0.,
         )
 
-    def _reshape_action(self, action : jax.Array, state: EnvState, params : EnvParams, key:chex.PRNGKey) -> jax.Array:
+    def _reshape_action(self, action : jax.Array, state: ExecEnvState, params : ExecEnvParams, key:chex.PRNGKey) -> jax.Array:
         def twapV3(state, env_params):
             # ---------- ifMarketOrder ----------
             remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
@@ -681,7 +688,7 @@ class ExecutionEnv():
         # jax.debug.print("_get_executed_by_level\n {}", price_quants)
         return price_quants
     
-    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+    def _get_executed_by_level(self, agent_trades: jax.Array, actions: jax.Array, state: ExecEnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
             NOTE: this will not work for aggressive orders eating through the book (size limited by actions)
@@ -699,7 +706,7 @@ class ExecutionEnv():
         price_quants = price_quants[jnp.argsort(jnp.argsort(actions <= 0))]
         return price_quants
     
-    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState,action_prices:jax.Array) -> jax.Array:
+    def _get_executed_by_action(self, agent_trades: jax.Array, actions: jax.Array, state: ExecEnvState,action_prices:jax.Array) -> jax.Array:
         """ Get executed quantity by level from trades. 
         """
         #TODO: This will have an issue if we buy and sell at the same price. This should be avoided anyway.
@@ -737,7 +744,7 @@ class ExecutionEnv():
 
         return price_quantity_pairs
     
-    def _get_executed_by_action_old(self, agent_trades: jax.Array, actions: jax.Array, state: EnvState) -> jax.Array:
+    def _get_executed_by_action_old(self, agent_trades: jax.Array, actions: jax.Array, state: ExecEnvState) -> jax.Array:
         """ Get executed quantity by level from trades. Results are sorted from aggressive to passive
             using previous actions. (0 actions are skipped)
             Aggressive quantities at FT and more passive are summed as the first quantity.
@@ -786,7 +793,7 @@ class ExecutionEnv():
 
 
     #-------Action Functions-------#
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: ExecEnvState, params: ExecEnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -864,7 +871,7 @@ class ExecutionEnv():
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         return action_msgs 
 
-    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: ExecEnvState, params: ExecEnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -962,7 +969,7 @@ class ExecutionEnv():
 
 
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: EnvState, params: EnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: ExecEnvState, params: ExecEnvParams):
         """get messages for action space where input is quantity at each price level"""
         
 
@@ -987,7 +994,7 @@ class ExecutionEnv():
             else:
                 return quants, prices
         
-        # def market_quant_price(price_levels: jax.Array, state: EnvState, action: jax.Array):
+        # def market_quant_price(price_levels: jax.Array, state: ExecEnvState, action: jax.Array):
         #     mkt_quant = state.task_to_execute - state.quant_executed
         #     quants = jnp.asarray((mkt_quant, 0, 0, 0), jnp.int32) 
         #     return quants, jnp.asarray((price_levels[-1], -1, -1, -1), jnp.int32)
@@ -1116,8 +1123,8 @@ class ExecutionEnv():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
-            params: EnvParams,
+            state: ExecEnvState,
+            params: ExecEnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
         
         #-----check if ep over-----#
@@ -1172,8 +1179,8 @@ class ExecutionEnv():
             asks: jax.Array,
             bids: jax.Array,
             trades: jax.Array,
-            state: EnvState,
-            params: EnvParams,
+            state: ExecEnvState,
+            params: ExecEnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
         """ Force a market order if episode is over (either in terms of time or steps). """
         
@@ -1275,7 +1282,7 @@ class ExecutionEnv():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
-    def _get_reward(self, state: EnvState, params: EnvParams, trades: chex.Array) -> jnp.int32:
+    def _get_reward(self, state: ExecEnvState, params: ExecEnvParams, trades: chex.Array) -> jnp.int32:
         # ========== get reward and revenue ==========
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -1353,24 +1360,31 @@ class ExecutionEnv():
 
     def _get_obs(
             self,
-            state: EnvState,
-            params: EnvParams,
-            normalize: bool = True,
+            agent_state: ExecEnvState,
+            world_state: WorldState,
+            agent_param: ExecEnvParams,
+            normalize: bool,
             flatten: bool = True,
         ) -> chex.Array:
         """ Return observation from raw state trafo. """
+
         # NOTE: only uses most recent observation from state
-        quote_aggr, quote_pass = jax.lax.cond(
-            state.is_sell_task,
-            lambda: (state.best_bids[-1], state.best_asks[-1]),
-            lambda: (state.best_asks[-1], state.best_bids[-1]),
+        quote_aggr, quote_pass = jax.lax.cond( # Quote includes price and quantity
+            agent_state.is_sell_task,
+            lambda: (world_state.best_bids[-1], world_state.best_asks[-1]),
+            lambda: (world_state.best_asks[-1], world_state.best_bids[-1]),
         )
-        time = state.time[0] + state.time[1]/1e9
-        time_elapsed = time - (state.init_time[0] + state.init_time[1]/1e9)
-        # print('prev_action_shape', state.prev_action.shape)
-        sign_switch = 2 * state.is_sell_task - 1
+
+        print("agent_state:", agent_state.is_sell_task)
+        print(f"quite aggr: {quote_aggr}, quote pass: {quote_pass}")
+
+
+        time = world_state.time[0] + world_state.time[1]/1e9
+        time_elapsed = time - (world_state.init_time[0] + world_state.init_time[1]/1e9)
+        # print('prev_action_shape', world_state.prev_action.shape)
+        sign_switch = 2 * agent_state.is_sell_task - 1
         obs = {
-            "is_sell_task": state.is_sell_task,
+            "is_sell_task": agent_state.is_sell_task,
             "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task
             "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
@@ -1456,7 +1470,10 @@ class ExecutionEnv():
 
         return obs
 
-    def _get_obs_full(self, state: EnvState, params:EnvParams) -> chex.Array:
+
+
+
+    def _get_obs_full(self, state: ExecEnvState, params:ExecEnvParams) -> chex.Array:
         """Return observation from raw state trafo."""
         # Note: uses entire observation history between steps
         # TODO: if we want to use this, we need to roll forward the RNN state with every step
@@ -1537,7 +1554,7 @@ class ExecutionEnv():
         return obs
 
     def action_space(
-        self, params: Optional[EnvParams] = None
+        self, params: Optional[LoadedEnvParams] = None
     ) -> spaces.Box:
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
@@ -1555,12 +1572,12 @@ class ExecutionEnv():
             raise ValueError("Invalid action_space specified.")
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
-    def observation_space(self, params: EnvParams):
+    def observation_space(self, params: ExecEnvParams):
         """Observation space of the environment."""
         space = spaces.Box(-10, 10, (17+self.cfg.num_action_messages_by_agent*3,), dtype=jnp.float32) ##17 ints and then 3 objects of size action messages (msgs sent)
         return space
 
-    def state_space(self, params: EnvParams) -> spaces.Dict:
+    def state_space(self, params: ExecEnvParams) -> spaces.Dict:
         """State space of the environment."""
         return NotImplementedError
 

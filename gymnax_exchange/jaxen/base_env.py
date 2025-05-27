@@ -77,24 +77,7 @@ import os
 
 #Config File:
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
-
-@struct.dataclass
-class EnvState:
-    ask_raw_orders: chex.Array
-    bid_raw_orders: chex.Array
-    trades: chex.Array
-    init_time: chex.Array
-    window_index:int
-    max_steps_in_episode: int
-    start_index: int # This should be here because its the same for all agents, but it changes for all agents when resetting (this is why its not in Params)
-    
-
-
-@struct.dataclass
-class EnvParams:
-    message_data: chex.Array
-    book_data: chex.Array
-    init_states_array: chex.Array
+from gymnax_exchange.jaxen.StatesandParams import LoadedEnvParams, LoadedEnvState, WorldState
 
 
 
@@ -193,17 +176,17 @@ class BaseLOBEnv(environment.Environment):
         self._init_states(key,self.cfg.alphatradePath,self.start_indeces)
     
     @property
-    def default_params(self) -> EnvParams:
+    def default_params(self) -> LoadedEnvParams:
         # Default environment parameters
-        return EnvParams(
+        return LoadedEnvParams(
             message_data=self.messages, 
             book_data=self.books,
             init_states_array=self.init_states_array
         )
 
     def step_env(
-        self, key: chex.PRNGKey, state: EnvState, action: Dict, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState, float, bool, dict]:
+        self, key: chex.PRNGKey, state: LoadedEnvState, action: Dict, params: LoadedEnvParams
+    ) -> Tuple[chex.Array, LoadedEnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
         data_messages=self._get_data_messages(params.message_data,
                                               state.start_index,
@@ -222,7 +205,7 @@ class BaseLOBEnv(environment.Environment):
         ordersides=job.scan_through_entire_array(self.cfg,key,total_messages,(state.ask_raw_orders,state.bid_raw_orders,state.trades))
 
         #Update state (ask,bid,trades,init_time,current_time,OrderID counter,window index for ep, step counter)
-        state = EnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,\
+        state = LoadedEnvState(ordersides[0],ordersides[1],ordersides[2],state.init_time,time,state.customIDcounter+self.n_actions,\
             state.window_index,state.step_counter+1,state.max_steps_in_episode,state.start_index)
         done = self.is_terminal(state,params)
         reward=0
@@ -230,8 +213,8 @@ class BaseLOBEnv(environment.Environment):
         return self._get_obs(state,params),state,reward,done,{"info":0}
 
     def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams, config: World_EnvironmentConfig
-    ) -> EnvState:
+        self, key: chex.PRNGKey, params: LoadedEnvParams, config: World_EnvironmentConfig
+    ) -> LoadedEnvState:
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jnp.where(
             config.window_selector == -1,
@@ -240,12 +223,12 @@ class BaseLOBEnv(environment.Environment):
         first_state = index_tree(params.init_states_array, idx_data_window)
         return first_state
 
-    def is_terminal(self, state: EnvState, params: EnvParams) -> bool:
+    def is_terminal(self, state: LoadedEnvState, params: LoadedEnvParams) -> bool:
         """Check whether state is terminal."""
         #jax.debug.print("Time: {} , Init time: {}, Difference: {}",state.time, state.init_time,(state.time-state.init_time)[0])
         return (state.time-state.init_time)[0]>=params.episode_time
 
-    def _get_state_from_data(self,key,first_message,book_data,max_steps_in_episode,window_index,start_index)->EnvState:
+    def _get_state_from_data(self,key,first_message,book_data,max_steps_in_episode,window_index,start_index)->LoadedEnvState:
         time=jnp.array(first_message[-2:])
         #Get initial orders (2xNdepth)x6 based on the initial L2 orderbook for this window 
         def get_initial_orders(book_data,time):
@@ -285,7 +268,7 @@ class BaseLOBEnv(environment.Environment):
         
  
         
-        return EnvState(ask_raw_orders=ordersides[0],
+        return LoadedEnvState(ask_raw_orders=ordersides[0],
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],
                         init_time=jnp.array([(window_index*self.start_resolution) 
@@ -328,7 +311,7 @@ class BaseLOBEnv(environment.Environment):
                 pickle.dump(self.init_states_array, f)
         print("DONE: pre-reset in the initialization")
 
-    def _get_obs(self, state: EnvState, params:EnvParams) -> chex.Array:
+    def _get_obs(self, state: LoadedEnvState, params:LoadedEnvParams) -> chex.Array:
         """Return dummy observation."""
         return 0
     
@@ -401,7 +384,7 @@ class BaseLOBEnv(environment.Environment):
         return self.n_actions
 
     def action_space(
-        self, params: Optional[EnvParams] = None
+        self, params: Optional[LoadedEnvParams] = None
     ) -> spaces.Discrete:
         """Action space of the environment."""
         return spaces.Dict(
@@ -413,11 +396,11 @@ class BaseLOBEnv(environment.Environment):
         )
 
     #TODO: define obs space (4xnDepth) array of quants&prices. Not that important right now. 
-    def observation_space(self, params: EnvParams):
+    def observation_space(self, params: LoadedEnvParams):
         """Observation space of the environment."""
         return NotImplementedError
 
-    def state_space(self, params: EnvParams) -> spaces.Dict:
+    def state_space(self, params: LoadedEnvParams) -> spaces.Dict:
         """State space of the environment. #FIXME Samples absolute
           nonsense, don't use.
         """

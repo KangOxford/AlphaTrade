@@ -16,69 +16,41 @@ from typing import Any
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
-from gymnax_exchange.jaxen.mm_env import MarketMakingAgent, EnvState as MMState, EnvParams as MMParams
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
+from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv
+
+from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
+
+
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
-from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
-from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv as MultiAgentEnv
-
-
-@struct.dataclass
-class WorldState(BaseState):
-    # But everything here that is not loaded from the base config but shared by all agents
-    best_bids: jnp.ndarray
-    best_asks: jnp.ndarray
-    step_counter: int
-    time: jnp.ndarray
-    customIDcounter: jnp.ndarray
-    mid_price:float
-    delta_time: float
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig
 
 
 
-# Define a combined (multi–agent) state that extends the base order book state
-@struct.dataclass
-class MultiAgentState():
-    # Sub–state for market maker and execution agent.
-    world_state: WorldState
 
-    agent_states: list[Any]
-
-    # Pytree for agent type
-    #mm_state: MMState
-    #exe_state: EXEState
-
-
-# Define a combined parameters class.
-# Logic: All the data is in BaseParams. All the things that depend on all agents are added to it (e.g. num_msgs_per_step). The rest stays in the config
-@struct.dataclass
-class MultiAgentParams():
-    loaded_params: BaseParams
-
-    num_msgs_per_step: int
-    agent_params: list[Any]
 
 # define the MARL environment.
 class MARLEnv(MultiAgentEnv):
     def __init__(self,
                  key,
-                 world_config: World_EnvironmentConfig,
+                 multi_agent_config: MultiAgentConfig,
                  ):
         # Initialize the base environment
         #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
 
         # Create config first
-        self.world_config = world_config
-        self.num_agents = sum(self.world_config.number_of_agents_per_type)
+        self.multi_agent_config = multi_agent_config
+        self.num_agents = sum(self.multi_agent_config.number_of_agents_per_type)
         
         super().__init__(num_agents=self.num_agents)
 
 
-       # Pass config to base class: deals with everything not related to agents
-        self.base_env = BaseLOBEnv(cfg=self.world_config, key=key)
+       # Pass config to base class
+        self.base_env = BaseLOBEnv(cfg=self.multi_agent_config.world_config, key=key)
 
 
         # Split the key for each sub-environments:
@@ -88,13 +60,12 @@ class MARLEnv(MultiAgentEnv):
 
         
         self.instance_list=[] # List of different agent types. Each type can have several instances of it
-        # Agent "types" are defined not only by their class, but also by their config values which cannot be considered in the EnvParams object.
-        for agent_type_index in range(len(self.world_config.list_of_agents_configs)):
-            agent_config = self.world_config.list_of_agents_configs[agent_type_index]
+        for agent_type_index in range(len(self.multi_agent_config.list_of_agents_configs)):
+            agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
             if isinstance(agent_config, MarketMaking_EnvironmentConfig):
-                self.instance_list.append(MarketMakingAgent(cfg=agent_config))
+                self.instance_list.append(MarketMakingAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             elif isinstance(agent_config, Execution_EnvironmentConfig):
-                self.instance_list.append(ExecutionEnv(cfg=agent_config))
+                self.instance_list.append(ExecutionEnv(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
 
@@ -109,17 +80,19 @@ class MARLEnv(MultiAgentEnv):
 
         # Get the sub–env default parameters
         params_list = []
-        next_trader_id_range_start = self.world_config.trader_id_range_start #Start with trader id based on config
-        num_msg_per_step = self.world_config.n_data_msg_per_step # start with data msg per step and then add the number of messages per step for each agent
+        next_trader_id_range_start = self.multi_agent_config.world_config.trader_id_range_start #Start with trader id based on config
+        num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step # start with data msg per step and then add the number of messages per step for each agent
 
-        for agent_type_index in range(len(self.world_config.number_of_agents_per_type)):
+        # Set trader ids and get num_msg_per_step, which both depend on all other agents
+        for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
             print(f"next_trader_id_range_start: {next_trader_id_range_start}")
-            print(f"agent type: {self.world_config.list_of_agents_configs[agent_type_index]}")
-            agent_config = self.world_config.list_of_agents_configs[agent_type_index]
-            num_agents_per_type = self.world_config.number_of_agents_per_type[agent_type_index]
+            print(f"agent type: {self.multi_agent_config.list_of_agents_configs[agent_type_index]}")
+            agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
+            num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type)
             print(f"agent_params: {type(agent_params)}")
-            num_msg_per_step = num_msg_per_step + jnp.sum(agent_params.num_messages_by_agent) # Sum over all agents of that type
+            num_msg_per_step = num_msg_per_step + agent_config.num_messages_by_agent * num_agents_per_type # Sum over all agents of that type
+            print(f"num_msg_per_step: {num_msg_per_step}")
             params_list.append(agent_params)
 
         print(f"num_msg_per_step: {num_msg_per_step}")
@@ -134,6 +107,7 @@ class MARLEnv(MultiAgentEnv):
             agent_params=params_list
         )
 
+    #@partial(jax.jit, static_argnums=(0,))
     def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState]:
         #################################
         # Split keys for each agent type
@@ -150,30 +124,28 @@ class MARLEnv(MultiAgentEnv):
         ###########################
 
         # Get the Load State
-        world_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.world_config)
+        load_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.multi_agent_config.world_config)
 
         # Reset all variables in the world state that are not on the Load State
         # For bet bids and ask repeat the inital best bids and ask num of messages times
-        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.world_config, askside=world_state.ask_raw_orders, bidside=world_state.bid_raw_orders)
+        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.multi_agent_config.world_config, askside=load_state.ask_raw_orders, bidside=load_state.bid_raw_orders)
         bestbids = jnp.tile(best_bid[None, :], (params.num_msgs_per_step, 1))
         bestasks = jnp.tile(best_ask[None, :], (params.num_msgs_per_step, 1))#
+        mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
+        print(f"mid_price: {mid_price}")
 
-        #print(best_bid[0])
-        #price_bid_passive = best_bid - self.world_config.tick_size * self.world_config.n_ticks_in_book
-        #price_ask_passive = best_ask + self.world_config.tick_size * self.world_config.n_ticks_in_book
-        #print(f"price_bid_passive: {price_bid_passive}")
-        #print(f"price_ask_passive: {price_ask_passive}")
-        #quant_bid_passive = job.get_volume_at_price(world_state.bid_raw_orders, price_bid_passive)
-        #quant_ask_passive = job.get_volume_at_price(world_state.ask_raw_orders, price_ask_passive)
-
-
-        world_state = dataclasses.replace(world_state,
+        # Create the world state
+        world_state = WorldState(
+            **dataclasses.asdict(load_state),  # copy all fields from the loaded state
             best_bids=bestbids,
             best_asks=bestasks,
             step_counter=0,
-            time=world_state.init_time,
-            customIDcounter=0, # TODO we should look over this and implement this independently of trader id
-            )
+            time=load_state.init_time,
+            customIDcounter=0,
+            mid_price=mid_price,      
+            delta_time=0.0,     
+        )
+
 
         ###########################
         #Reset each agent state
@@ -182,10 +154,12 @@ class MARLEnv(MultiAgentEnv):
         agent_obs_list = []
         agent_state_list = []
 
+
+        # TODO im working here
         for i, (instance, agent_param, agent_key) in enumerate(zip(self.instance_list, params.agent_params, agent_keys)):
-            obs, state = instance.reset_env(agent_key, agent_param)
-            agent_obs_list.append(obs)
-            agent_state_list.append(state)
+            agent_obs, agent_state = instance.reset_env(key = agent_key, agent_param = agent_param, world_state = world_state, num_msgs_per_step = params.num_msgs_per_step)
+            agent_obs_list.append(agent_obs)
+            agent_state_list.append(agent_state)
 
         multi_obs = {f"agent_{i}": jnp.array(obs, dtype=jnp.float32) for i, obs in enumerate(agent_obs_list)}
         multi_state = MultiAgentState(
@@ -570,7 +544,9 @@ class MARLEnv(MultiAgentEnv):
         exe_space = self.exe_env.observation_space(params.exe_params if params is not None else None)
         return {"market_maker": mm_space, "execution": exe_space}
 
-    # FIXME: Are we sure we want to override this now that we inherit from MultiAgentEnv?
+
+
+
     @partial(jax.jit, static_argnums=[0])
     def step(self, key, state, actions, params):
         """Override the parent step method to handle dictionaries."""
@@ -598,7 +574,7 @@ class MARLEnv(MultiAgentEnv):
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
 
-    world_config = World_EnvironmentConfig()
+    multi_agent_config = MultiAgentConfig()
 
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
@@ -606,7 +582,7 @@ if __name__ == "__main__":
     # Instantiate the MARL environment.
     env = MARLEnv(
         key=key_reset,
-        world_config=world_config,
+        multi_agent_config=multi_agent_config,
     )
     # Get the default combined parameters.
     print("starting default parameters")
