@@ -2131,6 +2131,7 @@ class MarketMakingAgent():
         obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
         return obs
 
+
     def action_space(
         self, params: Optional[MMEnvParams] = None
     ) -> spaces.Box:
