@@ -77,7 +77,7 @@ class MARLEnv(MultiAgentEnv):
         super().__init__(num_agents=self.num_agents)
 
 
-       # Pass config to base class
+       # Pass config to base class: deals with everything not related to agents
         self.base_env = BaseLOBEnv(cfg=self.world_config, key=key)
 
 
@@ -88,6 +88,7 @@ class MARLEnv(MultiAgentEnv):
 
         
         self.instance_list=[] # List of different agent types. Each type can have several instances of it
+        # Agent "types" are defined not only by their class, but also by their config values which cannot be considered in the EnvParams object.
         for agent_type_index in range(len(self.world_config.list_of_agents_configs)):
             agent_config = self.world_config.list_of_agents_configs[agent_type_index]
             if isinstance(agent_config, MarketMaking_EnvironmentConfig):
@@ -569,6 +570,7 @@ class MARLEnv(MultiAgentEnv):
         exe_space = self.exe_env.observation_space(params.exe_params if params is not None else None)
         return {"market_maker": mm_space, "execution": exe_space}
 
+    # FIXME: Are we sure we want to override this now that we inherit from MultiAgentEnv?
     @partial(jax.jit, static_argnums=[0])
     def step(self, key, state, actions, params):
         """Override the parent step method to handle dictionaries."""
