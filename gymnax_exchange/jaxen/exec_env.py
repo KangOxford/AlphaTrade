@@ -401,8 +401,8 @@ class ExecutionEnv():
 
     def reset_env(
             self,
-            key : chex.PRNGKey,
             agent_param: ExecEnvParams,
+            key : chex.PRNGKey,
             world_state: WorldState,
             num_msgs_per_step: int # Useful for message based obs space if we will implement that for exec aswell
         ) -> Tuple[chex.Array, ExecEnvState]:
@@ -1385,28 +1385,27 @@ class ExecutionEnv():
         sign_switch = 2 * agent_state.is_sell_task - 1
         obs = {
             "is_sell_task": agent_state.is_sell_task,
-            "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task
+            "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
             "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
             "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
             "q_aggr": quote_aggr[1],
             "q_pass": quote_pass[1],
-            "q_pass2": state.quant_passive_2, # TODO add price here
+            #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
             # "q_before2": None, # how much quantity lies above this price level
             "time": time,
-            "delta_time": state.delta_time,
+            "delta_time": world_state.delta_time,
             # "episode_time": state.time - state.init_time,
-            "time_remaining": params.episode_time - time_elapsed,
-            "init_price": state.init_price,
-            "current_task_size": state.task_to_execute,
-            "executed_quant": state.quant_executed,
-            "remaining_quant": state.task_to_execute - state.quant_executed,
-            "step_counter": state.step_counter,
-            "max_steps": state.max_steps_in_episode,
+            "time_remaining": self.world_config.episode_time - time_elapsed,
+            "init_price": agent_state.init_price,
+            "current_task_size": agent_state.task_to_execute,
+            "executed_quant": agent_state.quant_executed,
+            "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
+            "step_counter": world_state.step_counter,
             # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
-            "remaining_ratio": jnp.where(state.max_steps_in_episode==0, 0., 1. - state.step_counter / state.max_steps_in_episode),#17
-            "prev_action": state.prev_action[:, 1],  # use quants only
-            "prev_executed": state.prev_executed,  # use quants only
-            "prev_executed_ratio": jnp.where(state.prev_action[:, 1]==0., 0., state.prev_executed / state.prev_action[:, 1]),
+            "remaining_ratio": jnp.where(world_state.max_steps_in_episode==0, 0., 1. - world_state.step_counter / world_state.max_steps_in_episode),#17
+            "prev_action": agent_state.prev_action[:, 1],  # use quants only
+            "prev_executed": agent_state.prev_executed,  # use quants only
+            "prev_executed_ratio": jnp.where(agent_state.prev_action[:, 1]==0., 0., agent_state.prev_executed / agent_state.prev_action[:, 1]),
         }
         # jax.debug.print('prev_action {}', state.prev_action)
         # jax.debug.print('prev_executed {}', state.prev_executed)
@@ -1418,22 +1417,21 @@ class ExecutionEnv():
         p_std = 1e6
         means = {
             "is_sell_task": 0,
-            "p_aggr": state.init_price * sign_switch, #p_mean,
-            "p_pass": state.init_price * sign_switch, #p_mean,
+            "p_aggr": agent_state.init_price * sign_switch, #p_mean,
+            "p_pass": agent_state.init_price * sign_switch, #p_mean,
             "spread": 0,
             "q_aggr": 0,
             "q_pass": 0,
-            "q_pass2": 0,
+            #"q_pass2": 0,
             "time": 0,
             "delta_time": 0,
             # "episode_time": jnp.array([0, 0]),
             "time_remaining": 0,
             "init_price": 0, #p_mean,
-            "task_size": 0,
+            "current_task_size": 0,
             "executed_quant": 0,
             "remaining_quant": 0,
             "step_counter": 0,
-            "max_steps": 0,
             "remaining_ratio": 0,
             "prev_action": 0,
             "prev_executed": 0,
@@ -1446,25 +1444,31 @@ class ExecutionEnv():
             "spread": 1e4,
             "q_aggr": 100,
             "q_pass": 100,
-            "q_pass2": 100,
+           #"q_pass2": 100,
             "time": 1e5,
             "delta_time": 10,
             # "episode_time": jnp.array([1e3, 1e9]),
-            "time_remaining": self.episode_time, # 10 minutes = 600 seconds
+            "time_remaining": self.world_config.episode_time, # 10 minutes = 600 seconds
             "init_price": 1e7, #p_std,
-            "task_size": self.cfg.max_task_size,
-            "executed_quant": self.cfg.max_task_size,
-            "remaining_quant": self.cfg.max_task_size,
+            "current_task_size": self.cfg.task_size,
+            "executed_quant": self.cfg.task_size,
+            "remaining_quant": self.cfg.task_size,
             "step_counter": 30,  # TODO: find way to make this dependent on episode length
-            "max_steps": 30,
             "remaining_ratio": 1,
             "prev_action": 10,
             "prev_executed": 10,
             "prev_executed_ratio": 1,
         }
+
+        print("obs:", obs)
+
+
         if normalize:
             obs = self.normalize_obs(obs, means, stds)
             # jax.debug.print('normalized obs:\n {}', obs)
+
+        print("normalized obs:", obs)
+
         if flatten:
             obs, _ = jax.flatten_util.ravel_pytree(obs)
 

@@ -153,15 +153,34 @@ class MARLEnv(MultiAgentEnv):
 
         agent_obs_list = []
         agent_state_list = []
+        multi_obs = {}
 
+        print("params:", params.agent_params)
+        
 
-        # TODO im working here
-        for i, (instance, agent_param, agent_key) in enumerate(zip(self.instance_list, params.agent_params, agent_keys)):
-            agent_obs, agent_state = instance.reset_env(key = agent_key, agent_param = agent_param, world_state = world_state, num_msgs_per_step = params.num_msgs_per_step)
-            agent_obs_list.append(agent_obs)
+        
+        for config_index, (instance, agent_param, agent_key, agent_config) in enumerate(zip(self.instance_list, params.agent_params, agent_keys, self.multi_agent_config.list_of_agents_configs)):
+            print("########################################################")
+            print("agent_config:", agent_config)
+
+            vmapped_function = vmap(instance.reset_env, in_axes=(0,None,None,None), out_axes = (0,0))
+            agent_obs, agent_state = vmapped_function(agent_param, agent_key, world_state, params.num_msgs_per_step)
+
+            print("agent_obs:", agent_obs.shape)
+
             agent_state_list.append(agent_state)
 
-        multi_obs = {f"agent_{i}": jnp.array(obs, dtype=jnp.float32) for i, obs in enumerate(agent_obs_list)}
+            # Create one key for each agent instance of each agent type (i.e. dict will not be nested like the states list)
+            
+            type_key = f"{agent_config.short_name}_{config_index}"
+            multi_obs[type_key] = agent_obs  # shape: (num_agents_of_this_type, obs_dim)
+            
+            #for agent_idx, obs in enumerate(agent_obs):
+            #    dict_key = f"{agent_config.short_name}_{config_index}_{agent_idx}"
+            #    multi_obs[dict_key] = obs
+        
+        print("multi_obs:", multi_obs["MM_2"].shape)
+
         multi_state = MultiAgentState(
             world_state=world_state,
             agent_states=agent_state_list
@@ -533,7 +552,22 @@ class MARLEnv(MultiAgentEnv):
             return prices_quants
 
 
+
+
+
+
+
+
+
+
+
+
     def action_space(self, params: Optional[MultiAgentParams] = None):
+
+
+
+
+
         # Return a dictionary of action spaces
         mm_space = self.mm_env.action_space(params.mm_params if params is not None else None)
         exe_space = self.exe_env.action_space(params.exe_params if params is not None else None)
@@ -547,29 +581,31 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-    @partial(jax.jit, static_argnums=[0])
-    def step(self, key, state, actions, params):
-        """Override the parent step method to handle dictionaries."""
+    #@partial(jax.jit, static_argnums=[0])
+    #def step(self, key, state, actions, params):
+    #    """Override the parent step method to handle dictionaries."""
         # Call step_env to get the raw results
-        obs_st, state_st, rewards, dones, infos = self.step_env(key, state, actions, params)
+    #    obs_st, state_st, rewards, dones, infos = self.step_env(key, state, actions, params)
         
         # If needed, get reset observations (for when episodes terminate)
-        key_reset = jax.random.fold_in(key, state.step_counter)
-        obs_re, state_re = self.reset_env(key_reset, params)
+    #    key_reset = jax.random.fold_in(key, state.step_counter)
+    #    obs_re, state_re = self.reset_env(key_reset, params)
         
 
-        #  Use tree_map for dictionary handling (they do the same thing in JaxMARL )
-        ep_done = dones.get("__all__", self.is_terminal(state_st, params))
-        obs = jax.tree_map(
-            lambda x, y: jax.lax.select(ep_done, x, y), obs_re, obs_st
-        )
-        next_state = jax.tree_map(
-            lambda x, y: jax.lax.select(ep_done, x, y), state_re, state_st
-        )
+    #    #  Use tree_map for dictionary handling (they do the same thing in JaxMARL )
+    #    ep_done = dones.get("__all__", self.is_terminal(state_st, params))
+    #    obs = jax.tree_map(
+    #        lambda x, y: jax.lax.select(ep_done, x, y), obs_re, obs_st
+    #    )
+    #    next_state = jax.tree_map(
+    #        lambda x, y: jax.lax.select(ep_done, x, y), state_re, state_st
+    #    )
 
-        #jax.debug.print(f"Obs: {obs}")
+    #    #jax.debug.print(f"Obs: {obs}")
         
-        return obs, next_state, rewards, dones, infos
+    #    return obs, next_state, rewards, dones, infos
+
+
 
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
@@ -590,8 +626,7 @@ if __name__ == "__main__":
 
     # Reset the environment.
     obs, state = env.reset_env(key_reset, env_params)
-    print("Reset done. Market maker obs:", obs["market_maker"])
-    print("Execution obs:", obs["execution"])
+    print("obs", obs)
 
     # run a loop that samples random actions for each agent.
     for i in range(1, 10):

@@ -197,6 +197,7 @@ class MarketMakingAgent():
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         normalize = jnp.full((number_of_agents_per_type,), agent_config.normalize)
+        print("normalize.shape:", normalize.shape)
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
         return MMEnvParams(trader_id=trader_id, time_delay_obs_act=time_delay_obs_act, normalize=normalize), next_trader_id_range_start
@@ -414,11 +415,11 @@ class MarketMakingAgent():
         return self.get_observation(state, params, total_messages,action_prices,executions,old_time,old_mid_price), state, reward, done, info
     
 
-
+    @partial(jax.jit, static_argnames=("self", "num_msgs_per_step"))
     def reset_env(
             self,
-            key : chex.PRNGKey,
             agent_param: MMEnvParams,
+            key : chex.PRNGKey,
             world_state: WorldState,
             num_msgs_per_step: int
         ) -> Tuple[chex.Array, MMEnvState]:
@@ -2052,7 +2053,6 @@ class MarketMakingAgent():
         """ Return observation from raw state trafo. """
         # NOTE: only uses most recent observation from state
         time = world_state.time[0] + world_state.time[1]/1e9
-        print(f"time: {time}")
         time_elapsed = time - (world_state.init_time[0] + world_state.init_time[1]/1e9)
         obs = {
             "p_bid" : world_state.best_bids[-1][0],  

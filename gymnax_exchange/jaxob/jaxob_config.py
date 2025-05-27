@@ -35,6 +35,7 @@ class MarketMaking_EnvironmentConfig():
     debug_mode:bool=False
     time_delay_obs_act:int=0
     normalize:bool=True
+    short_name:str="MM" # For agent naming e.g. in the obs dict
    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
@@ -85,6 +86,8 @@ class Execution_EnvironmentConfig():
     time_delay_obs_act:int=0
     debug_mode:bool=False
     normalize:bool=True
+    short_name:str="EXE"
+    
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -131,7 +134,7 @@ class MultiAgentConfig():
         Execution_EnvironmentConfig(),
         MarketMaking_EnvironmentConfig(),
     ]
-    number_of_agents_per_type = [2,1,3]
+    number_of_agents_per_type = [3,4,1]
 
 
     
