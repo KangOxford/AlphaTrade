@@ -82,10 +82,9 @@ class MARLEnv(MultiAgentEnv):
             agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             num_msg_per_step += agent_config.num_messages_by_agent * num_agents_per_type
-            print(f"num_msg_per_step: {num_msg_per_step}")
-        self.num_msg_per_step = int(num_msg_per_step)
 
-        print(f"num_msg_per_step: {self.num_msg_per_step}")
+        self.num_msgs_per_step = int(num_msg_per_step)
+
 
         print(self.instance_list)
         print("MARL Environment initialized")
@@ -98,7 +97,7 @@ class MARLEnv(MultiAgentEnv):
         # Get the sub–env default parameters
         params_list = []
         next_trader_id_range_start = self.multi_agent_config.world_config.trader_id_range_start #Start with trader id based on config
-        num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step # start with data msg per step and then add the number of messages per step for each agent
+        #num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step # start with data msg per step and then add the number of messages per step for each agent
 
         # Set trader ids and get num_msg_per_step, which both depend on all other agents
         for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
@@ -108,18 +107,17 @@ class MARLEnv(MultiAgentEnv):
             num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type)
             print(f"agent_params: {type(agent_params)}")
-            num_msg_per_step = num_msg_per_step + agent_config.num_messages_by_agent * num_agents_per_type # Sum over all agents of that type
-            print(f"num_msg_per_step: {num_msg_per_step}")
+            #num_msg_per_step = num_msg_per_step + agent_config.num_messages_by_agent * num_agents_per_type # Sum over all agents of that type
             params_list.append(agent_params)
 
-        print(f"num_msg_per_step: {num_msg_per_step}")
+
         # Replace episode_time (#TODO add other world params fields)
 
         # Combine them into a MultiAgentParams instance.
         return MultiAgentParams(
             loaded_params=base_params, 
             # Add the world fields that are not loaded
-            num_msgs_per_step=num_msg_per_step,
+            #num_msgs_per_step=num_msg_per_step,
             # add the agent params
             agent_params=params_list
         )
@@ -146,8 +144,8 @@ class MARLEnv(MultiAgentEnv):
         # Reset all variables in the world state that are not on the Load State
         # For bet bids and ask repeat the inital best bids and ask num of messages times
         best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.multi_agent_config.world_config, askside=load_state.ask_raw_orders, bidside=load_state.bid_raw_orders)
-        bestbids = jnp.tile(best_bid[None, :], (params.num_msgs_per_step, 1))
-        bestasks = jnp.tile(best_ask[None, :], (params.num_msgs_per_step, 1))#
+        bestbids = jnp.tile(best_bid[None, :], (self.num_msgs_per_step, 1))
+        bestasks = jnp.tile(best_ask[None, :], (self.num_msgs_per_step, 1))#
         mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
         print(f"mid_price: {mid_price}")
 
@@ -183,7 +181,7 @@ class MARLEnv(MultiAgentEnv):
             print("agent_config:", agent_config)
 
             vmapped_function = vmap(instance.reset_env, in_axes=(0,None,None,None), out_axes = (0,0))
-            agent_obs, agent_state = vmapped_function(agent_param, agent_key, world_state, params.num_msgs_per_step)
+            agent_obs, agent_state = vmapped_function(agent_param, agent_key, world_state, self.num_msgs_per_step)
 
             print("agent_obs:", agent_obs.shape)
 
