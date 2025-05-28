@@ -584,8 +584,8 @@ class MARLEnv(MultiAgentEnv):
 
     # Overrriding the parent function because we want to vmap over different agents of the same type
     def action_space(self):
-
         return self.action_spaces
+    
     def observation_space(self):
         return self.observation_spaces
 
