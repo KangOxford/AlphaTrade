@@ -98,7 +98,9 @@ class MultiAgentParams():
     loaded_params: LoadedEnvParams
 
     # Put everything here that is shared by all agents, and will be determined by the world config (if its hard encoded but it in world config)
-    num_msgs_per_step: int
+    # However put static things on the self if they have to be calculated (num_msg_per_step) or in the config if not
+    #num_msgs_per_step: int
+
     agent_params: list[Any] # List of either MMEnvParams or ExecEnvParams
 
 

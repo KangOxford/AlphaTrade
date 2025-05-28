@@ -75,8 +75,11 @@ class MARLEnv(MultiAgentEnv):
                 raise ValueError(f"Invalid agent type: {i}")
 
         self.action_spaces = [self.instance_list[i].action_space() for i in range(len(self.instance_list))]
-
+        self.observation_spaces = [self.instance_list[i].observation_space() for i in range(len(self.instance_list))]
                 
+        print("action spacaes:" , self.action_spaces)
+        print("observation spaces:" , self.observation_spaces)
+
         num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step
         for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
             agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
@@ -580,21 +583,11 @@ class MARLEnv(MultiAgentEnv):
 
 
     # Overrriding the parent function because we want to vmap over different agents of the same type
-    def action_space(self, params: Optional[MultiAgentParams] = None):
+    def action_space(self):
 
-        
-
-
-
-        # Return a dictionary of action spaces
-        mm_space = self.mm_env.action_space(params.mm_params if params is not None else None)
-        exe_space = self.exe_env.action_space(params.exe_params if params is not None else None)
-        return {"market_maker": mm_space, "execution": exe_space}
-
-    def observation_space(self, params: Optional[MultiAgentParams] = None):
-        mm_space = self.mm_env.observation_space(params.mm_params if params is not None else None)
-        exe_space = self.exe_env.observation_space(params.exe_params if params is not None else None)
-        return {"market_maker": mm_space, "execution": exe_space}
+        return self.action_spaces
+    def observation_space(self):
+        return self.observation_spaces
 
 
 
@@ -630,7 +623,7 @@ if __name__ == "__main__":
 
     multi_agent_config = MultiAgentConfig()
 
-    rng = jax.random.PRNGKey(0) # TODO i think this should be changed to the new key function in JAX .key()
+    rng = jax.random.PRNGKey(42) # TODO i think this should be changed to the new key function in JAX .key()
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # Instantiate the MARL environment.
@@ -654,17 +647,20 @@ if __name__ == "__main__":
 
         key_step, _ = jax.random.split(key_step, 2)
 
-        #key_policy, _ = jax.random.split(key_policy, 2)
+        
         # Get random actions from each agent's action space.
+        actions_per_type = []
+        key, *subkeys = jax.random.split(key_step, len(multi_agent_config.list_of_agents_configs) + 1)
+        subkeys = jnp.array(subkeys)
+        for i, (space, num_agents) in enumerate(zip(env.action_spaces, multi_agent_config.number_of_agents_per_type)):
+            # Split keys for this agent type
+            keys = jax.random.split(subkeys[i], num_agents)
+            # Sample actions for all agents of this type
+            actions = jax.vmap(space.sample)(keys)
+            actions_per_type.append(actions)
+        print("actions_per_type:", actions_per_type)
 
-        key_policy, subkey_mm = jax.random.split(key_policy)
-        action_mm = env.mm_env.action_space().sample(subkey_mm)
 
-        key_policy, subkey_exe = jax.random.split(key_policy)
-        action_exe = env.exe_env.action_space().sample(subkey_exe)
-        #action_mm = env.mm_env.action_space().sample(key_policy)
-        #action_exe = env.exe_env.action_space().sample(key_policy)
-        actions = {"market_maker": action_mm, "execution": action_exe}
         obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
 
         #DEBUG PRINTS

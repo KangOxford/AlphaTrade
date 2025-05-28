@@ -134,7 +134,7 @@ import dataclasses
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
 from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
-
+#from gymnax_exchange.jaxen.from_JAXMARL import spaces
 import jax.tree_util as jtu
 
 
@@ -1558,8 +1558,7 @@ class ExecutionEnv():
         return obs
 
     def action_space(
-        self, params: Optional[LoadedEnvParams] = None
-    ) -> spaces.Box:
+        self) -> spaces.Box:
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
             if self.cfg.action_type == 'delta':
@@ -1576,7 +1575,7 @@ class ExecutionEnv():
             raise ValueError("Invalid action_space specified.")
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
-    def observation_space(self, params: ExecEnvParams):
+    def observation_space(self):
         """Observation space of the environment."""
         space = spaces.Box(-10, 10, (17+self.cfg.num_action_messages_by_agent*3,), dtype=jnp.float32) ##17 ints and then 3 objects of size action messages (msgs sent)
         return space

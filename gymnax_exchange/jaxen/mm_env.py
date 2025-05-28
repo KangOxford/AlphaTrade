@@ -92,6 +92,7 @@ from jax import lax, flatten_util
 # ----------------------------------------------
 import gymnax
 from gymnax.environments import environment, spaces
+
 # sys.path.append('/Users/sasrey/AlphaTrade')
 # sys.path.append('/homes/80/kang/AlphaTrade')
 
@@ -143,7 +144,7 @@ from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_
 set_config(TokenizerConfig(split_vocab=True)) 
 from gymnax_exchange.jaxen.StatesandParams import MMEnvState, MMEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
-
+#from gymnax_exchange.jaxen.from_JAXMARL import spaces
 
 
 class MarketMakingAgent():
@@ -2132,9 +2133,7 @@ class MarketMakingAgent():
         return obs
 
 
-    def action_space(
-        self, params: Optional[MMEnvParams] = None
-    ) -> spaces.Box:
+    def action_space(self) -> spaces.Box:
         """ Action space of the environment. """
         if self.cfg.action_space == "directional_trading":
             return spaces.Discrete(3)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
@@ -2149,7 +2148,7 @@ class MarketMakingAgent():
        
 
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
-    def observation_space(self, params: MMEnvParams):
+    def observation_space(self):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
              return spaces.Box(-1000, 1000, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
