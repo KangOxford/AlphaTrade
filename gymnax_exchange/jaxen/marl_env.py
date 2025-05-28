@@ -11,6 +11,7 @@ from flax import struct
 import jax.tree_util as jtu
 from functools import partial
 from typing import Any
+from typing import List, Tuple
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
@@ -19,7 +20,8 @@ jax.config.update("jax_log_compiles", False)
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.jaxen.multi_agent_env import MultiAgentEnv
+from gymnax_exchange.jaxen.from_JAXMARL.multi_agent_env import MultiAgentEnv
+#from gymnax_exchange.jaxen.from_JAXMARL.spaces import Box, MultiDiscrete, Discrete
 
 from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
 
@@ -44,7 +46,10 @@ class MARLEnv(MultiAgentEnv):
 
         # Create config first
         self.multi_agent_config = multi_agent_config
+
         self.num_agents = sum(self.multi_agent_config.number_of_agents_per_type)
+
+
         
         super().__init__(num_agents=self.num_agents)
 
@@ -69,6 +74,18 @@ class MARLEnv(MultiAgentEnv):
             else:
                 raise ValueError(f"Invalid agent type: {i}")
 
+        self.action_spaces = [self.instance_list[i].action_space() for i in range(len(self.instance_list))]
+
+                
+        num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step
+        for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
+            agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
+            num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
+            num_msg_per_step += agent_config.num_messages_by_agent * num_agents_per_type
+            print(f"num_msg_per_step: {num_msg_per_step}")
+        self.num_msg_per_step = int(num_msg_per_step)
+
+        print(f"num_msg_per_step: {self.num_msg_per_step}")
 
         print(self.instance_list)
         print("MARL Environment initialized")
@@ -108,7 +125,7 @@ class MARLEnv(MultiAgentEnv):
         )
 
     #@partial(jax.jit, static_argnums=(0,))
-    def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState]:
+    def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[List[jnp.ndarray], MultiAgentState]:
         #################################
         # Split keys for each agent type
         #################################
@@ -151,9 +168,11 @@ class MARLEnv(MultiAgentEnv):
         #Reset each agent state
         ###########################
 
+        # multi_obs = {}
+        agent_state_list = [] # We are using a list (one for each agent type) of arrays (one element for each agent of that type) instead of a dict (JAXMARL)
         agent_obs_list = []
-        agent_state_list = []
-        multi_obs = {}
+
+
 
         print("params:", params.agent_params)
         
@@ -169,24 +188,25 @@ class MARLEnv(MultiAgentEnv):
             print("agent_obs:", agent_obs.shape)
 
             agent_state_list.append(agent_state)
+            agent_obs_list.append(agent_obs)
 
             # Create one key for each agent instance of each agent type (i.e. dict will not be nested like the states list)
+            #type_key = f"{agent_config.short_name}_{config_index}"
+            #multi_obs[type_key] = agent_obs  # shape: (num_agents_of_this_type, obs_dim)
             
-            type_key = f"{agent_config.short_name}_{config_index}"
-            multi_obs[type_key] = agent_obs  # shape: (num_agents_of_this_type, obs_dim)
-            
+            # to convert to flat dict:
             #for agent_idx, obs in enumerate(agent_obs):
             #    dict_key = f"{agent_config.short_name}_{config_index}_{agent_idx}"
             #    multi_obs[dict_key] = obs
         
-        print("multi_obs:", multi_obs["MM_2"].shape)
+        print("multi_obs:", agent_obs_list)
 
         multi_state = MultiAgentState(
             world_state=world_state,
             agent_states=agent_state_list
         )
 
-        return multi_obs, multi_state
+        return agent_obs_list, multi_state
 
 
 
@@ -561,10 +581,10 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
+    # Overrriding the parent function because we want to vmap over different agents of the same type
     def action_space(self, params: Optional[MultiAgentParams] = None):
 
-
+        
 
 
 
@@ -612,7 +632,7 @@ if __name__ == "__main__":
 
     multi_agent_config = MultiAgentConfig()
 
-    rng = jax.random.PRNGKey(0)
+    rng = jax.random.PRNGKey(0) # TODO i think this should be changed to the new key function in JAX .key()
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # Instantiate the MARL environment.
