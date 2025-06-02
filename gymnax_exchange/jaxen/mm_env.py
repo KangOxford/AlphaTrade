@@ -217,7 +217,7 @@ class MarketMakingAgent():
             params.message_data,
             state.start_index,
             state.step_counter,
-            state.init_time[0] + params.episode_time
+            state.init_time[0] + self.world_config.episode_time
         )
    
         #=======================================#s
@@ -466,13 +466,13 @@ class MarketMakingAgent():
           as 5 seconds before the end of the episode or one step before """
         if self.ep_type == 'fixed_time':
             # TODO: make the 5 sec a function of the step size
-            time_left=(params.episode_time - (state.time - state.init_time)[0] )
+            time_left=(self.world_config.episode_time - (state.time - state.init_time)[0] )
             #jax.debug.print("time_left :{}",time_left)
             #jax.debug.print("time :{}",state.time)
             #jax.debug.print("init_time :{}",state.init_time)
             #jax.debug.print("start_index :{}",state.start_index)
             return (
-                (params.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
+                (self.world_config.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
             )
         elif self.ep_type == 'fixed_steps':
             return (
@@ -959,7 +959,7 @@ class MarketMakingAgent():
         return price_quantity_pairs
       
     
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: MMEnvState):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
         best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
@@ -1008,7 +1008,7 @@ class MarketMakingAgent():
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
         return action_msgs
     
-    def _getActionMsgs_AvSt(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
+    def _getActionMsgs_AvSt(self, action: jax.Array, state: MMEnvState):
         '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
         0-7, with lower giving more aggresive bid and asks
         '''
@@ -1035,8 +1035,8 @@ class MarketMakingAgent():
         #jax.debug.print("vol:{}",vol)
         
         #Get time until ep end
-        time_left = params.episode_time - (state.time - state.init_time)[0]
-        normalized_time = time_left / params.episode_time
+        time_left = self.world_config.episode_time - (state.time - state.init_time)[0]
+        normalized_time = time_left / self.world_config.episode_time
 
         #Reservation price
         res_price = (mid_price - ((state.inventory)) * gamma * (varaince) * normalized_time)
@@ -1089,7 +1089,7 @@ class MarketMakingAgent():
         #jax.debug.print("msg:{}",action_msgs)
         return action_msgs
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: MMEnvState):
         '''Shape the action quantities in to messages sent the order book at the 
         prices levels determined from the orderbook'''
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
@@ -1195,7 +1195,7 @@ class MarketMakingAgent():
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
-    def _getActionMsgs_spread_skew(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
+    def _getActionMsgs_spread_skew(self, action: jax.Array, state: MMEnvState):
         '''Transform discrete action into bid and ask order messages based on spread and skew parameters.
         Actions [0-5] map to combinations of:
         spread: 0 = tight spread, 1 = wide spread
@@ -1287,7 +1287,7 @@ class MarketMakingAgent():
 
 
 
-    def _getActionMsgs_directional_trading(self, action: jax.Array, state: MMEnvState, params: MMEnvParams):
+    def _getActionMsgs_directional_trading(self, action: jax.Array, state: MMEnvState):
         '''Action space for directional trading. The agent can either:
             - Do nothing (action = 0)
             - Buy at best ask (action = 1)
@@ -1353,9 +1353,7 @@ class MarketMakingAgent():
         # (B) Build Market Maker messages
         # -------------------------------------------------------
         # Use the MM env's message-building functions
-        mm_order_msgs = self.get_action(action,
-                                                    state,
-                                                    params)
+        mm_order_msgs = self.get_action(action, world_state, agent_state)
 
         mm_cnl_msgs = job.getCancelMsgs(
             state.bid_raw_orders,  # using the shared order book from the base state
@@ -1449,7 +1447,7 @@ class MarketMakingAgent():
         
         #-----check if ep over-----#
         if self.ep_type == 'fixed_time':
-            remainingTime = params.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
+            remainingTime = self.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
@@ -1561,7 +1559,7 @@ class MarketMakingAgent():
          
         #-----check if ep over-----#
         if self.ep_type == 'fixed_time':
-            remainingTime = params.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
+            remainingTime = self.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1

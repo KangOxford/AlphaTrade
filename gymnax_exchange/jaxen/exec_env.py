@@ -193,7 +193,7 @@ class ExecutionEnv():
             params.message_data,
             state.start_index,
             state.step_counter,
-            state.init_time[0] + params.episode_time
+            state.init_time[0] + self.world_config.episode_time
         )
     
         action = self._reshape_action(input_action, state, params,key)
@@ -464,13 +464,13 @@ class ExecutionEnv():
     def is_terminal(self, state: ExecEnvState, params: ExecEnvParams) -> bool:
         """ Check whether state is terminal. """
         if self.ep_type == 'fixed_time':
-            #jax.debug.print("params_episode_time:{}",params.episode_time)
+            #jax.debug.print("params_episode_time:{}",self.world_config.episode_time)
             #jax.debug.print("time:{}",state.time)
             
             #jax.debug.print("init_time:{}",state.init_time)
             # TODO: make the 5 sec a function of the step size
             return (
-                (params.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
+                (self.world_config.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
                 |  (state.task_to_execute - state.quant_executed <= 0)  # task done
             )
         elif self.ep_type == 'fixed_steps':
@@ -541,7 +541,7 @@ class ExecutionEnv():
     def _reshape_action(self, action : jax.Array, state: ExecEnvState, params : ExecEnvParams, key:chex.PRNGKey) -> jax.Array:
         def twapV3(state, env_params):
             # ---------- ifMarketOrder ----------
-            remainingTime = env_params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+            remainingTime = self.world_config.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
             marketOrderTime = jnp.array(60, dtype=jnp.int32) # in seconds, means the last minute was left for market order
             ifMarketOrder = (remainingTime <= marketOrderTime)
             # print(f"{i} remainingTime{remainingTime} marketOrderTime{marketOrderTime}")
@@ -793,7 +793,7 @@ class ExecutionEnv():
 
 
     #-------Action Functions-------#
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: ExecEnvState, params: ExecEnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: ExecEnvState):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -871,7 +871,7 @@ class ExecutionEnv():
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         return action_msgs 
 
-    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: ExecEnvState, params: ExecEnvParams):
+    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: ExecEnvState):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -969,7 +969,7 @@ class ExecutionEnv():
 
 
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: ExecEnvState, params: ExecEnvParams):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: ExecEnvState):
         """get messages for action space where input is quantity at each price level"""
         
 
@@ -1066,7 +1066,7 @@ class ExecutionEnv():
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------
         # if self.ep_type == 'fixed_time':
-        #     remainingTime = params.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
+        #     remainingTime = self.world_config.episode_time - jnp.array((state.time-state.init_time)[0], dtype=jnp.int32)
         #     ep_is_over = lambda: remainingTime <= 1
         # else:
         #     ep_is_over = lambda: state.max_steps_in_episode - state.step_counter <= 1
@@ -1129,7 +1129,7 @@ class ExecutionEnv():
         
         #-----check if ep over-----#
         if self.ep_type == 'fixed_time':
-            remainingTime = params.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
+            remainingTime = self.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
@@ -1214,7 +1214,7 @@ class ExecutionEnv():
             return trades
 
         if self.ep_type == 'fixed_time':
-            remainingTime = params.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
+            remainingTime = self.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
