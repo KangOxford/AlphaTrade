@@ -134,6 +134,9 @@ import dataclasses
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
 from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
+from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
+
+
 #from gymnax_exchange.jaxen.from_JAXMARL import spaces
 import jax.tree_util as jtu
 
@@ -212,7 +215,7 @@ class ExecutionEnv():
         )
         cnl_msgs = job.getCancelMsgs(
             raw_order_side,
-            self.trader_unique_id,
+            agent_params.trader_id,
             self.cfg.num_action_messages_by_agent,
             1 - state.is_sell_task * 2,
             state.time[0],
@@ -253,10 +256,10 @@ class ExecutionEnv():
             )
         )
         jax.debug.print("new best bids after:{}",bestbids.shape)
-        # jax.debug.print('agent_id {}, trades {}', self.trader_unique_id, trades)
+        # jax.debug.print('agent_id {}, trades {}', agent_params.trader_id, trades)
         # filter to trades by our agent (rest are 0s)
 
-        agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+        agent_trades = job.get_agent_trades(trades, agent_params.trader_id)
 
         #jax.debug.print("Agent trades:{}", agent_trades)
        # jax.debug.print(" trades :{}", trades)
@@ -484,8 +487,8 @@ class ExecutionEnv():
     # def _get_pass_price_quant(self, orders, best_ask_p, best_bid_p, is_sell_task):
     #     price_passive_2 = jax.lax.cond(
     #         is_sell_task,
-    #         lambda: best_ask_p + self.tick_size*self.n_ticks_in_book,
-    #         lambda: best_bid_p - self.tick_size*self.n_ticks_in_book
+    #         lambda: best_ask_p + self.world_config.tick_size*self.n_ticks_in_book,
+    #         lambda: best_bid_p - self.world_config.tick_size*self.n_ticks_in_book
     #     )
     #     # quantity at second passive price level in the book
     #     quant_passive_2 = job.get_volume_at_price(orders, price_passive_2)
@@ -494,8 +497,8 @@ class ExecutionEnv():
     def _get_pass_price_quant(self, state):
         price_passive_2 = jax.lax.cond(
             state.is_sell_task,
-            lambda: state.best_asks[-1, 0] + self.tick_size * self.cfg.n_ticks_in_book,
-            lambda: state.best_bids[-1, 0] - self.tick_size * self.cfg.n_ticks_in_book
+            lambda: state.best_asks[-1, 0] + self.world_config.tick_size * self.cfg.n_ticks_in_book,
+            lambda: state.best_bids[-1, 0] - self.world_config.tick_size * self.cfg.n_ticks_in_book
         )
         orders = jax.lax.cond(
             state.is_sell_task,
@@ -511,7 +514,7 @@ class ExecutionEnv():
         base_state = super()._get_state_from_data(key,first_message, book_data, max_steps_in_episode, window_index, start_index)
         base_vals = jtu.tree_flatten(base_state)[0]
         best_bid, best_ask = job.get_best_bid_and_ask_inclQuants(self.cfg,base_state.ask_raw_orders,base_state.bid_raw_orders)
-        M = (best_bid[0] + best_ask[0]) // 2 // self.tick_size * self.tick_size 
+        M = (best_bid[0] + best_ask[0]) // 2 // self.world_config.tick_size * self.world_config.tick_size 
         # if task is 'random', this will be randomly picked at env reset
         is_sell_task = 0 if self.cfg.task == 'buy' else 1 # if self.cfg.task == 'random', set defualt as 0
         # HERE...
@@ -793,7 +796,7 @@ class ExecutionEnv():
 
 
     #-------Action Functions-------#
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: ExecEnvState):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, world_state: MultiAgentState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -805,28 +808,28 @@ class ExecutionEnv():
        """
 
         #----01 get price levels----#
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         #jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
 
         def buy_task_prices(best_ask, best_bid):
             FT = best_ask
             # mid defaults to one tick more passive if between ticks
-            M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
+            M = ((best_bid + best_ask) // 2 // self.world_config.tick_size) * self.world_config.tick_size
             NT = best_bid
-            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
             return FT, M, NT, PP
         def sell_task_prices(best_ask, best_bid):
             FT = best_bid
             # mid defaults to one tick more passive if between ticks
-            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
-                 * self.tick_size).astype(jnp.int32)
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.world_config.tick_size)
+                 * self.world_config.tick_size).astype(jnp.int32)
             NT = best_ask
-            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_ask + self.world_config.tick_size*self.cfg.n_ticks_in_book
             return FT, M, NT, PP
         
         price_levels = jax.lax.cond(
-            state.is_sell_task,
+            agent_state.is_sell_task,
             sell_task_prices,
             buy_task_prices,
             best_ask, best_bid
@@ -845,17 +848,16 @@ class ExecutionEnv():
         quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
         #----03 get the rest of the message----#
         types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
-        sides = (1 - state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
-        trader_ids = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) *
-                    (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, self.cfg.num_action_messages_by_agent) #Each message has a unique ID
+        sides = (1 - agent_state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
+        trader_ids = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) * agent_params.trader_id #This agent will always have the same (unique) trader ID
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
         times = jnp.resize(
-            state.time + self.cfg.time_delay_obs_act,
+            world_state.time + self.cfg.time_delay_obs_act,
             (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
         )
         #------Check quants dont exceed inv----#
-        quant_left=state.task_to_execute-state.quant_executed
+        quant_left=agent_state.task_to_execute-agent_state.quant_executed
         total_quant=quants.sum()
         quants = jnp.where(
                 total_quant <= quant_left,
@@ -871,7 +873,7 @@ class ExecutionEnv():
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         return action_msgs 
 
-    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, state: ExecEnvState):
+    def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, world_state: MultiAgentState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
         Always send 4 messages
@@ -893,28 +895,28 @@ class ExecutionEnv():
        """
 
         #----01 get price levels----#
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         #jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
 
         def buy_task_prices(best_ask, best_bid):
             FT = best_ask
             # mid defaults to one tick more passive if between ticks
-            M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
+            M = ((best_bid + best_ask) // 2 // self.world_config.tick_size) * self.world_config.tick_size
             NT = best_bid
-            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
             return FT, M, NT, PP
         def sell_task_prices(best_ask, best_bid):
             FT = best_bid
             # mid defaults to one tick more passive if between ticks
-            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
-                 * self.tick_size).astype(jnp.int32)
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.world_config.tick_size)
+                 * self.world_config.tick_size).astype(jnp.int32)
             NT = best_ask
-            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_ask + self.world_config.tick_size*self.cfg.n_ticks_in_book
             return FT, M, NT, PP
         
         price_levels = jax.lax.cond(
-            state.is_sell_task,
+            agent_state.is_sell_task,
             sell_task_prices,
             buy_task_prices,
             best_ask, best_bid
@@ -941,17 +943,16 @@ class ExecutionEnv():
         quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
         #----03 get the rest of the message----#
         types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
-        sides = (1 - state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
-        trader_ids = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) *
-                    (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, self.cfg.num_action_messages_by_agent) #Each message has a unique ID
+        sides = (1 - agent_state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
+        trader_ids = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32) * agent_params.trader_id #This agent will always have the same (unique) trader ID
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
         times = jnp.resize(
-            state.time + self.cfg.time_delay_obs_act,
+            world_state.time + self.cfg.time_delay_obs_act,
             (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
         )
         #------Check quants dont exceed inv----#
-        quant_left=state.task_to_execute-state.quant_executed
+        quant_left=agent_state.task_to_execute-agent_state.quant_executed
         total_quant=quants.sum()
         quants = jnp.where(
                 total_quant <= quant_left,
@@ -969,7 +970,7 @@ class ExecutionEnv():
 
 
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: ExecEnvState):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: MultiAgentState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
         """get messages for action space where input is quantity at each price level"""
         
 
@@ -1002,11 +1003,11 @@ class ExecutionEnv():
         def buy_task_prices(best_ask, best_bid):
             # FT = best_ask
             # essentially convert to market order (20% higher price than best ask)
-            FT = ((best_ask) // self.tick_size * self.tick_size).astype(jnp.int32)
+            FT = ((best_ask) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
-            M = ((best_bid + best_ask) // 2 // self.tick_size) * self.tick_size
+            M = ((best_bid + best_ask) // 2 // self.world_config.tick_size) * self.world_config.tick_size
             NT = best_bid
-            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
             MKT = self.cfg.maxint
             if action.shape[0] == 4:
                 return FT, M, NT, PP, MKT
@@ -1020,12 +1021,12 @@ class ExecutionEnv():
         def sell_task_prices(best_ask, best_bid):
             # FT = best_bid
             # essentially convert to market order (20% lower price than best bid)
-            FT = ((best_bid) // self.tick_size * self.tick_size).astype(jnp.int32)
+            FT = ((best_bid) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
-            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
-                 * self.tick_size).astype(jnp.int32)
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.world_config.tick_size)
+                 * self.world_config.tick_size).astype(jnp.int32)
             NT = best_ask
-            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_ask + self.world_config.tick_size*self.cfg.n_ticks_in_book
             MKT = 0
             if action.shape[0] == 4:
                 return FT, M, NT, PP, MKT
@@ -1039,24 +1040,23 @@ class ExecutionEnv():
         # ============================== Get Action_msgs ==============================
         # --------------- 01 rest info for deciding action_msgs ---------------
         types = jnp.ones((self.cfg.n_actions,), jnp.int32)
-        sides = (1 - state.is_sell_task*2) * jnp.ones((self.cfg.n_actions,), jnp.int32)
-        trader_ids = jnp.ones((self.cfg.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((self.cfg.n_actions,), jnp.int32) *
-                    (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, self.cfg.n_actions) #Each message has a unique ID
+        sides = (1 - agent_state.is_sell_task*2) * jnp.ones((self.cfg.n_actions,), jnp.int32)
+        trader_ids = jnp.ones((self.cfg.n_actions,), jnp.int32) * agent_params.trader_id #This agent will always have the same (unique) trader ID
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
         times = jnp.resize(
-            state.time + self.cfg.time_delay_obs_act,
+            world_state.time + self.cfg.time_delay_obs_act,
             (self.cfg.n_actions, 2)
         )
         # --------------- 01 rest info for deciding action_msgs ---------------
         
         # --------------- 02 info for deciding prices ---------------
-        best_ask = jnp.int32((state.best_asks[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-10:].mean(axis=0)[0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-10:].mean(axis=0)[0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-10:].mean(axis=0)[0] // self.world_config.tick_size) * self.world_config.tick_size)
         jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
 
         price_levels = jax.lax.cond(
-            state.is_sell_task,
+            agent_state.is_sell_task,
             sell_task_prices,
             buy_task_prices,
             best_ask, best_bid
@@ -1087,6 +1087,57 @@ class ExecutionEnv():
 
 
 
+    def _get_messages(
+        self,
+        action: jax.Array,
+        world_state: MultiAgentState,
+        agent_state: ExecEnvState,
+        agent_params: ExecEnvParams
+    ) -> Tuple[jax.Array, jax.Array]:
+        """Get the action and cancel messages for the execution agent."""
+
+        # 1. Get action messages
+        action_msgs = self.get_action(
+            action=action,
+            world_state=world_state,
+            agent_state=agent_state,
+            agent_params=agent_params
+        )
+
+        # 2. Determine which side to cancel (buy or sell task)
+        side_for_exe = 1 - agent_state.is_sell_task * 2  # 1 for buy, -1 for sell
+
+        # 3. Select the correct book side
+        raw_order_side = jax.lax.cond(
+            agent_state.is_sell_task,
+            lambda: world_state.ask_raw_orders,
+            lambda: world_state.bid_raw_orders
+        )
+
+        # 4. Get cancel messages
+        cancel_msgs = job.getCancelMsgs(
+            bookside=raw_order_side,
+            agentID=agent_params.trader_id,
+            size=self.cfg.num_messages_by_agent // 2,  # adjust if needed
+            side=side_for_exe,
+            cancel_time=world_state.time[0],
+            cancel_time_ns=world_state.time[1]
+        )
+
+        # 5. Filter messages
+        action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
+
+        print(f"action messgaes order exec: {action_msgs}")
+        print(f"cancel messgaes order exec: {cancel_msgs}")
+
+        # 6. Return
+        return action_msgs, cancel_msgs
+
+
+
+
+
+
     #======================Wrappers to choose funcitons=========================================#    
     def get_episode_end_fn(self,key,quant_left,bestasks, bestbids, time, asks, bids, trades, state, params):
         """
@@ -1099,16 +1150,16 @@ class ExecutionEnv():
         else:
             raise ValueError("Invalid end_fn specified.")
         
-    def get_action(self,action, state, params):
+    def get_action(self,action, world_state, agent_state, agent_params):
         """
         Wrapper function to call the appropriate action function.
         """
         if self.cfg.action_space == "fixed_quants":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
         elif self.cfg.action_space == "fixed_prices":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
         elif self.cfg.action_space == "fixed_quants_complex":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
         else:
             raise ValueError("Invalid action sspace specified.")    
     
@@ -1133,7 +1184,7 @@ class ExecutionEnv():
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
-        averageMidprice = ((bestask[0] + bestbid[0]) // 2).mean() // self.tick_size * self.tick_size
+        averageMidprice = ((bestask[0] + bestbid[0]) // 2).mean() // self.world_config.tick_size * self.world_config.tick_size
         #jax.debug.print("mid_price:{}",mid_price)
         
         new_time = time + self.cfg.time_delay_obs_act
@@ -1141,14 +1192,14 @@ class ExecutionEnv():
 
         doom_price = jax.lax.cond(
             state.is_sell_task,
-            lambda: ((bestbid[0])// self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: (( bestask[0])// self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: ((bestbid[0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (( bestask[0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
         )
 
         def place_midprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
             mid_trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
+                price, quant, -666666,  agent_params.trader_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, agent_params.trader_id)
             trades = job.add_trade(trades, mid_trade)
             #jax.debug.print("called?")
             return trades
@@ -1187,15 +1238,15 @@ class ExecutionEnv():
         """ Force a market order if episode is over (either in terms of time or steps). """
         
         def create_mkt_order():
-            mkt_p = (1 - state.is_sell_task) * self.cfg.maxint // self.tick_size * self.tick_size
+            mkt_p = (1 - state.is_sell_task) * self.cfg.maxint // self.world_config.tick_size * self.world_config.tick_size
             side = (1 - state.is_sell_task*2)
             # TODO: this addition wouldn't work if the ns time at index 1 increases to more than 1 sec
             new_time = time + self.cfg.time_delay_obs_act
             mkt_msg = jnp.array([
                 # type, side, quant, price
                 1, side, quant_left, mkt_p,
-                self.trader_unique_id,
-                self.trader_unique_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
+                agent_params.trader_id,
+                agent_params.trader_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
                 *new_time,  # time of message
             ])
             next_id = state.customIDcounter + self.cfg.n_actions + 1
@@ -1208,7 +1259,7 @@ class ExecutionEnv():
 
         def place_doom_trade(trades, price, quant, time):
             doom_trade = job.create_trade(
-                price, quant, self.trader_unique_id + self.cfg.n_actions + 1, -666666, *time, self.trader_unique_id, -666666)
+                price, quant, agent_params.trader_id + self.cfg.n_actions + 1, -666666, *time, agent_params.trader_id, -666666)
             # jax.debug.print('doom_trade\n {}', doom_trade)
             trades = job.add_trade(trades, doom_trade)
             return trades
@@ -1263,8 +1314,8 @@ class ExecutionEnv():
         # assume doom price with 25% extra cost
         doom_price = jax.lax.cond(
             state.is_sell_task,
-            lambda: ((0.75 * bestbid[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: ((1.25 * bestask[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: ((0.75 * bestbid[0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: ((1.25 * bestask[0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
         )
         # jax.debug.print('doom_price: {}', doom_price)
         # jax.debug.print('best_ask: {}; best_bid {}', bestask, bestbid)
@@ -1276,7 +1327,7 @@ class ExecutionEnv():
             trades, doom_price, quant_still_left, time
         )
         # jax.debug.print('trades after doom\n {}', trades[:20])
-        # agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+        # agent_trades = job.get_agent_trades(trades, agent_params.trader_id)
         # jax.debug.print('agent_trades\n {}', agent_trades[:20])
         # price_quants = self._get_executed_by_price(agent_trades)
         # jax.debug.print('price_quants\n {}', price_quants)
@@ -1290,7 +1341,7 @@ class ExecutionEnv():
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
         # Mask to keep only the trades where the RL agent is involved, apply mask.
         # mask2 = ((job.INITID < executed[:, 2]) & (executed[:, 2] < 0)) | ((job.INITID < executed[:, 3]) & (executed[:, 3] < 0))
-        mask2 = (self.trader_unique_id == executed[:, 6])  | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
+        mask2 = (agent_params.trader_id == executed[:, 6])  | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
         # jax.debug.print('agentTrades\n {}', agentTrades[:30])
@@ -1298,7 +1349,7 @@ class ExecutionEnv():
         
         # ---------- used for vwap, revenue ----------
         # vwapFunc = lambda tr: jnp.nan_to_num(
-        #     (tr[:,0] // self.tick_size * tr[:,1]).sum() / (tr[:,1]).sum(),
+        #     (tr[:,0] // self.world_config.tick_size * tr[:,1]).sum() / (tr[:,1]).sum(),
         #     state.init_price  # if no trades happened, use init price
         # ) # caution: this value can be zero (executed[:,1]).sum()
         # only use other traders' trades for value weighted price
@@ -1307,38 +1358,38 @@ class ExecutionEnv():
         other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
         vwap = jax.lax.cond(
             other_exec_quants == 0,
-            lambda: state.init_price / self.tick_size,
-            lambda: (otherTrades[:, 0] // self.tick_size * jnp.abs(otherTrades[:, 1])).sum() / other_exec_quants
+            lambda: state.init_price / self.world_config.tick_size,
+            lambda: (otherTrades[:, 0] // self.world_config.tick_size * jnp.abs(otherTrades[:, 1])).sum() / other_exec_quants
         )
         
-        revenue = (agentTrades[:,0] // self.tick_size * jnp.abs(agentTrades[:,1])).sum()
+        revenue = (agentTrades[:,0] // self.world_config.tick_size * jnp.abs(agentTrades[:,1])).sum()
         
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
         rollingMeanValueFunc_FLOAT = lambda average_val,new_val:(average_val*state.step_counter+new_val)/(state.step_counter+1)
         vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
         price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/(agentQuant+0.001) - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.tick_size*agentQuant)
-        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.tick_size)) #price_drift = (vwap - state.init_price//self.tick_size)
+        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.world_config.tick_size*agentQuant)
+        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.world_config.tick_size)) #price_drift = (vwap - state.init_price//self.world_config.tick_size)
         
         # ---------- used for advantage and drift ----------
         # switch sign for buy task
         direction_switch = jnp.sign(state.is_sell_task * 2 - 1)
         advantage = direction_switch * (revenue - vwap * agentQuant) # advantage_vwap
-        drift = direction_switch * agentQuant * (vwap - state.init_price//self.tick_size)
+        drift = direction_switch * agentQuant * (vwap - state.init_price//self.world_config.tick_size)
         
         # ---------- compute the final reward ----------
         # rewardValue = revenue 
         # rewardValue =  advantage
         # rewardValue1 = advantage + params.reward_lambda * drift
         # rewardValue1 = advantage + 1.0 * drift
-        # rewardValue2 = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue2 = revenue - (state.init_price // self.world_config.tick_size) * agentQuant
         # rewardValue = rewardValue1 - rewardValue2
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
 
-        # rewardValue = revenue - (state.init_price // self.tick_size) * agentQuant
+        # rewardValue = revenue - (state.init_price // self.world_config.tick_size) * agentQuant
         reward = advantage + params.reward_lambda * drift
         reward_lam1 = direction_switch * (
-            revenue - (state.init_price // self.tick_size) * agentQuant
+            revenue - (state.init_price // self.world_config.tick_size) * agentQuant
         )
         
         # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {} vwap {} init_price {}', 
@@ -1493,8 +1544,8 @@ class ExecutionEnv():
             "q_aggr": jnp.where(state.is_sell_task, best_bid_qtys, best_ask_qtys), 
             "p_pass": jnp.where(state.is_sell_task, best_asks, best_bids),
             "q_pass": jnp.where(state.is_sell_task, best_ask_qtys, best_bid_qtys), 
-            "p_mid": (best_asks+best_bids)//2//self.tick_size*self.tick_size, 
-            "p_pass2": jnp.where(state.is_sell_task, best_asks+self.tick_size*self.cfg.n_ticks_in_book, best_bids-self.tick_size*self.cfg.n_ticks_in_book), # second_passives
+            "p_mid": (best_asks+best_bids)//2//self.world_config.tick_size*self.world_config.tick_size, 
+            "p_pass2": jnp.where(state.is_sell_task, best_asks+self.world_config.tick_size*self.cfg.n_ticks_in_book, best_bids-self.world_config.tick_size*self.cfg.n_ticks_in_book), # second_passives
             "spread": best_asks - best_bids,
             "shallow_imbalance": state.best_asks[:,1]- state.best_bids[:,1],
             "time": state.time,

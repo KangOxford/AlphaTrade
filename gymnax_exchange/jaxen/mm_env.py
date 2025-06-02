@@ -199,6 +199,7 @@ class MarketMakingAgent():
         trader_id = jnp.arange(trader_id_range_start, next_trader_id_range_start, -1)
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         normalize = jnp.full((number_of_agents_per_type,), agent_config.normalize)
+
         print("normalize.shape:", normalize.shape)
         print(f"trader_id: {trader_id}")
         print(f"next_trader_id_range_start: {next_trader_id_range_start}")
@@ -235,7 +236,7 @@ class MarketMakingAgent():
       
         cnl_msg_bid = job.getCancelMsgs(
             state.bid_raw_orders,
-            self.trader_unique_id,
+            agent_params.trader_id,
             self.cfg.num_action_messages_by_agent//2, 
             1,  # bid
             state.time[0],  # cancel_time
@@ -243,7 +244,7 @@ class MarketMakingAgent():
         )
         cnl_msg_ask = job.getCancelMsgs(
             state.ask_raw_orders,
-            self.trader_unique_id,
+            agent_params.trader_id,
             self.cfg.num_action_messages_by_agent//2,
             -1,  # ask
             state.time[0],  # cancel_time
@@ -288,7 +289,7 @@ class MarketMakingAgent():
         #bestbids = self._ffill_best_prices(bestbids, state.best_bids[-1, 0])
         ##jax.debug.print(f"bestasks: {bestasks}")
         #jax.debug.print(f"bestbids: {bestbids}")
-        agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+        agent_trades = job.get_agent_trades(trades, agent_params.trader_id)
         executions = self._get_executed_by_action(agent_trades, action, state,action_prices)
         executions=jnp.abs(executions)
         #=======================================#
@@ -325,8 +326,8 @@ class MarketMakingAgent():
             delta_time = new_time[0] + new_time[1]/1e9 - state.time[0] - state.time[1]/1e9,
         )
         done = self.is_terminal(state, params)
-        average_best_ask = state.best_asks[-100:].mean(axis=0)[0] #// self.tick_size) * self.tick_size)
-        average_best_bid = state.best_bids[-100:].mean(axis=0)[0] #// self.tick_size) * self.tick_size)
+        average_best_ask = state.best_asks[-100:].mean(axis=0)[0] #// self.world_config.tick_size) * self.world_config.tick_size)
+        average_best_bid = state.best_bids[-100:].mean(axis=0)[0] #// self.world_config.tick_size) * self.world_config.tick_size)
         if self.cfg.debug_mode==False:
         #### Standard logging####
             info = {
@@ -483,8 +484,8 @@ class MarketMakingAgent():
    
     def _get_pass_price_quant(self, state):
         """Get price and quanitity n_ticks into books"""
-        bid_passive_2=state.best_bids[-1, 0] - self.tick_size * self.cfg.n_ticks_in_book
-        ask_passive_2=state.best_asks[-1, 0] + self.tick_size * self.cfg.n_ticks_in_book
+        bid_passive_2=state.best_bids[-1, 0] - self.world_config.tick_size * self.cfg.n_ticks_in_book
+        ask_passive_2=state.best_asks[-1, 0] + self.world_config.tick_size * self.cfg.n_ticks_in_book
         quant_bid_passive_2 = job.get_volume_at_price(state.bid_raw_orders, bid_passive_2)
         quant_ask_passive_2 = job.get_volume_at_price(state.ask_raw_orders, ask_passive_2)
         return bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2
@@ -959,11 +960,11 @@ class MarketMakingAgent():
         return price_quantity_pairs
       
     
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, state: MMEnvState):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, world_state: MultiAgentState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 1, 2, 3, 0, 2, 1, 4], dtype=jnp.int32)
@@ -971,7 +972,7 @@ class MarketMakingAgent():
         bid_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
         ask_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
-        tick_offset = self.cfg.n_ticks_in_book * self.tick_size  # Total price offset per direction
+        tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
         
         # Get parameters for current action
         bid_offset = bid_offsets[action]
@@ -983,7 +984,7 @@ class MarketMakingAgent():
         bid_price = best_bid - bid_offset * tick_offset
         ask_price = best_ask + ask_offset * tick_offset
         bid_price = jnp.maximum(bid_price, 0) 
-        ask_price = jnp.maximum(bid_price+self.cfg.n_ticks_in_book * self.tick_size, ask_price)
+        ask_price = jnp.maximum(bid_price+self.cfg.n_ticks_in_book * self.world_config.tick_size, ask_price)
         
         
         # --------------- Construct messages ---------------#
@@ -992,15 +993,15 @@ class MarketMakingAgent():
         sides = jnp.array([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
         quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
         prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
-        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
         
-        # Generate unique order IDs
-        base_id = self.trader_unique_id + state.customIDcounter
-        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
+
         
         # Time fields (replicated for each message)
         times = jnp.resize(
-            state.time + self.cfg.time_delay_obs_act,
+            world_state.time + self.cfg.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
         # Stack components into message array
@@ -1008,13 +1009,13 @@ class MarketMakingAgent():
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
         return action_msgs
     
-    def _getActionMsgs_AvSt(self, action: jax.Array, state: MMEnvState):
+    def _getActionMsgs_AvSt(self, action: jax.Array, world_state: MultiAgentState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
         0-7, with lower giving more aggresive bid and asks
         '''
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         mid_price = (best_ask + best_bid) // 2
 
         #Select aaggresion parameter
@@ -1022,12 +1023,12 @@ class MarketMakingAgent():
         gamma = gamma_values[action]
 
         #Estimate K paramter from data
-        executed = jnp.where((state.trades[:, 0] >= 0)[:, jnp.newaxis], state.trades, 0)
+        executed = jnp.where((world_state.trades[:, 0] >= 0)[:, jnp.newaxis], world_state.trades, 0)
         market_order=executed.shape[0]
-        k = (market_order)/state.delta_time+0.1#ensure non zero for div later
+        k = (market_order)/world_state.delta_time+0.1#ensure non zero for div later
 
         # Market volatility estimation (rolling standard deviation of mid-price)
-        mid_price_history = ((state.best_asks[-100:]+state.best_bids[-100:])/2)
+        mid_price_history = ((world_state.best_asks[-100:]+world_state.best_bids[-100:])/2)
         returns= jnp.log(mid_price_history[1:] / mid_price_history[:-1])
         vol = jnp.std(returns)
         vol=jnp.clip(vol,0.001,0.2)#clip for large data point smoothing
@@ -1035,15 +1036,15 @@ class MarketMakingAgent():
         #jax.debug.print("vol:{}",vol)
         
         #Get time until ep end
-        time_left = self.world_config.episode_time - (state.time - state.init_time)[0]
+        time_left = self.world_config.episode_time - (world_state.time - world_state.init_time)[0]
         normalized_time = time_left / self.world_config.episode_time
 
         #Reservation price
-        res_price = (mid_price - ((state.inventory)) * gamma * (varaince) * normalized_time)
+        res_price = (mid_price - ((agent_state.inventory)) * gamma * (varaince) * normalized_time)
 
         #Spread
-        spread = (gamma*varaince*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.tick_size
-        spread=jnp.clip(spread,self.tick_size,self.cfg.maxint)#make sure spread is at least a tick
+        spread = (gamma*varaince*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.world_config.tick_size
+        spread=jnp.clip(spread,self.world_config.tick_size,self.cfg.maxint)#make sure spread is at least a tick
 
         bid_price= res_price-spread
         ask_price= res_price+spread
@@ -1053,8 +1054,8 @@ class MarketMakingAgent():
         ask_price = jnp.clip(ask_price,  0, self.cfg.maxint) 
 
         #Ensure ints of tick_size
-        bid_price=((bid_price) // self.tick_size * self.tick_size).astype(jnp.int32)
-        ask_price=((ask_price) // self.tick_size * self.tick_size).astype(jnp.int32)
+        bid_price=((bid_price) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
+        ask_price=((ask_price) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
 
         # Set fixed quantities
         bid_quant = self.cfg.fixed_quant_value
@@ -1065,14 +1066,13 @@ class MarketMakingAgent():
         sides = jnp.array([1, -1], dtype=jnp.int32)  # 1 = bid, -1 = ask
         quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
         prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
-        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
 
-        # Generate order IDs
-        base_id = self.trader_unique_id + state.customIDcounter
-        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
 
         # Time fields
-        times = jnp.resize(state.time + self.cfg.time_delay_obs_act, (2, 2))
+        times = jnp.resize(world_state.time + self.cfg.time_delay_obs_act, (2, 2))
 
         # Stack messages
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
@@ -1089,7 +1089,7 @@ class MarketMakingAgent():
         #jax.debug.print("msg:{}",action_msgs)
         return action_msgs
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, state: MMEnvState):
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: MultiAgentState, agent_params: MMEnvParams):
         '''Shape the action quantities in to messages sent the order book at the 
         prices levels determined from the orderbook'''
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
@@ -1115,13 +1115,13 @@ class MarketMakingAgent():
         
             
         def buy_task_prices(best_ask, best_bid):
-            FT = ((best_ask) // self.tick_size * self.tick_size).astype(jnp.int32)
+            FT = ((best_ask) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
-            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
-                 * self.tick_size).astype(jnp.int32)
-            BI = best_bid + self.tick_size*self.cfg.n_ticks_in_book #BID inside, slightly more aggresive buying
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.world_config.tick_size)
+                 * self.world_config.tick_size).astype(jnp.int32)
+            BI = best_bid + self.world_config.tick_size*self.cfg.n_ticks_in_book #BID inside, slightly more aggresive buying
             NT = best_bid
-            PP = best_bid - self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
             MKT = self.cfg.maxint
             if action.shape[0]//2 == 4:
                 return FT, M, NT, PP, MKT
@@ -1134,13 +1134,13 @@ class MarketMakingAgent():
 
         def sell_task_prices(best_ask, best_bid):
             # FT = best_bid
-            FT = ((best_bid) // self.tick_size * self.tick_size).astype(jnp.int32)
+            FT = ((best_bid) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
             # mid defaults to one tick more passive if between ticks
-            M = (jnp.ceil((best_bid + best_ask) / 2 // self.tick_size)
-                 * self.tick_size).astype(jnp.int32)
-            AI = best_ask - self.tick_size*self.cfg.n_ticks_in_book #Ask inside, slightly more aggresive selling
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.world_config.tick_size)
+                 * self.world_config.tick_size).astype(jnp.int32)
+            AI = best_ask - self.world_config.tick_size*self.cfg.n_ticks_in_book #Ask inside, slightly more aggresive selling
             NT = best_ask
-            PP = best_ask + self.tick_size*self.cfg.n_ticks_in_book
+            PP = best_ask + self.world_config.tick_size*self.cfg.n_ticks_in_book
             MKT = 0
             if action.shape[0]//2 == 4:
                 return FT, M, NT, PP, MKT
@@ -1157,12 +1157,12 @@ class MarketMakingAgent():
         sides_bids = jnp.ones((self.cfg.n_actions // 2,), jnp.int32)  # Use integer division to ensure result is an int
         sides_asks = (-1) * jnp.ones((self.cfg.n_actions // 2,), jnp.int32)
         sides = jnp.concatenate([sides_bids, sides_asks])
-        trader_ids = jnp.ones((self.cfg.n_actions,), jnp.int32) * self.trader_unique_id #This agent will always have the same (unique) trader ID
-        order_ids = (jnp.ones((self.cfg.n_actions,), jnp.int32) *
-                    (self.trader_unique_id + state.customIDcounter)) \
-                    + jnp.arange(0, self.cfg.n_actions) #Each message has a unique ID
+        trader_ids = jnp.ones((self.cfg.n_actions,), jnp.int32) * agent_params.trader_id #This agent will always have the same (unique) trader ID
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.n_actions,), self.world_config.placeholder_order_id, dtype=jnp.int32)
+
         times = jnp.resize(
-            state.time + self.cfg.time_delay_obs_act,
+            world_state.time + self.cfg.time_delay_obs_act,
             (self.cfg.n_actions, 2)
         )
         # --------------- 01 rest info for deciding action_msgs ---------------
@@ -1170,8 +1170,8 @@ class MarketMakingAgent():
         # --------------- 02 info for deciding prices ---------------
    
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
 
 
         sell_levels=sell_task_prices(best_ask, best_bid)
@@ -1195,7 +1195,7 @@ class MarketMakingAgent():
         return action_msgs
         # ============================== Get Action_msgs ==============================
 
-    def _getActionMsgs_spread_skew(self, action: jax.Array, state: MMEnvState):
+    def _getActionMsgs_spread_skew(self, action: jax.Array, world_state: MultiAgentState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on spread and skew parameters.
         Actions [0-5] map to combinations of:
         spread: 0 = tight spread, 1 = wide spread
@@ -1210,14 +1210,14 @@ class MarketMakingAgent():
         5: wide spread, ask skew
         '''
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         mid_price = (best_ask + best_bid) / 2
 
 
         #jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
-        #jax.debug.print("best asks: {}", state.best_asks)
-        #jax.debug.print("best bids: {}", state.best_bids)
+        #jax.debug.print("best asks: {}", world_state.best_asks)
+        #jax.debug.print("best bids: {}", world_state.best_bids)
         
         # Get current spread
         current_spread = best_ask - best_bid
@@ -1249,8 +1249,8 @@ class MarketMakingAgent():
         ask_price = skewed_mid + half_spread
         
         # Ensure prices are a multiple of tick size
-        bid_price = (bid_price // self.tick_size) * self.tick_size
-        ask_price = (ask_price // self.tick_size) * self.tick_size
+        bid_price = (bid_price // self.world_config.tick_size) * self.world_config.tick_size
+        ask_price = (ask_price // self.world_config.tick_size) * self.world_config.tick_size
         
         # Set fixed quantities
         bid_quant = self.cfg.fixed_quant_value
@@ -1261,14 +1261,13 @@ class MarketMakingAgent():
         sides = jnp.array([1, -1], dtype=jnp.int32)  # 1 = bid, -1 = ask
         quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
         prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
-        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
         
-        # Generate order IDs
-        base_id = self.trader_unique_id + state.customIDcounter
-        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
         
         # Time fields
-        times = jnp.resize(state.time + self.cfg.time_delay_obs_act, (2, 2))
+        times = jnp.resize(world_state.time + self.cfg.time_delay_obs_act, (2, 2))
         
         # Stack messages
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
@@ -1287,7 +1286,7 @@ class MarketMakingAgent():
 
 
 
-    def _getActionMsgs_directional_trading(self, action: jax.Array, state: MMEnvState):
+    def _getActionMsgs_directional_trading(self, action: jax.Array, world_state: MultiAgentState, agent_params: MMEnvParams):
         '''Action space for directional trading. The agent can either:
             - Do nothing (action = 0)
             - Buy at best ask (action = 1)
@@ -1296,8 +1295,8 @@ class MarketMakingAgent():
         Always sends two messages for compatibility with message filtering
         '''
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((state.best_asks[-1][0] // self.tick_size) * self.tick_size)
-        best_bid = jnp.int32((state.best_bids[-1][0] // self.tick_size) * self.tick_size)
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         
         # Debug prints
         #jax.debug.print("Directional Trading Action: {}", action)
@@ -1325,15 +1324,14 @@ class MarketMakingAgent():
         
         # Set prices
         prices = jnp.array([best_ask, best_bid], dtype=jnp.int32)
-        trader_ids = jnp.full(2, self.trader_unique_id, dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
         
-        # Generate unique order IDs
-        base_id = self.trader_unique_id + state.customIDcounter
-        order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
         
         # Time fields (replicated for each message)
         times = jnp.resize(
-            state.time + self.cfg.time_delay_obs_act,
+            world_state.time + self.cfg.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
         
@@ -1348,38 +1346,39 @@ class MarketMakingAgent():
 
 
     def _get_messages(self, action: jax.Array, world_state: MultiAgentState, agent_state:MMEnvState, agent_params: MMEnvParams):
+        '''Get the action and cancel messages'''
+    
+        action_msgs = self.get_action(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
 
-        # -------------------------------------------------------
-        # (B) Build Market Maker messages
-        # -------------------------------------------------------
-        # Use the MM env's message-building functions
-        mm_order_msgs = self.get_action(action, world_state, agent_state)
-
-        mm_cnl_msgs = job.getCancelMsgs(
-            state.bid_raw_orders,  # using the shared order book from the base state
-            self.mm_trader_id,
-            self.mm_env.cfg.num_messages_by_agent//4,
-            1,
-            state.time[0],
-            state.time[1]
+        cancel_msgs_bid = job.getCancelMsgs(
+            bookside = world_state.bid_raw_orders,
+            agentID = agent_params.trader_id,
+            size = self.cfg.num_messages_by_agent//4,
+            side = 1,
+            cancel_time = world_state.time[0],
+            cancel_time_ns = world_state.time[1]
         )
-        mm_cnl_msgs_ask = job.getCancelMsgs(
-            state.ask_raw_orders,
-            self.mm_trader_id,
-            self.mm_env.cfg.num_messages_by_agent//4,
-            -1,
-            state.time[0],
-            state.time[1]
-        )
-        mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
 
-       # jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
-       # jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
+        cancel_msgs_ask = job.getCancelMsgs(
+            bookside = world_state.ask_raw_orders,
+            agentID = agent_params.trader_id,
+            size = self.cfg.num_messages_by_agent//4,
+            side = -1,
+            cancel_time = world_state.time[0],
+            cancel_time_ns = world_state.time[1]
+        )
+        cancel_msgs = jnp.concatenate([cancel_msgs_bid, cancel_msgs_ask], axis=0)
+
+        #jax.debug.print(f"Market Maker action msg: {action_msgs}")
+        #jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
 
         # Do filtering to net cancellations in MM)
-        mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
+        action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
+        jax.debug.print(f"Market Maker action msg: {action_msgs}")
+        jax.debug.print(f"Market Maker cancel msg: {cancel_msgs}")
 
+        return action_msgs, cancel_msgs
 
 
 
@@ -1426,14 +1425,14 @@ class MarketMakingAgent():
         '''
              
         # Mask to keep only the trades where the RL agent is involved, apply mask.
-        mask2 = (self.trader_unique_id == executed[:, 6]) | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
+        mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0) 
 
         #Find agent Buys and Agent sells from agent Trades:
         #The below mask puts passive buys or aggresive buys into "agent buys".
         #Logic: Q>0, TIDs=BUY; Q<0 TIDa= BUY
-        mask_buy = (((agentTrades[:, 1] >= 0) & (self.trader_unique_id == agentTrades[:, 6]))|((agentTrades[:, 1] < 0)  & (self.trader_unique_id == agentTrades[:, 7])))
-        mask_sell = (((agentTrades[:, 1] < 0) & (self.trader_unique_id == agentTrades[:, 6]))|((agentTrades[:, 1] >= 0)  & (self.trader_unique_id == agentTrades[:, 7])))
+        mask_buy = (((agentTrades[:, 1] >= 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] < 0)  & (agent_params.trader_id == agentTrades[:, 7])))
+        mask_sell = (((agentTrades[:, 1] < 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] >= 0)  & (agent_params.trader_id == agentTrades[:, 7])))
         agent_buys=jnp.where(mask_buy[:, jnp.newaxis], agentTrades, 0)
         agent_sells=jnp.where(mask_sell[:, jnp.newaxis], agentTrades, 0)
 
@@ -1460,14 +1459,14 @@ class MarketMakingAgent():
         is_sell_task = jnp.where(new_inventory > 0, 1, 0)
         FT_price = jax.lax.cond(
             is_sell_task,
-            lambda: ((bestbids[-1, 0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: (( bestasks[-1, 0])// self.tick_size * self.tick_size).astype(jnp.int32),
+            lambda: ((bestbids[-1, 0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (( bestasks[-1, 0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
         )
 
         def place_refprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at specified price to close out our mm agent at the end of the episode.'''
             trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.num_action_messages_by_agent, *time, -666666, self.trader_unique_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
+                price, quant, -666666,  agent_params.trader_id + state.customIDcounter+ 1 +self.cfg.num_action_messages_by_agent, *time, -666666, agent_params.trader_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
             trades = job.add_trade(trades, trade)
             return trades
 
@@ -1518,7 +1517,7 @@ class MarketMakingAgent():
             order at 0 or max int. Buy if inventory is less than zero and
             visa versa'''
             is_sell_task = jnp.where(state.inventory > 0, 1, 0)
-            mkt_p = (1 - is_sell_task) * self.cfg.maxint // self.tick_size * self.tick_size
+            mkt_p = (1 - is_sell_task) * self.cfg.maxint // self.world_config.tick_size * self.world_config.tick_size
             side = (1 - is_sell_task*2)
             # TODO: this addition wouldn't work if the ns time at index 1 increases to more than 1 sec
             new_time = time + self.cfg.time_delay_obs_act
@@ -1526,8 +1525,8 @@ class MarketMakingAgent():
                 # type, side, quant, price
                 #NOTE: MAKING ZERO TO TEST SELL AT MID PRICE jnp.abs(state.inventory)
                 1, side, 0 , mkt_p,
-                self.trader_unique_id,
-                self.trader_unique_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
+                agent_params.trader_id,
+                agent_params.trader_id + state.customIDcounter + self.cfg.n_actions,  # unique order ID for market order
                 *new_time,  # time of message
             ])
             if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
@@ -1553,7 +1552,7 @@ class MarketMakingAgent():
             '''Place a doom trade at a punishment price for any unmatched
             market order. If this is placed, the orderbook will be completly drained.'''
             doom_trade = job.create_trade(
-                price, quant, -666666,  self.trader_unique_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, self.trader_unique_id)
+                price, quant, -666666,  agent_params.trader_id + state.customIDcounter+ 1 +self.cfg.n_actions, *time, -666666, agent_params.trader_id)
             trades = job.add_trade(trades, doom_trade)
             return trades
          
@@ -1575,13 +1574,13 @@ class MarketMakingAgent():
         
         cnl_msg_bid = job.getCancelMsgs(
                 state.bid_raw_orders,
-                self.trader_unique_id,
+                agent_params.trader_id,
                 self.cfg.num_action_messages_by_agent//2,
                 1  # bid
             )
         cnl_msg_ask = job.getCancelMsgs(
                 state.ask_raw_orders,
-                self.trader_unique_id,
+                agent_params.trader_id,
                 self.cfg.num_action_messages_by_agent//2,
                 -1  # ask
             )
@@ -1618,13 +1617,13 @@ class MarketMakingAgent():
         #corresponding to the left over market price#
         cnl_msg_bid = job.getCancelMsgs(
             bids,
-            self.trader_unique_id,
+            agent_params.trader_id,
             1, 
             1  # bids
         )
         cnl_msg_ask = job.getCancelMsgs(
             asks,
-            self.trader_unique_id,
+            agent_params.trader_id,
             1,
             -1  # ask side
         )
@@ -1665,10 +1664,10 @@ class MarketMakingAgent():
         
         doom_price = jax.lax.cond(
             is_sell_task,
-            #lambda: ((0.75 * bestbid[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-            #lambda: ((1.25 * bestask[0]) // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: ((bestbid[0]+bestask[0])//2 // self.tick_size * self.tick_size).astype(jnp.int32),
-            lambda: ((bestbid[0]+bestask[0])//2 // self.tick_size * self.tick_size).astype(jnp.int32), #For sell at opposite test
+            #lambda: ((0.75 * bestbid[0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            #lambda: ((1.25 * bestask[0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: ((bestbid[0]+bestask[0])//2 // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: ((bestbid[0]+bestask[0])//2 // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32), #For sell at opposite test
         )
         #jax.debug.print('ep_is_over: {}; quant_still_left: {}; remainingTime: {}; doom price :{}', ep_is_over, quant_still_left, remainingTime,doom_price)
         trades = jax.lax.cond(
@@ -1677,7 +1676,7 @@ class MarketMakingAgent():
             lambda trades, b, c, d: trades,  # If not, return the existing trades
             trades, doom_price, 0, time  # Inv +ve means incoming is sell so standing buy.
         )#jnp.sign(state.inventory) * quant_still_left
-        agent_trades = job.get_agent_trades(trades, self.trader_unique_id)
+        agent_trades = job.get_agent_trades(trades, agent_params.trader_id)
        # price_quants = self._get_executed_by_price(agent_trades)
         doom_quant = ep_is_over * quant_still_left
 
@@ -1692,15 +1691,15 @@ class MarketMakingAgent():
 
         # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
-        mask2 = (self.trader_unique_id == executed[:, 6]) | (self.trader_unique_id == executed[:, 7]) #Mask to find trader ID
+        mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
     
         #Find agent Buys and Agent sells from agent Trades:
         #The below mask puts passive buys or aggresive buys into "agent buys".
         #Logic: Q>0, TIDs=BUY; Q<0 TIDa= BUY
-        mask_buy = (((agentTrades[:, 1] >= 0) & (self.trader_unique_id == agentTrades[:, 6]))|((agentTrades[:, 1] < 0)  & (self.trader_unique_id == agentTrades[:, 7])))
-        mask_sell = (((agentTrades[:, 1] < 0) & (self.trader_unique_id == agentTrades[:, 6]))|((agentTrades[:, 1] >= 0)  & (self.trader_unique_id == agentTrades[:, 7])))
+        mask_buy = (((agentTrades[:, 1] >= 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] < 0)  & (agent_params.trader_id == agentTrades[:, 7])))
+        mask_sell = (((agentTrades[:, 1] < 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] >= 0)  & (agent_params.trader_id == agentTrades[:, 7])))
         agent_buys=jnp.where(mask_buy[:, jnp.newaxis], agentTrades, 0)
         agent_sells=jnp.where(mask_sell[:, jnp.newaxis], agentTrades, 0)
 
@@ -1717,28 +1716,28 @@ class MarketMakingAgent():
 
         #Find the new obsvered mid price at the end of the step.
         #non normalized=> going on state
-        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) / 2# * self.tick_size) * self.tick_size
+        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) / 2# * self.world_config.tick_size) * self.world_config.tick_size
 
         #Real Revenue calcs: (actual cash flow+actual value of portfolio)
         income=(agent_sells[:, 0]* jnp.abs(agent_sells[:, 1])).sum()
         outgoing=(agent_buys[:, 0] * jnp.abs(agent_buys[:, 1])).sum() 
 
         #PnL,== cash balance== normalised by tick size
-        PnL=(income-outgoing)/self.tick_size
+        PnL=(income-outgoing)/self.world_config.tick_size
 
         # Compute a reference price based on the config
         if self.cfg.reference_price_portfolio_value == "mid":
-            reference_price = mid_price_end/self.tick_size
+            reference_price = mid_price_end/self.world_config.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask.
             reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestbids[-1][0]/self.tick_size,
-                                        lambda: bestasks[-1][0]/self.tick_size)
+                                        lambda: bestbids[-1][0]/self.world_config.tick_size,
+                                        lambda: bestasks[-1][0]/self.world_config.tick_size)
         elif self.cfg.reference_price_portfolio_value == "near_touch":
             # For a long position, use the best ask; for a short, the best bid.
             reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestasks[-1][0]/self.tick_size,
-                                        lambda: bestbids[-1][0]/self.tick_size)
+                                        lambda: bestasks[-1][0]/self.world_config.tick_size,
+                                        lambda: bestbids[-1][0]/self.world_config.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
 
@@ -1755,16 +1754,16 @@ class MarketMakingAgent():
 
         #------------A) spooner Rewards-------------------------#       
         #Inventory PnL: 
-        InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.tick_size 
+        InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.world_config.tick_size 
     
         #Market Making PNL:     
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
-        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
-        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
+        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
+        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
 
         ##aggresive
-        aggresive_buyPnL = ((bestasks[-1][0] - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.tick_size
-        aggresive_sellPnL = ((agent_sells[:, 0] - bestbids[-1][0]) * jnp.abs(agent_sells[:, 1])).sum() /self.tick_size
+        aggresive_buyPnL = ((bestasks[-1][0] - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
+        aggresive_sellPnL = ((agent_sells[:, 0] - bestbids[-1][0]) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
 
 
 
@@ -1783,11 +1782,11 @@ class MarketMakingAgent():
         asymmetrically_dampened_lambda = self.cfg.asymmetrically_dampened_lambda
         avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0]/ buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
         avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum(), 0)
-        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) /self.tick_size
+        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) /self.world_config.tick_size
         approx_unrealized_pnl = jnp.where( 
             inventory_delta > 0,
-            inventory_delta * (averageMidprice - avg_buy_price)/self.tick_size,  # Excess buys
-            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice)/self.tick_size  # Excess sells
+            inventory_delta * (averageMidprice - avg_buy_price)/self.world_config.tick_size,  # Excess buys
+            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice)/self.world_config.tick_size  # Excess sells
         )
   
         reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
@@ -1798,17 +1797,17 @@ class MarketMakingAgent():
         #-----------------d) delta Portfolio Value--------#
         #Get old ref price
         if self.cfg.reference_price_portfolio_value == "mid":
-            old_reference_price = state.mid_price/self.tick_size
+            old_reference_price = state.mid_price/self.world_config.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask. (this is realistic)
             old_reference_price = jax.lax.cond(state.inventory > 0,
-                                        lambda: state.best_bids[-1][0]/self.tick_size,
-                                        lambda: state.best_asks[-1][0]/self.tick_size)
+                                        lambda: state.best_bids[-1][0]/self.world_config.tick_size,
+                                        lambda: state.best_asks[-1][0]/self.world_config.tick_size)
         elif self.cfg.reference_price_portfolio_value == "near_touch":
             # For a long position, use the best ask; for a short, the best bid. (this is not realistic, but might be useful for training)
             old_reference_price = jax.lax.cond(state.inventory > 0,
-                                        lambda: state.best_asks[-1][0]/self.tick_size,
-                                        lambda: state.best_bids[-1][0]/self.tick_size)
+                                        lambda: state.best_asks[-1][0]/self.world_config.tick_size,
+                                        lambda: state.best_bids[-1][0]/self.world_config.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth
@@ -1920,20 +1919,20 @@ class MarketMakingAgent():
 
 
 
-    def get_action(self,action, state, params):
+    def get_action(self, action: jax.Array, world_state: MultiAgentState, agent_state: MMEnvState, agent_params: MMEnvParams):
         """
         Wrapper function to call the appropriate action function.
         """
         if self.cfg.action_space == "fixed_quants":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
         elif self.cfg.action_space == "fixed_prices":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
         elif self.cfg.action_space == "AvSt":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action=action, world_state=world_state, agent_state=agent_state, agent_params=agent_params)
         elif self.cfg.action_space == "spread_skew":
-            return self.action_fn(action, state, params)
+            return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
         elif self.cfg.action_space == "directional_trading":
-            return self._getActionMsgs_directional_trading(action, state, params)
+            return self._getActionMsgs_directional_trading(action=action, world_state=world_state, agent_params=agent_params)
         else:
             raise ValueError("Invalid action sspace specified.")
         

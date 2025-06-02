@@ -31,7 +31,7 @@ class MarketMaking_EnvironmentConfig():
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
     fixed_quant_value:int=env_cst.fixed_quant_value
-    n_actions: int = env_cst.n_actions
+    n_actions: int = env_cst.n_actions # Only used for fixed_prices
     debug_mode:bool=False
     time_delay_obs_act:int=0
     normalize:bool=True
@@ -122,7 +122,8 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_ticks_in_book = 10 # Depth of PP actions
     customIDCounter=0
     tick_size=100
-    trader_id_range_start=-1
+    trader_id_range_start=-2 # -1 is reserved for the placeholder in the messages object
+    placeholder_order_id = -99
 
 
 @dataclass(frozen=True)

@@ -30,7 +30,7 @@ class WorldState(LoadedEnvState):
     best_asks: jnp.ndarray
     step_counter: int
     time: jnp.ndarray
-    customIDcounter: jnp.ndarray
+    order_id_counter: int
     mid_price:float
     delta_time: float
 
@@ -111,6 +111,7 @@ class MMEnvParams():
     normalize: chex.Array
 
 
+
 @struct.dataclass
 class ExecEnvParams():
     trader_id: chex.Array
@@ -118,6 +119,5 @@ class ExecEnvParams():
     reward_lambda: chex.Array
     time_delay_obs_act: chex.Array
     normalize: chex.Array
-
 
 

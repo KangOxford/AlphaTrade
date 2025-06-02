@@ -11,10 +11,10 @@ from flax import struct
 import jax.tree_util as jtu
 from functools import partial
 from typing import Any
-from typing import List, Tuple
+#from typing import List, Tuple
 
 # for debugging
-jax.config.update('jax_disable_jit', False)
+jax.config.update('jax_disable_jit', True)
 jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
@@ -77,16 +77,19 @@ class MARLEnv(MultiAgentEnv):
         self.action_spaces = [self.instance_list[i].action_space() for i in range(len(self.instance_list))]
         self.observation_spaces = [self.instance_list[i].observation_space() for i in range(len(self.instance_list))]
                 
-        print("action spacaes:" , self.action_spaces)
-        print("observation spaces:" , self.observation_spaces)
-
         num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step
+        num_action_msg_per_step_by_all_agents = 0
         for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
             agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             num_msg_per_step += agent_config.num_messages_by_agent * num_agents_per_type
+            num_action_msg_per_step_by_all_agents += agent_config.num_action_messages_by_agent * num_agents_per_type
 
         self.num_msgs_per_step = int(num_msg_per_step)
+        self.num_action_msgs_per_step_by_all_agents = int(num_action_msg_per_step_by_all_agents)
+
+        print(f"num_msgs_per_step: {self.num_msgs_per_step}")
+        print(f"num_action_msgs_per_step_by_all_agents: {self.num_action_msgs_per_step_by_all_agents}")
 
 
         print(self.instance_list)
@@ -126,7 +129,7 @@ class MARLEnv(MultiAgentEnv):
         )
 
     #@partial(jax.jit, static_argnums=(0,))
-    def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[List[jnp.ndarray], MultiAgentState]:
+    def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[list[jnp.ndarray], MultiAgentState]:
         #################################
         # Split keys for each agent type
         #################################
@@ -134,8 +137,6 @@ class MARLEnv(MultiAgentEnv):
         keys = jax.random.split(key, num_agent_types + 1)
         agent_keys = keys[:-1]
         world_key = keys[-1]
-
-
 
         ###########################
         #Reset the World State
@@ -159,7 +160,7 @@ class MARLEnv(MultiAgentEnv):
             best_asks=bestasks,
             step_counter=0,
             time=load_state.init_time,
-            customIDcounter=0,
+            order_id_counter=0,
             mid_price=mid_price,      
             delta_time=0.0,     
         )
@@ -211,25 +212,93 @@ class MARLEnv(MultiAgentEnv):
 
 
 
+
     def step_env(self,
                  key: chex.PRNGKey,
                  state: MultiAgentState,
-                 actions: Dict[str, jnp.ndarray],
+                 actions: list[jnp.ndarray],
                  params: MultiAgentParams
                  ) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState, Dict[str, float], bool, Dict[str, Dict]]:
 
-        # Split keys for each agent (and one extra if needed)
-        key_mm, key_exe, key = jax.random.split(key, 3)
 
         # -------------------------------------------------------
-        # (A) Build External Data Messages (common to both agents)
+        # (A) Build External Data Messages (common to all agents)
         # -------------------------------------------------------
-        data_messages = self._get_data_messages(
-            params.message_data,
-            state.start_index,
-            state.step_counter,
-            state.init_time[0] + self.world_config.episode_time
+        data_messages = self.base_env._get_data_messages(
+            params.loaded_params.message_data,
+            state.world_state.start_index,
+            state.world_state.step_counter,
+            state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time
         )
+
+
+        # -------------------------------------------------------
+        # (B) Get the action and cancel messages for each agent 
+        # -------------------------------------------------------
+
+        print(f"actions: {actions}")
+
+        #for agent_type_index in range(len(self.instance_list)):
+
+        all_action_msgs_list = [] # One element for each agent type
+        all_cancel_msgs_list = [] # One element for each agent type
+
+        for agent_type_index in range(len(self.instance_list)):
+            agent_state = state.agent_states[agent_type_index]
+            agent_params = params.agent_params[agent_type_index]
+            agent_actions = actions[agent_type_index]
+            vmapped_function = vmap(self.instance_list[agent_type_index]._get_messages, in_axes=(0,None,0,0), out_axes = (0,0))
+            action_msgs, cancel_msgs = vmapped_function(agent_actions, state.world_state, agent_state, agent_params)
+            all_action_msgs_list.append(action_msgs)
+            all_cancel_msgs_list.append(cancel_msgs)
+
+        print(f"all action msgs: {all_action_msgs_list}")
+        print(f"all cancel msgs: {all_cancel_msgs_list}")
+        print(f"all action msgs shape: {all_action_msgs_list[0].shape}")
+        print(f"all cancel msgs shape: {all_cancel_msgs_list[0].shape}")
+
+        all_action_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_action_msgs_list])
+        all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
+
+        print(f"all action msgs: {all_action_msgs}")
+        print(f"all cancel msgs: {all_cancel_msgs}")
+        print(f"all action msgs shape: {all_action_msgs.shape}")
+        print(f"all cancel msgs shape: {all_cancel_msgs.shape}")
+
+        # Replace order ids in the action messages:
+        new_order_ids = jnp.arange(state.world_state.order_id_counter, state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents, -1)
+        all_action_msgs = all_action_msgs.at[:, 4].set(new_order_ids)
+        new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state
+
+        # Combine action and cancel messages
+        combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs], axis=0)
+
+        print(f"combined msgs: {combined_msgs}")
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # -------------------------------------------------------
+        # (B) Build Market Maker messages
+        # -------------------------------------------------------
+        mm_order_msgs, mm_cnl_msgs = self.mm_env._get_messages(actions["market_maker"], state.mm_state, params.mm_params)
+
+
+
 
         # -------------------------------------------------------
         # (B) Build Market Maker messages
@@ -238,10 +307,7 @@ class MARLEnv(MultiAgentEnv):
         mm_order_msgs = self.mm_env.get_action(actions["market_maker"],
                                                     state.mm_state,
                                                     params.mm_params)
-        #mm_order_msgs = self.mm_env._getActionMsgs_fixedQuant(mm_raw_action,
-        #                                           state.mm_state,
-        #                                           params.mm_params)
-        mm_action_prices = mm_order_msgs[:, 3]
+
 
 
         mm_cnl_msgs = job.getCancelMsgs(
@@ -268,6 +334,9 @@ class MARLEnv(MultiAgentEnv):
         # Do filtering to net cancellations in MM)
         mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
 
+
+
+
         # -------------------------------------------------------
         # (C) Build Execution messages
         # -------------------------------------------------------
@@ -278,8 +347,7 @@ class MARLEnv(MultiAgentEnv):
         exe_order_msgs = self.exe_env.get_action(exe_raw_action,
                                                      state.exe_state,
                                                      params.exe_params)
-        exe_action_prices = exe_order_msgs[:, 3]  # Get action prices
-        exe_action_quants=exe_order_msgs[:,2]
+
         #jax.debug.print(f"Execution messages: {exe_order_msgs}")
         
         # For execution, decide which side to cancel (depending on task)
@@ -299,6 +367,15 @@ class MARLEnv(MultiAgentEnv):
         )
         exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
 
+
+
+
+
+
+
+
+
+
         # -------------------------------------------------------
         # (D) Combine all agent messages with data messages
         # -------------------------------------------------------
@@ -309,6 +386,33 @@ class MARLEnv(MultiAgentEnv):
             exe_order_msgs,
             data_messages
         ], axis=0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         # -------------------------------------------------------
         # (E) Process combined messages through the order book
@@ -590,6 +694,47 @@ class MARLEnv(MultiAgentEnv):
         return self.observation_spaces
 
 
+    @partial(jax.jit, static_argnums=(0,))
+    def reset(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[Dict[str, chex.Array], MultiAgentState]:
+        """Performs resetting of the environment."""
+
+        if params is None:
+            raise ValueError("Params must be provided to reset the environment.")
+        else:
+            return self.reset_env(key, params)
+
+
+
+    # Override the parent step function to handle the list of actions and params object
+    @partial(jax.jit, static_argnums=(0,))
+    def step(
+        self,
+        key: chex.PRNGKey,
+        state: MultiAgentState,
+        actions: list[jnp.ndarray],
+        params: MultiAgentParams,
+        reset_state: Optional[MultiAgentState] = None,
+    ) -> Tuple[Dict[str, chex.Array], MultiAgentState, Dict[str, float], Dict[str, bool], Dict]:
+        """Performs step transitions in the environment. Resets the environment if done.
+        To control the reset state, pass `reset_state`. Otherwise, the environment will reset randomly."""
+
+        key, key_reset = jax.random.split(key)
+        obs_st, states_st, rewards, dones, infos = self.step_env(key = key, state = state, actions = actions, params = params)
+
+        if reset_state is None:
+            obs_re, states_re = self.reset(key_reset)
+        else:
+            states_re = reset_state
+            obs_re = self.get_obs(states_re)
+
+        # Auto-reset environment based on termination
+        states = jax.tree.map(
+            lambda x, y: jax.lax.select(dones["__all__"], x, y), states_re, states_st
+        )
+        obs = jax.tree.map(
+            lambda x, y: jax.lax.select(dones["__all__"], x, y), obs_re, obs_st
+        )
+        return obs, states, rewards, dones, infos
 
 
     #@partial(jax.jit, static_argnums=[0])
@@ -636,7 +781,7 @@ if __name__ == "__main__":
     env_params = env.default_params
 
     # Reset the environment.
-    obs, state = env.reset_env(key_reset, env_params)
+    obs, state = env.reset(key_reset, env_params)
     print("obs", obs)
 
     # run a loop that samples random actions for each agent.
@@ -661,7 +806,7 @@ if __name__ == "__main__":
         print("actions_per_type:", actions_per_type)
 
 
-        obs, state, rewards, done, info = env.step(key_step, state, actions, env_params)
+        obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
         #DEBUG PRINTS
         #jax.debug.print("EXE info:{}",info["execution"])
