@@ -1092,7 +1092,7 @@ class ExecutionEnv():
         action: jax.Array,
         world_state: MultiAgentState,
         agent_state: ExecEnvState,
-        agent_params: ExecEnvParams
+        agent_params: ExecEnvParams,
     ) -> Tuple[jax.Array, jax.Array]:
         """Get the action and cancel messages for the execution agent."""
 

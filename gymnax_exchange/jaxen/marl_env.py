@@ -217,7 +217,7 @@ class MARLEnv(MultiAgentEnv):
                  key: chex.PRNGKey,
                  state: MultiAgentState,
                  actions: list[jnp.ndarray],
-                 params: MultiAgentParams
+                 params: MultiAgentParams,
                  ) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState, Dict[str, float], bool, Dict[str, Dict]]:
 
 
@@ -242,6 +242,7 @@ class MARLEnv(MultiAgentEnv):
 
         all_action_msgs_list = [] # One element for each agent type
         all_cancel_msgs_list = [] # One element for each agent type
+
 
         for agent_type_index in range(len(self.instance_list)):
             agent_state = state.agent_states[agent_type_index]
@@ -276,147 +277,17 @@ class MARLEnv(MultiAgentEnv):
         print(f"combined msgs: {combined_msgs}")
         
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         # -------------------------------------------------------
-        # (B) Build Market Maker messages
+        # (C) Process combined messages through the order book
         # -------------------------------------------------------
-        mm_order_msgs, mm_cnl_msgs = self.mm_env._get_messages(actions["market_maker"], state.mm_state, params.mm_params)
 
 
-
-
-        # -------------------------------------------------------
-        # (B) Build Market Maker messages
-        # -------------------------------------------------------
-        # Use the MM env's message-building functions
-        mm_order_msgs = self.mm_env.get_action(actions["market_maker"],
-                                                    state.mm_state,
-                                                    params.mm_params)
-
-
-
-        mm_cnl_msgs = job.getCancelMsgs(
-            state.bid_raw_orders,  # using the shared order book from the base state
-            self.mm_trader_id,
-            self.mm_env.cfg.num_messages_by_agent//4,
-            1,
-            state.time[0],
-            state.time[1]
-        )
-        mm_cnl_msgs_ask = job.getCancelMsgs(
-            state.ask_raw_orders,
-            self.mm_trader_id,
-            self.mm_env.cfg.num_messages_by_agent//4,
-            -1,
-            state.time[0],
-            state.time[1]
-        )
-        mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
-
-       # jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
-       # jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
-
-        # Do filtering to net cancellations in MM)
-        mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
-
-
-
-
-        # -------------------------------------------------------
-        # (C) Build Execution messages
-        # -------------------------------------------------------
-        exe_raw_action = self.exe_env._reshape_action(actions["execution"],
-                                                      state.exe_state,
-                                                      params.exe_params,
-                                                      key_exe)
-        exe_order_msgs = self.exe_env.get_action(exe_raw_action,
-                                                     state.exe_state,
-                                                     params.exe_params)
-
-        #jax.debug.print(f"Execution messages: {exe_order_msgs}")
-        
-        # For execution, decide which side to cancel (depending on task)
-        side_for_exe = 1 - state.exe_state.is_sell_task * 2
-        raw_order_side = jax.lax.cond(
-            state.exe_state.is_sell_task,
-            lambda: state.ask_raw_orders,
-            lambda: state.bid_raw_orders
-        )
-        exe_cnl_msgs = job.getCancelMsgs(
-            raw_order_side,
-            self.exe_trader_id,
-            self.exe_env.cfg.num_messages_by_agent//2, #cant be n_actions due to new space
-            side_for_exe,
-            state.time[0],  # cancel_time
-            state.time[1],  # cancel_time_ns
-        )
-        exe_order_msgs, exe_cnl_msgs = self.exe_env._filter_messages(exe_order_msgs, exe_cnl_msgs)
+      
 
 
 
 
 
-
-
-
-
-
-        # -------------------------------------------------------
-        # (D) Combine all agent messages with data messages
-        # -------------------------------------------------------
-        combined_msgs = jnp.concatenate([
-            mm_cnl_msgs,
-            mm_order_msgs,
-            exe_cnl_msgs,
-            exe_order_msgs,
-            data_messages
-        ], axis=0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # -------------------------------------------------------
-        # (E) Process combined messages through the order book
-        # -------------------------------------------------------
 
         #jax.debug.print(f"Combined messages: {combined_msgs}")
 
@@ -675,12 +546,6 @@ class MARLEnv(MultiAgentEnv):
             prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
             # jax.debug.print("prices_quants\n {}", prices_quants)
             return prices_quants
-
-
-
-
-
-
 
 
 
