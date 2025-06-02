@@ -285,19 +285,20 @@ class MARLEnv(MultiAgentEnv):
       
 
 
-
+        #print("n steps:", self.multi_agent_config.world_config.n_data_msg_per_step + self.multi_agent_config.world_config.num_messages_by_agent + self.multi_agent_config.world_config.num_messages_by_agent)
+        print("self n steps:", self.num_msgs_per_step)
 
 
 
         #jax.debug.print(f"Combined messages: {combined_msgs}")
 
-        trades_reinit = (jnp.ones((self.nTradesLogged, 8)) * -1).astype(jnp.int32)
+        trades_reinit = (jnp.ones((self.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
-            self.world_config,  
+            self.multi_agent_config.world_config,  
             key,  
             combined_msgs,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
-            self.n_data_msg_per_step + self.exe_env.world_config.num_messages_by_agent + self.mm_env.cfg.num_messages_by_agent
+             self.num_msgs_per_step
         )
         #jax.debug.print(f"New best bids after LOB: {new_bestbids.shape}")
         
