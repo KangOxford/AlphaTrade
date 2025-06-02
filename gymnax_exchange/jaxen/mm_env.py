@@ -143,6 +143,7 @@ from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
 set_config(TokenizerConfig(split_vocab=True)) 
 from gymnax_exchange.jaxen.StatesandParams import MMEnvState, MMEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
+from gymnax_exchange.jaxen.StatesandParams import MultiAgentState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 #from gymnax_exchange.jaxen.from_JAXMARL import spaces
 
@@ -999,7 +1000,7 @@ class MarketMakingAgent():
         
         # Time fields (replicated for each message)
         times = jnp.resize(
-            state.time + params.time_delay_obs_act,
+            state.time + self.cfg.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
         # Stack components into message array
@@ -1071,7 +1072,7 @@ class MarketMakingAgent():
         order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
 
         # Time fields
-        times = jnp.resize(state.time + params.time_delay_obs_act, (2, 2))
+        times = jnp.resize(state.time + self.cfg.time_delay_obs_act, (2, 2))
 
         # Stack messages
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
@@ -1161,7 +1162,7 @@ class MarketMakingAgent():
                     (self.trader_unique_id + state.customIDcounter)) \
                     + jnp.arange(0, self.cfg.n_actions) #Each message has a unique ID
         times = jnp.resize(
-            state.time + params.time_delay_obs_act,
+            state.time + self.cfg.time_delay_obs_act,
             (self.cfg.n_actions, 2)
         )
         # --------------- 01 rest info for deciding action_msgs ---------------
@@ -1267,7 +1268,7 @@ class MarketMakingAgent():
         order_ids = base_id + jnp.array([0, 1], dtype=jnp.int32)
         
         # Time fields
-        times = jnp.resize(state.time + params.time_delay_obs_act, (2, 2))
+        times = jnp.resize(state.time + self.cfg.time_delay_obs_act, (2, 2))
         
         # Stack messages
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
@@ -1332,7 +1333,7 @@ class MarketMakingAgent():
         
         # Time fields (replicated for each message)
         times = jnp.resize(
-            state.time + params.time_delay_obs_act,
+            state.time + self.cfg.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
         
@@ -1343,6 +1344,45 @@ class MarketMakingAgent():
         # Debug print final messages
         #jax.debug.print("Final Action Messages:\n{}", action_msgs)
         return action_msgs
+
+
+
+    def _get_messages(self, action: jax.Array, world_state: MultiAgentState, agent_state:MMEnvState, agent_params: MMEnvParams):
+
+        # -------------------------------------------------------
+        # (B) Build Market Maker messages
+        # -------------------------------------------------------
+        # Use the MM env's message-building functions
+        mm_order_msgs = self.get_action(action,
+                                                    state,
+                                                    params)
+
+        mm_cnl_msgs = job.getCancelMsgs(
+            state.bid_raw_orders,  # using the shared order book from the base state
+            self.mm_trader_id,
+            self.mm_env.cfg.num_messages_by_agent//4,
+            1,
+            state.time[0],
+            state.time[1]
+        )
+        mm_cnl_msgs_ask = job.getCancelMsgs(
+            state.ask_raw_orders,
+            self.mm_trader_id,
+            self.mm_env.cfg.num_messages_by_agent//4,
+            -1,
+            state.time[0],
+            state.time[1]
+        )
+        mm_cnl_msgs = jnp.concatenate([mm_cnl_msgs, mm_cnl_msgs_ask], axis=0)
+
+       # jax.debug.print(f"Market Maker action msg: {mm_order_msgs}")
+       # jax.debug.print(f"Market Maker cancel msg: {mm_cnl_msgs}")
+
+        # Do filtering to net cancellations in MM)
+        mm_order_msgs, mm_cnl_msgs = self.mm_env._filter_messages(mm_order_msgs, mm_cnl_msgs)
+
+
+
 
 
 
@@ -1365,7 +1405,7 @@ class MarketMakingAgent():
             id_counter = state.customIDcounter + 1 + 1  # 1 message
         else:
             raise ValueError("Action space not implemented yet")
-        time = time + params.time_delay_obs_act
+        time = time + self.cfg.time_delay_obs_act
         return (asks, bids, trades),  id_counter, time
 
     def unwind_ref_price(self,
@@ -1416,7 +1456,7 @@ class MarketMakingAgent():
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
 
         
-        new_time = time + params.time_delay_obs_act
+        new_time = time + self.cfg.time_delay_obs_act
 
 
         is_sell_task = jnp.where(new_inventory > 0, 1, 0)
@@ -1483,7 +1523,7 @@ class MarketMakingAgent():
             mkt_p = (1 - is_sell_task) * self.cfg.maxint // self.tick_size * self.tick_size
             side = (1 - is_sell_task*2)
             # TODO: this addition wouldn't work if the ns time at index 1 increases to more than 1 sec
-            new_time = time + params.time_delay_obs_act
+            new_time = time + self.cfg.time_delay_obs_act
             mkt_msg = jnp.array([
                 # type, side, quant, price
                 #NOTE: MAKING ZERO TO TEST SELL AT MID PRICE jnp.abs(state.inventory)
@@ -1839,7 +1879,7 @@ class MarketMakingAgent():
             "InventoryPnL":InventoryPnL,
             "scaledInventoryPnL":scaledInventoryPnL,
             "other_exec_quants":other_exec_quants,
-            "averageMidprice": averageMidprice
+            "averageMidprice": averageMidprice # this should be on world info
         }
 
     #======================Wrappers to choose funcitons=========================================#    

@@ -851,7 +851,7 @@ class ExecutionEnv():
                     (self.trader_unique_id + state.customIDcounter)) \
                     + jnp.arange(0, self.cfg.num_action_messages_by_agent) #Each message has a unique ID
         times = jnp.resize(
-            state.time + params.time_delay_obs_act,
+            state.time + self.cfg.time_delay_obs_act,
             (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
         )
         #------Check quants dont exceed inv----#
@@ -947,7 +947,7 @@ class ExecutionEnv():
                     (self.trader_unique_id + state.customIDcounter)) \
                     + jnp.arange(0, self.cfg.num_action_messages_by_agent) #Each message has a unique ID
         times = jnp.resize(
-            state.time + params.time_delay_obs_act,
+            state.time + self.cfg.time_delay_obs_act,
             (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
         )
         #------Check quants dont exceed inv----#
@@ -1045,7 +1045,7 @@ class ExecutionEnv():
                     (self.trader_unique_id + state.customIDcounter)) \
                     + jnp.arange(0, self.cfg.n_actions) #Each message has a unique ID
         times = jnp.resize(
-            state.time + params.time_delay_obs_act,
+            state.time + self.cfg.time_delay_obs_act,
             (self.cfg.n_actions, 2)
         )
         # --------------- 01 rest info for deciding action_msgs ---------------
@@ -1136,7 +1136,7 @@ class ExecutionEnv():
         averageMidprice = ((bestask[0] + bestbid[0]) // 2).mean() // self.tick_size * self.tick_size
         #jax.debug.print("mid_price:{}",mid_price)
         
-        new_time = time + params.time_delay_obs_act
+        new_time = time + self.cfg.time_delay_obs_act
         next_id = state.customIDcounter + self.cfg.n_actions + 1
 
         doom_price = jax.lax.cond(
@@ -1168,6 +1168,8 @@ class ExecutionEnv():
         id_counter=next_id
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
+    
+    
     #--------Force market if done-------------#
     def _force_market_order_if_done(
             self,
@@ -1188,7 +1190,7 @@ class ExecutionEnv():
             mkt_p = (1 - state.is_sell_task) * self.cfg.maxint // self.tick_size * self.tick_size
             side = (1 - state.is_sell_task*2)
             # TODO: this addition wouldn't work if the ns time at index 1 increases to more than 1 sec
-            new_time = time + params.time_delay_obs_act
+            new_time = time + self.cfg.time_delay_obs_act
             mkt_msg = jnp.array([
                 # type, side, quant, price
                 1, side, quant_left, mkt_p,
