@@ -236,7 +236,7 @@ class MARLEnv(MultiAgentEnv):
         # (B) Get the action and cancel messages for each agent 
         # -------------------------------------------------------
 
-        print(f"actions: {actions}")
+        
 
         #for agent_type_index in range(len(self.instance_list)):
 
@@ -272,8 +272,12 @@ class MARLEnv(MultiAgentEnv):
         new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state
 
         # Combine action and cancel messages
-        combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs], axis=0)
+        combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs, data_messages], axis=0)
 
+
+        print(f"actions: {actions}")
+        print(f"best ask prices: {state.world_state.best_asks[-1]}")
+        print(f"best bid prices: {state.world_state.best_bids[-1]}")
         print(f"combined msgs: {combined_msgs}")
         
 
@@ -287,25 +291,29 @@ class MARLEnv(MultiAgentEnv):
 
         #print("n steps:", self.multi_agent_config.world_config.n_data_msg_per_step + self.multi_agent_config.world_config.num_messages_by_agent + self.multi_agent_config.world_config.num_messages_by_agent)
         print("self n steps:", self.num_msgs_per_step)
-
+        print("Combined msgs shape:", combined_msgs.shape)
 
 
         #jax.debug.print(f"Combined messages: {combined_msgs}")
 
-        trades_reinit = (jnp.ones((self.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
+        trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
             self.multi_agent_config.world_config,  
             key,  
             combined_msgs,
-            (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
+            (state.world_state.ask_raw_orders, state.world_state.bid_raw_orders, trades_reinit),
              self.num_msgs_per_step
         )
         #jax.debug.print(f"New best bids after LOB: {new_bestbids.shape}")
         
-        # Forward-fill best prices if necessary:
-        new_bestasks = self._ffill_best_prices(new_bestasks[-self.n_data_msg_per_step-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_asks[-1, 0]) # TODO this should just be the entire array 
-        new_bestbids = self._ffill_best_prices(new_bestbids[-self.n_data_msg_per_step-self.exe_env.cfg.num_messages_by_agent-self.mm_env.cfg.num_messages_by_agent:], state.mm_state.best_bids[-1, 0])
 
+        print(f"new best asks: {new_bestasks.shape}")
+        # Forward-fill best prices if necessary:
+        new_bestasks = self._ffill_best_prices(new_bestasks[-self.num_msgs_per_step:], state.world_state.best_asks[-1, 0]) # TODO this should just be the entire array 
+        new_bestbids = self._ffill_best_prices(new_bestbids[-self.num_msgs_per_step:], state.world_state.best_bids[-1, 0])
+
+
+        print(f"new best asks: {new_bestasks.shape}")
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
 
         # Get features of previous state for mm obvs update
