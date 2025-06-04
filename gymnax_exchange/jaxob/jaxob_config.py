@@ -124,6 +124,9 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     tick_size=100
     trader_id_range_start=-2 # -1 is reserved for the placeholder in the messages object
     placeholder_order_id = -99
+    last_step_seconds = 5
+    artifical_trader_id_end_episode = -666666 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
+    artifical_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
 
 
 @dataclass(frozen=True)

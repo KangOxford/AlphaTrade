@@ -1181,7 +1181,7 @@ class ExecutionEnv():
         #-----check if ep over-----#
         if self.ep_type == 'fixed_time':
             remainingTime = self.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
-            ep_is_over = remainingTime <= 5  # 5 seconds
+            ep_is_over = remainingTime <= self.world_config.last_step_seconds   # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
         averageMidprice = ((bestask[0] + bestbid[0]) // 2).mean() // self.world_config.tick_size * self.world_config.tick_size
@@ -1193,7 +1193,7 @@ class ExecutionEnv():
         doom_price = jax.lax.cond(
             state.is_sell_task,
             lambda: ((bestbid[0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-            lambda: (( bestask[0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: ((bestask[0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
         )
 
         def place_midprice_trade(trades, price, quant, time):
@@ -1220,6 +1220,8 @@ class ExecutionEnv():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
     
+
+
     
     #--------Force market if done-------------#
     def _force_market_order_if_done(
@@ -1335,7 +1337,80 @@ class ExecutionEnv():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
-    def _get_reward(self, state: ExecEnvState, params: ExecEnvParams, trades: chex.Array) -> jnp.int32:
+    def _get_reward(self, 
+                    world_state: WorldState, 
+                    agent_state: ExecEnvState, 
+                    agent_params: ExecEnvParams, 
+                    trades: chex.Array, 
+                    bestasks: chex.Array, 
+                    bestbids: chex.Array, 
+                    time: jax.Array) -> jnp.int32:
+
+        #########################################################################################
+        # Add artificial trade if episode is done
+        # Important: this artificial trade is not saved, its just used to calculate the reward
+        #########################################################################################
+
+        agent_trades_before_unwind = job.get_agent_trades(trades, agent_params.trader_id)
+        quant_executed_this_step = agent_trades_before_unwind[:,1].sum()
+        quant_left = agent_state.task_to_execute - (agent_state.quant_executed + quant_executed_this_step)
+
+        print(f"quant_left: {quant_left}")
+        print("bestbids", bestbids.shape)
+        print("world_state.max_steps_in_episode", world_state.max_steps_in_episode)
+        print("world_state.step_counter", world_state.step_counter)
+
+        #-----check if ep over-----#
+        if self.world_config.ep_type == 'fixed_time':
+            remainingTime = self.world_config.episode_time - jnp.array((time - world_state.init_time)[0], dtype=jnp.int32)
+            ep_is_over = remainingTime <= self.world_config.last_step_seconds   # 5 seconds
+        else:
+            ep_is_over = world_state.max_steps_in_episode - world_state.step_counter <= 1
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() // self.world_config.tick_size * self.world_config.tick_size
+        #jax.debug.print("mid_price:{}",mid_price)
+
+
+        print("bestbid 0", bestbids[-1,0])
+
+        doom_price = jax.lax.cond(
+            agent_state.is_sell_task,
+            lambda: ((bestbids[-1,0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: ((bestasks[-1,0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+        )
+
+        def place_midprice_trade(trades, price, quant, time):
+            '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
+            
+            print("price shape: {}", price.shape)
+            print("quant shape: {}", quant.shape)
+            print("time shape: {}", time.shape)
+            print("trader id shape: {}", agent_params.trader_id.shape)
+            
+            
+            mid_trade = job.create_trade(
+                price, quant, self.world_config.artifical_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artifical_trader_id_end_episode, agent_params.trader_id)
+            trades = job.add_trade(trades, mid_trade)
+            #jax.debug.print("called?")
+            return trades
+        
+        #Get side to place trade. +ve quant means we (aggresive) sold.
+        side_sign=(agent_state.is_sell_task*2-1) # 1 if sell, -1 if buy
+        
+        # Add artificial trade to trades object if episode is over and we still have remaining quantity
+        trades = jax.lax.cond(
+            ep_is_over & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
+            place_midprice_trade,  # Place a midprice trade
+            lambda trades, b, c, d: trades,  # If not, return the existing trades
+            trades, doom_price, side_sign*jnp.abs(quant_left), time  # Inv +ve means incoming is sell so standing buy.
+        )
+        #Return traded amounts
+        doom_quant = ep_is_over * quant_left
+
+
+        #################################
+        # Get reward
+        #################################
+
         # ========== get reward and revenue ==========
         # Gather the 'trades' that are nonempty, make the rest 0
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
@@ -1347,6 +1422,10 @@ class ExecutionEnv():
         # jax.debug.print('agentTrades\n {}', agentTrades[:30])
         agentQuant = jnp.abs(agentTrades[:,1]).sum() # new_execution quants
         
+        print("agent trades: ", agentTrades)
+        print("other trades: ", otherTrades)
+
+
         # ---------- used for vwap, revenue ----------
         # vwapFunc = lambda tr: jnp.nan_to_num(
         #     (tr[:,0] // self.world_config.tick_size * tr[:,1]).sum() / (tr[:,1]).sum(),
@@ -1358,24 +1437,24 @@ class ExecutionEnv():
         other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
         vwap = jax.lax.cond(
             other_exec_quants == 0,
-            lambda: state.init_price / self.world_config.tick_size,
+            lambda: agent_state.init_price / self.world_config.tick_size,
             lambda: (otherTrades[:, 0] // self.world_config.tick_size * jnp.abs(otherTrades[:, 1])).sum() / other_exec_quants
         )
         
         revenue = (agentTrades[:,0] // self.world_config.tick_size * jnp.abs(agentTrades[:,1])).sum()
         
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
-        rollingMeanValueFunc_FLOAT = lambda average_val,new_val:(average_val*state.step_counter+new_val)/(state.step_counter+1)
-        vwap_rm = rollingMeanValueFunc_FLOAT(state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
-        price_adv_rm = rollingMeanValueFunc_FLOAT(state.price_adv_rm,revenue/(agentQuant+0.001) - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
-        slippage_rm = rollingMeanValueFunc_FLOAT(state.slippage_rm,revenue - state.init_price//self.world_config.tick_size*agentQuant)
-        price_drift_rm = rollingMeanValueFunc_FLOAT(state.price_drift_rm,(vwap - state.init_price//self.world_config.tick_size)) #price_drift = (vwap - state.init_price//self.world_config.tick_size)
+        rollingMeanValueFunc_FLOAT = lambda average_val,new_val:(average_val*world_state.step_counter+new_val)/(world_state.step_counter+1)
+        vwap_rm = rollingMeanValueFunc_FLOAT(agent_state.vwap_rm,vwap) # (state.market_rap*state.step_counter+executedAveragePrice)/(state.step_counter+1)
+        price_adv_rm = rollingMeanValueFunc_FLOAT(agent_state.price_adv_rm,revenue/(agentQuant+0.001) - vwap) # slippage=revenue/agentQuant-vwap, where revenue/agentQuant means agentPrice 
+        slippage_rm = rollingMeanValueFunc_FLOAT(agent_state.slippage_rm,revenue - agent_state.init_price//self.world_config.tick_size*agentQuant)
+        price_drift_rm = rollingMeanValueFunc_FLOAT(agent_state.price_drift_rm,(vwap - agent_state.init_price//self.world_config.tick_size)) #price_drift = (vwap - state.init_price//self.world_config.tick_size)
         
         # ---------- used for advantage and drift ----------
         # switch sign for buy task
-        direction_switch = jnp.sign(state.is_sell_task * 2 - 1)
+        direction_switch = jnp.sign(agent_state.is_sell_task * 2 - 1)
         advantage = direction_switch * (revenue - vwap * agentQuant) # advantage_vwap
-        drift = direction_switch * agentQuant * (vwap - state.init_price//self.world_config.tick_size)
+        drift = direction_switch * agentQuant * (vwap - agent_state.init_price//self.world_config.tick_size)
         
         # ---------- compute the final reward ----------
         # rewardValue = revenue 
@@ -1387,9 +1466,9 @@ class ExecutionEnv():
         # rewardValue = revenue - vwap_rm * agentQuant # advantage_vwap_rm
 
         # rewardValue = revenue - (state.init_price // self.world_config.tick_size) * agentQuant
-        reward = advantage + params.reward_lambda * drift
+        reward = advantage + self.cfg.reward_lambda * drift
         reward_lam1 = direction_switch * (
-            revenue - (state.init_price // self.world_config.tick_size) * agentQuant
+            revenue - (agent_state.init_price // self.world_config.tick_size) * agentQuant
         )
         
         # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {} vwap {} init_price {}', 
@@ -1408,7 +1487,8 @@ class ExecutionEnv():
             "price_drift_rm": price_drift_rm,
             "vwap_rm": vwap_rm,
             "advantage": advantage,
-            "drift": drift
+            "drift": drift,
+            "doom_quant": doom_quant,
         }
 
     def _get_obs(

@@ -1405,6 +1405,11 @@ class MarketMakingAgent():
         time = time + self.cfg.time_delay_obs_act
         return (asks, bids, trades),  id_counter, time
 
+
+
+
+
+
     def unwind_ref_price(self,
             bestasks: jax.Array,
             bestbids: jax.Array,
@@ -1413,9 +1418,9 @@ class MarketMakingAgent():
             bids: jax.Array,
             trades: jax.Array,
             state: MMEnvState,
-            params: MMEnvParams,
+            agent_params: MMEnvParams,
         ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:   
-        executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
+        
         '''Function to create an artifical trade which liquidates the agent's position.
             cfg.rerefernce price sets the price of the trade
 
@@ -1423,7 +1428,9 @@ class MarketMakingAgent():
             NOTE: The prices in the trade here are NOT normalised by tick size. This is correct, as it is "as if" we sent
             and order with these prices. The get_reward, will see the trade, and normalsie the prices following. No change needed.
         '''
-             
+
+
+        executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0) 
         # Mask to keep only the trades where the RL agent is involved, apply mask.
         mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0) 
@@ -1444,15 +1451,16 @@ class MarketMakingAgent():
         inventory_delta = buyQuant - sellQuant
         new_inventory=state.inventory+inventory_delta
         
+
         #-----check if ep over-----#
         if self.ep_type == 'fixed_time':
             remainingTime = self.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= 5  # 5 seconds
         else:
             ep_is_over = state.max_steps_in_episode - state.step_counter <= 1
+
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
 
-        
         new_time = time + self.cfg.time_delay_obs_act
 
 
@@ -1491,8 +1499,12 @@ class MarketMakingAgent():
         #OID logic based on config
         num_messages=self.cfg.num_action_messages_by_agent
         id_counter=state.customIDcounter +num_messages+1
+
+
         return (asks, bids, trades),  id_counter, new_time
     
+
+
     
     def _force_market_order_if_done(
             self,
@@ -1682,19 +1694,22 @@ class MarketMakingAgent():
 
         return (asks, bids, trades), (bestask, bestbid), id_counter, time, mkt_exec_quant, doom_quant
 
-    def _get_reward(self, state: MMEnvState, params: MMEnvParams, trades: chex.Array,bestasks :chex.Array, bestbids: chex.Array) -> jnp.int32:
-        '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
-        '''
-        # ====================01 get reward stats ==========================================#
-        #Notice, normalise prices in reward by tick size. On state prices are not normalised 
-        #Being constient with exec. Cash balance and pnl etc are normalised in state, also consitent
 
+
+
+    def _extract_agent_trade_stats(self, trades, agent_params, state):
         # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
+        print(f"executed: {executed}")
+        print(f"agent_params.trader_id: {agent_params.trader_id}")
         mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
     
+        print(f"agentTrades: {agentTrades}")
+        print(f"otherTrades: {otherTrades}")
+
+
         #Find agent Buys and Agent sells from agent Trades:
         #The below mask puts passive buys or aggresive buys into "agent buys".
         #Logic: Q>0, TIDs=BUY; Q<0 TIDa= BUY
@@ -1713,6 +1728,110 @@ class MarketMakingAgent():
         #Calculate the change in inventory & the new inventory
         inventory_delta = buyQuant - sellQuant
         new_inventory=state.inventory+inventory_delta
+
+        return agentTrades, otherTrades, agent_buys, agent_sells, buyQuant, sellQuant, TradedVolume, inventory_delta, new_inventory
+
+
+
+    def _get_reward(self, 
+                    world_state: WorldState, 
+                    agent_state: MMEnvState, 
+                    agent_params: MMEnvParams, 
+                    trades: chex.Array, 
+                    bestasks: chex.Array, 
+                    bestbids: chex.Array, 
+                    time: jax.Array) -> jnp.int32:
+        '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
+        '''
+        # ====================01 get reward stats ==========================================#
+        #Notice, normalise prices in reward by tick size. On state prices are not normalised 
+        #Being constient with exec. Cash balance and pnl etc are normalised in state, also consitent
+
+
+        #########################################################
+        # Get reward stats before unwind
+        #########################################################
+
+        agentTrades_before_unwind, otherTrades_before_unwind, agent_buys_before_unwind, agent_sells_before_unwind, buyQuant_before_unwind, sellQuant_before_unwind, TradedVolume_before_unwind, inventory_delta_before_unwind, new_inventory_before_unwind = \
+                self._extract_agent_trade_stats(trades, agent_params, agent_state)
+
+        print("bestbid 0", bestbids[-1,0])
+        print(f"agentTrades_before_unwind: {agentTrades_before_unwind}")
+        print(f"otherTrades_before_unwind: {otherTrades_before_unwind}")
+        print(f"agent_buys_before_unwind: {agent_buys_before_unwind}")
+        print(f"agent_sells_before_unwind: {agent_sells_before_unwind}")
+        print(f"buyQuant_before_unwind: {buyQuant_before_unwind}")
+        print(f"sellQuant_before_unwind: {sellQuant_before_unwind}")
+        print(f"TradedVolume_before_unwind: {TradedVolume_before_unwind}")
+
+        #########################################################################################
+        # Add artificial trade if episode is done
+        # Important: this artificial trade is not saved, its just used to calculate the reward
+        #########################################################################################
+
+        #-----check if ep over-----#
+        if self.world_config.ep_type == 'fixed_time':
+            remainingTime = self.world_config.episode_time - jnp.array((time - world_state.init_time)[0], dtype=jnp.int32)
+            ep_is_over = remainingTime <= self.world_config.last_step_seconds  # 5 seconds
+        else:
+            ep_is_over = world_state.max_steps_in_episode - world_state.step_counter <= 1
+
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+
+        is_sell_task = jnp.where(new_inventory_before_unwind > 0, 1, 0)
+        FT_price = jax.lax.cond(
+            is_sell_task,
+            lambda: ((bestbids[-1, 0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (( bestasks[-1, 0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+        )
+
+        def place_refprice_trade(trades, price, quant, time):
+            '''Place a doom trade at a trade at specified price to close out our mm agent at the end of the episode.'''
+            trade = job.create_trade(
+                price, quant, self.world_config.artifical_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artifical_trader_id_end_episode, agent_params.trader_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
+            trades = job.add_trade(trades, trade)
+            return trades
+
+        ##Get the price to unwind at based on the config
+        if self.cfg.reference_price_portfolio_value == "mid":
+            reference_price = averageMidprice
+        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
+            reference_price=FT_price
+        elif self.cfg.reference_price_portfolio_value == "near_touch":
+            # Even if we value our at the near touch price, we still want to unwind at the far touch price to be realistic
+            reference_price=FT_price
+        else:
+            raise ValueError("Invalid reference price type.")
+        
+        trades = jax.lax.cond(
+            ep_is_over & (jnp.abs(new_inventory_before_unwind) > 0),  # Check if episode is over and we still have remaining quantity
+            place_refprice_trade,  # Place a midprice trade
+            lambda trades, b, c, d: trades,  # If not, return the existing trades
+            trades, reference_price, jnp.sign(new_inventory_before_unwind) * jnp.abs(new_inventory_before_unwind), time  # Inv +ve means incoming is sell so standing buy.
+        )
+
+
+        #########################################################
+        # Get reward stats after unwind
+        #########################################################
+
+        agentTrades, otherTrades, agent_buys, agent_sells, buyQuant, sellQuant, TradedVolume, inventory_delta, new_inventory = \
+                self._extract_agent_trade_stats(trades, agent_params, agent_state)
+
+
+        print(f"agentTrades: {agentTrades}")
+        print(f"otherTrades: {otherTrades}")
+        print(f"agent_buys: {agent_buys}")
+        print(f"agent_sells: {agent_sells}")
+        print(f"buyQuant: {buyQuant}")
+        print(f"sellQuant: {sellQuant}")
+        print(f"TradedVolume: {TradedVolume}")
+
+
+        #########################################################
+        # Get reward
+        #########################################################
+
 
         #Find the new obsvered mid price at the end of the step.
         #non normalized=> going on state
@@ -1742,7 +1861,7 @@ class MarketMakingAgent():
             raise ValueError("Invalid reference price type.")
 
         # Keep track of overall cash balance (same as overall PnL)
-        new_cash_balance = state.cash_balance + PnL
+        new_cash_balance = agent_state.cash_balance + PnL
         inventoryValue=new_inventory*(reference_price)
         netWorth=new_cash_balance+inventoryValue  
 
@@ -1754,7 +1873,7 @@ class MarketMakingAgent():
 
         #------------A) spooner Rewards-------------------------#       
         #Inventory PnL: 
-        InventoryPnL= state.inventory*(mid_price_end-state.mid_price)/self.world_config.tick_size 
+        InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)/self.world_config.tick_size 
     
         #Market Making PNL:     
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
@@ -1774,7 +1893,7 @@ class MarketMakingAgent():
         reward_spooner_damped = aggresive_buyPnL + aggresive_sellPnL + InventoryPnL - (1-self.cfg.inventoryPnL_lambda)*jnp.maximum(0,InventoryPnL)
 
         #A3) Spooner Scaled
-        scaledInventoryPnL=InventoryPnL//(jnp.abs(state.inventory)+1)
+        scaledInventoryPnL=InventoryPnL//(jnp.abs(agent_state.inventory)+1)
         reward_spooner_scaled=aggresive_buyPnL + aggresive_sellPnL+ self.cfg.inventoryPnL_lambda*(InventoryPnL - (1-self.cfg.asymmetrically_dampened_lambda)*jnp.maximum(0,InventoryPnL) )
         #----------------------B) Complex reward---------------------------------------------#
         inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
@@ -1797,21 +1916,21 @@ class MarketMakingAgent():
         #-----------------d) delta Portfolio Value--------#
         #Get old ref price
         if self.cfg.reference_price_portfolio_value == "mid":
-            old_reference_price = state.mid_price/self.world_config.tick_size
+            old_reference_price = world_state.mid_price/self.world_config.tick_size
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             # For a long position, use the best bid; for a short, the best ask. (this is realistic)
-            old_reference_price = jax.lax.cond(state.inventory > 0,
-                                        lambda: state.best_bids[-1][0]/self.world_config.tick_size,
-                                        lambda: state.best_asks[-1][0]/self.world_config.tick_size)
+            old_reference_price = jax.lax.cond(agent_state.inventory > 0,
+                                        lambda: world_state.best_bids[-1][0]/self.world_config.tick_size,
+                                        lambda: world_state.best_asks[-1][0]/self.world_config.tick_size)
         elif self.cfg.reference_price_portfolio_value == "near_touch":
             # For a long position, use the best ask; for a short, the best bid. (this is not realistic, but might be useful for training)
-            old_reference_price = jax.lax.cond(state.inventory > 0,
-                                        lambda: state.best_asks[-1][0]/self.world_config.tick_size,
-                                        lambda: state.best_bids[-1][0]/self.world_config.tick_size)
+            old_reference_price = jax.lax.cond(agent_state.inventory > 0,
+                                        lambda: world_state.best_asks[-1][0]/self.world_config.tick_size,
+                                        lambda: world_state.best_bids[-1][0]/self.world_config.tick_size)
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth
-        old_netWorth=old_reference_price*state.inventory+state.cash_balance
+        old_netWorth=old_reference_price*agent_state.inventory+agent_state.cash_balance
         delta_netWorth=netWorth-old_netWorth
         reward_delta_netWorth=delta_netWorth
         
@@ -1878,6 +1997,9 @@ class MarketMakingAgent():
             "other_exec_quants":other_exec_quants,
             "averageMidprice": averageMidprice # this should be on world info
         }
+
+
+
 
     #======================Wrappers to choose funcitons=========================================#    
     def get_episode_end_fn(self,key,bestasks, bestbids, time, asks, bids, trades, state, params):

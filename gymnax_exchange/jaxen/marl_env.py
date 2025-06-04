@@ -11,6 +11,7 @@ from flax import struct
 import jax.tree_util as jtu
 from functools import partial
 from typing import Any
+from gymnax_exchange.utils import utils as util
 #from typing import List, Tuple
 
 # for debugging
@@ -176,18 +177,11 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-        print("params:", params.agent_params)
-        
-
         
         for config_index, (instance, agent_param, agent_key, agent_config) in enumerate(zip(self.instance_list, params.agent_params, agent_keys, self.multi_agent_config.list_of_agents_configs)):
-            print("########################################################")
-            print("agent_config:", agent_config)
 
             vmapped_function = vmap(instance.reset_env, in_axes=(0,None,None,None), out_axes = (0,0))
             agent_obs, agent_state = vmapped_function(agent_param, agent_key, world_state, self.num_msgs_per_step)
-
-            print("agent_obs:", agent_obs.shape)
 
             agent_state_list.append(agent_state)
             agent_obs_list.append(agent_obs)
@@ -201,8 +195,6 @@ class MARLEnv(MultiAgentEnv):
             #    dict_key = f"{agent_config.short_name}_{config_index}_{agent_idx}"
             #    multi_obs[dict_key] = obs
         
-        print("multi_obs:", agent_obs_list)
-
         multi_state = MultiAgentState(
             world_state=world_state,
             agent_states=agent_state_list
@@ -236,10 +228,6 @@ class MARLEnv(MultiAgentEnv):
         # (B) Get the action and cancel messages for each agent 
         # -------------------------------------------------------
 
-        
-
-        #for agent_type_index in range(len(self.instance_list)):
-
         all_action_msgs_list = [] # One element for each agent type
         all_cancel_msgs_list = [] # One element for each agent type
 
@@ -261,10 +249,7 @@ class MARLEnv(MultiAgentEnv):
         all_action_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_action_msgs_list])
         all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
-        print(f"all action msgs: {all_action_msgs}")
-        print(f"all cancel msgs: {all_cancel_msgs}")
-        print(f"all action msgs shape: {all_action_msgs.shape}")
-        print(f"all cancel msgs shape: {all_cancel_msgs.shape}")
+
 
         # Replace order ids in the action messages:
         new_order_ids = jnp.arange(state.world_state.order_id_counter, state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents, -1)
@@ -275,26 +260,19 @@ class MARLEnv(MultiAgentEnv):
         combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs, data_messages], axis=0)
 
 
-        print(f"actions: {actions}")
-        print(f"best ask prices: {state.world_state.best_asks[-1]}")
-        print(f"best bid prices: {state.world_state.best_bids[-1]}")
-        print(f"combined msgs: {combined_msgs}")
+        #print(f"actions: {actions}")
+        #print(f"best ask prices: {state.world_state.best_asks[-1]}")
+        #print(f"best bid prices: {state.world_state.best_bids[-1]}")
+        #print(f"combined msgs: {combined_msgs}")
         
+
+
+
+
 
         # -------------------------------------------------------
         # (C) Process combined messages through the order book
         # -------------------------------------------------------
-
-
-      
-
-
-        #print("n steps:", self.multi_agent_config.world_config.n_data_msg_per_step + self.multi_agent_config.world_config.num_messages_by_agent + self.multi_agent_config.world_config.num_messages_by_agent)
-        print("self n steps:", self.num_msgs_per_step)
-        print("Combined msgs shape:", combined_msgs.shape)
-
-
-        #jax.debug.print(f"Combined messages: {combined_msgs}")
 
         trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
@@ -304,32 +282,65 @@ class MARLEnv(MultiAgentEnv):
             (state.world_state.ask_raw_orders, state.world_state.bid_raw_orders, trades_reinit),
              self.num_msgs_per_step
         )
-        #jax.debug.print(f"New best bids after LOB: {new_bestbids.shape}")
-        
 
-        print(f"new best asks: {new_bestasks.shape}")
+
         # Forward-fill best prices if necessary:
-        new_bestasks = self._ffill_best_prices(new_bestasks[-self.num_msgs_per_step:], state.world_state.best_asks[-1, 0]) # TODO this should just be the entire array 
-        new_bestbids = self._ffill_best_prices(new_bestbids[-self.num_msgs_per_step:], state.world_state.best_bids[-1, 0])
+        new_bestasks = self._ffill_best_prices(new_bestasks, state.world_state.best_asks[-1, 0]) # TODO Do we need this?
+        new_bestbids = self._ffill_best_prices(new_bestbids, state.world_state.best_bids[-1, 0])
 
 
-        print(f"new best asks: {new_bestasks.shape}")
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
 
-        # Get features of previous state for mm obvs update
-        old_time=state.time
-        old_mid_price=state.mm_state.mid_price
 
-         # Update time and ID counter
-        final_time = combined_msgs[-1, -2:] + params.time_delay_obs_act
-        final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
 
-        #jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
+
+
+
+
+        final_time = combined_msgs[-1, -2:]
+        print(f"final time: {final_time}")
+
 
         #---------------------------------------------------------
-        #(F) End step functions
+        #(D) End step functions
         #----------------------------------------------------------
         
+        print(f"new trades: {new_trades}")
+
+        # test for a single agent
+        #print("--------------------------------")
+        #print("--------------------------------")
+        #print("--------------------------------")
+        #print("agent params: ", params.agent_params[0])
+        #print("agent params: ", util.index_tree(params.agent_params,0))
+        #agent_params_test_single = util.index_tree(params.agent_params[1],3)
+        #agent_state_test_single = util.index_tree(state.agent_states[1],3)
+       # 
+       # self.instance_list[1]._get_reward(state.world_state, agent_state_test_single, agent_params_test_single, new_trades, new_bestasks, new_bestbids, final_time)
+
+
+
+
+
+
+        agent_reward_list = []
+        agent_extras_list = []
+
+        for agent_type_index in range(len(self.instance_list)):
+            print("agent_type_index: ", agent_type_index)
+            agent_state = state.agent_states[agent_type_index]
+            agent_params = params.agent_params[agent_type_index]
+            vmapped_function = vmap(self.instance_list[agent_type_index]._get_reward, in_axes=(None,0,0,None,None,None,None), out_axes = (0,0))
+            reward, extras = vmapped_function(state.world_state, agent_state, agent_params, new_trades, new_bestasks, new_bestbids, final_time)
+            agent_reward_list.append(reward)
+            agent_extras_list.append(extras)
+
+
+
+
+
+        # TODO: I am here. remove the following stuff cause we are not using it anymore. double check if i am doing all of that above
+
         # Market maker end fuction
         (new_asks, new_bids, new_trades), new_id_counter, new_time=self.mm_env.get_episode_end_fn(key_mm,
             new_bestasks, new_bestbids, final_time, new_asks, new_bids, new_trades, state.mm_state, params.mm_params)
@@ -352,6 +363,10 @@ class MARLEnv(MultiAgentEnv):
         #jax.debug.print(f"best bids after final ep: {new_bestbids.shape}")
 
 
+
+
+
+
         # -------------------------------------------------------
         # (G) Compute agent-specific rewards and observations
         # -------------------------------------------------------
@@ -361,6 +376,9 @@ class MARLEnv(MultiAgentEnv):
         mm_reward, mm_extras = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
         #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
         mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
+
+
+
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
         exe_reward, exe_extras = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
@@ -372,6 +390,67 @@ class MARLEnv(MultiAgentEnv):
 
         #jax.debug.print(f"MM obs: {mm_obs}")
         #jax.debug.print(f"EXE obs: {exe_obs}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # -------------------------------------------------------
+        # (E) Update the world state
+        # -------------------------------------------------------
+
+        # Update the world state
+        new_world_state = WorldState(
+            **dataclasses.asdict(state.world_state),
+            ask_raw_orders=new_asks,
+            bid_raw_orders=new_bids,
+            trades=new_trades,
+            best_asks=new_bestasks,
+            best_bids=new_bestbids,
+        )
+
+
+
+        best_bids: jnp.ndarray
+        best_asks: jnp.ndarray
+        step_counter: int
+        time: jnp.ndarray
+        order_id_counter: int
+        mid_price:float
+        delta_time: float
+
+
+
+
+        # Get features of previous state for mm obvs update
+
+        old_time=state.time
+        old_mid_price=state.mm_state.mid_price
+
+         # Update time and ID counter
+        
+        final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
+
+        #jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
 
         # -------------------------------------------------------
         # (H) Update the multi–agent state
@@ -527,6 +606,10 @@ class MARLEnv(MultiAgentEnv):
                 "lob_state":lob_state,}
             
         return obs, new_state, rewards, dones, info
+
+
+
+
 
     def _ffill_best_prices(self, prices_quants, last_valid_price):
             def ffill(arr, inval=-1):
