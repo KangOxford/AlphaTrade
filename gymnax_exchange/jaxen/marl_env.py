@@ -15,7 +15,7 @@ from gymnax_exchange.utils import utils as util
 #from typing import List, Tuple
 
 # for debugging
-jax.config.update('jax_disable_jit', True)
+jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
@@ -321,7 +321,7 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
+        print("trades: ", new_trades)
 
         agent_reward_list = []
         agent_extras_list = []
@@ -341,9 +341,6 @@ class MARLEnv(MultiAgentEnv):
 
         # TODO: I am here. remove the following stuff cause we are not using it anymore. double check if i am doing all of that above
 
-        # Market maker end fuction
-        (new_asks, new_bids, new_trades), new_id_counter, new_time=self.mm_env.get_episode_end_fn(key_mm,
-            new_bestasks, new_bestbids, final_time, new_asks, new_bids, new_trades, state.mm_state, params.mm_params)
         
         # Execution End 
         #Find quant executed

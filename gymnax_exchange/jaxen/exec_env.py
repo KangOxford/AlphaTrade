@@ -1355,10 +1355,11 @@ class ExecutionEnv():
         quant_executed_this_step = agent_trades_before_unwind[:,1].sum()
         quant_left = agent_state.task_to_execute - (agent_state.quant_executed + quant_executed_this_step)
 
+        print("trader id: ", agent_params.trader_id)
+        print("trades before unwind: ", agent_trades_before_unwind)
+        print(f"quant_executed_this_step: {quant_executed_this_step}")
+        print(f"agent_state.task_to_execute: {agent_state.task_to_execute}")
         print(f"quant_left: {quant_left}")
-        print("bestbids", bestbids.shape)
-        print("world_state.max_steps_in_episode", world_state.max_steps_in_episode)
-        print("world_state.step_counter", world_state.step_counter)
 
         #-----check if ep over-----#
         if self.world_config.ep_type == 'fixed_time':
@@ -1422,8 +1423,6 @@ class ExecutionEnv():
         # jax.debug.print('agentTrades\n {}', agentTrades[:30])
         agentQuant = jnp.abs(agentTrades[:,1]).sum() # new_execution quants
         
-        print("agent trades: ", agentTrades)
-        print("other trades: ", otherTrades)
 
 
         # ---------- used for vwap, revenue ----------

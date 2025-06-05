@@ -1700,15 +1700,13 @@ class MarketMakingAgent():
     def _extract_agent_trade_stats(self, trades, agent_params, state):
         # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
-        print(f"executed: {executed}")
+
         print(f"agent_params.trader_id: {agent_params.trader_id}")
+        
         mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
     
-        print(f"agentTrades: {agentTrades}")
-        print(f"otherTrades: {otherTrades}")
-
 
         #Find agent Buys and Agent sells from agent Trades:
         #The below mask puts passive buys or aggresive buys into "agent buys".
@@ -1755,14 +1753,7 @@ class MarketMakingAgent():
         agentTrades_before_unwind, otherTrades_before_unwind, agent_buys_before_unwind, agent_sells_before_unwind, buyQuant_before_unwind, sellQuant_before_unwind, TradedVolume_before_unwind, inventory_delta_before_unwind, new_inventory_before_unwind = \
                 self._extract_agent_trade_stats(trades, agent_params, agent_state)
 
-        print("bestbid 0", bestbids[-1,0])
-        print(f"agentTrades_before_unwind: {agentTrades_before_unwind}")
-        print(f"otherTrades_before_unwind: {otherTrades_before_unwind}")
-        print(f"agent_buys_before_unwind: {agent_buys_before_unwind}")
-        print(f"agent_sells_before_unwind: {agent_sells_before_unwind}")
-        print(f"buyQuant_before_unwind: {buyQuant_before_unwind}")
-        print(f"sellQuant_before_unwind: {sellQuant_before_unwind}")
-        print(f"TradedVolume_before_unwind: {TradedVolume_before_unwind}")
+
 
         #########################################################################################
         # Add artificial trade if episode is done
@@ -1818,14 +1809,6 @@ class MarketMakingAgent():
         agentTrades, otherTrades, agent_buys, agent_sells, buyQuant, sellQuant, TradedVolume, inventory_delta, new_inventory = \
                 self._extract_agent_trade_stats(trades, agent_params, agent_state)
 
-
-        print(f"agentTrades: {agentTrades}")
-        print(f"otherTrades: {otherTrades}")
-        print(f"agent_buys: {agent_buys}")
-        print(f"agent_sells: {agent_sells}")
-        print(f"buyQuant: {buyQuant}")
-        print(f"sellQuant: {sellQuant}")
-        print(f"TradedVolume: {TradedVolume}")
 
 
         #########################################################
