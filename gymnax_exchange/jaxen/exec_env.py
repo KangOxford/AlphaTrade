@@ -1352,7 +1352,7 @@ class ExecutionEnv():
         #########################################################################################
 
         agent_trades_before_unwind = job.get_agent_trades(trades, agent_params.trader_id)
-        quant_executed_this_step = agent_trades_before_unwind[:,1].sum()
+        quant_executed_this_step = jnp.abs(agent_trades_before_unwind[:,1].sum()) # QUants can be negative, therefore take absolute value
         quant_left = agent_state.task_to_execute - (agent_state.quant_executed + quant_executed_this_step)
 
         print("trader id: ", agent_params.trader_id)
