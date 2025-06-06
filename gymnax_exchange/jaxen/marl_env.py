@@ -254,7 +254,7 @@ class MARLEnv(MultiAgentEnv):
         # Replace order ids in the action messages:
         new_order_ids = jnp.arange(state.world_state.order_id_counter, state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents, -1)
         all_action_msgs = all_action_msgs.at[:, 4].set(new_order_ids)
-        new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state
+        new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state, order ids are counter downwards (negative numbers)
 
         # Combine action and cancel messages
         combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs, data_messages], axis=0)
@@ -320,7 +320,6 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
         print("trades: ", new_trades)
 
         agent_reward_list = []
@@ -339,34 +338,6 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-        # TODO: I am here. remove the following stuff cause we are not using it anymore. double check if i am doing all of that above
-
-        
-        # -------------------------------------------------------
-        # (E) Update the agent states
-        # -------------------------------------------------------
-
-
-
-
-        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
-
-
-
-
-        exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
-        exe_reward, exe_extras = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
-        exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
-
-        #jax.debug.print(f"MM trades: {mm_agent_trades}")
-        #jax.debug.print(f"EXE trades: {exe_agent_trades}")
-        #jax.debug.print(f"All Trades: {new_trades}")
-
-        #jax.debug.print(f"MM obs: {mm_obs}")
-        #jax.debug.print(f"EXE obs: {exe_obs}")
-
-
-
 
 
 
@@ -375,95 +346,58 @@ class MARLEnv(MultiAgentEnv):
         # (E) Update the world state
         # -------------------------------------------------------
 
-        # Update the world state
-        new_world_state = WorldState(
-            **dataclasses.asdict(state.world_state),
+        # Save old values for the message based obs space
+        old_time=state.world_state.time
+        old_mid_price=state.world_state.mid_price
+
+
+        # Update other parts of the world state
+        new_step_counter = state.world_state.step_counter + 1
+        new_mid_price = (new_bestbids[-1, 0] + new_bestasks[-1, 0]) / 2
+        new_delta_time = final_time[0] + final_time[1]/1e9 - state.world_state.time[0] - state.world_state.time[1]/1e9
+
+
+        #print("world state: ", state.world_state)
+
+        # Create new world state
+        new_world_state = state.world_state.replace(
             ask_raw_orders=new_asks,
             bid_raw_orders=new_bids,
             trades=new_trades,
             best_asks=new_bestasks,
             best_bids=new_bestbids,
+            time=final_time,
+            order_id_counter=new_order_id_counter,
+            step_counter=new_step_counter,
+            mid_price=new_mid_price,
+            delta_time=new_delta_time
         )
 
+        #print("new world state: ", new_world_state)
+      
 
-
-        best_bids: jnp.ndarray
-        best_asks: jnp.ndarray
-        step_counter: int
-        time: jnp.ndarray
-        order_id_counter: int
-        mid_price:float
-        delta_time: float
-
-
-
-
-        # Get features of previous state for mm obvs update
-
-        old_time=state.time
-        old_mid_price=state.mm_state.mid_price
-
-         # Update time and ID counter
-        
-        final_id_ctr = state.customIDcounter + self.mm_env.n_actions + 1  
-
-        #jax.debug.print(f"MM num actions: {self.mm_env.n_actions}")
 
         # -------------------------------------------------------
-        # (H) Update the multi–agent state
+        # (F) Update the agent states
         # -------------------------------------------------------
-        # Update the shared base state fields
-        base_state = state  
-        delta_time = final_time[0] + final_time[1]/1e9 - state.time[0] - state.time[1]/1e9
-        new_shared_state = {
-            "ask_raw_orders": new_asks,
-            "bid_raw_orders": new_bids,
-            "trades": new_trades,
-            "time": final_time,
-            "customIDcounter": final_id_ctr,
-            "best_asks": new_bestasks,
-            "best_bids": new_bestbids,
-            "step_counter": state.step_counter + 1,
-            "delta_time": delta_time
-        }
 
-        # Calculate MM-specific state updates
-        mm_price_bid_passive, mm_quant_bid_passive, mm_price_ask_passive, mm_quant_ask_passive = self.mm_env._get_pass_price_quant(state.mm_state)
 
-        # Calculate EXE-specific state updates
-        exe_price_passive_2, exe_quant_passive_2 = self.exe_env._get_pass_price_quant(state.exe_state)
-        exe_trade_duration_step = (jnp.abs(exe_agent_trades[:, 1]) / state.exe_state.task_to_execute * (exe_agent_trades[:, -2] - state.init_time[0])).sum()
-        exe_trade_duration = state.exe_state.trade_duration + exe_trade_duration_step
 
-        # Update MM state with all fields
-        new_mm_state = state.mm_state.replace(
-            **new_shared_state,
-            inventory=mm_extras["end_inventory"],
-            total_PnL=state.mm_state.total_PnL + mm_extras["PnL"],
-            mid_price=mm_extras["mid_price"],
-            cash_balance=mm_extras["cash_balance"],
-            price_bid_passive=mm_price_bid_passive,
-            quant_bid_passive=mm_quant_bid_passive,
-            price_ask_passive=mm_price_ask_passive,
-            quant_ask_passive=mm_quant_ask_passive
-        )
 
-        # Update EXE state with all fields
-        new_exe_state = state.exe_state.replace(
-            **new_shared_state,
-            prev_action=jnp.vstack([exe_action_prices, exe_action_quants]).T,  # store both prices and quantities+> action no longer = quant
-            quant_executed=state.exe_state.quant_executed + exe_extras["agentQuant"],
-            total_revenue=state.exe_state.total_revenue + exe_extras["revenue"],
-            drift_return=state.exe_state.drift_return + exe_extras["drift"],
-            advantage_return=state.exe_state.advantage_return + exe_extras["advantage"],
-            slippage_rm=exe_extras["slippage_rm"],
-            price_adv_rm=exe_extras["price_adv_rm"],
-            price_drift_rm=exe_extras["price_drift_rm"],
-            vwap_rm=exe_extras["vwap_rm"],
-            trade_duration=exe_trade_duration,
-            price_passive_2=exe_price_passive_2,
-            quant_passive_2=exe_quant_passive_2
-        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         new_state = MultiAgentState(
             ask_raw_orders=new_asks,
@@ -479,6 +413,23 @@ class MARLEnv(MultiAgentEnv):
             mm_state=new_mm_state,
             exe_state=new_exe_state
         )
+
+
+
+
+
+
+
+
+
+        # -------------------------------------------------------
+        # (F) Get the observations for each agent
+        # -------------------------------------------------------
+
+
+        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
+        exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
+
 
         obs = {"market_maker": mm_obs, "execution": exe_obs}
         rewards = {"market_maker": mm_reward, "execution": exe_reward}

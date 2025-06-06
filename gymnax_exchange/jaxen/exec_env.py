@@ -1455,6 +1455,14 @@ class ExecutionEnv():
             revenue - (agent_state.init_price // self.world_config.tick_size) * agentQuant
         )
         
+
+        # Add other extras
+
+        trade_duration_step = (jnp.abs(agentTrades[:, 1]) / agent_state.state.task_to_execute * (agentTrades[:, -2] - agent_state.init_time[0])).sum()
+        trade_duration = agent_state.state.trade_duration + trade_duration_step
+
+
+        
         # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {} vwap {} init_price {}', 
         #                 reward, reward_lam1, state.is_sell_task, advantage, drift, vwap, state.init_price)
         
@@ -1473,10 +1481,32 @@ class ExecutionEnv():
             "advantage": advantage,
             "drift": drift,
             "doom_quant": doom_quant,
+            "trade_duration": trade_duration,
         }
 
 
-    #def update_state(self, agent_state: ExecEnvState, extras):
+    def update_state(self, agent_state: ExecEnvState, extras):
+        new_quant_executed = agent_state.quant_executed + extras["agentQuant"]
+        new_total_revenue = agent_state.total_revenue + extras["revenue"]
+        new_drift_return = agent_state.drift_return + extras["drift"]
+        new_advantage_return = agent_state.advantage_return + extras["advantage"]
+        new_slippage_rm = extras["slippage_rm"]
+        new_price_adv_rm = extras["price_adv_rm"]
+        new_price_drift_rm = extras["price_drift_rm"]
+        new_vwap_rm = extras["vwap_rm"]
+        new_trade_duration = extras["trade_duration"]
+
+        # Note: we use replace because init_price, task_to_execute, is_sell_task do not change
+        agent_state = agent_state.replace(
+            quant_executed = new_quant_executed,
+            total_revenue = new_total_revenue,
+            drift_return = new_drift_return,
+            advantage_return = new_advantage_return,
+            slippage_rm = new_slippage_rm,
+            price_adv_rm = new_price_adv_rm,
+            price_drift_rm = new_price_drift_rm,
+            vwap_rm = new_vwap_rm,
+            trade_duration = new_trade_duration)
 
 
 

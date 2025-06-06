@@ -54,11 +54,10 @@ class MMEnvState():
 
 @struct.dataclass
 class ExecEnvState():
-    # Execution specific stuff
     init_price: int
     task_to_execute: int
     quant_executed: int
-    # Execution specific rewards. 
+    # rewards
     total_revenue: float
     drift_return: float
     advantage_return: float

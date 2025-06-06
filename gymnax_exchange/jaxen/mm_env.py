@@ -1983,6 +1983,21 @@ class MarketMakingAgent():
 
 
 
+    def update_state(self, agent_state: MMEnvState, extras):
+        new_inventory = extras["end_inventory"]
+        new_PnL = agent_state.total_PnL + extras["PnL"]
+        new_cash_balance = extras["cash_balance"]
+
+        agent_state = MMEnvState(
+            inventory = new_inventory,
+            total_PnL = new_PnL,
+            cash_balance= new_cash_balance    
+        )
+        
+        return agent_state
+
+
+
 
     #======================Wrappers to choose funcitons=========================================#    
     def get_episode_end_fn(self,key,bestasks, bestbids, time, asks, bids, trades, state, params):
