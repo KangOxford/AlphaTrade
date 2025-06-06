@@ -419,9 +419,6 @@ class ExecutionEnv():
         n_trades=self.cfg.num_action_messages_by_agent
 
         agent_state = ExecEnvState(
-            prev_action = jnp.zeros((n_trades, 2), jnp.int32),
-            prev_executed = jnp.zeros((n_trades, ), jnp.int32),
-
             # Execution specific stuff
             init_price = world_state.mid_price,
             task_to_execute = self.cfg.task_size,
@@ -445,19 +442,6 @@ class ExecutionEnv():
 
 
         
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1491,6 +1475,20 @@ class ExecutionEnv():
             "doom_quant": doom_quant,
         }
 
+
+    #def update_state(self, agent_state: ExecEnvState, extras):
+
+
+
+
+
+
+
+
+
+
+
+
     def _get_obs(
             self,
             agent_state: ExecEnvState,
@@ -1536,9 +1534,6 @@ class ExecutionEnv():
             "step_counter": world_state.step_counter,
             # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
             "remaining_ratio": jnp.where(world_state.max_steps_in_episode==0, 0., 1. - world_state.step_counter / world_state.max_steps_in_episode),#17
-            "prev_action": agent_state.prev_action[:, 1],  # use quants only
-            "prev_executed": agent_state.prev_executed,  # use quants only
-            "prev_executed_ratio": jnp.where(agent_state.prev_action[:, 1]==0., 0., agent_state.prev_executed / agent_state.prev_action[:, 1]),
         }
         # jax.debug.print('prev_action {}', state.prev_action)
         # jax.debug.print('prev_executed {}', state.prev_executed)
@@ -1566,9 +1561,6 @@ class ExecutionEnv():
             "remaining_quant": 0,
             "step_counter": 0,
             "remaining_ratio": 0,
-            "prev_action": 0,
-            "prev_executed": 0,
-            "prev_executed_ratio": 0,
         }
         stds = {
             "is_sell_task": 1,
@@ -1588,9 +1580,6 @@ class ExecutionEnv():
             "remaining_quant": self.cfg.task_size,
             "step_counter": 30,  # TODO: find way to make this dependent on episode length
             "remaining_ratio": 1,
-            "prev_action": 10,
-            "prev_executed": 10,
-            "prev_executed_ratio": 1,
         }
 
         print("obs:", obs)

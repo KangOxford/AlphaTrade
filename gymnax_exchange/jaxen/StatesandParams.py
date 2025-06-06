@@ -54,9 +54,6 @@ class MMEnvState():
 
 @struct.dataclass
 class ExecEnvState():
-    prev_action: chex.Array
-    prev_executed: chex.Array
-
     # Execution specific stuff
     init_price: int
     task_to_execute: int
