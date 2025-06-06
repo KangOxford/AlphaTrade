@@ -302,7 +302,7 @@ class MARLEnv(MultiAgentEnv):
 
 
         #---------------------------------------------------------
-        #(D) End step functions
+        #(D) Reward for each agent (part of it is that it changes if the episode is done)
         #----------------------------------------------------------
         
         print(f"new trades: {new_trades}")
@@ -342,36 +342,13 @@ class MARLEnv(MultiAgentEnv):
         # TODO: I am here. remove the following stuff cause we are not using it anymore. double check if i am doing all of that above
 
         
-        # Execution End 
-        #Find quant executed
-        exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
-        exe_executions = self.exe_env._get_executed_by_action(exe_agent_trades, actions["execution"], state.exe_state,exe_action_prices)
-        exe_executions=jnp.abs(exe_executions)
-        exe_quant_executed_this_step = exe_executions[:,1].sum()#new handeling of executions
-        quant_left = state.exe_state.task_to_execute - (state.exe_state.quant_executed + exe_quant_executed_this_step)
-
-
-        (new_asks, new_bids, new_trades), (new_bestask, new_bestbid), new_id_counter, new_time, mkt_exec_quant, doom_quant = \
-            self.exe_env.get_episode_end_fn(key_exe,
-                quant_left, new_bestasks[-1], new_bestbids[-1], final_time, new_asks, new_bids, new_trades, state.exe_state, params.exe_params)
-        #new_bestasks = jnp.concatenate([new_bestasks,new_bestasks[-1:,:] ], axis=0, dtype=jnp.int32)
-        #new_bestbids = jnp.concatenate([new_bestbids, new_bestbids[-1:,:]], axis=0, dtype=jnp.int32)
-        
-        #jax.debug.print(f"best bids after final ep: {new_bestbids.shape}")
-
-
-
-
-
-
         # -------------------------------------------------------
-        # (G) Compute agent-specific rewards and observations
+        # (E) Update the agent states
         # -------------------------------------------------------
-        mm_agent_trades = job.get_agent_trades(new_trades, self.mm_trader_id)
-        mm_executions = self.mm_env._get_executed_by_action(mm_agent_trades, actions["market_maker"], state,mm_action_prices)
-        mm_executions=jnp.abs(mm_executions) #check incase neg quant
-        mm_reward, mm_extras = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
-        #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
+
+
+
+
         mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
 
 
@@ -387,23 +364,6 @@ class MARLEnv(MultiAgentEnv):
 
         #jax.debug.print(f"MM obs: {mm_obs}")
         #jax.debug.print(f"EXE obs: {exe_obs}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

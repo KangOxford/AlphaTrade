@@ -1372,6 +1372,7 @@ class ExecutionEnv():
 
 
         print("bestbid 0", bestbids[-1,0])
+        print(bestasks[-10,0])
 
         doom_price = jax.lax.cond(
             agent_state.is_sell_task,
