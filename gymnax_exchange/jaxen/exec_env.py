@@ -171,6 +171,13 @@ class ExecutionEnv():
         else:
             raise ValueError("Invalid action_space specified.")
 
+
+        #Choose observation space based on config.
+        if self.cfg.observation_space == "engineered":
+            self.observation_fn = self._get_obs
+        else:
+            raise ValueError("Invalid observation_space specified.")
+
     def default_params(self,
                        agent_config:Execution_EnvironmentConfig,
                        trader_id_range_start:int,
@@ -435,7 +442,27 @@ class ExecutionEnv():
             trade_duration = 0.,
         )
 
-        obs = self._get_obs(agent_state = agent_state, world_state = world_state, agent_param = agent_param, normalize = self.cfg.normalize)
+        # Calculate things for the message obs space
+        if self.cfg.observation_space == "messages_new_tokenizer":
+            lob_state_before = job.get_L2_state(
+                world_state.ask_raw_orders,  # Current ask orders
+                world_state.bid_raw_orders,  # Current bid orders
+                10,  # Number of levels
+                self.cfg  
+            )
+            blank_messages = jnp.zeros((num_msgs_per_step, 8), dtype=jnp.int32) # Reset for the message based obs space.
+        else:
+            lob_state_before = None
+            blank_messages = None
+
+        obs = self.get_observation(agent_state = agent_state, 
+                            world_state = world_state, 
+                            agent_param = agent_param,
+                            total_messages = blank_messages,
+                            old_time = world_state.time,
+                            old_mid_price = world_state.mid_price,
+                            lob_state_before = lob_state_before,
+                            normalize = self.cfg.normalize)
 
         return obs, agent_state
 
@@ -448,25 +475,26 @@ class ExecutionEnv():
 
 
 
-    def is_terminal(self, state: ExecEnvState, params: ExecEnvParams) -> bool:
+    def is_terminal(self, world_state: WorldState, agent_state: ExecEnvState) -> bool:
         """ Check whether state is terminal. """
-        if self.ep_type == 'fixed_time':
+        if self.world_config.ep_type == 'fixed_time':
             #jax.debug.print("params_episode_time:{}",self.world_config.episode_time)
             #jax.debug.print("time:{}",state.time)
             
             #jax.debug.print("init_time:{}",state.init_time)
             # TODO: make the 5 sec a function of the step size
+            time_done = (self.world_config.episode_time - (world_state.time - world_state.init_time)[0] <= self.cfg.seconds_before_episode_end)  # time over (last 5 seconds)
+            task_done = (agent_state.task_to_execute - agent_state.quant_executed <= 0)
+            done = time_done | task_done
+            return done
+        
+        elif self.world_config.ep_type == 'fixed_steps':
             return (
-                (self.world_config.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
-                |  (state.task_to_execute - state.quant_executed <= 0)  # task done
-            )
-        elif self.ep_type == 'fixed_steps':
-            return (
-                (state.max_steps_in_episode - state.step_counter <= 1)  # last step
-                |  (state.task_to_execute - state.quant_executed <= 0)  # task done
+                (world_state.max_steps_in_episode - world_state.step_counter <= 1)  # last step
+                |  (agent_state.task_to_execute - agent_state.quant_executed <= 0)  # task done
             )
         else:
-            raise ValueError(f"Unknown episode type: {self.ep_type}")
+            raise ValueError(f"Unknown episode type: {self.world_config.ep_type}")
 
     # def _get_pass_price_quant(self, orders, best_ask_p, best_bid_p, is_sell_task):
     #     price_passive_2 = jax.lax.cond(
@@ -1148,6 +1176,20 @@ class ExecutionEnv():
             raise ValueError("Invalid action sspace specified.")    
     
 
+    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize):
+        """
+        Wrapper function to call the appropriate observation function.
+        """
+        if self.cfg.observation_space == "engineered":
+            return self.observation_fn(world_state=world_state, 
+                                       agent_state=agent_state, 
+                                       normalize=normalize)
+        else:
+            raise ValueError("Invalid observation_space specified.")
+        
+
+
+
     #--------unwind at mid FT-good for MARL------#
     def unwind_FT(
             self,
@@ -1266,7 +1308,7 @@ class ExecutionEnv():
 
         # jax.debug.print("trades before mkt\n {}", trades[:20])
 
-        (asks, bids, trades), (new_bestbid, new_bestask) = job.cond_type_side_save_bidask(self.cfg,
+        (asks, bids, trades), (new_bestask, new_bestbid) = job.cond_type_side_save_bidask(self.cfg,
             (asks, bids, trades),
             (key,order_msg)
         )
@@ -1458,8 +1500,8 @@ class ExecutionEnv():
 
         # Add other extras
 
-        trade_duration_step = (jnp.abs(agentTrades[:, 1]) / agent_state.state.task_to_execute * (agentTrades[:, -2] - agent_state.init_time[0])).sum()
-        trade_duration = agent_state.state.trade_duration + trade_duration_step
+        trade_duration_step = (jnp.abs(agentTrades[:, 1]) / agent_state.task_to_execute * (agentTrades[:, -2] - world_state.init_time[0])).sum()
+        trade_duration = agent_state.trade_duration + trade_duration_step
 
 
         
@@ -1471,6 +1513,7 @@ class ExecutionEnv():
         reward_scaled = reward / 10
         # reward /= params.avg_twap_list[state.window_index]
         return reward_scaled, {
+            "reward":reward,
             "agentQuant": agentQuant,
             "revenue": revenue,
             "reward_lam1":reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
@@ -1485,11 +1528,12 @@ class ExecutionEnv():
         }
 
 
-    def update_state(self, agent_state: ExecEnvState, extras):
-        new_quant_executed = agent_state.quant_executed + extras["agentQuant"]
-        new_total_revenue = agent_state.total_revenue + extras["revenue"]
-        new_drift_return = agent_state.drift_return + extras["drift"]
-        new_advantage_return = agent_state.advantage_return + extras["advantage"]
+    def update_state_and_get_done_and_info(self, world_state:WorldState, agent_state_old: ExecEnvState, extras) -> Tuple[ExecEnvState, Dict]:
+        # Get new state
+        new_quant_executed = agent_state_old.quant_executed + extras["agentQuant"]
+        new_total_revenue = agent_state_old.total_revenue + extras["revenue"]
+        new_drift_return = agent_state_old.drift_return + extras["drift"]
+        new_advantage_return = agent_state_old.advantage_return + extras["advantage"]
         new_slippage_rm = extras["slippage_rm"]
         new_price_adv_rm = extras["price_adv_rm"]
         new_price_drift_rm = extras["price_drift_rm"]
@@ -1497,7 +1541,7 @@ class ExecutionEnv():
         new_trade_duration = extras["trade_duration"]
 
         # Note: we use replace because init_price, task_to_execute, is_sell_task do not change
-        agent_state = agent_state.replace(
+        agent_state = agent_state_old.replace(
             quant_executed = new_quant_executed,
             total_revenue = new_total_revenue,
             drift_return = new_drift_return,
@@ -1507,6 +1551,35 @@ class ExecutionEnv():
             price_drift_rm = new_price_drift_rm,
             vwap_rm = new_vwap_rm,
             trade_duration = new_trade_duration)
+        
+        # Get done
+        done = self.is_terminal(world_state, agent_state)
+
+        # Get info
+        average_price = jnp.nan_to_num(agent_state.total_revenue 
+                                            / agent_state.quant_executed, 0.0)
+        drift = extras["drift"]
+        doom_quant = extras["doom_quant"]
+
+        info = {
+            "total_revenue": agent_state.total_revenue,
+            "quant_executed": agent_state.quant_executed,
+            "task_to_execute": agent_state.task_to_execute,
+            "average_price": average_price,
+            "done": done,
+            "slippage_rm": agent_state.slippage_rm,
+            "price_adv_rm": agent_state.price_adv_rm,
+            "price_drift_rm": agent_state.price_drift_rm,
+            "vwap_rm": agent_state.vwap_rm,
+            "advantage_reward": agent_state.advantage_return,
+            "drift_reward": agent_state.drift_return,
+            "drift" : drift,
+            "trade_duration": agent_state.trade_duration,
+            "doom_quant": doom_quant,
+            "is_sell_task": agent_state.is_sell_task,
+        }
+
+        return agent_state, done, info
 
 
 
@@ -1523,7 +1596,6 @@ class ExecutionEnv():
             self,
             agent_state: ExecEnvState,
             world_state: WorldState,
-            agent_param: ExecEnvParams,
             normalize: bool,
             flatten: bool = True,
         ) -> chex.Array:

@@ -36,6 +36,7 @@ class MarketMaking_EnvironmentConfig():
     time_delay_obs_act:int=0
     normalize:bool=True
     short_name:str="MM" # For agent naming e.g. in the obs dict
+    seconds_before_episode_end:int=5
    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
@@ -76,6 +77,7 @@ class Execution_EnvironmentConfig():
     task: Literal["random", "buy", "sell"] = "buy"
     action_type: Literal["delta", "pure"] = "pure"
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants_complex"
+    observation_space: Literal["engineered"] = "engineered"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=500
     n_actions:int=5
@@ -87,6 +89,7 @@ class Execution_EnvironmentConfig():
     debug_mode:bool=False
     normalize:bool=True
     short_name:str="EXE"
+    seconds_before_episode_end:int=5
     
 
     def __post_init__(self):
@@ -127,6 +130,8 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     last_step_seconds = 5
     artifical_trader_id_end_episode = -666666 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
     artifical_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
+    debug_mode:bool=False
+    any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
 
 
 @dataclass(frozen=True)

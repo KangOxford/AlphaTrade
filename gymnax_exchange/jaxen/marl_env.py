@@ -213,8 +213,26 @@ class MARLEnv(MultiAgentEnv):
                  ) -> Tuple[Dict[str, jnp.ndarray], MultiAgentState, Dict[str, float], bool, Dict[str, Dict]]:
 
 
+        # --------------------------------------------------------------------------------
+        # (A) Get the lob state before in case any agent uses the message based obs space
+        # --------------------------------------------------------------------------------
+
+
+        if self.multi_agent_config.world_config.any_message_obs_space == True:
+            lob_state_before = job.get_L2_state(
+                state.ask_raw_orders,  # Current ask orders
+                state.bid_raw_orders,  # Current bid orders
+                10,  # Number of levels
+                self.cfg  
+                )
+        else:
+            lob_state_before = None
+
+
+
+
         # -------------------------------------------------------
-        # (A) Build External Data Messages (common to all agents)
+        # (B) Build External Data Messages (common to all agents)
         # -------------------------------------------------------
         data_messages = self.base_env._get_data_messages(
             params.loaded_params.message_data,
@@ -225,7 +243,7 @@ class MARLEnv(MultiAgentEnv):
 
 
         # -------------------------------------------------------
-        # (B) Get the action and cancel messages for each agent 
+        # (C) Get the action and cancel messages for each agent 
         # -------------------------------------------------------
 
         all_action_msgs_list = [] # One element for each agent type
@@ -271,17 +289,25 @@ class MARLEnv(MultiAgentEnv):
 
 
         # -------------------------------------------------------
-        # (C) Process combined messages through the order book
+        # (D) Process combined messages through the order book
         # -------------------------------------------------------
 
+        print("-------------------------------- ")
+        print("start processing combined messages")
+        print("--------------------------------")
+
         trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
-        (new_asks, new_bids, new_trades), (new_bestbids, new_bestasks) = job.scan_through_entire_array_save_bidask(
+        (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
             self.multi_agent_config.world_config,  
             key,  
             combined_msgs,
             (state.world_state.ask_raw_orders, state.world_state.bid_raw_orders, trades_reinit),
              self.num_msgs_per_step
         )
+
+        print("--------------------------------")
+        print("end processing combined messages")
+        print("--------------------------------")
 
 
         # Forward-fill best prices if necessary:
@@ -302,7 +328,7 @@ class MARLEnv(MultiAgentEnv):
 
 
         #---------------------------------------------------------
-        #(D) Reward for each agent (part of it is that it changes if the episode is done)
+        #(E) Reward for each agent (part of it is that it changes if the episode is done)
         #----------------------------------------------------------
         
         print(f"new trades: {new_trades}")
@@ -334,16 +360,14 @@ class MARLEnv(MultiAgentEnv):
             agent_reward_list.append(reward)
             agent_extras_list.append(extras)
 
-
-
-
+        print("agent_reward_list: ", agent_reward_list)
 
 
 
 
 
         # -------------------------------------------------------
-        # (E) Update the world state
+        # (F) Update the world state
         # -------------------------------------------------------
 
         # Save old values for the message based obs space
@@ -378,142 +402,170 @@ class MARLEnv(MultiAgentEnv):
 
 
         # -------------------------------------------------------
-        # (F) Update the agent states
+        # (G) Update the agent states
         # -------------------------------------------------------
 
 
+        print("--------------------------------")
+        print("start updating agent states")
+        print("--------------------------------")
+
+
+        new_agent_states_list = []
+        new_agent_dones_list = []
+        new_agent_infos_list = []
+
+        for agent_type_index in range(len(self.instance_list)):
+            print("agent_type_index: ", agent_type_index)
+            agent_state = state.agent_states[agent_type_index]
+            extras = agent_extras_list[agent_type_index]
+            vmapped_function = vmap(self.instance_list[agent_type_index].update_state_and_get_done_and_info, in_axes=(None,0,0), out_axes = (0,0,0))
+            states, dones, infos = vmapped_function(new_world_state, agent_state, extras)
+            new_agent_states_list.append(states)
+            new_agent_dones_list.append(dones)
+            new_agent_infos_list.append(infos)
+            print(f"agent {agent_type_index} info: {infos}")
+            print(f"agent {agent_type_index} done: {dones}")
+            print(f"agent {agent_type_index} state: {states}")
+
+
+        print("new_agent_dones_list: ", new_agent_dones_list)
 
 
 
 
 
+        # -------------------------------------------------------
+        # (H) Get the new overall state
+        # -------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-        new_state = MultiAgentState(
-            ask_raw_orders=new_asks,
-            bid_raw_orders=new_bids,
-            trades=new_trades,
-            init_time=state.init_time,
-            time=final_time,
-            customIDcounter=final_id_ctr,
-            window_index=state.window_index,
-            step_counter=state.step_counter + 1,
-            max_steps_in_episode=state.max_steps_in_episode,
-            start_index=state.start_index,
-            mm_state=new_mm_state,
-            exe_state=new_exe_state
+        new_multi_state = MultiAgentState(
+            world_state=new_world_state,
+            agent_states=new_agent_states_list
         )
 
+        print("new_multi_state: ", new_multi_state)
 
 
 
+
+        # -------------------------------------------------------
+        # (I) Get the done of the world
+        # -------------------------------------------------------
+
+        print("dones: ", new_agent_dones_list)
+
+        # Flatten all done flags into a single array
+        all_dones_flat = jnp.concatenate(new_agent_dones_list)
+
+        # __all__ is True only if every agent is done
+        overall_done = jnp.all(all_dones_flat) # Done if all agents are done
+
+        print("overall_done: ", overall_done)
+        print("all_dones_flat: ", all_dones_flat)
+
+        dones = {"__all__": overall_done, "agents": new_agent_dones_list}
+
+        print("dones: ", dones)
 
 
 
 
 
         # -------------------------------------------------------
-        # (F) Get the observations for each agent
+        # (J) Create the info
         # -------------------------------------------------------
 
+        # Create the world info
+        print("best asks: ", new_world_state.best_asks)
+        print("best bids: ", new_world_state.best_bids)
 
-        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
-        exe_obs = self.exe_env._get_obs(state.exe_state, params.exe_params)
+        # Get the average best ask and bid
+        average_best_ask = new_world_state.best_asks[:,0].mean()
+        average_best_bid = new_world_state.best_bids[:,0].mean()
 
+        print("average best ask: ", average_best_ask)
+        print("average best bid: ", average_best_bid)
 
-        obs = {"market_maker": mm_obs, "execution": exe_obs}
-        rewards = {"market_maker": mm_reward, "execution": exe_reward}
-        mm_done= self.mm_env.is_terminal(state.mm_state,params.mm_params)
-        exec_done=self.exe_env.is_terminal(state.exe_state,params.exe_params)
-        done = jnp.logical_and(mm_done, exec_done)
-        #jax.debug.print("Done: {}",done)
-        dones = {"market_maker": mm_done, "execution": exec_done, "__all__": done} # ALl of them are the same done
-
-        #Get infos:
-        exe_info = {
-            "window_index": new_state.exe_state.window_index,
-            "total_revenue": new_state.exe_state.total_revenue,
-            "quant_executed": new_state.exe_state.quant_executed,
-            "task_to_execute": new_state.exe_state.task_to_execute,
-            "average_price": jnp.nan_to_num(new_state.exe_state.total_revenue 
-                                            / new_state.exe_state.quant_executed, 0.0),
-            "mid_price":((new_state.exe_state.best_bids[:, 0] + new_state.exe_state.best_asks[:, 0]) // 2).mean(),
-            "current_step": new_state.exe_state.step_counter,
-            "done": done,
-            "slippage_rm": new_state.exe_state.slippage_rm,
-            "price_adv_rm": new_state.exe_state.price_adv_rm,
-            "price_drift_rm": new_state.exe_state.price_drift_rm,
-            "vwap_rm": new_state.exe_state.vwap_rm,
-            "advantage_reward": new_state.exe_state.advantage_return,
-            "drift_reward": new_state.exe_state.drift_return,
-            "drift":exe_extras["drift"],
-            "trade_duration": new_state.exe_state.trade_duration,
-            "mkt_forced_quant": mkt_exec_quant + doom_quant,
-            "doom_quant": doom_quant,
-            "is_sell_task": new_state.exe_state.is_sell_task,
-        }
-        average_best_ask = state.mm_state.best_asks[-100:].mean(axis=0)[0]# // self.tick_size) * self.tick_size)
-        average_best_bid = state.mm_state.best_bids[-100:].mean(axis=0)[0]#// self.tick_size) * self.tick_size)
-        mm_info = {
-            "reward":mm_reward,
-            "reward_portfolio_value":mm_extras["reward_portfolio_value"],
-            "reward_complex":mm_extras["reward_complex"],
-            "reward_spooner":mm_extras[ "reward_spooner"],
-            "reward_spooner_damped":mm_extras["reward_spooner_damped"],
-            "reward_spooner_scaled":mm_extras[ "reward_spooner_scaled"],
-            "reward_delta_netWorth":mm_extras["reward_delta_netWorth"],
-            "window_index": new_state.mm_state.window_index,
-            "total_PnL": new_state.mm_state.total_PnL,                           
-            "current_step": new_state.mm_state.step_counter,
-            "done": done,
-            "time_seconds":new_state.mm_state.time[0],
-            "inventory": new_state.mm_state.inventory,
-            "market_share":mm_extras["market_share"],
-            "buyPnL":mm_extras["buyPnL"],
-            "scaledInventoryPnL":mm_extras["scaledInventoryPnL"],
-            "netWorth":mm_extras["netWorth"],
-            "sellPnL":mm_extras["sellPnL"],
-            "buyQuant":mm_extras["buyQuant"],
-            "sellQuant":mm_extras["sellQuant"],
-            "inventoryValue":mm_extras["inventoryValue"],
-            "other_exec_quants":mm_extras["other_exec_quants"],
-            "averageMidprice":mm_extras["averageMidprice"],
-            "average_best_bid":average_best_bid,
+        world_info = {
+            "window_index":new_world_state.window_index,
+            "end_mid_price":new_world_state.mid_price,
+            "step_counter":new_world_state.step_counter,
+            "time":new_world_state.time,
+            "order_id_counter":new_world_state.order_id_counter,
+            "best_asks":new_world_state.best_asks,
+            "best_bids":new_world_state.best_bids ,
             "average_best_ask":average_best_ask,
-            "end_mid_price":mm_extras["mid_price"],
-            "Step_PnL":mm_extras["PnL"],
-            "action_prices":mm_action_prices,
-            "InventoryPnL":mm_extras["InventoryPnL"],
-            "approx_realized_pnl":mm_extras["approx_realized_pnl"],
-            "approx_unrealized_pnl": mm_extras["approx_unrealized_pnl"]
-        } 
-        if self.world_config.debug_mode==False:
-            info = {"market_maker": mm_info, "execution": exe_info}
+            "average_best_bid":average_best_bid,
+            "delta_time":new_world_state.delta_time,
+            "current_step":new_world_state.step_counter,
+        }
+
+
+
 
         ###debug mode full logging. Ensure this is off by default
-        if self.world_config.debug_mode==True:
+        if self.multi_agent_config.world_config.debug_mode==True:
             lob_state = job.get_L2_state(
-                                new_state.ask_raw_orders,  # Current ask orders
-                                new_state.bid_raw_orders,  # Current bid orders
+                                new_world_state.ask_raw_orders,  # Current ask orders
+                                new_world_state.bid_raw_orders,  # Current bid orders
                                 10,  # Number of levels
-                                self.world_config  
+                                self.multi_agent_config.world_config  
                                 )
-            info = {"market_maker": mm_info, "execution": exe_info,
-                "trades":new_trades,
-                "total_msgs":combined_msgs,
-                "lob_state":lob_state,}
+            info.update({
+                "trades": new_trades,
+                "total_msgs": combined_msgs,
+                "lob_state": lob_state,
+            })
+
+
+        info = {"world":world_info,"agents":new_agent_infos_list}
+
+        print("info: ", info)
+
+
+
+
+        # -------------------------------------------------------
+        # (K) Get the observations for each agent
+        # -------------------------------------------------------
+
+        agent_obs_list = []
+
+        for agent_type_index in range(len(self.instance_list)):
+            agent_state = new_multi_state.agent_states[agent_type_index]
+            agent_params = params.agent_params[agent_type_index]
+            agent_config = self.instance_list[agent_type_index].cfg
+            vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None), out_axes = (0))
+            obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize)
+            agent_obs_list.append(obs)
+
+
+        print("agent_obs_list: ", agent_obs_list)
+
+
+
+
+
+
+
+
+        # TODO Add conditional here that if exec done then set its obs to 0
+
+
+
+
+
             
-        return obs, new_state, rewards, dones, info
+        return agent_obs_list, new_multi_state, agent_reward_list, dones, info
+
+
+
+
+
+
+
+
 
 
 

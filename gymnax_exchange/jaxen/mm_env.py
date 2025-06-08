@@ -272,7 +272,7 @@ class MarketMakingAgent():
         #jax.debug.print(f"Number of overall messages: {self.n_data_msg_per_step + self.cfg.num_messages_by_agent}")
 
         # Process messages of step (action+data) through the orderbook
-        (asks, bids, trades), (bestbids, bestasks) = job.scan_through_entire_array_save_bidask(self.cfg,key,
+        (asks, bids, trades), (bestasks, bestbids) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             total_messages,
             (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
             # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
@@ -461,26 +461,27 @@ class MarketMakingAgent():
 
 
 
-    def is_terminal(self, state: MMEnvState, params: MMEnvParams) -> bool:
+    def is_terminal(self, world_state: WorldState) -> bool:
         """ Check whether state is terminal.
          For a market making task, we run untill time completes. This is hardcoded 
           as 5 seconds before the end of the episode or one step before """
-        if self.ep_type == 'fixed_time':
+        if self.world_config.ep_type == 'fixed_time':
             # TODO: make the 5 sec a function of the step size
-            time_left=(self.world_config.episode_time - (state.time - state.init_time)[0] )
-            #jax.debug.print("time_left :{}",time_left)
-            #jax.debug.print("time :{}",state.time)
-            #jax.debug.print("init_time :{}",state.init_time)
-            #jax.debug.print("start_index :{}",state.start_index)
+            time_left=(self.world_config.episode_time - (world_state.time - world_state.init_time)[0] )
+            jax.debug.print("time_left :{}",time_left)
+            jax.debug.print("time :{}",world_state.time)
+            jax.debug.print("init_time :{}",world_state.init_time)
+            jax.debug.print("start_index :{}",world_state.start_index)
+            done = (time_left <= self.cfg.seconds_before_episode_end)  # time over (last 5 seconds)
+            jax.debug.print("done :{}",done)
+            return done
+        
+        elif self.world_config.ep_type == 'fixed_steps':
             return (
-                (self.world_config.episode_time - (state.time - state.init_time)[0] <= 5)  # time over (last 5 seconds)
-            )
-        elif self.ep_type == 'fixed_steps':
-            return (
-                (state.max_steps_in_episode - state.step_counter <= 1)  # last step  
+                (world_state.max_steps_in_episode - world_state.step_counter <= 1)  # last step  
             )
         else:
-            raise ValueError(f"Unknown episode type: {self.ep_type}")
+            raise ValueError(f"Unknown episode type: {self.world_config.ep_type}")
    
     def _get_pass_price_quant(self, state):
         """Get price and quanitity n_ticks into books"""
@@ -1599,7 +1600,7 @@ class MarketMakingAgent():
         
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
         
-        (asks, bids, trades), (new_bestbid, new_bestask) = job.scan_through_entire_array_save_bidask(self.cfg,key,
+        (asks, bids, trades), (new_bestask, new_bestbid) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             cnl_msgs, 
             (asks, bids, trades),
             # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
@@ -1607,7 +1608,7 @@ class MarketMakingAgent():
         )
    
         #Filter our new message through the orderbook#
-        (asks, bids, trades), (new_bestbid, new_bestask) = job.cond_type_side_save_bidask(self.cfg,
+        (asks, bids, trades), (new_bestask, new_bestbid) = job.cond_type_side_save_bidask(self.cfg,
             (asks, bids, trades),
             (key,order_msg)
         )
@@ -1641,7 +1642,7 @@ class MarketMakingAgent():
         )
         cnl_msgs = jnp.concatenate([cnl_msg_bid, cnl_msg_ask], axis=0)
 
-        (asks, bids, trades), (new_bestbid, new_bestask) = job.scan_through_entire_array_save_bidask(self.cfg,key,
+        (asks, bids, trades), (new_bestask, new_bestbid) = job.scan_through_entire_array_save_bidask(self.cfg,key,
             cnl_msgs, 
             (asks, bids, trades),
             # TODO: this returns bid/ask for last n_data_msg_per_step only, could miss the direct impact of actions
@@ -1955,6 +1956,7 @@ class MarketMakingAgent():
         
 
         return reward, {
+            "reward":reward,
             "reward_portfolio_value":reward_portfolio_value,
             "reward_complex":reward_complex,
             "reward_spooner":reward_spooner,
@@ -1983,9 +1985,10 @@ class MarketMakingAgent():
 
 
 
-    def update_state(self, agent_state: MMEnvState, extras):
+    def update_state_and_get_done_and_info(self, world_state:WorldState, agent_state_old: MMEnvState, extras) -> Tuple[MMEnvState, Dict]: 
+        # Get new state
         new_inventory = extras["end_inventory"]
-        new_PnL = agent_state.total_PnL + extras["PnL"]
+        new_PnL = agent_state_old.total_PnL + extras["PnL"]
         new_cash_balance = extras["cash_balance"]
 
         agent_state = MMEnvState(
@@ -1994,7 +1997,37 @@ class MarketMakingAgent():
             cash_balance= new_cash_balance    
         )
         
-        return agent_state
+        # Get done
+        done = self.is_terminal(world_state)
+
+        # Get info
+        info = {
+            "reward":extras["reward"],
+            "reward_portfolio_value":extras["reward_portfolio_value"],
+            "reward_complex":extras["reward_complex"],
+            "reward_spooner":extras[ "reward_spooner"],
+            "reward_spooner_damped":extras["reward_spooner_damped"],
+            "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
+            "reward_delta_netWorth":extras["reward_delta_netWorth"],
+            "total_PnL": agent_state.total_PnL,                           
+            "done": done,
+            "inventory": agent_state.inventory,
+            "market_share":extras["market_share"],
+            "buyPnL":extras["buyPnL"],
+            "scaledInventoryPnL":extras["scaledInventoryPnL"],
+            "netWorth":extras["netWorth"],
+            "sellPnL":extras["sellPnL"],
+            "buyQuant":extras["buyQuant"],
+            "sellQuant":extras["sellQuant"],
+            "inventoryValue":extras["inventoryValue"],
+            "other_exec_quants":extras["other_exec_quants"],
+            "Step_PnL":extras["PnL"],
+            "InventoryPnL":extras["InventoryPnL"],
+            "approx_realized_pnl":extras["approx_realized_pnl"],
+            "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
+        }
+
+        return agent_state, done, info
 
 
 
