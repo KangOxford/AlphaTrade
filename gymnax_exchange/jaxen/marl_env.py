@@ -16,7 +16,7 @@ from gymnax_exchange.utils import utils as util
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
-jax.config.update("jax_log_compiles", False)
+jax.config.update("jax_log_compiles", True)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
@@ -129,7 +129,7 @@ class MARLEnv(MultiAgentEnv):
             agent_params=params_list
         )
 
-    #@partial(jax.jit, static_argnums=(0,))
+    @partial(jax.jit, static_argnums=(0,))
     def reset_env(self, key: chex.PRNGKey, params: MultiAgentParams) -> Tuple[list[jnp.ndarray], MultiAgentState]:
         #################################
         # Split keys for each agent type
@@ -204,7 +204,7 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
+    @partial(jax.jit, static_argnums=(0,))
     def step_env(self,
                  key: chex.PRNGKey,
                  state: MultiAgentState,
@@ -639,7 +639,7 @@ class MARLEnv(MultiAgentEnv):
         obs_st, states_st, rewards, dones, infos = self.step_env(key = key, state = state, actions = actions, params = params)
 
         if reset_state is None:
-            obs_re, states_re = self.reset(key_reset)
+            obs_re, states_re = self.reset(key_reset, params)
         else:
             states_re = reset_state
             obs_re = self.get_obs(states_re)
@@ -728,8 +728,7 @@ if __name__ == "__main__":
         #DEBUG PRINTS
         #jax.debug.print("EXE info:{}",info["execution"])
         #jax.debug.print("MM info:{}",info["market_maker"])
-        jax.debug.print("market maker reward:{}",rewards["market_maker"])
-        jax.debug.print("MM info:{}",info["market_maker"]["reward"])
+
 
         
         #print(f"Actions: {actions}")
@@ -756,7 +755,7 @@ if __name__ == "__main__":
         rng = jax.random.PRNGKey(42)
 
         print("\n" + "="*60)
-        print("Starting VMAP timing test loop for MRL")
+        print("Starting VMAP timing test loop for MARL")
         print("="*60)
 
         #---------------------------------------
@@ -764,7 +763,7 @@ if __name__ == "__main__":
         #---------------------------------------
         print("\n[1] Resetting environments...")
         keys_reset = jax.random.split(rng, NUM_ENVS)
-        batched_reset_fn = jax.vmap(env.reset_env, in_axes=(0, None))
+        batched_reset_fn = jax.vmap(env.reset_env, in_axes=(0, None)) # All envs have the same params so second arg is None?
 
         reset_start = time.time()
         obs, state = batched_reset_fn(keys_reset, env_params)
@@ -773,24 +772,17 @@ if __name__ == "__main__":
         print(f"Reset completed in {reset_time:.4f} seconds")
 
         #---------------------------------------
-        # Prepare Dummy Actions
-        #---------------------------------------
-        print("\n[2] Preparing dummy actions...")
-        dummy_action_mm = env.mm_env.action_space().sample(jax.random.PRNGKey(0))
-        dummy_action_exe = env.exe_env.action_space().sample(jax.random.PRNGKey(1))
-
-        action_mm = jnp.zeros_like(dummy_action_mm)
-        action_exe = jnp.zeros_like(dummy_action_exe)
-
-        #---------------------------------------
         # Define VMapped Step Function
         #---------------------------------------
         def step_fn(state, key):
-            actions = {
-                "market_maker": action_mm,
-                "execution": action_exe
-            }
-            return env.step(key, state, actions, env_params)
+            # For each agent type, sample actions for all agents of that type
+            subkeys = jax.random.split(key, len(env.action_spaces))
+            actions_per_type = []
+            for i, (space, num_agents) in enumerate(zip(env.action_spaces, env.multi_agent_config.number_of_agents_per_type)):
+                keys = jax.random.split(subkeys[i], num_agents)
+                actions = jax.vmap(space.sample)(keys)
+                actions_per_type.append(actions)
+            return env.step(key, state, actions_per_type, env_params)
 
         vmap_step = jax.vmap(step_fn, in_axes=(0, 0))
 
@@ -798,7 +790,6 @@ if __name__ == "__main__":
         # Rollout Loop
         #---------------------------------------
         print("\n[3] Starting episode rollout...")
-        max_steps = config["EPISODE_TIME"]
         step_counter = jnp.zeros(NUM_ENVS, dtype=int)
         done_flags = jnp.zeros(NUM_ENVS, dtype=bool)
         rng = jax.random.PRNGKey(999)
