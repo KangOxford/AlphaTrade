@@ -15,7 +15,7 @@ from gymnax_exchange.utils import utils as util
 #from typing import List, Tuple
 
 # for debugging
-jax.config.update('jax_disable_jit', False)
+jax.config.update('jax_disable_jit', True)
 jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
@@ -548,6 +548,24 @@ class MARLEnv(MultiAgentEnv):
             agent_config = self.instance_list[agent_type_index].cfg
             vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None), out_axes = (0))
             obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize)
+            
+            
+            
+            # Set obs to zeros if done
+            jax.debug.print("obs before: {}", obs)
+            jax.debug.print(f"state {agent_state}:")
+
+            dones_temp = new_agent_dones_list[agent_type_index]
+            jax.debug.print("dones_temp: {}", dones_temp)
+            obs = jnp.where(
+                dones_temp[..., None],  # expand dims for broadcasting
+                jnp.zeros_like(obs),
+                obs)
+            jax.debug.print("obs after: {}", obs)
+
+
+
+
             agent_obs_list.append(obs)
 
 
@@ -704,7 +722,7 @@ if __name__ == "__main__":
     print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 10):
+    for i in range(1, 20):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -728,8 +746,7 @@ if __name__ == "__main__":
         obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
         #DEBUG PRINTS
-        #jax.debug.print("EXE info:{}",info["execution"])
-        #jax.debug.print("MM info:{}",info["market_maker"])
+        print("obs main function: ", obs)
 
 
         
@@ -741,7 +758,7 @@ if __name__ == "__main__":
         #print("Done:", done)
         if done["__all__"]:
             print("Episode finished!")
-            break
+
         
 
     
@@ -751,7 +768,7 @@ if __name__ == "__main__":
     #=========== VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap = True
+    enable_vmap = False
     if enable_vmap:
         NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)

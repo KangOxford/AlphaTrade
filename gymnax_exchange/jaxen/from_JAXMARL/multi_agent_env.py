@@ -11,7 +11,7 @@ import chex
 from functools import partial
 from flax import struct
 from typing import Tuple, Optional
-jax.config.update('jax_disable_jit', False)
+jax.config.update('jax_disable_jit', True)
 
 
 @struct.dataclass

@@ -76,10 +76,10 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     task: Literal["random", "buy", "sell"] = "buy"
     action_type: Literal["delta", "pure"] = "pure"
-    action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants_complex"
+    action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants"
     observation_space: Literal["engineered"] = "engineered"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int=500
+    task_size:int=10
     n_actions:int=5
     fixed_quant_value:int=10
     num_messages_by_agent:int=8
@@ -116,7 +116,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 1800 # counted by seconds, 1800s=0.5h
+    episode_time = 30 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -144,7 +144,7 @@ class MultiAgentConfig():
         Execution_EnvironmentConfig(),
         #MarketMaking_EnvironmentConfig(),
     ]
-    number_of_agents_per_type = [1,1]
+    number_of_agents_per_type = [3,3]
 
 
     
