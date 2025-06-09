@@ -132,6 +132,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     artifical_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
     debug_mode:bool=False
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
+    order_id_counter_start_when_resetting:int=-2
 
 
 @dataclass(frozen=True)

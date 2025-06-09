@@ -16,7 +16,7 @@ from gymnax_exchange.utils import utils as util
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
-jax.config.update("jax_log_compiles", True)
+jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
 from gymnax_exchange.jaxen.exec_env import ExecutionEnv
@@ -161,7 +161,7 @@ class MARLEnv(MultiAgentEnv):
             best_asks=bestasks,
             step_counter=0,
             time=load_state.init_time,
-            order_id_counter=0,
+            order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
             mid_price=mid_price,      
             delta_time=0.0,     
         )
@@ -174,8 +174,6 @@ class MARLEnv(MultiAgentEnv):
         # multi_obs = {}
         agent_state_list = [] # We are using a list (one for each agent type) of arrays (one element for each agent of that type) instead of a dict (JAXMARL)
         agent_obs_list = []
-
-
 
         
         for config_index, (instance, agent_param, agent_key, agent_config) in enumerate(zip(self.instance_list, params.agent_params, agent_keys, self.multi_agent_config.list_of_agents_configs)):
@@ -259,18 +257,42 @@ class MARLEnv(MultiAgentEnv):
             all_action_msgs_list.append(action_msgs)
             all_cancel_msgs_list.append(cancel_msgs)
 
-        print(f"all action msgs: {all_action_msgs_list}")
-        print(f"all cancel msgs: {all_cancel_msgs_list}")
-        print(f"all action msgs shape: {all_action_msgs_list[0].shape}")
-        print(f"all cancel msgs shape: {all_cancel_msgs_list[0].shape}")
+        #print(f"all action msgs: {all_action_msgs_list}")
+       # print(f"all cancel msgs: {all_cancel_msgs_list}")
+       # print(f"all action msgs shape: {all_action_msgs_list[0].shape}")
+       # print(f"all cancel msgs shape: {all_cancel_msgs_list[0].shape}")
 
         all_action_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_action_msgs_list])
         all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
 
 
+
+
+
+
+
+
+
+
+
+
         # Replace order ids in the action messages:
-        new_order_ids = jnp.arange(state.world_state.order_id_counter, state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents, -1)
+
+        new_order_ids = jnp.arange( 0 , 0 - self.num_action_msgs_per_step_by_all_agents, -1)
+        #print(f"new_order_ids before shift: {new_order_ids}")
+        #print("jnp full: ", jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter))
+
+        new_order_ids = new_order_ids + jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter)
+        #print(f"new_order_ids after shift: {new_order_ids}")
+
+
+
+
+
+
+
+
         all_action_msgs = all_action_msgs.at[:, 4].set(new_order_ids)
         new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state, order ids are counter downwards (negative numbers)
 
@@ -282,6 +304,7 @@ class MARLEnv(MultiAgentEnv):
         #print(f"best ask prices: {state.world_state.best_asks[-1]}")
         #print(f"best bid prices: {state.world_state.best_bids[-1]}")
         #print(f"combined msgs: {combined_msgs}")
+        print(f"all action msgs: {all_action_msgs}")
         
 
 
@@ -642,7 +665,8 @@ class MARLEnv(MultiAgentEnv):
             obs_re, states_re = self.reset(key_reset, params)
         else:
             states_re = reset_state
-            obs_re = self.get_obs(states_re)
+            obs_re = self.get_obs(states_re) # TODO: this is not implemented yet but i think we dont need it because we do not have the reset state as in input
+            raise NotImplementedError("Get obs on the MARL level is not implemented yet")
 
         # Auto-reset environment based on termination
         states = jax.tree.map(
@@ -749,7 +773,7 @@ if __name__ == "__main__":
     #=========== VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap = False
+    enable_vmap = True
     if enable_vmap:
         NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)
