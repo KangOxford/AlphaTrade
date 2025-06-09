@@ -132,7 +132,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     artifical_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
     debug_mode:bool=False
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
-    order_id_counter_start_when_resetting:int=-2
+    order_id_counter_start_when_resetting:int=-3
 
 
 @dataclass(frozen=True)
@@ -142,9 +142,9 @@ class MultiAgentConfig():
     list_of_agents_configs = [
         MarketMaking_EnvironmentConfig(),
         Execution_EnvironmentConfig(),
-        MarketMaking_EnvironmentConfig(),
+        #MarketMaking_EnvironmentConfig(),
     ]
-    number_of_agents_per_type = [3,10,1]
+    number_of_agents_per_type = [1,1]
 
 
     
