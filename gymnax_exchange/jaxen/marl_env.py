@@ -304,7 +304,7 @@ class MARLEnv(MultiAgentEnv):
         print("start processing combined messages")
         print("--------------------------------")
 
-        print("hash of self: ", hash(self))
+        #print("hash of self: ", hash(self))
 
         trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
@@ -549,23 +549,17 @@ class MARLEnv(MultiAgentEnv):
             vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None), out_axes = (0))
             obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize)
             
-            
-            
             # Set obs to zeros if done
-            jax.debug.print("obs before: {}", obs)
-            jax.debug.print(f"state {agent_state}:")
+            #jax.debug.print("obs before: {}", obs)
+            #jax.debug.print(f"state {agent_state}:")
 
             dones_temp = new_agent_dones_list[agent_type_index]
-            jax.debug.print("dones_temp: {}", dones_temp)
+            #jax.debug.print("dones_temp: {}", dones_temp)
             obs = jnp.where(
                 dones_temp[..., None],  # expand dims for broadcasting
                 jnp.zeros_like(obs),
                 obs)
-            jax.debug.print("obs after: {}", obs)
-
-
-
-
+            #jax.debug.print("obs after: {}", obs)
             agent_obs_list.append(obs)
 
 
@@ -719,7 +713,7 @@ if __name__ == "__main__":
 
     # Reset the environment.
     obs, state = env.reset(key_reset, env_params)
-    print("obs", obs)
+    #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
     for i in range(1, 20):
@@ -746,7 +740,7 @@ if __name__ == "__main__":
         obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
         #DEBUG PRINTS
-        print("obs main function: ", obs)
+        #print("obs main function: ", obs)
 
 
         
