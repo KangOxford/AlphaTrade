@@ -267,16 +267,6 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
-
-
-
-
-
-
-
-
-
         # Replace order ids in the action messages:
 
         new_order_ids = jnp.arange( 0 , 0 - self.num_action_msgs_per_step_by_all_agents, -1)
@@ -285,11 +275,6 @@ class MARLEnv(MultiAgentEnv):
 
         new_order_ids = new_order_ids + jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter)
         #print(f"new_order_ids after shift: {new_order_ids}")
-
-
-
-
-
 
 
 
@@ -315,9 +300,11 @@ class MARLEnv(MultiAgentEnv):
         # (D) Process combined messages through the order book
         # -------------------------------------------------------
 
-        # print("-------------------------------- ")
-        # print("start processing combined messages")
-        # print("--------------------------------")
+        print("-------------------------------- ")
+        print("start processing combined messages")
+        print("--------------------------------")
+
+        print("hash of self: ", hash(self))
 
         trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
@@ -328,9 +315,9 @@ class MARLEnv(MultiAgentEnv):
              self.num_msgs_per_step
         )
 
-        # print("--------------------------------")
-        # print("end processing combined messages")
-        # print("--------------------------------")
+        print("--------------------------------")
+        print("end processing combined messages")
+        print("--------------------------------")
 
 
         # Forward-fill best prices if necessary:
@@ -567,16 +554,7 @@ class MARLEnv(MultiAgentEnv):
         # print("agent_obs_list: ", agent_obs_list)
 
 
-
-
-
-
-
-
         # TODO Add conditional here that if exec done then set its obs to 0
-
-
-
 
 
             

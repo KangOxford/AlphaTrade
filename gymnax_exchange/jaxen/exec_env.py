@@ -408,7 +408,7 @@ class ExecutionEnv():
     
 
 
-
+    @partial(jax.jit, static_argnums=(0,))
     def reset_env(
             self,
             agent_param: ExecEnvParams,
