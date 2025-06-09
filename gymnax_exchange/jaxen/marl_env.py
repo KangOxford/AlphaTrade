@@ -15,7 +15,7 @@ from gymnax_exchange.utils import utils as util
 #from typing import List, Tuple
 
 # for debugging
-jax.config.update('jax_disable_jit', True)
+jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
