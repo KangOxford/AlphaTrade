@@ -89,12 +89,12 @@ class MARLEnv(MultiAgentEnv):
         self.num_msgs_per_step = int(num_msg_per_step)
         self.num_action_msgs_per_step_by_all_agents = int(num_action_msg_per_step_by_all_agents)
 
-        print(f"num_msgs_per_step: {self.num_msgs_per_step}")
-        print(f"num_action_msgs_per_step_by_all_agents: {self.num_action_msgs_per_step_by_all_agents}")
+        # print(f"num_msgs_per_step: {self.num_msgs_per_step}")
+        # print(f"num_action_msgs_per_step_by_all_agents: {self.num_action_msgs_per_step_by_all_agents}")
 
 
-        print(self.instance_list)
-        print("MARL Environment initialized")
+        # print(self.instance_list)
+        # print("MARL Environment initialized")
 
     @property
     def default_params(self) -> MultiAgentParams:
@@ -108,12 +108,12 @@ class MARLEnv(MultiAgentEnv):
 
         # Set trader ids and get num_msg_per_step, which both depend on all other agents
         for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
-            print(f"next_trader_id_range_start: {next_trader_id_range_start}")
-            print(f"agent type: {self.multi_agent_config.list_of_agents_configs[agent_type_index]}")
+            # print(f"next_trader_id_range_start: {next_trader_id_range_start}")
+            # print(f"agent type: {self.multi_agent_config.list_of_agents_configs[agent_type_index]}")
             agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type)
-            print(f"agent_params: {type(agent_params)}")
+            # print(f"agent_params: {type(agent_params)}")
             #num_msg_per_step = num_msg_per_step + agent_config.num_messages_by_agent * num_agents_per_type # Sum over all agents of that type
             params_list.append(agent_params)
 
@@ -152,7 +152,7 @@ class MARLEnv(MultiAgentEnv):
         bestbids = jnp.tile(best_bid[None, :], (self.num_msgs_per_step, 1))
         bestasks = jnp.tile(best_ask[None, :], (self.num_msgs_per_step, 1))#
         mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
-        print(f"mid_price: {mid_price}")
+        # print(f"mid_price: {mid_price}")
 
         # Create the world state
         world_state = WorldState(
@@ -304,7 +304,7 @@ class MARLEnv(MultiAgentEnv):
         #print(f"best ask prices: {state.world_state.best_asks[-1]}")
         #print(f"best bid prices: {state.world_state.best_bids[-1]}")
         #print(f"combined msgs: {combined_msgs}")
-        print(f"all action msgs: {all_action_msgs}")
+        # print(f"all action msgs: {all_action_msgs}")
         
 
 
@@ -315,9 +315,9 @@ class MARLEnv(MultiAgentEnv):
         # (D) Process combined messages through the order book
         # -------------------------------------------------------
 
-        print("-------------------------------- ")
-        print("start processing combined messages")
-        print("--------------------------------")
+        # print("-------------------------------- ")
+        # print("start processing combined messages")
+        # print("--------------------------------")
 
         trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
         (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
@@ -328,9 +328,9 @@ class MARLEnv(MultiAgentEnv):
              self.num_msgs_per_step
         )
 
-        print("--------------------------------")
-        print("end processing combined messages")
-        print("--------------------------------")
+        # print("--------------------------------")
+        # print("end processing combined messages")
+        # print("--------------------------------")
 
 
         # Forward-fill best prices if necessary:
@@ -347,14 +347,14 @@ class MARLEnv(MultiAgentEnv):
 
 
         final_time = combined_msgs[-1, -2:]
-        print(f"final time: {final_time}")
+        # print(f"final time: {final_time}")
 
 
         #---------------------------------------------------------
         #(E) Reward for each agent (part of it is that it changes if the episode is done)
         #----------------------------------------------------------
         
-        print(f"new trades: {new_trades}")
+        # print(f"new trades: {new_trades}")
 
         # test for a single agent
         #print("--------------------------------")
@@ -369,13 +369,13 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-        print("trades: ", new_trades)
+        # print("trades: ", new_trades)
 
         agent_reward_list = []
         agent_extras_list = []
 
         for agent_type_index in range(len(self.instance_list)):
-            print("agent_type_index: ", agent_type_index)
+            # print("agent_type_index: ", agent_type_index)
             agent_state = state.agent_states[agent_type_index]
             agent_params = params.agent_params[agent_type_index]
             vmapped_function = vmap(self.instance_list[agent_type_index]._get_reward, in_axes=(None,0,0,None,None,None,None), out_axes = (0,0))
@@ -383,7 +383,7 @@ class MARLEnv(MultiAgentEnv):
             agent_reward_list.append(reward)
             agent_extras_list.append(extras)
 
-        print("agent_reward_list: ", agent_reward_list)
+        # print("agent_reward_list: ", agent_reward_list)
 
 
 
@@ -429,9 +429,9 @@ class MARLEnv(MultiAgentEnv):
         # -------------------------------------------------------
 
 
-        print("--------------------------------")
-        print("start updating agent states")
-        print("--------------------------------")
+        # print("--------------------------------")
+        # print("start updating agent states")
+        # print("--------------------------------")
 
 
         new_agent_states_list = []
@@ -439,7 +439,7 @@ class MARLEnv(MultiAgentEnv):
         new_agent_infos_list = []
 
         for agent_type_index in range(len(self.instance_list)):
-            print("agent_type_index: ", agent_type_index)
+            # print("agent_type_index: ", agent_type_index)
             agent_state = state.agent_states[agent_type_index]
             extras = agent_extras_list[agent_type_index]
             vmapped_function = vmap(self.instance_list[agent_type_index].update_state_and_get_done_and_info, in_axes=(None,0,0), out_axes = (0,0,0))
@@ -447,12 +447,12 @@ class MARLEnv(MultiAgentEnv):
             new_agent_states_list.append(states)
             new_agent_dones_list.append(dones)
             new_agent_infos_list.append(infos)
-            print(f"agent {agent_type_index} info: {infos}")
-            print(f"agent {agent_type_index} done: {dones}")
-            print(f"agent {agent_type_index} state: {states}")
+            # print(f"agent {agent_type_index} info: {infos}")
+            # print(f"agent {agent_type_index} done: {dones}")
+            # print(f"agent {agent_type_index} state: {states}")
 
 
-        print("new_agent_dones_list: ", new_agent_dones_list)
+        # print("new_agent_dones_list: ", new_agent_dones_list)
 
 
 
@@ -467,7 +467,7 @@ class MARLEnv(MultiAgentEnv):
             agent_states=new_agent_states_list
         )
 
-        print("new_multi_state: ", new_multi_state)
+        # print("new_multi_state: ", new_multi_state)
 
 
 
@@ -476,7 +476,7 @@ class MARLEnv(MultiAgentEnv):
         # (I) Get the done of the world
         # -------------------------------------------------------
 
-        print("dones: ", new_agent_dones_list)
+        # print("dones: ", new_agent_dones_list)
 
         # Flatten all done flags into a single array
         all_dones_flat = jnp.concatenate(new_agent_dones_list)
@@ -484,12 +484,12 @@ class MARLEnv(MultiAgentEnv):
         # __all__ is True only if every agent is done
         overall_done = jnp.all(all_dones_flat) # Done if all agents are done
 
-        print("overall_done: ", overall_done)
-        print("all_dones_flat: ", all_dones_flat)
+        # print("overall_done: ", overall_done)
+        # print("all_dones_flat: ", all_dones_flat)
 
         dones = {"__all__": overall_done, "agents": new_agent_dones_list}
 
-        print("dones: ", dones)
+        # print("dones: ", dones)
 
 
 
@@ -500,15 +500,15 @@ class MARLEnv(MultiAgentEnv):
         # -------------------------------------------------------
 
         # Create the world info
-        print("best asks: ", new_world_state.best_asks)
-        print("best bids: ", new_world_state.best_bids)
+        # print("best asks: ", new_world_state.best_asks)
+        # print("best bids: ", new_world_state.best_bids)
 
         # Get the average best ask and bid
         average_best_ask = new_world_state.best_asks[:,0].mean()
         average_best_bid = new_world_state.best_bids[:,0].mean()
 
-        print("average best ask: ", average_best_ask)
-        print("average best bid: ", average_best_bid)
+        # print("average best ask: ", average_best_ask)
+        # print("average best bid: ", average_best_bid)
 
         world_info = {
             "window_index":new_world_state.window_index,
@@ -544,7 +544,7 @@ class MARLEnv(MultiAgentEnv):
 
         info = {"world":world_info,"agents":new_agent_infos_list}
 
-        print("info: ", info)
+        # print("info: ", info)
 
 
 
@@ -564,7 +564,7 @@ class MARLEnv(MultiAgentEnv):
             agent_obs_list.append(obs)
 
 
-        print("agent_obs_list: ", agent_obs_list)
+        # print("agent_obs_list: ", agent_obs_list)
 
 
 
@@ -744,7 +744,7 @@ if __name__ == "__main__":
             # Sample actions for all agents of this type
             actions = jax.vmap(space.sample)(keys)
             actions_per_type.append(actions)
-        print("actions_per_type:", actions_per_type)
+        #print("actions_per_type:", actions_per_type)
 
 
         obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)

@@ -200,9 +200,9 @@ class MarketMakingAgent():
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         normalize = jnp.full((number_of_agents_per_type,), agent_config.normalize)
 
-        print("normalize.shape:", normalize.shape)
-        print(f"trader_id: {trader_id}")
-        print(f"next_trader_id_range_start: {next_trader_id_range_start}")
+        # print("normalize.shape:", normalize.shape)
+        # print(f"trader_id: {trader_id}")
+        # print(f"next_trader_id_range_start: {next_trader_id_range_start}")
         return MMEnvParams(trader_id=trader_id, time_delay_obs_act=time_delay_obs_act, normalize=normalize), next_trader_id_range_start
 
 
@@ -468,12 +468,12 @@ class MarketMakingAgent():
         if self.world_config.ep_type == 'fixed_time':
             # TODO: make the 5 sec a function of the step size
             time_left=(self.world_config.episode_time - (world_state.time - world_state.init_time)[0] )
-            jax.debug.print("time_left :{}",time_left)
-            jax.debug.print("time :{}",world_state.time)
-            jax.debug.print("init_time :{}",world_state.init_time)
-            jax.debug.print("start_index :{}",world_state.start_index)
+            #jax.debug.print("time_left :{}",time_left)
+            #jax.debug.print("time :{}",world_state.time)
+            #jax.debug.print("init_time :{}",world_state.init_time)
+            #jax.debug.print("start_index :{}",world_state.start_index)
             done = (time_left <= self.cfg.seconds_before_episode_end)  # time over (last 5 seconds)
-            jax.debug.print("done :{}",done)
+            #jax.debug.print("done :{}",done)
             return done
         
         elif self.world_config.ep_type == 'fixed_steps':
@@ -1376,8 +1376,8 @@ class MarketMakingAgent():
         # Do filtering to net cancellations in MM)
         action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
-        jax.debug.print(f"Market Maker action msg: {action_msgs}")
-        jax.debug.print(f"Market Maker cancel msg: {cancel_msgs}")
+        #jax.debug.print(f"Market Maker action msg: {action_msgs}")
+        #jax.debug.print(f"Market Maker cancel msg: {cancel_msgs}")
 
         return action_msgs, cancel_msgs
 
@@ -1702,7 +1702,7 @@ class MarketMakingAgent():
         # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
 
-        print(f"agent_params.trader_id: {agent_params.trader_id}")
+        # print(f"agent_params.trader_id: {agent_params.trader_id}")
         
         mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)

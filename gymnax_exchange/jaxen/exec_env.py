@@ -189,8 +189,8 @@ class ExecutionEnv():
         time_delay_obs_act = jnp.full((number_of_agents_per_type,), agent_config.time_delay_obs_act)
         normalize = jnp.full((number_of_agents_per_type,), agent_config.normalize)
         
-        print(f"task_size: {task_size}")
-        print(f"trader_id: {trader_id}")
+        #print(f"task_size: {task_size}")
+        #print(f"trader_id: {trader_id}")
         return ExecEnvParams(trader_id=trader_id, task_size=task_size, reward_lambda=reward_lambda, time_delay_obs_act=time_delay_obs_act, normalize=normalize), next_trader_id_range_start
 
 
@@ -1139,8 +1139,8 @@ class ExecutionEnv():
         # 5. Filter messages
         action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
-        print(f"action messgaes order exec: {action_msgs}")
-        print(f"cancel messgaes order exec: {cancel_msgs}")
+        #print(f"action messgaes order exec: {action_msgs}")
+        #print(f"cancel messgaes order exec: {cancel_msgs}")
 
         # 6. Return
         return action_msgs, cancel_msgs
@@ -1381,11 +1381,11 @@ class ExecutionEnv():
         quant_executed_this_step = jnp.abs(agent_trades_before_unwind[:,1].sum()) # QUants can be negative, therefore take absolute value
         quant_left = agent_state.task_to_execute - (agent_state.quant_executed + quant_executed_this_step)
 
-        print("trader id: ", agent_params.trader_id)
-        print("trades before unwind: ", agent_trades_before_unwind)
-        print(f"quant_executed_this_step: {quant_executed_this_step}")
-        print(f"agent_state.task_to_execute: {agent_state.task_to_execute}")
-        print(f"quant_left: {quant_left}")
+        # print("trader id: ", agent_params.trader_id)
+        # print("trades before unwind: ", agent_trades_before_unwind)
+        # print(f"quant_executed_this_step: {quant_executed_this_step}")
+        # print(f"agent_state.task_to_execute: {agent_state.task_to_execute}")
+        # print(f"quant_left: {quant_left}")
 
         #-----check if ep over-----#
         if self.world_config.ep_type == 'fixed_time':
@@ -1397,8 +1397,8 @@ class ExecutionEnv():
         #jax.debug.print("mid_price:{}",mid_price)
 
 
-        print("bestbid 0", bestbids[-1,0])
-        print(bestasks[-10,0])
+        # print("bestbid 0", bestbids[-1,0])
+        # print(bestasks[-10,0])
 
         doom_price = jax.lax.cond(
             agent_state.is_sell_task,
@@ -1409,10 +1409,10 @@ class ExecutionEnv():
         def place_midprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
             
-            print("price shape: {}", price.shape)
-            print("quant shape: {}", quant.shape)
-            print("time shape: {}", time.shape)
-            print("trader id shape: {}", agent_params.trader_id.shape)
+            # print("price shape: {}", price.shape)
+            # print("quant shape: {}", quant.shape)
+            # print("time shape: {}", time.shape)
+            # print("trader id shape: {}", agent_params.trader_id.shape)
             
             
             mid_trade = job.create_trade(
@@ -1608,8 +1608,8 @@ class ExecutionEnv():
             lambda: (world_state.best_asks[-1], world_state.best_bids[-1]),
         )
 
-        print("agent_state:", agent_state.is_sell_task)
-        print(f"quite aggr: {quote_aggr}, quote pass: {quote_pass}")
+        # print("agent_state:", agent_state.is_sell_task)
+        # print(f"quite aggr: {quote_aggr}, quote pass: {quote_pass}")
 
 
         time = world_state.time[0] + world_state.time[1]/1e9
@@ -1684,14 +1684,14 @@ class ExecutionEnv():
             "remaining_ratio": 1,
         }
 
-        print("obs:", obs)
+        # print("obs:", obs)
 
 
         if normalize:
             obs = self.normalize_obs(obs, means, stds)
             # jax.debug.print('normalized obs:\n {}', obs)
 
-        print("normalized obs:", obs)
+        # print("normalized obs:", obs)
 
         if flatten:
             obs, _ = jax.flatten_util.ravel_pytree(obs)
