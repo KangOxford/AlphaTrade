@@ -716,7 +716,7 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 20):
+    for i in range(1, 2000):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -752,6 +752,7 @@ if __name__ == "__main__":
         #print("Done:", done)
         if done["__all__"]:
             print("Episode finished!")
+            break
 
         
 
@@ -762,7 +763,7 @@ if __name__ == "__main__":
     #=========== VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap = False
+    enable_vmap = True
     if enable_vmap:
         NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)
@@ -777,9 +778,12 @@ if __name__ == "__main__":
         print("\n[1] Resetting environments...")
         keys_reset = jax.random.split(rng, NUM_ENVS)
         batched_reset_fn = jax.vmap(env.reset_env, in_axes=(0, None)) # All envs have the same params so second arg is None?
+        
 
         reset_start = time.time()
         obs, state = batched_reset_fn(keys_reset, env_params)
+        #jax.debug.print("obs: {}", obs)
+        #jax.debug.print("state: {}", state)
         reset_end = time.time()
         reset_time = reset_end - reset_start
         print(f"Reset completed in {reset_time:.4f} seconds")
