@@ -1,41 +1,500 @@
-ls
-cd data/
-ls
-shell hostname
-hostname
-hostname -I
-hostname --help
-hostname -a
-hostname --help
-hostname -d
-hostname
-exit
-exit
-exit
-exit
-cd data/
-ls
-ls
-cd ..
-ls
-exit
-cd data/
-ls
-ls
-cd ..
-ls
-ls
-cd data/
-ls
-exit
-cd data/
-ls
-ls
-cd 
-cd data/
-ls
-cd ..
 python3 gymnax_exchange/jaxen/marl_env.py 
-exit
 python3 gymnax_exchange/jaxen/marl_env.py 
-exit
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python --version
+python --version
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+nvidia-smi
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+nvidia-smi
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+nvidia-smi
+nvidia-smi
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+nvidia-smi
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+nvidia-smi
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+nvidia-smi
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+ls
+python3 gymnax_exchange/jaxen/Before\ JAXLOBMARL/marl_env.py
+python3 gymnax_exchange/jaxen/Before\ JAXLOBMARL/marl_env.py
+python3 gymnax_exchange/jaxen/Before_JAXLOBMARL_adapted/marl_env.py
+python3 gymnax_exchange/jaxen/Before_JAXLOBMARL_adapted/marl_env.py
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
+python3 gymnax_exchange/jaxen/marl_env.py 
