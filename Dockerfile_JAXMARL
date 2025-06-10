@@ -10,9 +10,12 @@ RUN useradd -u $UID --create-home ${MYUSER} && \
     chown -R  ${MYUSER}:${MYUSER} /home/${MYUSER}
 
 
+
+
+    
 # default workdir
 WORKDIR /home/${MYUSER}/
-COPY --chown=${MYUSER} --chmod=765 . .
+COPY --chown=${MYUSER} --chmod=777 . .
 
 # install tmux
 RUN apt-get update && \

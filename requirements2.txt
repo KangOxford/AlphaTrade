@@ -186,7 +186,7 @@ rich==13.9.4
 rlax==0.1.6
 rpds-py==0.23.1
 rwkv==0.8.28
-safetensors==0.5.2
+# safetensors==0.5.2
 scipy==1.15.2
 seaborn==0.13.2
 Send2Trash==1.8.3
@@ -220,9 +220,11 @@ stack-data==0.6.3
 starlette==0.46.0
 sympy==1.13.1
 tabulate==0.9.0
-tensorboardX==2.6.2.2
-tensorflow-probability==0.25.0
-tensorstore==0.1.72
+# tensorboardX==2.6.2.2
+tensorboard
+tensorboard-plugin-profile
+# tensorflow-probability==0.25.0
+# tensorstore==0.1.72
 terminado==0.18.1
 tinycss2==1.4.0
 tokenizers==0.21.0
