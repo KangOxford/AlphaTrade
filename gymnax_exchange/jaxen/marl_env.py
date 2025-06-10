@@ -837,9 +837,13 @@ if __name__ == "__main__":
 
             return (state, rng, done_flags, step_counter)
 
+        #jax.profiler.start_trace("tensorboard_logs/trace")
+
         state, rng, done_flags, step_counter = jax.lax.while_loop(
             cond_fn, body_fn, (state, rng, done_flags, step_counter)
         )
+
+        #jax.profiler.stop_trace()
 
         rollout_end = time.time()
         rollout_time = rollout_end - rollout_start
