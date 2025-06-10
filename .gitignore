@@ -47,3 +47,14 @@ results_file**
 
 Dockerfile
 Dockerfile_twogymnax_exchange/jaxrl/pre_trained_weights/*.model
+tensorboard_logs/
+tensorboard_logs/**
+
+
+
+.cache/
+.cache/**
+.keras/
+.keras/**
+.local/
+.local/**
