@@ -1416,7 +1416,7 @@ class ExecutionEnv():
             
             
             mid_trade = job.create_trade(
-                price, quant, self.world_config.artifical_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artifical_trader_id_end_episode, agent_params.trader_id)
+                price, quant, self.world_config.artificial_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artificial_trader_id_end_episode, agent_params.trader_id)
             trades = job.add_trade(trades, mid_trade)
             #jax.debug.print("called?")
             return trades

@@ -1780,7 +1780,7 @@ class MarketMakingAgent():
         def place_refprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at specified price to close out our mm agent at the end of the episode.'''
             trade = job.create_trade(
-                price, quant, self.world_config.artifical_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artifical_trader_id_end_episode, agent_params.trader_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
+                price, quant, self.world_config.artificial_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artificial_trader_id_end_episode, agent_params.trader_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
             trades = job.add_trade(trades, trade)
             return trades
 
