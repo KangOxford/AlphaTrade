@@ -47,3 +47,6 @@ results_file**
 
 Dockerfile
 Dockerfile_twogymnax_exchange/jaxrl/pre_trained_weights/*.model
+
+.bash_history
+AlphaTrade/.bash_history
