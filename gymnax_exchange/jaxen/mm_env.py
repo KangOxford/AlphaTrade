@@ -970,8 +970,8 @@ class MarketMakingAgent():
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 1, 2, 3, 0, 2, 1, 4], dtype=jnp.int32)
         ask_offsets = jnp.array([0, 1, 2, 3, 2, 0, 4, 1], dtype=jnp.int32)
-        bid_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
-        ask_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
+        bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
+        ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
         tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
         
@@ -2330,7 +2330,7 @@ class MarketMakingAgent():
         elif self.cfg.action_space == "fixed_prices":
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
-            return spaces.Discrete(8)
+            return spaces.Discrete(9)
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         else:

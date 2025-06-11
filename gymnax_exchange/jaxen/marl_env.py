@@ -266,6 +266,10 @@ class MARLEnv(MultiAgentEnv):
         all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
 
+        jax.debug.print("action: {}", actions)
+        jax.debug.print("all action msgs: {}", all_action_msgs)
+        jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
+
 
         # Replace order ids in the action messages:
 
@@ -763,7 +767,7 @@ if __name__ == "__main__":
     #=========== VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap = True
+    enable_vmap = False
     if enable_vmap:
         NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)
