@@ -79,7 +79,7 @@ class Execution_EnvironmentConfig():
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants"
     observation_space: Literal["engineered"] = "engineered"
     end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int=10
+    task_size:int=50
     n_actions:int=5
     fixed_quant_value:int=10
     num_messages_by_agent:int=8
@@ -133,6 +133,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     debug_mode:bool=False
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-3
+    shuffle_action_messages:bool=True
 
 
 @dataclass(frozen=True)

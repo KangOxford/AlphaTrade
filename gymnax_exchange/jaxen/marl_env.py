@@ -215,19 +215,15 @@ class MARLEnv(MultiAgentEnv):
         # (A) Get the lob state before in case any agent uses the message based obs space
         # --------------------------------------------------------------------------------
 
-
         if self.multi_agent_config.world_config.any_message_obs_space == True:
             lob_state_before = job.get_L2_state(
-                state.ask_raw_orders,  # Current ask orders
-                state.bid_raw_orders,  # Current bid orders
+                state.world_state.ask_raw_orders,  # Current ask orders
+                state.world_state.bid_raw_orders,  # Current bid orders
                 10,  # Number of levels
-                self.cfg  
+                self.multi_agent_config.world_config  
                 )
         else:
             lob_state_before = None
-
-
-
 
         # -------------------------------------------------------
         # (B) Build External Data Messages (common to all agents)
@@ -267,8 +263,8 @@ class MARLEnv(MultiAgentEnv):
 
 
         #jax.debug.print("action: {}", actions)
-        # jax.debug.print("all action msgs: {}", all_action_msgs)
-        # jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
+        #jax.debug.print("all action msgs before shuffle: {}", all_action_msgs)
+        #jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
 
 
         # Replace order ids in the action messages:
@@ -278,12 +274,20 @@ class MARLEnv(MultiAgentEnv):
         #print("jnp full: ", jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter))
 
         new_order_ids = new_order_ids + jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter)
+        #jax.debug.print("new_order_ids: {}", new_order_ids)
         #print(f"new_order_ids after shift: {new_order_ids}")
-
-
 
         all_action_msgs = all_action_msgs.at[:, 4].set(new_order_ids)
         new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state, order ids are counter downwards (negative numbers)
+
+        # Shuffle the action messages if the config is set to True
+        if self.multi_agent_config.world_config.shuffle_action_messages:
+            key, shuffle_key = jax.random.split(key)
+            all_action_msgs = jax.random.permutation(shuffle_key, all_action_msgs, axis=0)
+
+
+        #jax.debug.print("all action msgs after shuffle: {}", all_action_msgs)
+
 
         # Combine action and cancel messages
         combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs, data_messages], axis=0)
@@ -295,9 +299,6 @@ class MARLEnv(MultiAgentEnv):
         #print(f"combined msgs: {combined_msgs}")
         # print(f"all action msgs: {all_action_msgs}")
         
-
-
-
 
 
         # -------------------------------------------------------
@@ -719,7 +720,7 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 2000):
+    for i in range(1, 6):
         print("=" * 40)
         
         print(f"Step {i}")
