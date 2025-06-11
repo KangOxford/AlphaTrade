@@ -266,9 +266,9 @@ class MARLEnv(MultiAgentEnv):
         all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
 
-        jax.debug.print("action: {}", actions)
-        jax.debug.print("all action msgs: {}", all_action_msgs)
-        jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
+        #jax.debug.print("action: {}", actions)
+        # jax.debug.print("all action msgs: {}", all_action_msgs)
+        # jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
 
 
         # Replace order ids in the action messages:
@@ -559,8 +559,11 @@ class MARLEnv(MultiAgentEnv):
 
             dones_temp = new_agent_dones_list[agent_type_index]
             #jax.debug.print("dones_temp: {}", dones_temp)
+            #jax.debug.print("__all__ done: {}", dones)
+            mask = jnp.logical_and(dones_temp, jnp.logical_not(dones["__all__"])) #only reset obs if agent is done but overall env is not
+            #jax.debug.print("mask: {}", mask)
             obs = jnp.where(
-                dones_temp[..., None],  # expand dims for broadcasting
+                mask[..., None],  # expand dims for broadcasting
                 jnp.zeros_like(obs),
                 obs)
             #jax.debug.print("obs after: {}", obs)
@@ -568,10 +571,6 @@ class MARLEnv(MultiAgentEnv):
 
 
         # print("agent_obs_list: ", agent_obs_list)
-
-
-        # TODO Add conditional here that if exec done then set its obs to 0
-
 
             
         return agent_obs_list, new_multi_state, agent_reward_list, dones, info
