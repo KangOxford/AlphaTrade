@@ -2442,7 +2442,7 @@ if __name__ == "__main__":
 
     # # ####### Testing the vmap abilities ########
     
-    enable_vmap=False
+    enable_vmap=True
     if enable_vmap:
         # with jax.profiler.trace("/homes/80/kang/AlphaTrade/wandb/jax-trace"):
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))
@@ -2477,7 +2477,7 @@ if __name__ == "__main__":
         print("Starting VMAP timing test loop with detailed timing")
         print("="*60)
 
-        num_envs = 1024
+        num_envs = 10000
         vmap_keys = jax.random.split(rng, num_envs)
 
         vmap_reset = jax.vmap(env.reset, in_axes=(0, None))

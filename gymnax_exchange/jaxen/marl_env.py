@@ -170,6 +170,18 @@ class MARLEnv(BaseLOBEnv):
             state.init_time[0] + params.episode_time
         )
 
+        if self.mm_env.cfg.observation_space == "messages_new_tokenizer":
+            lob_state_before = job.get_L2_state(
+                state.ask_raw_orders,  # Current ask orders
+                state.bid_raw_orders,  # Current bid orders
+                10,  # Number of levels
+                self.cfg  
+                )
+        else:
+            lob_state_before = None
+
+
+
         # -------------------------------------------------------
         # (B) Build Market Maker messages
         # -------------------------------------------------------
@@ -315,7 +327,7 @@ class MARLEnv(BaseLOBEnv):
         mm_executions=jnp.abs(mm_executions) #check incase neg quant
         mm_reward, mm_extras = self.mm_env._get_reward(state.mm_state, params.mm_params, mm_agent_trades, new_bestasks, new_bestbids)
         #mm_obs = self.mm_env._get_obs(state.mm_state, params.mm_params)
-        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price)
+        mm_obs=self.mm_env.get_observation(state.mm_state, params.mm_params, combined_msgs, mm_action_prices, mm_executions,old_time,old_mid_price,lob_state_before)
 
         exe_agent_trades = job.get_agent_trades(new_trades, self.exe_trader_id)
         exe_reward, exe_extras = self.exe_env._get_reward(state.exe_state, params.exe_params, exe_agent_trades)
@@ -647,7 +659,7 @@ if __name__ == "__main__":
 
     enable_vmap = True
     if enable_vmap:
-        NUM_ENVS = 1000
+        NUM_ENVS = 10000
         rng = jax.random.PRNGKey(42)
 
         print("\n" + "="*60)
