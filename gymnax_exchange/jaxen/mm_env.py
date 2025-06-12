@@ -473,6 +473,15 @@ class MarketMakingAgent():
             #jax.debug.print("init_time :{}",world_state.init_time)
             #jax.debug.print("start_index :{}",world_state.start_index)
             done = (time_left <= self.cfg.seconds_before_episode_end)  # time over (last 5 seconds)
+
+
+            #jax.debug.print("episode_time :{}", self.world_config.episode_time)
+            #jax.debug.print("world_state.init_time :{}",world_state.init_time)
+            #jax.debug.print("world_state.time :{}",world_state.time)
+            #jax.debug.print("time_left :{}",time_left)
+            #jax.debug.print("done : {}" , done)
+
+
             #jax.debug.print("done :{}",done)
             return done
         

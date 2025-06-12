@@ -494,8 +494,7 @@ class MARLEnv(MultiAgentEnv):
 
         dones = {"__all__": overall_done, "agents": new_agent_dones_list}
 
-        #jax.debug.print("dones agent: {}", dones["agents"])
-       # jax.debug.print("dones __all__: {}", dones["__all__"])
+        # print("dones: ", dones)
 
 
 
@@ -586,7 +585,6 @@ class MARLEnv(MultiAgentEnv):
 
 
         # print("agent_obs_list: ", agent_obs_list)
-
 
             
         return agent_obs_list, new_multi_state, agent_reward_list, dones, info
@@ -735,7 +733,7 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 10):
+    for i in range(1, 1000):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -779,12 +777,12 @@ if __name__ == "__main__":
     # Set number of environments to batch
      
     #=======================================#
-    #=========== Old VMAP TIMING TEST =========#
+    #=========== VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap_old = False
-    if enable_vmap_old:
-        NUM_ENVS = 10
+    enable_vmap = True
+    if enable_vmap:
+        NUM_ENVS = 100
         rng = jax.random.PRNGKey(42)
 
         print("\n" + "="*60)
@@ -850,11 +848,8 @@ if __name__ == "__main__":
                     mask = mask[..., None]
                 return jnp.where(mask, s, ns)
 
-            state = next_state
-
-
-            done_all = jnp.asarray(done["__all__"]).reshape(-1).astype(bool)
-            done_flags = jnp.logical_or(done_flags, done_all)
+            state = jax.tree_map(masked_update, state, next_state)
+            done_flags = jnp.logical_or(done_flags, done["__all__"])
             step_counter += jnp.where(done_flags, 0, 1)
 
             return (state, rng, done_flags, step_counter)
@@ -885,99 +880,3 @@ if __name__ == "__main__":
         print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
         print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
         print("="*60)
-
-
-
-
-# ----------------------------------------------
-# New VMAP rollout script + timing statistics
-# ----------------------------------------------
-enable_vmap = True
-if enable_vmap:
-
-    print("\n" + "="*60)
-    print("Starting VMAP timing test loop for MARL")
-    print("="*60)
-
-
-    NUM_ENVS   = 1000         # number of parallel environments
-    NUM_STEPS  = 1000     # total steps per environment
-    MASTER_KEY = jax.random.PRNGKey(0)
-
-    # -------------------------------------------------
-    # 1) Initial reset of all envs (batched)
-    # -------------------------------------------------
-    master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
-    batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
-
-    reset_start = time.time()
-    obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
-    # force execution to finish before timing
-    jax.block_until_ready(state)
-    reset_time  = time.time() - reset_start
-
-    # -------------------------------------------------
-    # 2) Helper: one step for a single env
-    # -------------------------------------------------
-    def single_step(state, key, env_params):
-        # one sub-key per agent type
-        subkeys = jax.random.split(key, len(env.action_spaces))
-        # sample random actions for every agent of each type
-        actions = [
-            jax.vmap(space.sample)(
-                jax.random.split(sk, n_agents)
-            )
-            for sk, space, n_agents in zip(
-                subkeys,
-                env.action_spaces,
-                env.multi_agent_config.number_of_agents_per_type,
-            )
-        ]
-        # env.step auto-resets when done
-        return env.step(key, state, actions, env_params)
-
-    # JIT & vmap
-    @jax.jit
-    def batched_step(state_batch, key_batch):
-        return jax.vmap(single_step, in_axes=(0, 0, None))(
-            state_batch, key_batch, env_params
-        )
-
-    # -------------------------------------------------
-    # 3) Scan across a fixed number of steps
-    # -------------------------------------------------
-    def scan_body(carry, _):
-        state_batch, rng = carry
-        rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
-        obs, state_batch, rew, done, _ = batched_step(
-            state_batch, jnp.stack(step_keys)
-        )
-        return (state_batch, rng), (obs, rew, done)
-
-    rollout_start = time.time()
-    (final_state, _), (traj_obs, traj_rew, traj_done) = jax.lax.scan(
-        scan_body,
-        (state, master_key),
-        None,
-        length=NUM_STEPS,
-    )
-    # ensure all work is finished
-    jax.block_until_ready(final_state)
-    rollout_time = time.time() - rollout_start
-
-    # -------------------------------------------------
-    # 4) Timing statistics
-    # -------------------------------------------------
-    total_steps       = NUM_STEPS * NUM_ENVS          # every env took NUM_STEPS steps
-    avg_steps_per_env = NUM_STEPS
-    avg_time_per_step = rollout_time / total_steps
-
-    print("\n[4] Timing Results")
-    print("-" * 60)
-    print(f"Total Envs:           {NUM_ENVS}")
-    print(f"Reset time:           {reset_time:.4f} seconds")
-    print(f"Rollout (steps) time: {rollout_time:.4f} seconds")
-    print(f"Total steps:          {total_steps}")
-    print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
-    print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
-    print("=" * 60)
