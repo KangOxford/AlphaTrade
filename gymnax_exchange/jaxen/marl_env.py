@@ -215,15 +215,20 @@ class MARLEnv(MultiAgentEnv):
         # (A) Get the lob state before in case any agent uses the message based obs space
         # --------------------------------------------------------------------------------
 
-        if self.multi_agent_config.world_config.any_message_obs_space == True:
+        if self.multi_agent_config.world_config.any_message_obs_space == True or self.multi_agent_config.world_config.debug_mode==True:
             lob_state_before = job.get_L2_state(
                 state.world_state.ask_raw_orders,  # Current ask orders
                 state.world_state.bid_raw_orders,  # Current bid orders
                 10,  # Number of levels
                 self.multi_agent_config.world_config  
                 )
+            #jax.debug.print("lob state before: {}", lob_state_before)
         else:
             lob_state_before = None
+
+
+        #jax.debug.print("ASK SIDE (price, quantity, orderid, traderid, time, time_ns):\n{}", state.world_state.ask_raw_orders)
+        #jax.debug.print("BID SIDE (price, quantity, orderid, traderid, time, time_ns):\n{}", state.world_state.bid_raw_orders)
 
         # -------------------------------------------------------
         # (B) Build External Data Messages (common to all agents)
@@ -373,8 +378,8 @@ class MARLEnv(MultiAgentEnv):
        # self.instance_list[1]._get_reward(state.world_state, agent_state_test_single, agent_params_test_single, new_trades, new_bestasks, new_bestbids, final_time)
 
 
-
-        # print("trades: ", new_trades)
+        #jax.debug.print("total message: {}", combined_msgs)
+        #jax.debug.print("trades: {}", new_trades)
 
         agent_reward_list = []
         agent_extras_list = []
@@ -495,7 +500,7 @@ class MARLEnv(MultiAgentEnv):
         dones = {"__all__": overall_done, "agents": new_agent_dones_list}
 
         #jax.debug.print("dones agent: {}", dones["agents"])
-       # jax.debug.print("dones __all__: {}", dones["__all__"])
+        #jax.debug.print("dones __all__: {}", dones["__all__"])
 
 
 
@@ -541,16 +546,19 @@ class MARLEnv(MultiAgentEnv):
                                 10,  # Number of levels
                                 self.multi_agent_config.world_config  
                                 )
-            info.update({
+            world_info.update({
                 "trades": new_trades,
                 "total_msgs": combined_msgs,
                 "lob_state": lob_state,
             })
 
+            #jax.debug.print("lob state: {}", lob_state)
+
 
         info = {"world":world_info,"agents":new_agent_infos_list}
 
         # print("info: ", info)
+        #jax.debug.print("lob state: {}", lob_state)
 
 
 
@@ -892,7 +900,7 @@ if __name__ == "__main__":
 # ----------------------------------------------
 # New VMAP rollout script + timing statistics
 # ----------------------------------------------
-enable_vmap = True
+enable_vmap = False
 if enable_vmap:
 
     print("\n" + "="*60)
@@ -901,7 +909,7 @@ if enable_vmap:
 
 
     NUM_ENVS   = 1000         # number of parallel environments
-    NUM_STEPS  = 1000     # total steps per environment
+    NUM_STEPS  = 60     # total steps per environment
     MASTER_KEY = jax.random.PRNGKey(0)
 
     # -------------------------------------------------
@@ -971,6 +979,7 @@ if enable_vmap:
     total_steps       = NUM_STEPS * NUM_ENVS          # every env took NUM_STEPS steps
     avg_steps_per_env = NUM_STEPS
     avg_time_per_step = rollout_time / total_steps
+    avg_steps_per_sec = total_steps / rollout_time
 
     print("\n[4] Timing Results")
     print("-" * 60)
@@ -980,4 +989,5 @@ if enable_vmap:
     print(f"Total steps:          {total_steps}")
     print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
     print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
+    print(f"Avg steps per sec:    {avg_steps_per_sec:.2f}")
     print("=" * 60)
