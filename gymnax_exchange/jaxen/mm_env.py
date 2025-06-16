@@ -1253,9 +1253,9 @@ class MarketMakingAgent():
         # Calculate skewed mid price
         skewed_mid = mid_price + skew_ticks * self.world_config.tick_size
 
-        jax.debug.print("mid price: {}", mid_price)
-        jax.debug.print("skew ticks: {}", skew_ticks)
-        jax.debug.print("skewed mid: {}", skewed_mid)
+        #jax.debug.print("mid price: {}", mid_price)
+        # jax.debug.print("skew ticks: {}", skew_ticks)
+        #jax.debug.print("skewed mid: {}", skewed_mid)
         
         # Calculate final bid and ask prices
         half_spread = new_spread // 2
@@ -1389,8 +1389,8 @@ class MarketMakingAgent():
         # Do filtering to net cancellations in MM)
         action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
-        jax.debug.print("action messages order mm: {}", action_msgs)
-        jax.debug.print("cancel messages order mm: {}", cancel_msgs)
+        #jax.debug.print("action messages order mm: {}", action_msgs)
+        #jax.debug.print("cancel messages order mm: {}", cancel_msgs)
 
         return action_msgs, cancel_msgs
 
@@ -1815,6 +1815,8 @@ class MarketMakingAgent():
             trades, reference_price, jnp.sign(new_inventory_before_unwind) * jnp.abs(new_inventory_before_unwind), time  # Inv +ve means incoming is sell so standing buy.
         )
 
+        #jax.debug.print("trades mm env: {}", trades)
+
 
         #########################################################
         # Get reward stats after unwind
@@ -2039,6 +2041,10 @@ class MarketMakingAgent():
             "approx_realized_pnl":extras["approx_realized_pnl"],
             "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
         }
+
+
+        #jax.debug.print("info mm env: {}", info)
+
 
         return agent_state, done, info
 

@@ -1134,8 +1134,8 @@ class ExecutionEnv():
         # 5. Filter messages
         action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
-        jax.debug.print("action messages order exec: {}", action_msgs)
-        jax.debug.print("cancel messages order exec: {}", cancel_msgs)
+        #jax.debug.print("action messages order exec: {}", action_msgs)
+        #jax.debug.print("cancel messages order exec: {}", cancel_msgs)
 
         # 6. Return
         return action_msgs, cancel_msgs
@@ -1429,6 +1429,7 @@ class ExecutionEnv():
         #Return traded amounts
         doom_quant = ep_is_over * quant_left
 
+        #jax.debug.print("trades exec env: {}", trades)
 
         #################################
         # Get reward
@@ -1573,6 +1574,9 @@ class ExecutionEnv():
             "doom_quant": doom_quant,
             "is_sell_task": agent_state.is_sell_task,
         }
+
+        #jax.debug.print("info exec env: {}", info)
+
 
         return agent_state, done, info
 

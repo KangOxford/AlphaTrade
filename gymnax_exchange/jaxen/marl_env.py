@@ -33,7 +33,8 @@ from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
 from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig
 
-
+import numpy as np
+np.set_printoptions(threshold=np.inf, linewidth=200)
 
 
 
@@ -227,7 +228,7 @@ class MARLEnv(MultiAgentEnv):
         else:
             lob_state_before = None
 
-
+        #jax.debug.print("lob state before: {}", lob_state_before)
         #jax.debug.print("ASK SIDE (price, quantity, orderid, traderid, time, time_ns):\n{}", state.world_state.ask_raw_orders)
         #jax.debug.print("BID SIDE (price, quantity, orderid, traderid, time, time_ns):\n{}", state.world_state.bid_raw_orders)
 
@@ -249,6 +250,8 @@ class MARLEnv(MultiAgentEnv):
         all_action_msgs_list = [] # One element for each agent type
         all_cancel_msgs_list = [] # One element for each agent type
 
+        #jax.debug.print("action: {}", actions)
+
 
         for agent_type_index in range(len(self.instance_list)):
             agent_state = state.agent_states[agent_type_index]
@@ -259,7 +262,7 @@ class MARLEnv(MultiAgentEnv):
             all_action_msgs_list.append(action_msgs)
             all_cancel_msgs_list.append(cancel_msgs)
 
-        #print(f"all action msgs: {all_action_msgs_list}")
+        #jax.debug.print("all action msgs: {}", all_action_msgs_list)
        # print(f"all cancel msgs: {all_cancel_msgs_list}")
        # print(f"all action msgs shape: {all_action_msgs_list[0].shape}")
        # print(f"all cancel msgs shape: {all_cancel_msgs_list[0].shape}")
@@ -268,7 +271,7 @@ class MARLEnv(MultiAgentEnv):
         all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
 
-        #jax.debug.print("action: {}", actions)
+        
         #jax.debug.print("all action msgs before shuffle: {}", all_action_msgs)
         #jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
 
@@ -299,10 +302,10 @@ class MARLEnv(MultiAgentEnv):
         combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs, data_messages], axis=0)
 
 
-        #print(f"actions: {actions}")
-        #print(f"best ask prices: {state.world_state.best_asks[-1]}")
-        #print(f"best bid prices: {state.world_state.best_bids[-1]}")
-        #print(f"combined msgs: {combined_msgs}")
+        #jax.debug.print("actions: {}", actions)
+        #jax.debug.print("best ask prices: {}", state.world_state.best_asks[-1])
+        #jax.debug.print("best bid prices: {}", state.world_state.best_bids[-1])
+        #jax.debug.print("combined msgs: {}", combined_msgs)
         # print(f"all action msgs: {all_action_msgs}")
         
 
@@ -311,7 +314,8 @@ class MARLEnv(MultiAgentEnv):
 
         #combined_msgs = combined_msgs[:1,:]
 
-
+        #jax.debug.print("best ask prices: {}", state.world_state.best_asks[-1])
+        #jax.debug.print("best bid prices: {}", state.world_state.best_bids[-1])
 
 
 
@@ -324,9 +328,9 @@ class MARLEnv(MultiAgentEnv):
         # (D) Process combined messages through the order book
         # -------------------------------------------------------
 
-        print("-------------------------------- ")
-        print("start processing combined messages")
-        print("--------------------------------")
+        #print("-------------------------------- ")
+        #print("start processing combined messages")
+        #print("--------------------------------")
 
         #print("hash of self: ", hash(self))
 
@@ -339,9 +343,9 @@ class MARLEnv(MultiAgentEnv):
              self.num_msgs_per_step
         )
 
-        print("--------------------------------")
-        print("end processing combined messages")
-        print("--------------------------------")
+        #print("--------------------------------")
+        #print("end processing combined messages")
+        #print("--------------------------------")
 
 
         # Forward-fill best prices if necessary:
@@ -350,8 +354,10 @@ class MARLEnv(MultiAgentEnv):
 
 
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
+        #jax.debug.print("best asks after ffill: {}", new_bestasks)
+        #jax.debug.print("best bids after ffill: {}", new_bestbids)
 
-        #jax.debug.print(f"trades: {new_trades}")
+        #jax.debug.print("trades: {}", new_trades)
 
 
 
@@ -732,7 +738,7 @@ if __name__ == "__main__":
 
     multi_agent_config = MultiAgentConfig()
 
-    rng = jax.random.PRNGKey(42) # TODO i think this should be changed to the new key function in JAX .key()
+    rng = jax.random.PRNGKey(30) # TODO i think this should be changed to the new key function in JAX .key()
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # Instantiate the MARL environment.
@@ -749,8 +755,8 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    jax.profiler.start_trace("tensorboard_logs")
-    for i in range(1, 11):
+    #jax.profiler.start_trace("tensorboard_logs")
+    for i in range(1, 3):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -790,7 +796,7 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
-    jax.profiler.stop_trace()
+    #jax.profiler.stop_trace()
 
     
     # Set number of environments to batch
@@ -799,8 +805,8 @@ if __name__ == "__main__":
     #=========== Old VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap = True
-    if enable_vmap:
+    enable_vmap_old = False
+    if enable_vmap_old:
         NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)
 
@@ -936,7 +942,7 @@ if __name__ == "__main__":
 # ----------------------------------------------
 # New VMAP rollout script + timing statistics
 # ----------------------------------------------
-enable_vmap = False
+enable_vmap = True
 if enable_vmap:
 
     print("\n" + "="*60)
@@ -944,8 +950,8 @@ if enable_vmap:
     print("="*60)
 
 
-    NUM_ENVS   = 1000         # number of parallel environments
-    NUM_STEPS  = 60     # total steps per environment
+    NUM_ENVS   = 10000         # number of parallel environments
+    NUM_STEPS  = 1000     # total steps per environment
     MASTER_KEY = jax.random.PRNGKey(0)
 
     # -------------------------------------------------
