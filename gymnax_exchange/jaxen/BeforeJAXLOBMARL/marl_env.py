@@ -13,15 +13,14 @@ from functools import partial
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_log_compiles", False)
 
-sys.path.append(os.path.abspath("/home/duser/AlphaTrade"))
 
-from gymnax_exchange.jaxen.mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.mm_env import MarketMakingEnv, EnvState as MMState, EnvParams as MMParams
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.exec_env import ExecutionEnv, EnvState as EXEState, EnvParams as EXEParams
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import BaseLOBEnv, EnvState as BaseState, EnvParams as BaseParams
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
-from gymnax_exchange.jaxob.jaxob_config import Configuration
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.jaxob_config import EnvironmentExecutionConfig
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.jaxob_config import Configuration
 
 # Define a combined (multi–agent) state that extends the base order book state
 @struct.dataclass
@@ -557,7 +556,7 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:", ATFolder)
     except:
-        ATFolder = "/home/duser/AlphaTrade/training_oneDay/train"
+        ATFolder = os.path.expanduser("~")+"/data"
         print("Using default folder:", ATFolder)
 
     config = {
@@ -600,6 +599,8 @@ if __name__ == "__main__":
     print("Execution obs:", obs["execution"])
 
     # run a loop that samples random actions for each agent.
+
+    jax.profiler.start_trace("old_version_tb_logs")
     for i in range(1, 10):
         print("=" * 40)
         
@@ -636,7 +637,7 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
-        
+    jax.profiler.stop_trace()
 
     
     # Set number of environments to batch
@@ -724,10 +725,12 @@ if __name__ == "__main__":
 
             return (state, rng, done_flags, step_counter)
 
+
+        jax.profiler.start_trace("old_version_tb_logs")
         state, rng, done_flags, step_counter = jax.lax.while_loop(
             cond_fn, body_fn, (state, rng, done_flags, step_counter)
         )
-
+        jax.profiler.stop_trace()
         rollout_end = time.time()
         rollout_time = rollout_end - rollout_start
         total_steps = jnp.sum(step_counter)

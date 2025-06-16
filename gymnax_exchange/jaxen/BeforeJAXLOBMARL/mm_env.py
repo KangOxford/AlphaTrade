@@ -100,7 +100,7 @@ sys.path.append(os.path.abspath('/home/duser/AlphaTrade'))
 print(os.getcwd())
 #print(os.listdir('/home/duser/AlphaTrade/training_oneDay/data/Flow_10'))
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import BaseLOBEnv
 # ---------------------------------------------- 
 import chex
 from jax import config
@@ -131,16 +131,16 @@ from typing import Tuple, Optional, Dict
 import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
-from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import EnvParams as BaseEnvParams
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import EnvState as BaseEnvState
 from gymnax_exchange.utils import utils
 import dataclasses
 
 import jax.tree_util as jtu
 
 
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentConfig
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.jaxob_config import EnvironmentConfig
 from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
 set_config(TokenizerConfig(split_vocab=True)) 
 

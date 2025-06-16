@@ -98,7 +98,7 @@ from gymnax.environments import environment, spaces
 sys.path.append(os.path.abspath('/home/duser/AlphaTrade'))
 sys.path.append('.')
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import BaseLOBEnv
 # ---------------------------------------------- 
 import chex
 from jax import config
@@ -128,12 +128,12 @@ from typing import Tuple, Optional, Dict
 import chex
 from flax import struct
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.jaxen.base_env import EnvParams as BaseEnvParams
-from gymnax_exchange.jaxen.base_env import EnvState as BaseEnvState
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import EnvParams as BaseEnvParams
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.base_env import EnvState as BaseEnvState
 from gymnax_exchange.utils import utils
 import dataclasses
-from gymnax_exchange.jaxob.jaxob_config import EnvironmentExecutionConfig
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.jaxob_config import EnvironmentExecutionConfig
 
 import jax.tree_util as jtu
 
