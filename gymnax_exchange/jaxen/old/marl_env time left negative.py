@@ -16,7 +16,6 @@ from gymnax_exchange.utils import utils as util
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
-jax.config.update("jax_traceback_in_locations_limit", -1)
 jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
@@ -216,20 +215,15 @@ class MARLEnv(MultiAgentEnv):
         # (A) Get the lob state before in case any agent uses the message based obs space
         # --------------------------------------------------------------------------------
 
-        if self.multi_agent_config.world_config.any_message_obs_space == True or self.multi_agent_config.world_config.debug_mode==True:
+        if self.multi_agent_config.world_config.any_message_obs_space == True:
             lob_state_before = job.get_L2_state(
                 state.world_state.ask_raw_orders,  # Current ask orders
                 state.world_state.bid_raw_orders,  # Current bid orders
                 10,  # Number of levels
                 self.multi_agent_config.world_config  
                 )
-            #jax.debug.print("lob state before: {}", lob_state_before)
         else:
             lob_state_before = None
-
-
-        #jax.debug.print("ASK SIDE (price, quantity, orderid, traderid, time, time_ns):\n{}", state.world_state.ask_raw_orders)
-        #jax.debug.print("BID SIDE (price, quantity, orderid, traderid, time, time_ns):\n{}", state.world_state.bid_raw_orders)
 
         # -------------------------------------------------------
         # (B) Build External Data Messages (common to all agents)
@@ -379,8 +373,8 @@ class MARLEnv(MultiAgentEnv):
        # self.instance_list[1]._get_reward(state.world_state, agent_state_test_single, agent_params_test_single, new_trades, new_bestasks, new_bestbids, final_time)
 
 
-        #jax.debug.print("total message: {}", combined_msgs)
-        #jax.debug.print("trades: {}", new_trades)
+
+        # print("trades: ", new_trades)
 
         agent_reward_list = []
         agent_extras_list = []
@@ -500,8 +494,7 @@ class MARLEnv(MultiAgentEnv):
 
         dones = {"__all__": overall_done, "agents": new_agent_dones_list}
 
-        #jax.debug.print("dones agent: {}", dones["agents"])
-        #jax.debug.print("dones __all__: {}", dones["__all__"])
+        # print("dones: ", dones)
 
 
 
@@ -547,19 +540,16 @@ class MARLEnv(MultiAgentEnv):
                                 10,  # Number of levels
                                 self.multi_agent_config.world_config  
                                 )
-            world_info.update({
+            info.update({
                 "trades": new_trades,
                 "total_msgs": combined_msgs,
                 "lob_state": lob_state,
             })
 
-            #jax.debug.print("lob state: {}", lob_state)
-
 
         info = {"world":world_info,"agents":new_agent_infos_list}
 
         # print("info: ", info)
-        #jax.debug.print("lob state: {}", lob_state)
 
 
 
@@ -595,7 +585,6 @@ class MARLEnv(MultiAgentEnv):
 
 
         # print("agent_obs_list: ", agent_obs_list)
-
 
             
         return agent_obs_list, new_multi_state, agent_reward_list, dones, info
@@ -725,11 +714,6 @@ class MARLEnv(MultiAgentEnv):
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
 
-    # options = jax._src.profiler.ProfileOptions()
-    # options.advanced_configuration = {"tpu_trace_mode" : "TRACE_COMPUTE_AND_SYNC"}
-
-
-
     multi_agent_config = MultiAgentConfig()
 
     rng = jax.random.PRNGKey(42) # TODO i think this should be changed to the new key function in JAX .key()
@@ -749,14 +733,10 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    jax.profiler.start_trace("tensorboard_logs")
-    for i in range(1, 11):
+    for i in range(1, 1000):
         print("=" * 40)
         
         print(f"Step {i}")
-        # if i > 3 and i < 5:    
-        #     jax.profiler.start_trace("tensorboard_logs")
-
 
         key_step, _ = jax.random.split(key_step, 2)
 
@@ -790,18 +770,19 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
-    jax.profiler.stop_trace()
+
+        
 
     
     # Set number of environments to batch
      
     #=======================================#
-    #=========== Old VMAP TIMING TEST =========#
+    #=========== VMAP TIMING TEST =========#
     #=======================================#
 
     enable_vmap = True
     if enable_vmap:
-        NUM_ENVS = 1000
+        NUM_ENVS = 100
         rng = jax.random.PRNGKey(42)
 
         print("\n" + "="*60)
@@ -843,45 +824,17 @@ if __name__ == "__main__":
         # Rollout Loop
         #---------------------------------------
         print("\n[3] Starting episode rollout...")
+        step_counter = jnp.zeros(NUM_ENVS, dtype=int)
         done_flags = jnp.zeros(NUM_ENVS, dtype=bool)
         rng = jax.random.PRNGKey(999)
 
         rollout_start = time.time()
-
-        NUM_STEPS = 10  # or any number of steps you want
-
-
-        def step_fn_tojit(state, rng):
-            rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
-            keys = jnp.stack(keys)
-            obs, state, rewards, done, info = vmap_step(state, keys)
-            return state, rng
-        step_fn_jit= jax.jit(step_fn_tojit)
-
-        jax.profiler.start_trace("tensorboard_logs")
-        for step_counter in range(NUM_STEPS):                
-            state,rng=step_fn_jit(state, rng)
-            # # Masked state update for active environments
-            # def masked_update(s, ns):
-            #     mask = done_flags
-            #     while mask.ndim < s.ndim:
-            #         mask = mask[..., None]
-            #     return jnp.where(mask, s, ns)
-
-            # state = jax.tree_map(masked_update, state, next_state)
-            # done_flags = jnp.logical_or(done_flags, done["__all__"])
-            # step_counter += jnp.where(done_flags, 0, 1)
-            # if jnp.all(done_flags):
-            #     break
-
-        jax.profiler.stop_trace()
 
         def cond_fn(val):
             _, _, done_flags, _ = val
             return jnp.any(~done_flags)
 
         def body_fn(val):
-            # 
             state, rng, done_flags, step_counter = val
             rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
             keys = jnp.stack(keys)
@@ -900,16 +853,14 @@ if __name__ == "__main__":
             step_counter += jnp.where(done_flags, 0, 1)
 
             return (state, rng, done_flags, step_counter)
-        
 
-        step_counter = jnp.zeros(NUM_ENVS, dtype=int)
+        #jax.profiler.start_trace("tensorboard_logs/trace")
 
-
-        jax.profiler.start_trace("tensorboard_logs")
         state, rng, done_flags, step_counter = jax.lax.while_loop(
             cond_fn, body_fn, (state, rng, done_flags, step_counter)
         )
-        jax.profiler.stop_trace()
+
+        #jax.profiler.stop_trace()
 
         rollout_end = time.time()
         rollout_time = rollout_end - rollout_start
@@ -929,101 +880,3 @@ if __name__ == "__main__":
         print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
         print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
         print("="*60)
-
-
-
-
-# ----------------------------------------------
-# New VMAP rollout script + timing statistics
-# ----------------------------------------------
-enable_vmap = False
-if enable_vmap:
-
-    print("\n" + "="*60)
-    print("Starting VMAP timing test loop for MARL")
-    print("="*60)
-
-
-    NUM_ENVS   = 1000         # number of parallel environments
-    NUM_STEPS  = 60     # total steps per environment
-    MASTER_KEY = jax.random.PRNGKey(0)
-
-    # -------------------------------------------------
-    # 1) Initial reset of all envs (batched)
-    # -------------------------------------------------
-    master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
-    batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
-
-    reset_start = time.time()
-    obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
-    # force execution to finish before timing
-    jax.block_until_ready(state)
-    reset_time  = time.time() - reset_start
-
-    # -------------------------------------------------
-    # 2) Helper: one step for a single env
-    # -------------------------------------------------
-    def single_step(state, key, env_params):
-        # one sub-key per agent type
-        subkeys = jax.random.split(key, len(env.action_spaces))
-        # sample random actions for every agent of each type
-        actions = [
-            jax.vmap(space.sample)(
-                jax.random.split(sk, n_agents)
-            )
-            for sk, space, n_agents in zip(
-                subkeys,
-                env.action_spaces,
-                env.multi_agent_config.number_of_agents_per_type,
-            )
-        ]
-        # env.step auto-resets when done
-        return env.step(key, state, actions, env_params)
-
-    # JIT & vmap
-    @jax.jit
-    def batched_step(state_batch, key_batch):
-        return jax.vmap(single_step, in_axes=(0, 0, None))(
-            state_batch, key_batch, env_params
-        )
-
-    # -------------------------------------------------
-    # 3) Scan across a fixed number of steps
-    # -------------------------------------------------
-    def scan_body(carry, _):
-        state_batch, rng = carry
-        rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
-        obs, state_batch, rew, done, _ = batched_step(
-            state_batch, jnp.stack(step_keys)
-        )
-        return (state_batch, rng), (obs, rew, done)
-
-    rollout_start = time.time()
-    (final_state, _), (traj_obs, traj_rew, traj_done) = jax.lax.scan(
-        scan_body,
-        (state, master_key),
-        None,
-        length=NUM_STEPS,
-    )
-    # ensure all work is finished
-    jax.block_until_ready(final_state)
-    rollout_time = time.time() - rollout_start
-
-    # -------------------------------------------------
-    # 4) Timing statistics
-    # -------------------------------------------------
-    total_steps       = NUM_STEPS * NUM_ENVS          # every env took NUM_STEPS steps
-    avg_steps_per_env = NUM_STEPS
-    avg_time_per_step = rollout_time / total_steps
-    avg_steps_per_sec = total_steps / rollout_time
-
-    print("\n[4] Timing Results")
-    print("-" * 60)
-    print(f"Total Envs:           {NUM_ENVS}")
-    print(f"Reset time:           {reset_time:.4f} seconds")
-    print(f"Rollout (steps) time: {rollout_time:.4f} seconds")
-    print(f"Total steps:          {total_steps}")
-    print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
-    print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
-    print(f"Avg steps per sec:    {avg_steps_per_sec:.2f}")
-    print("=" * 60)

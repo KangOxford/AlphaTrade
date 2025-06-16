@@ -468,13 +468,6 @@ class ExecutionEnv():
 
 
 
-        
-
-
-
-
-
-
     def is_terminal(self, world_state: WorldState, agent_state: ExecEnvState) -> bool:
         """ Check whether state is terminal. """
         if self.world_config.ep_type == 'fixed_time':
@@ -1020,7 +1013,7 @@ class ExecutionEnv():
             M = ((best_bid + best_ask) // 2 // self.world_config.tick_size) * self.world_config.tick_size
             NT = best_bid
             PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
-            MKT = self.cfg.maxint
+            MKT = self.world_config.maxint
             if action.shape[0] == 4:
                 return FT, M, NT, PP, MKT
             elif action.shape[0] == 3:

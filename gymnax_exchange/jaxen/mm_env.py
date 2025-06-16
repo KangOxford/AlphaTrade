@@ -440,7 +440,7 @@ class MarketMakingAgent():
                 world_state.ask_raw_orders,  # Current ask orders
                 world_state.bid_raw_orders,  # Current bid orders
                 10,  # Number of levels
-                self.cfg  
+                self.world_config  
             )
             blank_messages = jnp.zeros((num_msgs_per_step, 8), dtype=jnp.int32) # Reset for the message based obs space.
         else:
@@ -473,6 +473,15 @@ class MarketMakingAgent():
             #jax.debug.print("init_time :{}",world_state.init_time)
             #jax.debug.print("start_index :{}",world_state.start_index)
             done = (time_left <= self.cfg.seconds_before_episode_end)  # time over (last 5 seconds)
+
+
+            #jax.debug.print("episode_time :{}", self.world_config.episode_time)
+            #jax.debug.print("world_state.init_time :{}",world_state.init_time)
+            #jax.debug.print("world_state.time :{}",world_state.time)
+            #jax.debug.print("time_left :{}",time_left)
+            #jax.debug.print("done : {}" , done)
+
+
             #jax.debug.print("done :{}",done)
             return done
         
@@ -970,8 +979,8 @@ class MarketMakingAgent():
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 1, 2, 3, 0, 2, 1, 4], dtype=jnp.int32)
         ask_offsets = jnp.array([0, 1, 2, 3, 2, 0, 4, 1], dtype=jnp.int32)
-        bid_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
-        ask_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
+        bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
+        ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
         tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
         
@@ -2057,9 +2066,8 @@ class MarketMakingAgent():
         elif self.cfg.observation_space == "messages":
             return self.observation_fn(total_messages=total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            return self.observation_fn(world_state=world_state, 
-                                       agent_state=agent_state, 
-                                       total_messages=total_messages, 
+            return self.observation_fn(world_state=world_state,  
+                                       total_msgs=total_messages, 
                                        old_time=old_time, 
                                        old_mid_price=old_mid_price, 
                                        lob_state_before=lob_state_before) 
@@ -2096,12 +2104,12 @@ class MarketMakingAgent():
         return total_msgs
     
 
-    def _get_obs_msg_new_tokenizer(self, state, total_msgs: chex.Array, old_time, old_mid_price, lob_state_before):
+    def _get_obs_msg_new_tokenizer(self, world_state: WorldState, total_msgs: chex.Array, old_time, old_mid_price, lob_state_before):
         """
         Construct a tokenized observation matching the pretraining format:
         [orderbook_tokens, message_tokens]
         """
-        cfg = get_config()
+        cfg_pretraining = get_config()
 
         #jax.debug.print("total_msgs:{}",total_msgs.shape)
         #jax.debug.print("Best bids:{}",state.best_bids[:, 0].shape)
@@ -2121,16 +2129,26 @@ class MarketMakingAgent():
         delta_time_ns = jnp.zeros_like(time_ns)
         delta_time_s = delta_time_s.at[0].set(0) #for now just set it to 0 because the messages are initialized with 0 but the time is with the actual time => large difference for very first value
         delta_time_ns = delta_time_ns.at[0].set(0)
-        delta_time_s = delta_time_s.at[1:].set(time_s[1:] - time_s[:-1])
-        delta_time_ns = delta_time_ns.at[1:].set(time_ns[1:] - time_ns[:-1])
+        # For all other values
+        ds = time_s[1:] - time_s[:-1]
+        dns = time_ns[1:] - time_ns[:-1]
+        ds = ds - (dns < 0)
+        dns = jnp.where(dns < 0, dns + int(1e9), dns)
+        delta_time_s = delta_time_s.at[1:].set(ds)
+        delta_time_ns = delta_time_ns.at[1:].set(dns)
+
+        #jax.debug.print("time_s: {}", time_s)
+        #jax.debug.print("time_ns: {}", time_ns)
+        #jax.debug.print("delta_time_s: {}", delta_time_s)
+        #jax.debug.print("delta_time_ns: {}", delta_time_ns)
 
         ############################
         # Get the delta prices
         ############################
 
         # Extract best bid/ask prices (shape: [num_msgs])
-        best_bid_prices = state.best_bids[:, 0] // 100 # Divide by 100 as in pretraining preprocessing
-        best_ask_prices = state.best_asks[:, 0] // 100
+        best_bid_prices = world_state.best_bids[:, 0] // 100 # Divide by 100 as in pretraining preprocessing
+        best_ask_prices = world_state.best_asks[:, 0] // 100
         old_mid_price = old_mid_price // 100
 
         #jax.debug.print("old_mid_price: {}", old_mid_price)
@@ -2160,7 +2178,7 @@ class MarketMakingAgent():
         ######
 
         event_dir_tok = direction.astype(jnp.uint8) * 4 + event.astype(jnp.uint8)
-        event_dir_tok = event_dir_tok.astype(jnp.uint32) + cfg.EVENT_START
+        event_dir_tok = event_dir_tok.astype(jnp.uint32) + cfg_pretraining.EVENT_START
 
         def split_and_offset(x, offset):
             x = x.astype(jnp.int32)  # Ensure input is really int32
@@ -2168,12 +2186,12 @@ class MarketMakingAgent():
             high = ((x >> 16) & 0xFFFF).astype(jnp.uint16) + offset  #Upper 16 bits + offset
             return jnp.stack([low, high], axis=-1)  # Shape: (..., 2)
 
-        order_id_tok      = split_and_offset(order_id,      cfg.ORDER_ID_B_START)
-        price_tok         = split_and_offset(price,         cfg.PRICE_B_START)
-        size_tok          = split_and_offset(size,          cfg.SIZE_B_START)
-        delta_time_s_tok  = split_and_offset(delta_time_s,  cfg.TIME_B_START)
-        delta_time_ns_tok = split_and_offset(delta_time_ns, cfg.TIME_B_START)
-        delta_price_tok   = split_and_offset(delta_price,   cfg.PRICE_B_START)
+        order_id_tok      = split_and_offset(order_id,      cfg_pretraining.ORDER_ID_B_START)
+        price_tok         = split_and_offset(price,         cfg_pretraining.PRICE_B_START)
+        size_tok          = split_and_offset(size,          cfg_pretraining.SIZE_B_START)
+        delta_time_s_tok  = split_and_offset(delta_time_s,  cfg_pretraining.TIME_B_START)
+        delta_time_ns_tok = split_and_offset(delta_time_ns, cfg_pretraining.TIME_B_START)
+        delta_price_tok   = split_and_offset(delta_price,   cfg_pretraining.PRICE_B_START)
 
         message_tokens = jnp.concatenate([
             event_dir_tok[:, None],  # (num_msgs, 1)
@@ -2193,10 +2211,10 @@ class MarketMakingAgent():
         #print("lob_state_before: {}", lob_state_before)
 
         # add time to the lob_state_before
-        time_s = state.time[0]
-        time_ns = state.time[1]
-        lob_state_with_time = jnp.concatenate([jnp.array([time_s, time_ns]), lob_state_before]) # shape (42,)
+        time_s = world_state.time[0]
+        time_ns = world_state.time[1]
 
+        lob_state_with_time = jnp.concatenate([jnp.array([time_s, time_ns]), lob_state_before]) # shape (42,)
 
         #  Split into uint16 tokens
         x_split = jax.lax.bitcast_convert_type(lob_state_with_time, jnp.uint16).reshape(-1)  # shape (84,)
@@ -2205,8 +2223,8 @@ class MarketMakingAgent():
 
         #  Build offset array
         orderbook_shift = jnp.array(
-            [cfg.TIME_B_START] * 4
-            + [cfg.PRICE_B_START, cfg.PRICE_B_START, cfg.SIZE_B_START, cfg.SIZE_B_START] * 2 * 10
+            [cfg_pretraining.TIME_B_START] * 4
+            + [cfg_pretraining.PRICE_B_START, cfg_pretraining.PRICE_B_START, cfg_pretraining.SIZE_B_START, cfg_pretraining.SIZE_B_START] * 2 * 10
         )  # shape (84,)
 
         #  Add offset
@@ -2330,7 +2348,7 @@ class MarketMakingAgent():
         elif self.cfg.action_space == "fixed_prices":
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
-            return spaces.Discrete(8)
+            return spaces.Discrete(9)
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         else:
@@ -2343,14 +2361,14 @@ class MarketMakingAgent():
         if self.cfg.observation_space =="engineered":
              return spaces.Box(-1000, 1000, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
-                num_messages_total=self.cfg.num_messages_by_agent+self.n_data_msg_per_step
+                num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
                 return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            cfg               = get_config()
-            num_messages      = self.cfg.num_messages_by_agent + self.n_data_msg_per_step + self.nTradesLogged
+            cfg_pretraining               = get_config()
+            num_messages      = self.cfg.num_messages_by_agent + self.world_config.n_data_msg_per_step
             toks_per_message  = 13      # we now split each int32 message‐field into two 16-bit tokens
             toks_per_book     = 84      # 42 book fields × 2 halves
-            vocab_size        = cfg.TOTAL_NUM_TOKENS
+            vocab_size        = cfg_pretraining.TOTAL_NUM_TOKENS
             return spaces.Box(
                 low=0,
                 high=vocab_size - 1,
