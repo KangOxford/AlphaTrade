@@ -68,7 +68,7 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.lobster_loader import LoadLOBSTER_resample
 #from gymnax_exchange.jaxlobster.gen_loader import GenLoader
 from gymnax_exchange.utils.utils import *
 import pickle
@@ -184,7 +184,7 @@ class BaseLOBEnv(environment.Environment):
                                     self.book_depth,
                                     ep_type,
                                     window_length=self.sliceTimeWindow,
-                                    n_data_msg_per_step=self.stepLines,
+                                    n_msg_per_step=self.stepLines,
                                     window_resolution=self.start_resolution,
                                     day_start=self.day_start,
                                     day_end=self.day_end) 
@@ -443,7 +443,7 @@ if __name__ == "__main__":
     except:
         # ATFolder = '/home/duser/AlphaTrade'
         # ATFolder = '/homes/80/kang/AlphaTrade'
-        ATFolder = "/homes/80/kang/AlphaTrade/testing_oneDay/"
+        ATFolder = "/homes/80/kang/AlphaTrade/data/testing_oneDay/"
         # ATFolder = "/homes/80/kang/AlphaTrade/training_oneDay"
         # ATFolder = "/homes/80/kang/AlphaTrade/testing"
     config = {

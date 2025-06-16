@@ -556,7 +556,7 @@ if __name__ == "__main__":
         ATFolder = sys.argv[1]
         print("AlphaTrade folder:", ATFolder)
     except:
-        ATFolder = os.path.expanduser("~")+"/data"
+        ATFolder = os.path.expanduser("~")+"/data/AMZN_oneday"
         print("Using default folder:", ATFolder)
 
     config = {
@@ -600,7 +600,7 @@ if __name__ == "__main__":
 
     # run a loop that samples random actions for each agent.
 
-    jax.profiler.start_trace("old_version_tb_logs")
+    # jax.profiler.start_trace("old_version_tb_logs")
     for i in range(1, 10):
         print("=" * 40)
         
@@ -637,7 +637,7 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
-    jax.profiler.stop_trace()
+    # jax.profiler.stop_trace()
 
     
     # Set number of environments to batch
@@ -726,7 +726,7 @@ if __name__ == "__main__":
             return (state, rng, done_flags, step_counter)
 
 
-        jax.profiler.start_trace("old_version_tb_logs")
+        jax.profiler.start_trace("tensorboard_logs")
         state, rng, done_flags, step_counter = jax.lax.while_loop(
             cond_fn, body_fn, (state, rng, done_flags, step_counter)
         )

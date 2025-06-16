@@ -116,7 +116,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 2500 # counted by seconds, 1800s=0.5h
+    episode_time = 1800 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
