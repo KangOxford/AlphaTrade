@@ -50,6 +50,12 @@ Dockerfile_twogymnax_exchange/jaxrl/pre_trained_weights/*.model
 tensorboard_logs/
 tensorboard_logs/**
 
+old_version_tb_logs/
+old_version_tb_logs/**
+report*
+.nv/**
+.nv/ */
+
 
 
 .cache/

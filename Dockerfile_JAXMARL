@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/jax:24.10-py3
+FROM nvcr.io/nvidia/jax:25.04-py3
 
 # Create user
 ARG UID
@@ -8,10 +8,6 @@ RUN useradd -u $UID --create-home ${MYUSER} && \
     adduser ${MYUSER} sudo && \
     # mkdir -p /home/${MYUSER}/.local/bin && \
     chown -R  ${MYUSER}:${MYUSER} /home/${MYUSER}
-
-
-
-
     
 # default workdir
 WORKDIR /home/${MYUSER}/
@@ -48,7 +44,7 @@ RUN export TF_FORCE_GPU_ALLOW_GROWTH=true
 RUN echo 'export PATH=$PATH:/home/duser/.local/bin' >> ~/.bashrc
 
 # Ensure home directory is on the Python path
-ENV PYTHONPATH="/home/${MYUSER}:${PYTHONPATH}"
+ENV PYTHONPATH="/home/${MYUSER}:$PYTHONPATH"
 
 # Uncomment below if you want jupyter 
 # RUN pip install jupyterlab

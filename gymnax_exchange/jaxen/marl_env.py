@@ -16,6 +16,7 @@ from gymnax_exchange.utils import utils as util
 
 # for debugging
 jax.config.update('jax_disable_jit', False)
+jax.config.update("jax_traceback_in_locations_limit", -1)
 jax.config.update("jax_log_compiles", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
@@ -724,6 +725,11 @@ class MARLEnv(MultiAgentEnv):
 # --- Example main function to test the MARL environment ---
 if __name__ == "__main__":
 
+    # options = jax._src.profiler.ProfileOptions()
+    # options.advanced_configuration = {"tpu_trace_mode" : "TRACE_COMPUTE_AND_SYNC"}
+
+
+
     multi_agent_config = MultiAgentConfig()
 
     rng = jax.random.PRNGKey(42) # TODO i think this should be changed to the new key function in JAX .key()
@@ -743,10 +749,14 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    for i in range(1, 10):
+    jax.profiler.start_trace("tensorboard_logs")
+    for i in range(1, 11):
         print("=" * 40)
         
         print(f"Step {i}")
+        # if i > 3 and i < 5:    
+        #     jax.profiler.start_trace("tensorboard_logs")
+
 
         key_step, _ = jax.random.split(key_step, 2)
 
@@ -780,8 +790,7 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
-
-        
+    jax.profiler.stop_trace()
 
     
     # Set number of environments to batch
@@ -790,9 +799,9 @@ if __name__ == "__main__":
     #=========== Old VMAP TIMING TEST =========#
     #=======================================#
 
-    enable_vmap_old = False
-    if enable_vmap_old:
-        NUM_ENVS = 10
+    enable_vmap = True
+    if enable_vmap:
+        NUM_ENVS = 1000
         rng = jax.random.PRNGKey(42)
 
         print("\n" + "="*60)
@@ -834,17 +843,45 @@ if __name__ == "__main__":
         # Rollout Loop
         #---------------------------------------
         print("\n[3] Starting episode rollout...")
-        step_counter = jnp.zeros(NUM_ENVS, dtype=int)
         done_flags = jnp.zeros(NUM_ENVS, dtype=bool)
         rng = jax.random.PRNGKey(999)
 
         rollout_start = time.time()
+
+        NUM_STEPS = 10  # or any number of steps you want
+
+
+        def step_fn_tojit(state, rng):
+            rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
+            keys = jnp.stack(keys)
+            obs, state, rewards, done, info = vmap_step(state, keys)
+            return state, rng
+        step_fn_jit= jax.jit(step_fn_tojit)
+
+        jax.profiler.start_trace("tensorboard_logs")
+        for step_counter in range(NUM_STEPS):                
+            state,rng=step_fn_jit(state, rng)
+            # # Masked state update for active environments
+            # def masked_update(s, ns):
+            #     mask = done_flags
+            #     while mask.ndim < s.ndim:
+            #         mask = mask[..., None]
+            #     return jnp.where(mask, s, ns)
+
+            # state = jax.tree_map(masked_update, state, next_state)
+            # done_flags = jnp.logical_or(done_flags, done["__all__"])
+            # step_counter += jnp.where(done_flags, 0, 1)
+            # if jnp.all(done_flags):
+            #     break
+
+        jax.profiler.stop_trace()
 
         def cond_fn(val):
             _, _, done_flags, _ = val
             return jnp.any(~done_flags)
 
         def body_fn(val):
+            # 
             state, rng, done_flags, step_counter = val
             rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
             keys = jnp.stack(keys)
@@ -858,22 +895,21 @@ if __name__ == "__main__":
                     mask = mask[..., None]
                 return jnp.where(mask, s, ns)
 
-            state = next_state
-
-
-            done_all = jnp.asarray(done["__all__"]).reshape(-1).astype(bool)
-            done_flags = jnp.logical_or(done_flags, done_all)
+            state = jax.tree_map(masked_update, state, next_state)
+            done_flags = jnp.logical_or(done_flags, done["__all__"])
             step_counter += jnp.where(done_flags, 0, 1)
 
             return (state, rng, done_flags, step_counter)
+        
 
-        #jax.profiler.start_trace("tensorboard_logs/trace")
+        step_counter = jnp.zeros(NUM_ENVS, dtype=int)
 
+
+        jax.profiler.start_trace("tensorboard_logs")
         state, rng, done_flags, step_counter = jax.lax.while_loop(
             cond_fn, body_fn, (state, rng, done_flags, step_counter)
         )
-
-        #jax.profiler.stop_trace()
+        jax.profiler.stop_trace()
 
         rollout_end = time.time()
         rollout_time = rollout_end - rollout_start

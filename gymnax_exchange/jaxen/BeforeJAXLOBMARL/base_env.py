@@ -75,7 +75,7 @@ import pickle
 from jax.experimental import checkify
 
 #Config File:
-from gymnax_exchange.jaxob.jaxob_config import Configuration
+from gymnax_exchange.jaxen.BeforeJAXLOBMARL.jaxob_config import Configuration
 
 @struct.dataclass
 class EnvState:
@@ -184,10 +184,11 @@ class BaseLOBEnv(environment.Environment):
                                     self.book_depth,
                                     ep_type,
                                     window_length=self.sliceTimeWindow,
-                                    n_msg_per_step=self.stepLines,
+                                    n_data_msg_per_step=self.stepLines,
                                     window_resolution=self.start_resolution,
                                     day_start=self.day_start,
                                     day_end=self.day_end) 
+    
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
         #jax.debug.print("starts:{}",starts)
         self.max_messages_in_episode_arr = max_messages_arr

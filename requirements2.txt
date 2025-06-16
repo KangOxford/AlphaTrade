@@ -79,11 +79,11 @@ ipywidgets==8.1.5
 isoduration==20.11.0
 isort==6.0.0
 itsdangerous==2.2.0
-jax==0.5.0
-jax-cuda12-pjrt==0.5.0
-jax-cuda12-plugin==0.5.0
-jaxlib==0.5.0
-jaxopt==0.8.3
+# jax==0.5.0
+# jax-cuda12-pjrt==0.5.0
+# jax-cuda12-plugin==0.5.0
+# jaxlib==0.5.0
+# jaxopt==0.8.3
 jedi==0.19.2
 Jinja2==3.1.5
 json5==0.10.0
@@ -130,16 +130,16 @@ networkx==3.4.2
 notebook==7.3.2
 notebook_shim==0.2.4
 numpy==1.26.4
-nvidia-cublas-cu12
-nvidia-cuda-cupti-cu12
-nvidia-cuda-nvcc-cu12
-nvidia-cuda-runtime-cu12
-nvidia-cudnn-cu12
-nvidia-cufft-cu12
-nvidia-cusolver-cu12
-nvidia-cusparse-cu12
-nvidia-nccl-cu12
-nvidia-nvjitlink-cu12
+# nvidia-cublas-cu12
+# nvidia-cuda-cupti-cu12
+# nvidia-cuda-nvcc-cu12
+# nvidia-cuda-runtime-cu12
+# nvidia-cudnn-cu12
+# nvidia-cufft-cu12
+# nvidia-cusolver-cu12
+# nvidia-cusparse-cu12
+# nvidia-nccl-cu12
+# nvidia-nvjitlink-cu12
 opt_einsum==3.4.0
 optax==0.2.4
 orbax==0.1.9
