@@ -182,12 +182,12 @@ class MarketMakingAgent():
             raise ValueError("Invalid action_space specified.")
         
         ##Choose an end function from theconfig
-        if self.cfg.end_fn=="force_market_order":
-            self.end_fn =self._force_market_order_if_done
-        elif self.cfg.end_fn=="unwind_ref_price":
-            self.end_fn=self.unwind_ref_price
-        elif self.cfg.end_fn=="do_nothing":
-            self.end_fn=self.end_fn_pass
+        # if self.cfg.end_fn=="force_market_order":
+        #     self.end_fn =self._force_market_order_if_done
+        # elif self.cfg.end_fn=="unwind_ref_price":
+        #     self.end_fn=self.unwind_ref_price
+        # elif self.cfg.end_fn=="do_nothing":
+        #     self.end_fn=self.end_fn_pass
       
 
     def default_params(self,
@@ -1054,14 +1054,14 @@ class MarketMakingAgent():
 
         #Spread
         spread = (gamma*varaince*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.world_config.tick_size
-        spread=jnp.clip(spread,self.world_config.tick_size,self.cfg.maxint)#make sure spread is at least a tick
+        spread=jnp.clip(spread,self.world_config.tick_size,self.world_config.maxint)#make sure spread is at least a tick
 
         bid_price= res_price-spread
         ask_price= res_price+spread
 
         # Ensure valid price bound 
-        bid_price = jnp.clip(bid_price, 0, self.cfg.maxint) 
-        ask_price = jnp.clip(ask_price,  0, self.cfg.maxint) 
+        bid_price = jnp.clip(bid_price, 0, self.world_config.maxint) 
+        ask_price = jnp.clip(ask_price,  0, self.world_config.maxint) 
 
         #Ensure ints of tick_size
         bid_price=((bid_price) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
@@ -1132,7 +1132,7 @@ class MarketMakingAgent():
             BI = best_bid + self.world_config.tick_size*self.cfg.n_ticks_in_book #BID inside, slightly more aggresive buying
             NT = best_bid
             PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
-            MKT = self.cfg.maxint
+            MKT = self.world_config.maxint
             if action.shape[0]//2 == 4:
                 return FT, M, NT, PP, MKT
             elif action.shape[0]//2 == 3:
@@ -1251,7 +1251,11 @@ class MarketMakingAgent():
 
 
         # Calculate skewed mid price
-        skewed_mid = mid_price + skew_ticks 
+        skewed_mid = mid_price + skew_ticks * self.world_config.tick_size
+
+        jax.debug.print("mid price: {}", mid_price)
+        jax.debug.print("skew ticks: {}", skew_ticks)
+        jax.debug.print("skewed mid: {}", skewed_mid)
         
         # Calculate final bid and ask prices
         half_spread = new_spread // 2
@@ -1385,8 +1389,8 @@ class MarketMakingAgent():
         # Do filtering to net cancellations in MM)
         action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
-        #jax.debug.print(f"Market Maker action msg: {action_msgs}")
-        #jax.debug.print(f"Market Maker cancel msg: {cancel_msgs}")
+        jax.debug.print("action messages order mm: {}", action_msgs)
+        jax.debug.print("cancel messages order mm: {}", cancel_msgs)
 
         return action_msgs, cancel_msgs
 
@@ -1539,7 +1543,7 @@ class MarketMakingAgent():
             order at 0 or max int. Buy if inventory is less than zero and
             visa versa'''
             is_sell_task = jnp.where(state.inventory > 0, 1, 0)
-            mkt_p = (1 - is_sell_task) * self.cfg.maxint // self.world_config.tick_size * self.world_config.tick_size
+            mkt_p = (1 - is_sell_task) * self.world_config.maxint // self.world_config.tick_size * self.world_config.tick_size
             side = (1 - is_sell_task*2)
             # TODO: this addition wouldn't work if the ns time at index 1 increases to more than 1 sec
             new_time = time + self.cfg.time_delay_obs_act
@@ -2362,7 +2366,7 @@ class MarketMakingAgent():
              return spaces.Box(-1000, 1000, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
-                return spaces.Box(low=-1*self.cfg.maxint, high=self.cfg.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
+                return spaces.Box(low=-1*self.world_config.maxint, high=self.world_config.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
         elif self.cfg.observation_space == "messages_new_tokenizer":
             cfg_pretraining               = get_config()
             num_messages      = self.cfg.num_messages_by_agent + self.world_config.n_data_msg_per_step
