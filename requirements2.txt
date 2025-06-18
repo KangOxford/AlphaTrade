@@ -67,6 +67,7 @@ httpcore==1.0.7
 httpx==0.28.1
 huggingface-hub==0.29.1
 humanize==4.12.1
+hydra-core
 idna==3.10
 imagesize==1.4.1
 importlib_metadata==8.6.1
@@ -140,6 +141,7 @@ numpy==1.26.4
 # nvidia-cusparse-cu12
 # nvidia-nccl-cu12
 # nvidia-nvjitlink-cu12
+omegaconf
 opt_einsum==3.4.0
 optax==0.2.4
 orbax==0.1.9
