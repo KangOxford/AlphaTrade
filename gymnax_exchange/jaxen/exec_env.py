@@ -153,12 +153,12 @@ class ExecutionEnv():
         self.world_config = world_config
 
          #----------------- Set the end function -----------------#
-        if self.cfg.end_fn=="force_market_order":
-            self.end_fn =self._force_market_order_if_done
-        elif self.cfg.end_fn=="unwind_FT":
-            self.end_fn=self.unwind_FT
-        else:
-            raise ValueError(f"Unknown end function: {self.cfg.end_fn}")
+        # if self.cfg.end_fn=="force_market_order":
+        #     self.end_fn =self._force_market_order_if_done
+        # elif self.cfg.end_fn=="unwind_FT":
+        #     self.end_fn=self.unwind_FT
+        #else:
+        #     raise ValueError(f"Unknown end function: {self.cfg.end_fn}")
         #---------------------------------------------------------#
 
         #----------------- Set the action function -----------------#
@@ -876,6 +876,8 @@ class ExecutionEnv():
         #---form messages---#
         action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
+
+        #jax.debug.print("action_msgs exec: {}", action_msgs)
         return action_msgs 
 
     def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, world_state: MultiAgentState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
@@ -1132,8 +1134,8 @@ class ExecutionEnv():
         # 5. Filter messages
         action_msgs, cancel_msgs = self._filter_messages(action_msgs, cancel_msgs)
 
-        #print(f"action messgaes order exec: {action_msgs}")
-        #print(f"cancel messgaes order exec: {cancel_msgs}")
+        #jax.debug.print("action messages order exec: {}", action_msgs)
+        #jax.debug.print("cancel messages order exec: {}", cancel_msgs)
 
         # 6. Return
         return action_msgs, cancel_msgs
@@ -1427,6 +1429,7 @@ class ExecutionEnv():
         #Return traded amounts
         doom_quant = ep_is_over * quant_left
 
+        #jax.debug.print("trades exec env: {}", trades)
 
         #################################
         # Get reward
@@ -1571,6 +1574,9 @@ class ExecutionEnv():
             "doom_quant": doom_quant,
             "is_sell_task": agent_state.is_sell_task,
         }
+
+        #jax.debug.print("info exec env: {}", info)
+
 
         return agent_state, done, info
 

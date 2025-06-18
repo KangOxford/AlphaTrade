@@ -16,12 +16,28 @@ from omegaconf import DictConfig, OmegaConf
 
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
-from gymnax_exchange.jaxen.marl_env import MARLEnv
-print("MARLEnv imported")
+jax.config.update('jax_disable_jit', False)
+
 
 import wandb
 import functools
 import matplotlib.pyplot as plt
+
+# import for the MARL env
+from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
+from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxen.base_env import BaseLOBEnv
+from gymnax_exchange.jaxen.marl_env import MARLEnv
+print("MARLEnv imported")
+from gymnax_exchange.jaxen.from_JAXMARL.multi_agent_env import MultiAgentEnv
+#from gymnax_exchange.jaxen.from_JAXMARL.spaces import Box, MultiDiscrete, Discrete
+from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
+from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig
+
+
 
 
 class ScannedRNN(nn.Module):
@@ -113,8 +129,20 @@ def unbatchify(x: jnp.ndarray, agent_list, num_envs, num_actors):
 
 
 def make_train(config):
-    scenario = map_name_to_scenario(config["MAP_NAME"])
-    env = HeuristicEnemySMAX(scenario=scenario, **config["ENV_KWARGS"])
+    #scenario = map_name_to_scenario(config["MAP_NAME"])
+    #env = HeuristicEnemySMAX(scenario=scenario, **config["ENV_KWARGS"])
+
+    multi_agent_config = MultiAgentConfig()
+    rng = jax.random.PRNGKey(42) # TODO i think this should be changed to the new key function in JAX .key()
+    rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
+
+    env = MARLEnv(
+        key=key_reset,
+        multi_agent_config=multi_agent_config,
+    )
+
+    print("env.num_agents: ", env.num_agents)
+
     config["NUM_ACTORS"] = env.num_agents * config["NUM_ENVS"]
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -128,7 +156,7 @@ def make_train(config):
         else config["CLIP_EPS"]
     )
 
-    env = SMAXLogWrapper(env)
+    #env = SMAXLogWrapper(env)
 
     def linear_schedule(count):
         frac = (

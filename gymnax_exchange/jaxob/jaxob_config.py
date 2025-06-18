@@ -19,14 +19,14 @@ class JAXLOB_Configuration:
     debug_mode:bool=False
     start_resolution: int = env_cst.start_resolution
     alphatradePath: str = os.path.expanduser("~")
-    dataPath: str = os.path.expanduser("~")+"/data" # TODO: rename this to data path or do we need the alphatrade path somewhere else?
+    dataPath: str = os.path.expanduser("~")+"/data"
 
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
-    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] =env_cst.action_space
+    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "fixed_quants"
     observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = env_cst.observation_space
-    end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
+    #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
     n_ticks_in_book : int = env_cst.n_ticks_in_book
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -40,12 +40,12 @@ class MarketMaking_EnvironmentConfig():
    
     # Reward
     inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
-    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value", "portfolio_value_scaled","spooner","spooner_damped","spooner_scaled","delta_netWorth"] =env_cst.reward_space
+    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value", "portfolio_value_scaled","spooner","spooner_damped","spooner_scaled","delta_netWorth"] = "spooner_damped"
     reference_price_portfolio_value: Literal["mid", "best_bid_ask", "near_touch"] =env_cst.reference_price_portfolio_value
     # Weights for complex reward function:
-    inventoryPnL_lambda: float =env_cst.inventoryPnL_lambda
-    unrealizedPnL_lambda: float =0
-    asymmetrically_dampened_lambda: float =env_cst.asymmetrically_dampened_lambda
+    inventoryPnL_lambda: float = 1.0
+    unrealizedPnL_lambda: float = 0.1
+    asymmetrically_dampened_lambda: float = 0.8
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -78,7 +78,7 @@ class Execution_EnvironmentConfig():
     action_type: Literal["delta", "pure"] = "pure"
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants"
     observation_space: Literal["engineered"] = "engineered"
-    end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
+    #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=500
     n_actions:int=5
     fixed_quant_value:int=10
@@ -133,7 +133,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     debug_mode:bool=False
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-3
-    shuffle_action_messages:bool=True
+    shuffle_action_messages:bool=False
 
 
 @dataclass(frozen=True)
