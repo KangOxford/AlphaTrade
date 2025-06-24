@@ -140,8 +140,8 @@ import jax.tree_util as jtu
 
 
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
-from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
-set_config(TokenizerConfig(split_vocab=True)) 
+# from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
+# set_config(TokenizerConfig(split_vocab=True)) 
 from gymnax_exchange.jaxen.StatesandParams import MMEnvState, MMEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
 from gymnax_exchange.jaxen.StatesandParams import MultiAgentState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
@@ -2369,7 +2369,7 @@ class MarketMakingAgent():
     def observation_space(self):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-1000, 1000, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
+             return spaces.Box(-1000, 1000, (12,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
                 return spaces.Box(low=-1*self.world_config.maxint, high=self.world_config.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
