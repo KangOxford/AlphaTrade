@@ -16,7 +16,7 @@ DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data
 endif
-BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8091:80 -p 8094:6006
+BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8091:80 -p 8094:6006 --user $(id -r):$(id -g)
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS)
 
 DOCKER_IMAGE_NAME = jaxmarl
@@ -27,7 +27,7 @@ ID = $(shell id -u)
 
 # make file commands
 build:
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile_JAXMARL --build-arg USE_CUDA=$(USE_CUDA) --build-arg MYUSER=$(MYUSER) --build-arg UID=$(ID) --tag $(IMAGE) --progress=plain ${PWD}/.
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile_JAXMARL --build-arg USE_CUDA=$(USE_CUDA) --build-arg MYUSER=$(MYUSER) --build-arg UID=$(ID) --tag $(IMAGE) --progress=plain ${PWD}/. 
 	
 
 run:
