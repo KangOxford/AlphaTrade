@@ -37,13 +37,18 @@ class ScannedRNN(nn.Module):
     def __call__(self, carry, x):
         """Applies the module."""
         rnn_state = carry
+        print("State before",rnn_state)
         ins, resets = x
+        print("Input to RNN",ins)
+        print("Resets",resets)
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(*rnn_state.shape),
             rnn_state,
         )
+        print("State after",rnn_state)
         new_rnn_state, y = nn.GRUCell(features=ins.shape[1])(rnn_state, ins)
+        print("New state",new_rnn_state)
         return new_rnn_state, y
 
     @staticmethod
@@ -67,6 +72,7 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.relu(embedding)
 
         rnn_in = (embedding, dones)
+        print(hidden,rnn_in)
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
 
         actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -133,6 +139,8 @@ def make_train(config):
         else config["CLIP_EPS"]
     )
 
+    print("Config:", config)
+
     # env = SMAXLogWrapper(env)
 
     def linear_schedule(count):
@@ -188,6 +196,8 @@ def make_train(config):
                 tx=tx,
             )
             init_hstate = ScannedRNN.initialize_carry(config["NUM_ACTORS"], config["GRU_HIDDEN_DIM"])
+            print(f"Initial hstate {init_hstate}")
+
             # Instead of appending dicts, maintain separate lists for each attribute
             networks.append(network)
             hstates.append(init_hstate)
@@ -218,19 +228,21 @@ def make_train(config):
                 # obs_batch = batchify(last_obs, env.agents, config["NUM_ACTORS"])
 
                 for i, network in enumerate(networks):
-                    obs_i= last_obs[i].reshape(num_agents_of_instance_list[i], -1)
+                    obs_i= last_obs[i]
+                    print(f"The obs given to the network is {obs_i}")
+                    print(f"The hidden state given to the network is {h_states[i]}")
                     ac_in = (
                         obs_i[np.newaxis, :],
                         last_done[np.newaxis, :],
                         # avail_actions,
                     )
-                    hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+                    hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
                     action = pi.sample(seed=_rng)
                     log_prob = pi.log_prob(action)
-                    env_act = unbatchify(
-                        action, env.agents, config["NUM_ENVS"], env.num_agents
-                    )
-                    env_act = {k: v.squeeze() for k, v in env_act.items()}
+                    # env_act = unbatchify(
+                    #     action, env.agents, config["NUM_ENVS"], env.num_agents
+                    # )
+                    # env_act = {k: v.squeeze() for k, v in env_act.items()}
 
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
