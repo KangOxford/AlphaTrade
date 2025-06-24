@@ -73,3 +73,6 @@ report*
 .gnupg/**
 outputs/
 outputs/**
+
+.ssh/
+.ssh/**

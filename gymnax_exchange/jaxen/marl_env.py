@@ -756,8 +756,8 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    #jax.profiler.start_trace("tensorboard_logs")
-    for i in range(1, 3):
+    # jax.profiler.start_trace("tensorboard_logs")
+    for i in range(1, 11):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -797,7 +797,7 @@ if __name__ == "__main__":
         if done["__all__"]:
             print("Episode finished!")
             break
-    #jax.profiler.stop_trace()
+    # jax.profiler.stop_trace()
 
     
     # Set number of environments to batch
@@ -865,7 +865,7 @@ if __name__ == "__main__":
             return state, rng
         step_fn_jit= jax.jit(step_fn_tojit)
 
-        jax.profiler.start_trace("tensorboard_logs")
+        # jax.profiler.start_trace("tensorboard_logs")
         for step_counter in range(NUM_STEPS):                
             state,rng=step_fn_jit(state, rng)
             # # Masked state update for active environments
@@ -881,7 +881,7 @@ if __name__ == "__main__":
             # if jnp.all(done_flags):
             #     break
 
-        jax.profiler.stop_trace()
+        # jax.profiler.stop_trace()
 
         def cond_fn(val):
             _, _, done_flags, _ = val
