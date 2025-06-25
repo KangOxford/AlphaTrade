@@ -15,7 +15,7 @@
 "MAX_GRAD_NORM": 0.25
 "ACTIVATION": "relu"
 "ENV_NAME": "HeuristicEnemySMAX"
-"MAP_NAME": "2s3z"
+"NUM_AGENTS_PER_TYPE": [2,2]
 "SEED": 0
 # "ENV_KWARGS": 
 #   "see_enemy_actions": True
@@ -24,6 +24,6 @@
 "ANNEAL_LR": True
 
 # WandB Params
-"ENTITY": ""
-"PROJECT": ""
-"WANDB_MODE" : "disabled"
+"ENTITY": "oxford-lob"
+"PROJECT": "JAXMARL for LOB"
+"WANDB_MODE" : "online"
