@@ -272,6 +272,9 @@ class MARLEnv(MultiAgentEnv):
         all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
 
+        #jax.debug.print("action: {}", actions)
+        #jax.debug.print("best bid: {}", state.world_state.best_bids[-1])
+       # jax.debug.print("best ask: {}", state.world_state.best_asks[-1])
         
         #jax.debug.print("all action msgs before shuffle: {}", all_action_msgs)
         #jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
@@ -565,7 +568,10 @@ class MARLEnv(MultiAgentEnv):
 
         info = {"world":world_info,"agents":new_agent_infos_list}
 
-        # print("info: ", info)
+        #jax.debug.print("quant executed: {}", new_agent_infos_list[0]["quant_executed"])
+        #jax.debug.print("reward MM: {}", new_agent_infos_list[0]["reward"])
+       # jax.debug.print("reward EXE: {}", new_agent_infos_list[1]["reward"])
+
         #jax.debug.print("lob state: {}", lob_state)
 
 
@@ -601,7 +607,7 @@ class MARLEnv(MultiAgentEnv):
             agent_obs_list.append(obs)
 
 
-        # print("agent_obs_list: ", agent_obs_list)
+        #jax.debug.print("agent_obs_list: {}", agent_obs_list)
 
 
             
@@ -757,7 +763,11 @@ if __name__ == "__main__":
 
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
-    for i in range(1, 11):
+
+    num_steps = 30
+    fixed_actions = False
+
+    for i in range(1, num_steps+1):
         print("=" * 40)
         
         print(f"Step {i}")
@@ -778,8 +788,12 @@ if __name__ == "__main__":
             # Sample actions for all agents of this type
             actions = jax.vmap(space.sample)(keys)
             actions_per_type.append(actions)
+
         #print("actions_per_type:", actions_per_type)
 
+        if fixed_actions:
+            actions_per_type = [jnp.array([3]),jnp.array([1])]
+            #print("actions_per_type fixed: ", actions_per_type)
 
         obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
@@ -802,6 +816,21 @@ if __name__ == "__main__":
     
     # Set number of environments to batch
      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     #=======================================#
     #=========== Old VMAP TIMING TEST =========#
     #=======================================#
@@ -941,7 +970,7 @@ if __name__ == "__main__":
 # ----------------------------------------------
 # New VMAP rollout script + timing statistics
 # ----------------------------------------------
-enable_vmap = True
+enable_vmap = False
 if enable_vmap:
 
     print("\n" + "="*60)

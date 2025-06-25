@@ -59,7 +59,7 @@ def main():
     ]
     n_data_msg_options = [1, 10, 50, 100]
     num_envs_options = [1000, 3000, 5000, 8000, 10000]
-    num_steps_options = [50, 100, 500, 1000, 5000]
+    num_steps_options = [1000, 5000]
 
     results = []
 
