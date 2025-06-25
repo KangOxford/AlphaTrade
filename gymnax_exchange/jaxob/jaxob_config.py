@@ -24,10 +24,10 @@ class JAXLOB_Configuration:
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
-    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "fixed_quants"
+    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "spread_skew"
     observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = env_cst.observation_space
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
-    n_ticks_in_book : int = env_cst.n_ticks_in_book
+    n_ticks_in_book : int = 2
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
     fixed_quant_value:int=env_cst.fixed_quant_value
@@ -73,11 +73,12 @@ class MarketMaking_EnvironmentConfig():
 
 @dataclass(frozen=True)
 class Execution_EnvironmentConfig():
-    n_ticks_in_book : int = env_cst.n_ticks_in_book
+    n_ticks_in_book : int = 1
     task: Literal["random", "buy", "sell"] = "buy"
     action_type: Literal["delta", "pure"] = "pure"
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"]="fixed_quants"
     observation_space: Literal["engineered"] = "engineered"
+    reward_space: Literal["normal","finish_fast"] = "finish_fast"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=500
     n_actions:int=5
@@ -116,7 +117,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 1800 # counted by seconds, 1800s=0.5h
+    episode_time = 30 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -125,14 +126,14 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_ticks_in_book = 10 # Depth of PP actions
     customIDCounter=0
     tick_size=100
-    trader_id_range_start=-2 # -1 is reserved for the placeholder in the messages object
-    placeholder_order_id = -99
+    trader_id_range_start=-100 # -1 is reserved for the placeholder in the messages object
+    placeholder_order_id = -9
     last_step_seconds = 5
     artificial_trader_id_end_episode = -666666 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
     artificial_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
-    debug_mode:bool=False
+    debug_mode:bool=True
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
-    order_id_counter_start_when_resetting:int=-3
+    order_id_counter_start_when_resetting:int=-100
     shuffle_action_messages:bool=False
 
 
@@ -141,8 +142,8 @@ class MultiAgentConfig():
     world_config = World_EnvironmentConfig()
 
     list_of_agents_configs = [
-        MarketMaking_EnvironmentConfig(),
-        # Execution_EnvironmentConfig(),
+        #MarketMaking_EnvironmentConfig(),
+        Execution_EnvironmentConfig(),
         #MarketMaking_EnvironmentConfig(),
     ]
     number_of_agents_per_type = [1]
