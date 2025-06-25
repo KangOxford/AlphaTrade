@@ -76,3 +76,6 @@ outputs/**
 
 .ssh/
 .ssh/**
+
+.venv/
+.venv/**
