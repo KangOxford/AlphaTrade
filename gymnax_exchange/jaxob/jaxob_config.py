@@ -146,10 +146,10 @@ class MultiAgentConfig():
 
     list_of_agents_configs = [
         MarketMaking_EnvironmentConfig(),
-        Execution_EnvironmentConfig(),
+        #Execution_EnvironmentConfig(),
         #MarketMaking_EnvironmentConfig(),
     ]
-    number_of_agents_per_type = [1,1]
+    number_of_agents_per_type = [2]
 
 
     

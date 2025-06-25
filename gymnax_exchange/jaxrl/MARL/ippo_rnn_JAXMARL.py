@@ -37,13 +37,18 @@ class ScannedRNN(nn.Module):
     def __call__(self, carry, x):
         """Applies the module."""
         rnn_state = carry
+        print("State before",rnn_state)
         ins, resets = x
+        print("Input to RNN",ins)
+        print("Resets",resets)
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(*rnn_state.shape),
             rnn_state,
         )
+        print("State after",rnn_state)
         new_rnn_state, y = nn.GRUCell(features=ins.shape[1])(rnn_state, ins)
+        print("New state",new_rnn_state)
         return new_rnn_state, y
 
     @staticmethod
@@ -61,25 +66,33 @@ class ActorCriticRNN(nn.Module):
     def __call__(self, hidden, x):
         # obs, dones, avail_actions = x
         obs, dones = x
+        print("Observation to network", obs)
+
         embedding = nn.Dense(
             self.config["FC_DIM_SIZE"], kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
         )(obs)
         embedding = nn.relu(embedding)
 
         rnn_in = (embedding, dones)
+        print("hidden state before RNN:", hidden)
+        print("RNN input:", rnn_in)
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
-
+        print("embedding shape after RNN:", embedding.shape)
         actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
+        print("Actor mean pre relu:", actor_mean)
+
         actor_mean = nn.relu(actor_mean)
+        print("Actor mean post relu:", actor_mean)
+
         actor_mean = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
         )(actor_mean)
         # Avail actions are not used in the current implementation, but can be added if needed.
         # unavail_actions = 1 - avail_actions
         action_logits = actor_mean # - (unavail_actions * 1e10)
-
+        print("Action logits shape:", action_logits)
         pi = distrax.Categorical(logits=action_logits)
 
         critic = nn.Dense(self.config["FC_DIM_SIZE"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -105,33 +118,36 @@ class Transition(NamedTuple):
     # avail_actions: jnp.ndarray
 
 
-def batchify(x: list, num_agents):
-    x = jnp.stack([x[a] for a in range(num_agents)], axis=0)
-    return x.reshape((num_agents, -1))
+def batchify(x: jnp.array, num_actors):
+    return x.reshape((num_actors, -1))
 
 
-def unbatchify(x: jnp.ndarray, agent_list, num_envs, num_actors):
-    x = x.reshape((num_actors, num_envs, -1))
-    return {a: x[i] for i, a in enumerate(agent_list)}
+def unbatchify(x: jnp.ndarray,num_envs, num_agents):
+    return  x.reshape((num_envs, num_agents, -1))
 
 
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
     env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig())
+    config["NUM_AGENTS_PERTYPE"]=env.multi_agent_config.number_of_agents_per_type
 
-    config["NUM_ACTORS"] = env.num_agents * config["NUM_ENVS"]
+    config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PERTYPE"]]  # Should be a list.
+    config["NUM_ACTORS_TOTAL"] = env.num_agents * config["NUM_ENVS"]
+
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
     config["MINIBATCH_SIZE"] = (
-        config["NUM_ACTORS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
+        config["NUM_ACTORS_TOTAL"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
     config["CLIP_EPS"] = (
         config["CLIP_EPS"] / env.num_agents
         if config["SCALE_CLIP_EPS"]
         else config["CLIP_EPS"]
     )
+
+    print("Config:", config)
 
     # env = SMAXLogWrapper(env)
 
@@ -159,7 +175,9 @@ def make_train(config):
         network_params_list = []
         train_states = []
         num_agents_of_instance_list = []
+        init_dones_agents = []
         for i, instance in enumerate(env.instance_list):
+            print("Action space dimension for network i ",env.action_spaces[i].n)
             network = ActorCriticRNN(env.action_spaces[i].n, config=config)
             rng, _rng = jax.random.split(rng)
             init_x = (
@@ -169,6 +187,7 @@ def make_train(config):
                 jnp.zeros((1, config["NUM_ENVS"])), # dones
                 # jnp.zeros((1, config["NUM_ENVS"], env.action_spaces[i].n)), #     avail_actions
             )
+
             # FIXME: very unsure about this, why is it NUM_ENVS and not NUM_ACTORS?
             init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["GRU_HIDDEN_DIM"])
             network_params = network.init(_rng, init_hstate, init_x)
@@ -187,13 +206,16 @@ def make_train(config):
                 params=network_params,
                 tx=tx,
             )
-            init_hstate = ScannedRNN.initialize_carry(config["NUM_ACTORS"], config["GRU_HIDDEN_DIM"])
+            init_hstate = ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"])
+            print(f"Initial hstate {init_hstate}")
+
             # Instead of appending dicts, maintain separate lists for each attribute
             networks.append(network)
             hstates.append(init_hstate)
             network_params_list.append(network_params)
             train_states.append(train_state)
             num_agents_of_instance_list.append(env.multi_agent_config.number_of_agents_per_type[i])
+            init_dones_agents.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
 
         # INIT ENV
         rng, _rng = jax.random.split(rng)
@@ -216,271 +238,310 @@ def make_train(config):
                 #     batchify(avail_actions, env.agents, config["NUM_ACTORS"])
                 # )
                 # obs_batch = batchify(last_obs, env.agents, config["NUM_ACTORS"])
+                actions=[]
+                values=[]
+                log_probs=[]
 
                 for i, network in enumerate(networks):
-                    obs_i= last_obs[i].reshape(num_agents_of_instance_list[i], -1)
+                    obs_i= last_obs[i]
+                    obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i])  # Reshape to match the input shape of the network
+                    print(f"The obs given to the network is {obs_i}")
+                    print(f"The hidden state given to the network is {h_states[i]}")
                     ac_in = (
                         obs_i[np.newaxis, :],
-                        last_done[np.newaxis, :],
+                        last_done[i][np.newaxis, :],
                         # avail_actions,
                     )
-                    hstate, pi, value = network.apply(train_state.params, hstate, ac_in)
+                    print(f"The information given to the network is {ac_in}")
+                    hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
+                    values.append(value)
                     action = pi.sample(seed=_rng)
-                    log_prob = pi.log_prob(action)
-                    env_act = unbatchify(
-                        action, env.agents, config["NUM_ENVS"], env.num_agents
-                    )
-                    env_act = {k: v.squeeze() for k, v in env_act.items()}
-
+                    log_probs.append(pi.log_prob(action))
+                    action=unbatchify(action, config["NUM_ENVS"], env.multi_agent_config.number_of_agents_per_type[i])  # Reshape to match the action shape
+                    actions.append(action.squeeze())
+                    # env_act = unbatchify(
+                    #     action, env.agents, config["NUM_ENVS"], env.num_agents
+                    # )
+                    # env_act = {k: v.squeeze() for k, v in env_act.items()}
+                print("Actions taken by the agents:", actions)
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+
                 obsv, env_state, reward, done, info = jax.vmap(
-                    env.step, in_axes=(0, 0, 0)
-                )(rng_step, env_state, env_act)
-                info = jax.tree.map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
-                done_batch = batchify(done, env.agents, config["NUM_ACTORS"]).squeeze()
-                transition = Transition(
-                    jnp.tile(done["__all__"], env.num_agents),
-                    last_done,
-                    action.squeeze(),
-                    value.squeeze(),
-                    batchify(reward, env.agents, config["NUM_ACTORS"]).squeeze(),
-                    log_prob.squeeze(),
-                    obs_batch,
-                    info,
-                    avail_actions,
-                )
-                runner_state = (train_state, env_state, obsv, done_batch, hstate, rng)
-                return runner_state, transition
+                    env.step, in_axes=(0, 0, 0,None)
+                )(rng_step, env_state, actions,params)
+
+                print("Done shape",done)
+                # info = jax.tree.map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
+                done_batch=done
+                transitions=[]
+                for i,network in enumerate(networks):
+                    done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]).squeeze()
+                    obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i])
+                    action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i])
+                    value = values[i]
+                    log_prob = log_probs[i]
+                    print(f"info returned {i}:", info)
+
+                    info_i={"world":info["world"],"agent":jax.tree.map(lambda x: x.reshape(config["NUM_ACTORS_PERTYPE"][i]),info["agents"][i])}
+                    # print(f"info for agenttype {i}:", info_i)
+
+
+                    print("REWARD",reward[i])
+                    transitions.append(Transition(
+                        jnp.tile(done["__all__"], config["NUM_AGENTS_PERTYPE"][i]),
+                        last_done[i],
+                        action_batch.squeeze(),
+                        value.squeeze(),
+                        batchify(reward[i], config["NUM_ACTORS_PERTYPE"][i]).squeeze(),
+                        log_prob.squeeze(),
+                        obs_batch,
+                        info_i,
+                        # avail_actions,
+                    ))
+                    print("Transition", transitions[-1])
+                runner_state = (train_states, env_state, obsv, done_batch['agents'], hstates, rng)
+                return runner_state, transitions
 
 
             initial_hstates = runner_state[-2]
+            print("DONES IN",runner_state[3])
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state, None, config["NUM_STEPS"]
             )
 
             # CALCULATE ADVANTAGE
-            train_state, env_state, last_obs, last_done, hstate, rng = runner_state
-            last_obs_batch = batchify(last_obs, env.agents, config["NUM_ACTORS"])
-            avail_actions = jnp.ones(
-                (config["NUM_ACTORS"], env.action_space(env.agents[0]).n)
-            )
-            ac_in = (
-                last_obs_batch[np.newaxis, :],
-                last_done[np.newaxis, :],
-                avail_actions,
-            )
-            _, _, last_val = network.apply(train_state.params, hstate, ac_in)
-            last_val = last_val.squeeze()
+            train_states, env_state, last_obs, last_dones, hstates_new, rng = runner_state
 
             def _calculate_gae(traj_batch, last_val):
-                def _get_advantages(gae_and_next_value, transition):
-                    gae, next_value = gae_and_next_value
-                    done, value, reward = (
-                        transition.global_done,
-                        transition.value,
-                        transition.reward,
-                    )
-                    delta = reward + config["GAMMA"] * next_value * (1 - done) - value
-                    gae = (
-                        delta
-                        + config["GAMMA"] * config["GAE_LAMBDA"] * (1 - done) * gae
-                    )
-                    return (gae, value), gae
-
-                _, advantages = jax.lax.scan(
-                    _get_advantages,
-                    (jnp.zeros_like(last_val), last_val),
-                    traj_batch,
-                    reverse=True,
-                    unroll=16,
-                )
-                return advantages, advantages + traj_batch.value
-
-            advantages, targets = _calculate_gae(traj_batch, last_val)
-
-            # UPDATE NETWORK
-            def _update_epoch(update_state, unused):
-                def _update_minbatch(train_state, batch_info):
-                    init_hstate, traj_batch, advantages, targets = batch_info
-
-                    def _loss_fn(params, init_hstate, traj_batch, gae, targets):
-                        # RERUN NETWORK
-                        _, pi, value = network.apply(
-                            params,
-                            init_hstate.squeeze(),
-                            (traj_batch.obs, traj_batch.done, traj_batch.avail_actions),
+                    def _get_advantages(gae_and_next_value, transition):
+                        gae, next_value = gae_and_next_value
+                        done, value, reward = (
+                            transition.global_done,
+                            transition.value,
+                            transition.reward,
                         )
-                        log_prob = pi.log_prob(traj_batch.action)
+                        delta = reward + config["GAMMA"] * next_value * (1 - done) - value
+                        gae = (
+                            delta
+                            + config["GAMMA"] * config["GAE_LAMBDA"] * (1 - done) * gae
+                        )
+                        return (gae, value), gae
 
-                        # CALCULATE VALUE LOSS
-                        value_pred_clipped = traj_batch.value + (
-                            value - traj_batch.value
-                        ).clip(-config["CLIP_EPS"], config["CLIP_EPS"])
-                        value_losses = jnp.square(value - targets)
-                        value_losses_clipped = jnp.square(value_pred_clipped - targets)
-                        value_loss = 0.5 * jnp.maximum(
-                            value_losses, value_losses_clipped
-                        ).mean()
+                    _, advantages = jax.lax.scan(
+                        _get_advantages,
+                        (jnp.zeros_like(last_val), last_val),
+                        traj_batch,
+                        reverse=True,
+                        unroll=16,
+                    )
+                    return advantages, advantages + traj_batch.value
 
-                        # CALCULATE ACTOR LOSS
-                        logratio = log_prob - traj_batch.log_prob
-                        ratio = jnp.exp(logratio)
-                        gae = (gae - gae.mean()) / (gae.std() + 1e-8)
-                        loss_actor1 = ratio * gae
-                        loss_actor2 = (
-                            jnp.clip(
-                                ratio,
-                                1.0 - config["CLIP_EPS"],
-                                1.0 + config["CLIP_EPS"],
+            advantages=[]
+            targets=[]
+            for i, network in enumerate(networks):
+                last_obs_batch = batchify(last_obs[i], config["NUM_ACTORS_PERTYPE"][i])
+                # avail_actions = jnp.ones(
+                #     (config["NUM_ACTORS"], env.action_space(env.agents[0]).n)
+                # )
+                ac_in = (
+                    last_obs_batch[np.newaxis, :],
+                    last_dones[i][np.newaxis, :],
+                    # avail_actions,
+                )
+                _, _, last_val = network.apply(train_states[i].params, hstates_new[i], ac_in)
+                last_val = last_val.squeeze()
+
+                advantages_i, targets_i = _calculate_gae(traj_batch[i], last_val)
+                advantages.append(advantages_i)
+                targets.append(targets_i)
+
+            # UPDATE NETWORKS
+            loss_infos = []
+            for i, network in enumerate(networks):
+                def _update_epoch(update_state, unused):
+                    def _update_minbatch(train_state, batch_info):
+                        init_hstate, traj_batch, advantages, targets = batch_info
+
+                        def _loss_fn(params, init_hstate, traj_batch, gae, targets):
+                            # RERUN NETWORK
+                            _, pi, value = network.apply(
+                                params,
+                                init_hstate.squeeze(),
+                                (traj_batch.obs, traj_batch.done),
                             )
-                            * gae
+                            log_prob = pi.log_prob(traj_batch.action)
+
+                            # CALCULATE VALUE LOSS
+                            value_pred_clipped = traj_batch.value + (
+                                value - traj_batch.value
+                            ).clip(-config["CLIP_EPS"], config["CLIP_EPS"])
+                            value_losses = jnp.square(value - targets)
+                            value_losses_clipped = jnp.square(value_pred_clipped - targets)
+                            value_loss = 0.5 * jnp.maximum(
+                                value_losses, value_losses_clipped
+                            ).mean()
+
+                            # CALCULATE ACTOR LOSS
+                            logratio = log_prob - traj_batch.log_prob
+                            ratio = jnp.exp(logratio)
+                            gae = (gae - gae.mean()) / (gae.std() + 1e-8)
+                            loss_actor1 = ratio * gae
+                            loss_actor2 = (
+                                jnp.clip(
+                                    ratio,
+                                    1.0 - config["CLIP_EPS"],
+                                    1.0 + config["CLIP_EPS"],
+                                )
+                                * gae
+                            )
+                            loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
+                            loss_actor = loss_actor.mean()
+                            entropy = pi.entropy().mean()
+
+                            # debug
+                            approx_kl = ((ratio - 1) - logratio).mean()
+                            clip_frac = jnp.mean(jnp.abs(ratio - 1) > config["CLIP_EPS"])
+
+                            total_loss = (
+                                loss_actor
+                                + config["VF_COEF"] * value_loss
+                                - config["ENT_COEF"] * entropy
+                            )
+                            return total_loss, (value_loss, loss_actor, entropy, ratio, approx_kl, clip_frac)
+
+                        grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
+                        total_loss, grads = grad_fn(
+                            train_state.params, init_hstate, traj_batch, advantages, targets
                         )
-                        loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
-                        loss_actor = loss_actor.mean()
-                        entropy = pi.entropy().mean()
+                        train_state = train_state.apply_gradients(grads=grads)
+                        return train_state, total_loss
+                    (
+                        train_state,
+                        init_hstate,
+                        traj_batch,
+                        advantages,
+                        targets,
+                        rng,
+                    ) = update_state
+                    rng, _rng = jax.random.split(rng)
 
-                        # debug
-                        approx_kl = ((ratio - 1) - logratio).mean()
-                        clip_frac = jnp.mean(jnp.abs(ratio - 1) > config["CLIP_EPS"])
-
-                        total_loss = (
-                            loss_actor
-                            + config["VF_COEF"] * value_loss
-                            - config["ENT_COEF"] * entropy
-                        )
-                        return total_loss, (value_loss, loss_actor, entropy, ratio, approx_kl, clip_frac)
-
-                    grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-                    total_loss, grads = grad_fn(
-                        train_state.params, init_hstate, traj_batch, advantages, targets
+                    # adding an additional "fake" dimensionality to perform minibatching correctly
+                    init_hstate = jnp.reshape(
+                        init_hstate, (1, config["NUM_ACTORS_PERTYPE"][i], -1)
                     )
-                    train_state = train_state.apply_gradients(grads=grads)
-                    return train_state, total_loss
-                (
-                    train_state,
-                    init_hstate,
-                    traj_batch,
-                    advantages,
-                    targets,
-                    rng,
-                ) = update_state
-                rng, _rng = jax.random.split(rng)
+                    batch = (
+                        init_hstate,
+                        traj_batch,
+                        advantages.squeeze(),
+                        targets.squeeze(),
+                    )
+                    permutation = jax.random.permutation(_rng, config["NUM_ACTORS_PERTYPE"][i])
 
-                # adding an additional "fake" dimensionality to perform minibatching correctly
-                init_hstate = jnp.reshape(
-                    init_hstate, (1, config["NUM_ACTORS"], -1)
-                )
-                batch = (
-                    init_hstate,
-                    traj_batch,
-                    advantages.squeeze(),
-                    targets.squeeze(),
-                )
-                permutation = jax.random.permutation(_rng, config["NUM_ACTORS"])
+                    shuffled_batch = jax.tree.map(
+                        lambda x: jnp.take(x, permutation, axis=1), batch
+                    )
 
-                shuffled_batch = jax.tree.map(
-                    lambda x: jnp.take(x, permutation, axis=1), batch
-                )
-
-                minibatches = jax.tree.map(
-                    lambda x: jnp.swapaxes(
-                        jnp.reshape(
-                            x,
-                            [x.shape[0], config["NUM_MINIBATCHES"], -1]
-                            + list(x.shape[2:]),
+                    minibatches = jax.tree.map(
+                        lambda x: jnp.swapaxes(
+                            jnp.reshape(
+                                x,
+                                [x.shape[0], config["NUM_MINIBATCHES"], -1]
+                                + list(x.shape[2:]),
+                            ),
+                            1,
+                            0,
                         ),
-                        1,
-                        0,
-                    ),
-                    shuffled_batch,
-                )
+                        shuffled_batch,
+                    )
 
-                train_state, total_loss = jax.lax.scan(
-                    _update_minbatch, train_state, minibatches
-                )
+                    train_state, total_loss = jax.lax.scan(
+                        _update_minbatch, train_state, minibatches
+                    )
+                    update_state = (
+                        train_state,
+                        init_hstate.squeeze(),
+                        traj_batch,
+                        advantages,
+                        targets,
+                        rng,
+                    )
+                    return update_state, total_loss
+
                 update_state = (
-                    train_state,
-                    init_hstate.squeeze(),
-                    traj_batch,
-                    advantages,
-                    targets,
+                    train_states[i],
+                    initial_hstates[i],
+                    traj_batch[i],
+                    advantages[i],
+                    targets[i],
                     rng,
                 )
-                return update_state, total_loss
+                update_state, loss_info = jax.lax.scan(
+                    _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
+                )
+                train_states[i] = update_state[0]
+                loss_infos.append(loss_info)
 
-            update_state = (
-                train_state,
-                initial_hstate,
-                traj_batch,
-                advantages,
-                targets,
-                rng,
-            )
-            update_state, loss_info = jax.lax.scan(
-                _update_epoch, update_state, None, config["UPDATE_EPOCHS"]
-            )
-            train_state = update_state[0]
-            metric = traj_batch.info
-            metric = jax.tree.map(
+
+            print("Trajectories:", traj_batch)
+
+            metrics= {}
+            metrics['agents'] = [jax.tree.map(
                 lambda x: x.reshape(
-                    (config["NUM_STEPS"], config["NUM_ENVS"], env.num_agents)
+                    (config["NUM_STEPS"], config["NUM_ENVS"], config["NUM_AGENTS_PERTYPE"][i])
                 ),
-                traj_batch.info,
-            )
-            ratio_0 = loss_info[1][3].at[0,0].get().mean()
-            loss_info = jax.tree.map(lambda x: x.mean(), loss_info)
-            metric["loss"] = {
-                "total_loss": loss_info[0],
-                "value_loss": loss_info[1][0],
-                "actor_loss": loss_info[1][1],
-                "entropy": loss_info[1][2],
-                "ratio": loss_info[1][3],
-                "ratio_0": ratio_0,
-                "approx_kl": loss_info[1][4],
-                "clip_frac": loss_info[1][5],
-            }
+                trjbtch.info['agent']) for i, trjbtch in enumerate(traj_batch)]
+            metrics['world'] = [traj_batch.info['world'] for i, traj_batch in enumerate(traj_batch)]
+            print("Metrics are \n", metrics)
+            metrics["loss"]=[]
+            for loss_info in loss_infos:
+                ratio_0 = loss_info[1][3].at[0,0].get().mean()
+                loss_info = jax.tree.map(lambda x: x.mean(), loss_info)
+                metrics["loss"].append({
+                    "total_loss": loss_info[0],
+                    "value_loss": loss_info[1][0],
+                    "actor_loss": loss_info[1][1],
+                    "entropy": loss_info[1][2],
+                    "ratio": loss_info[1][3],
+                    "ratio_0": ratio_0,
+                    "approx_kl": loss_info[1][4],
+                    "clip_frac": loss_info[1][5],
+                })
+            
             
             rng = update_state[-1]
 
             def callback(metric):
                 wandb.log(
                     {
-                        # the metrics have an agent dimension, but this is identical
-                        # for all agents so index into the 0th item of that dimension.
-                        "returns": metric["returned_episode_returns"][:, :, 0][
-                            metric["returned_episode"][:, :, 0]
-                        ].mean(),
-                        "win_rate": metric["returned_won_episode"][:, :, 0][
-                            metric["returned_episode"][:, :, 0]
-                        ].mean(),
+                        # TODO: Log the quantities of interest. Keep it trivial for now.
                         "env_step": metric["update_steps"]
                         * config["NUM_ENVS"]
                         * config["NUM_STEPS"],
-                        **metric["loss"],
+                        **{f"network_{i}": m for i,m in enumerate(metric["loss"])}
                     }
                 )
 
-            metric["update_steps"] = update_steps
-            jax.experimental.io_callback(callback, None, metric)
+            metrics["update_steps"] = update_steps
+            jax.experimental.io_callback(callback, None, metrics)
             update_steps = update_steps + 1
-            runner_state = (train_state, env_state, last_obs, last_done, hstate, rng)
-            return (runner_state, update_steps), metric
+            runner_state = (train_states, env_state, last_obs, last_dones, hstates_new, rng)
+            return (runner_state, update_steps), metrics
 
         rng, _rng = jax.random.split(rng)
         runner_state = (
             train_states,
             env_state,
             obsv,
-            jnp.zeros((config["NUM_ACTORS"]), dtype=bool), # last_done
+            init_dones_agents, # last_done
             hstates,  # initial hidden states for RNN
             _rng,
         )
 
 
 
-        runner_state, metric = jax.lax.scan(
+        runner_state, metrics = jax.lax.scan(
             _update_step, (runner_state, 0), None, config["NUM_UPDATES"]
         )
         return {"runner_state": runner_state}
