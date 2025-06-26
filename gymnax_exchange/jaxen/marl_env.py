@@ -89,13 +89,6 @@ class MARLEnv(MultiAgentEnv):
         self.num_msgs_per_step = int(num_msg_per_step)
         self.num_action_msgs_per_step_by_all_agents = int(num_action_msg_per_step_by_all_agents)
 
-        # print(f"num_msgs_per_step: {self.num_msgs_per_step}")
-        # print(f"num_action_msgs_per_step_by_all_agents: {self.num_action_msgs_per_step_by_all_agents}")
-
-
-        # print(self.instance_list)
-        # print("MARL Environment initialized")
-
     @property
     def default_params(self) -> MultiAgentParams:
         # Get the base parameters from BaseLOBEnv
@@ -152,7 +145,7 @@ class MARLEnv(MultiAgentEnv):
         bestbids = jnp.tile(best_bid[None, :], (self.num_msgs_per_step, 1))
         bestasks = jnp.tile(best_ask[None, :], (self.num_msgs_per_step, 1))#
         mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
-        # print(f"mid_price: {mid_price}")
+        # print(f"mid_price: {mid_price}")  
 
         # Create the world state
         world_state = WorldState(
@@ -162,8 +155,8 @@ class MARLEnv(MultiAgentEnv):
             step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
-            mid_price=mid_price,      
-            delta_time=0.0,     
+            mid_price=mid_price,
+            delta_time=0.0,
         )
 
 
@@ -363,7 +356,7 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
+        #TODO: Could use some constants for indexing here, rather than magic numbers
         final_time = combined_msgs[-1, -2:]
         # print(f"final time: {final_time}")
 
@@ -415,7 +408,7 @@ class MARLEnv(MultiAgentEnv):
         old_time=state.world_state.time
         old_mid_price=state.world_state.mid_price
 
-
+        #TODO: More magic numbers here, should be replaced with constants
         # Update other parts of the world state
         new_step_counter = state.world_state.step_counter + 1
         new_mid_price = (new_bestbids[-1, 0] + new_bestasks[-1, 0]) / 2
@@ -594,7 +587,7 @@ class MARLEnv(MultiAgentEnv):
             dones_temp = new_agent_dones_list[agent_type_index]
             #jax.debug.print("dones_temp: {}", dones_temp)
             #jax.debug.print("__all__ done: {}", dones)
-            mask = jnp.logical_and(dones_temp, jnp.logical_not(dones["__all__"])) #only reset obs if agent is done but overall env is not
+            mask = jnp.logical_and(dones_temp, jnp.logical_not(dones["__all__"])) #only set obs to 0 if agent is done but overall env is not
             #jax.debug.print("mask: {}", mask)
             obs = jnp.where(
                 mask[..., None],  # expand dims for broadcasting
