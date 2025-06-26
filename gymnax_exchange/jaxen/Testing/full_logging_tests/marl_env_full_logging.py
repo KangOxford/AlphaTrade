@@ -9,8 +9,7 @@ import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from gymnax_exchange.jaxen.marl_env import MARLEnv
-from gymnax_exchange.jaxen.mm_env import MarketMakingEnv
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+
 import faulthandler
 import pandas as pd  
 import chex

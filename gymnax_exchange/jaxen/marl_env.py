@@ -18,11 +18,10 @@ from gymnax_exchange.utils import utils as util
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_traceback_in_locations_limit", -1)
 jax.config.update("jax_log_compiles", False)
-
 jax.config.update("jax_enable_x64", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxen.exec_env import ExecutionAgent
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxen.from_JAXMARL.multi_agent_env import MultiAgentEnv
 #from gymnax_exchange.jaxen.from_JAXMARL.spaces import Box, MultiDiscrete, Discrete
@@ -47,25 +46,21 @@ class MARLEnv(MultiAgentEnv):
                  key,
                  multi_agent_config: MultiAgentConfig,
                  ):
-        # Initialize the base environment
-        #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
-
-        # Create config first
+        # Copy config first
         self.multi_agent_config = multi_agent_config
-
+        # Number of agents of all types.
         self.num_agents = sum(self.multi_agent_config.number_of_agents_per_type)
 
-
-        
+        # FIXME: The MultiAgentEnv still expects the agents to be organised in a dict. We arrange them as a list of jaxarrays.
         super().__init__(num_agents=self.num_agents)
 
-
-       # Pass config to base class
+       # Pass config to base class which does all of the work related to jaxlob.
         self.base_env = BaseLOBEnv(cfg=self.multi_agent_config.world_config, key=key)
 
 
         # Split the key for each sub-environments:
-        # TODO should we give each sub-env a different key?         for i in range(len(self.world_config.list_of_agents_configs)):
+        # TODO should we give each sub-env a different key?         
+        # for i in range(len(self.world_config.list_of_agents_configs)):
             #key_mm, key_exe = jax.random.split(key, 2)
             #mm_config = MarketMaking_EnvironmentConfig()
 
@@ -76,7 +71,7 @@ class MARLEnv(MultiAgentEnv):
             if isinstance(agent_config, MarketMaking_EnvironmentConfig):
                 self.instance_list.append(MarketMakingAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             elif isinstance(agent_config, Execution_EnvironmentConfig):
-                self.instance_list.append(ExecutionEnv(cfg=agent_config, world_config=self.multi_agent_config.world_config))
+                self.instance_list.append(ExecutionAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
 
