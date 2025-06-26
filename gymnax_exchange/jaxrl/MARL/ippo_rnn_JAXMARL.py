@@ -274,6 +274,7 @@ def make_train(config):
 
                 print("Done shape",done)
                 # info = jax.tree.map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
+                
                 done_batch=done
                 transitions=[]
                 for i,network in enumerate(networks):
@@ -310,6 +311,8 @@ def make_train(config):
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state, None, config["NUM_STEPS"]
             )
+
+            
 
             # CALCULATE ADVANTAGE
             train_states, env_state, last_obs, last_dones, hstates_new, rng = runner_state
@@ -508,6 +511,7 @@ def make_train(config):
                     "approx_kl": loss_info[1][4],
                     "clip_frac": loss_info[1][5],
                 })
+            metrics['avg_reward'] = [jnp.mean(tr.reward) for tr in traj_batch]
             
             
             rng = update_state[-1]
@@ -519,7 +523,8 @@ def make_train(config):
                         "env_step": metric["update_steps"]
                         * config["NUM_ENVS"]
                         * config["NUM_STEPS"],
-                        **{f"network_{i}": m for i,m in enumerate(metric["loss"])}
+                        **{f"network_{i}": m for i,m in enumerate(metric["loss"])},
+                        **{f"avg_reward_{i}": metric["avg_reward"][i] for i in range(len(metric["avg_reward"]))},
                     }
                 )
 
