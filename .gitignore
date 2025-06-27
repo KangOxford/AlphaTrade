@@ -64,3 +64,14 @@ report*
 .keras/**
 .local/
 .local/**
+
+.vscode-server/**
+.outputs/**
+.mycache/**
+.ssh/**
+.chache/**
+.outputs/**
+/training_oneDay/
+/training_oneDay/**
+/outputs/**
+/.dotnet/**
