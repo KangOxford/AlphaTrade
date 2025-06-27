@@ -80,10 +80,10 @@ class Execution_EnvironmentConfig():
     observation_space: Literal["engineered"] = "engineered"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=500
-    n_actions:int=5
+    n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
-    num_messages_by_agent:int=8
-    num_action_messages_by_agent:int=4
+    num_messages_by_agent:int=8 # will be set automatically in the post init function
+    num_action_messages_by_agent:int=4 # will be set automatically in the post init function
     reward_lambda:float=1.0
     time_delay_obs_act:int=0
     debug_mode:bool=False

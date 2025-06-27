@@ -53,8 +53,8 @@ def main():
 
 
     agent_type_options = [
-        [1, 1],
-        [5, 5],
+        #[1, 1],
+        #[5, 5],
         [10, 10],
     ]
     n_data_msg_options = [1, 10, 50, 100]
@@ -107,8 +107,6 @@ def main():
 
                             status_str = (
                                 f"Running with {num_envs} envs and {num_steps} steps\n"
-                                + "="*60 + "\n"
-                                + "Starting VMAP timing test loop for MARL\n"
                                 + "="*60 + "\n"
                             )
                             print(status_str)

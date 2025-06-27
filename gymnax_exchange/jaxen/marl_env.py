@@ -941,7 +941,7 @@ if __name__ == "__main__":
 # ----------------------------------------------
 # New VMAP rollout script + timing statistics
 # ----------------------------------------------
-enable_vmap = True
+enable_vmap = False
 if enable_vmap:
 
     print("\n" + "="*60)
