@@ -131,16 +131,16 @@ networkx==3.4.2
 notebook==7.3.2
 notebook_shim==0.2.4
 numpy==1.26.4
-# nvidia-cublas-cu12
-# nvidia-cuda-cupti-cu12
-# nvidia-cuda-nvcc-cu12
-# nvidia-cuda-runtime-cu12
-# nvidia-cudnn-cu12
-# nvidia-cufft-cu12
-# nvidia-cusolver-cu12
-# nvidia-cusparse-cu12
-# nvidia-nccl-cu12
-# nvidia-nvjitlink-cu12
+nvidia-cublas-cu12
+nvidia-cuda-cupti-cu12
+nvidia-cuda-nvcc-cu12
+nvidia-cuda-runtime-cu12
+nvidia-cudnn-cu12
+nvidia-cufft-cu12
+nvidia-cusolver-cu12
+nvidia-cusparse-cu12
+nvidia-nccl-cu12
+nvidia-nvjitlink-cu12
 omegaconf
 opt_einsum==3.4.0
 optax==0.2.4
@@ -233,7 +233,7 @@ tokenizers==0.21.0
 tomli==2.2.1
 tomlkit==0.13.2
 toolz==1.0.0
-torch==2.6.0
+torch
 tornado==6.4.2
 tqdm==4.67.1
 traitlets==5.14.3

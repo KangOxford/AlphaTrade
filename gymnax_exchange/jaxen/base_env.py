@@ -297,7 +297,9 @@ class BaseLOBEnv(environment.Environment):
             print("COMPUTING INIT STATES...")
             #for i in range(self.n_windows):
                 #print("message starts",self.messages[starts[i]])
-            states = [self._get_state_from_data(key,
+            get_state_jitted= jax.jit(self._get_state_from_data)
+
+            states = [get_state_jitted(key,
                                                 self.messages[starts[i]],
                                                 self.books[i],
                                                 self.max_messages_in_episode_arr[i]

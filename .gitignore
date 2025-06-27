@@ -75,3 +75,17 @@ report*
 /training_oneDay/**
 /outputs/**
 /.dotnet/**
+.dotnet/
+.dotnet/**
+.vscode/
+.vscode-server/**
+.gnupg/
+.gnupg/**
+outputs/
+outputs/**
+
+.ssh/
+.ssh/**
+
+.venv/
+.venv/**

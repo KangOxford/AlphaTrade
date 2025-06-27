@@ -22,7 +22,7 @@ ExecEnvState:   Dataclass to encapsulate the current state of the environment,
             including the raw order book, trades, and time information.
 ExecEnvParams:  Configuration class for environment-specific parameters, 
             such as task details, message and book data, and episode timing.
-ExecutionEnv: Environment class inheriting from BaseLOBEnv, 
+ExecutionAgent: Environment class inheriting from BaseLOBEnv, 
               offering specialized methods for order placement and 
               execution tasks in trading environments. 
 
@@ -142,7 +142,7 @@ import jax.tree_util as jtu
 
 
 
-class ExecutionEnv():
+class ExecutionAgent():
     def __init__(
             self, 
             cfg:Execution_EnvironmentConfig,
@@ -175,6 +175,8 @@ class ExecutionEnv():
         #Choose observation space based on config.
         if self.cfg.observation_space == "engineered":
             self.observation_fn = self._get_obs
+        elif self.cfg.observation_space == "basic":
+            self.observation_fn = self._get_obs_basic
         else:
             raise ValueError("Invalid observation_space specified.")
 
@@ -869,6 +871,14 @@ class ExecutionEnv():
                 quants,
                 jnp.floor(quant_array[1]*quant_left)##spread evely across choices
             ).astype(jnp.int32)
+
+        #jax.debug.print("quants:{}",quants)
+        #jax.debug.print("quants left:{}",quant_left)
+        #jax.debug.print("total quant:{}",total_quant)
+        #jax.debug.print("quant_array of 0:{}",quant_array[0,:])
+        #jax.debug.print("quant_array of 0:{}",quant_array[1,:])
+
+
         #--make arrays--#
         quants=jnp.array(quants)
         #jax.debug.print("quants:{}",quants)
@@ -1179,6 +1189,10 @@ class ExecutionEnv():
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
                                        normalize=normalize)
+        elif self.cfg.observation_space == "basic":
+            return self.observation_fn(world_state=world_state, 
+                                       agent_state=agent_state, 
+                                       normalize=normalize)
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1446,7 +1460,7 @@ class ExecutionEnv():
         # jax.debug.print('agentTrades\n {}', agentTrades[:30])
         agentQuant = jnp.abs(agentTrades[:,1]).sum() # new_execution quants
         
-
+        #jax.debug.print("agentTrades:{}",agentTrades)
 
         # ---------- used for vwap, revenue ----------
         # vwapFunc = lambda tr: jnp.nan_to_num(
@@ -1498,8 +1512,12 @@ class ExecutionEnv():
 
         trade_duration_step = (jnp.abs(agentTrades[:, 1]) / agent_state.task_to_execute * (agentTrades[:, -2] - world_state.init_time[0])).sum()
         trade_duration = agent_state.trade_duration + trade_duration_step
+        quant_left = agent_state.task_to_execute - agent_state.quant_executed - agentQuant
 
-
+        if self.cfg.reward_space == "finish_fast":
+            reward = -jnp.abs(quant_left) #/ agent_state.task_to_execute
+            #jax.debug.print("reward:{}",reward)
+            #jax.debug.print("agentQuant:{}",agentQuant)
         
         # jax.debug.print('reward: {}. reward_lam1: {}. is_sell_task {}. advantage {} drift {} vwap {} init_price {}', 
         #                 reward, reward_lam1, state.is_sell_task, advantage, drift, vwap, state.init_price)
@@ -1520,6 +1538,7 @@ class ExecutionEnv():
             "advantage": advantage,
             "drift": drift,
             "doom_quant": doom_quant,
+            "quant_left": quant_left,
             "trade_duration": trade_duration,
         }
 
@@ -1535,6 +1554,8 @@ class ExecutionEnv():
         new_price_drift_rm = extras["price_drift_rm"]
         new_vwap_rm = extras["vwap_rm"]
         new_trade_duration = extras["trade_duration"]
+        new_quant_left = extras["quant_left"]
+        new_reward = extras["reward"]
 
         # Note: we use replace because init_price, task_to_execute, is_sell_task do not change
         agent_state = agent_state_old.replace(
@@ -1561,6 +1582,7 @@ class ExecutionEnv():
             "total_revenue": agent_state.total_revenue,
             "quant_executed": agent_state.quant_executed,
             "task_to_execute": agent_state.task_to_execute,
+            "quant_left": new_quant_left,
             "average_price": average_price,
             "done": done,
             "slippage_rm": agent_state.slippage_rm,
@@ -1573,6 +1595,7 @@ class ExecutionEnv():
             "trade_duration": agent_state.trade_duration,
             "doom_quant": doom_quant,
             "is_sell_task": agent_state.is_sell_task,
+            "reward": new_reward,
         }
 
         #jax.debug.print("info exec env: {}", info)
@@ -1584,7 +1607,34 @@ class ExecutionEnv():
 
 
 
+    def _get_obs_basic(self, world_state: WorldState, agent_state: ExecEnvState, normalize: bool, flatten: bool = True) -> chex.Array:
+        """ Return very basic obs space"""
+        obs = {
+            "best_ask_price": world_state.best_asks[-1][0],
+            "best_bid_price": world_state.best_bids[-1][0],
+            "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
+        }
 
+        means = {
+            "best_ask_price": 1550000,
+            "best_bid_price": 1550000,
+            "remaining_quant": 0,
+        }
+        
+        stds = {
+            "best_ask_price": 1e3,
+            "best_bid_price": 1e3,
+            "remaining_quant": self.cfg.task_size,
+        }
+        
+        if normalize:
+            obs = self.normalize_obs(obs, means, stds)
+            # jax.debug.print('normalized obs:\n {}', obs)
+
+        if flatten:
+            obs, _ = jax.flatten_util.ravel_pytree(obs)
+        
+        return obs
 
 
 
@@ -1693,7 +1743,7 @@ class ExecutionEnv():
         # print("normalized obs:", obs)
 
         if flatten:
-            obs, _ = jax.flatten_util.ravel_pytree(obs)
+            obs, _ = jax.flatten_util.ravel_pytree(obs) # Important: this can change the order of the values
 
         return obs
 
@@ -1777,7 +1827,7 @@ class ExecutionEnv():
         """ normalized observation by substracting 'mean' and dividing by 'std'
             (config values don't need to be actual mean and std)
         """
-        obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
+        obs = jax.tree.map(lambda x, m, s: (x - m) / s, obs, means, stds)
         return obs
 
     def action_space(
@@ -1800,8 +1850,13 @@ class ExecutionEnv():
     #FIXME: Obsevation space is a single array with hard-coded shape (based on get_obs function): make this better.
     def observation_space(self):
         """Observation space of the environment."""
-        space = spaces.Box(-10, 10, (17+self.cfg.num_action_messages_by_agent*3,), dtype=jnp.float32) ##17 ints and then 3 objects of size action messages (msgs sent)
-        return space
+        if self.cfg.observation_space == "basic":
+            return spaces.Box(low=-10000, high=10000, shape=(3,), dtype=jnp.float32)
+        elif self.cfg.observation_space == "engineered":
+            space = spaces.Box(-10000, 10000, (15,), dtype=jnp.float32) 
+            return space
+        else:
+            raise ValueError("Invalid observation_space specified.")
 
     def state_space(self, params: ExecEnvParams) -> spaces.Dict:
         """State space of the environment."""
@@ -1844,8 +1899,8 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    # env=ExecutionEnv(ATFolder,"sell",1)
-    env = ExecutionEnv(
+    # env=ExecutionAgent(ATFolder,"sell",1)
+    env = ExecutionAgent(
         cfg = env_cfg,
         key = key_reset,
         alphatradePath = config["ATFOLDER"],

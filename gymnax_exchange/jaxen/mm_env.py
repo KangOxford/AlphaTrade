@@ -140,8 +140,8 @@ import jax.tree_util as jtu
 
 
 from gymnax_exchange.jaxob.jaxob_config import MarketMaking_EnvironmentConfig
-from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
-set_config(TokenizerConfig(split_vocab=True)) 
+# from lobgen.data_processing.data_config import set_config, TokenizerConfig, get_config
+# set_config(TokenizerConfig(split_vocab=True)) 
 from gymnax_exchange.jaxen.StatesandParams import MMEnvState, MMEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
 from gymnax_exchange.jaxen.StatesandParams import MultiAgentState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
@@ -975,10 +975,13 @@ class MarketMakingAgent():
         # Use the most recent best_ask and best_bid values
         best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+
+        #jax.debug.print("old best ask: {}", best_ask)
+       # jax.debug.print("old best bid: {}", best_bid)
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 1, 2, 3, 0, 2, 1, 4], dtype=jnp.int32)
-        ask_offsets = jnp.array([0, 1, 2, 3, 2, 0, 4, 1], dtype=jnp.int32)
+        bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 5, -1], dtype=jnp.float32)
+        ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, -1, 5], dtype=jnp.float32)
         bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
         ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
        
@@ -993,9 +996,17 @@ class MarketMakingAgent():
         # Calculate prices with bounds checking
         bid_price = best_bid - bid_offset * tick_offset
         ask_price = best_ask + ask_offset * tick_offset
-        bid_price = jnp.maximum(bid_price, 0) 
-        ask_price = jnp.maximum(bid_price+self.cfg.n_ticks_in_book * self.world_config.tick_size, ask_price)
+
+        #jax.debug.print("bid_price before:{}",bid_price)
+        #jax.debug.print("ask_price before:{}",ask_price)
+
+        bid_price = jnp.maximum(bid_price, 0) // self.world_config.tick_size * self.world_config.tick_size
+        bid_price = bid_price.astype(jnp.int32)
+        ask_price = jnp.maximum(bid_price + self.world_config.tick_size, ask_price) // self.world_config.tick_size * self.world_config.tick_size
+        ask_price = ask_price.astype(jnp.int32)
         
+        #jax.debug.print("bid_price after:{}",bid_price)
+        #jax.debug.print("ask_price after:{}",ask_price)
         
         # --------------- Construct messages ---------------#
         # Message components (2 messages: bid then ask)
@@ -1017,6 +1028,10 @@ class MarketMakingAgent():
         # Stack components into message array
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+
+
+        #jax.debug.print("action_msgs:{}",action_msgs)
+
         return action_msgs
     
     def _getActionMsgs_AvSt(self, action: jax.Array, world_state: MultiAgentState, agent_state: MMEnvState, agent_params: MMEnvParams):
@@ -1240,14 +1255,14 @@ class MarketMakingAgent():
         # Define spread multipliers
         # Tight spread = 1.0 * current_spread
         # Wide spread = 2.0 * current_spread
-        spread_multiplier = jnp.where(spread_type == 0, 1.0, 2.0)
+        spread_multiplier = jnp.where(spread_type == 0, 1.0, self.cfg.spread_multiplier)
         new_spread = current_spread * spread_multiplier
         
         # Define skew amounts (in ticks)
         # The skew will shift the mid price by this many ticks
-        skew_ticks = jnp.where(skew_type == 0, -self.cfg.n_ticks_in_book,   # bid skew - shift down by n_ticks_in_book ticks
+        skew_ticks = jnp.where(skew_type == 0, -self.cfg.skew_multiplier,   # bid skew - shift down by skew_multiplier ticks
                             jnp.where(skew_type == 1, 0,  # neutral - no skew
-                            self.cfg.n_ticks_in_book))   # ask skew - shift up by n_ticks_in_book ticks
+                            self.cfg.skew_multiplier))   # ask skew - shift up by skew_multiplier ticks
 
 
         # Calculate skewed mid price
@@ -1879,6 +1894,18 @@ class MarketMakingAgent():
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
 
+        #jax.debug.print("averageMidprice: {}", averageMidprice)
+        #jax.debug.print("buyPnL: {}", buyPnL)
+        #jax.debug.print("sellPnL: {}", sellPnL)
+        #jax.debug.print("agent_buys[:, 0]: {}", agent_buys[:, 0])
+        #jax.debug.print("agent_sells[:, 0]: {}", agent_sells[:, 0])
+        #jax.debug.print("jnp.abs(agent_buys[:, 1]): {}", jnp.abs(agent_buys[:, 1]))
+        #jax.debug.print("(averageMidprice - agent_buys[:, 0]): {}", (averageMidprice - agent_buys[:, 0]))
+        #jax.debug.print("(agent_sells[:, 0] - averageMidprice): {}", (agent_sells[:, 0] - averageMidprice))
+        #jax.debug.print("((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum(): {}", ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum())
+
+
+
         ##aggresive
         aggresive_buyPnL = ((bestasks[-1][0] - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
         aggresive_sellPnL = ((agent_sells[:, 0] - bestbids[-1][0]) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
@@ -1941,6 +1968,11 @@ class MarketMakingAgent():
             reward = reward_portfolio_value/100
         elif self.cfg.reward_space == "pnl":
             reward = PnL
+        elif self.cfg.reward_space == "buy_sell_pnl":
+            reward = buyPnL + sellPnL
+            #jax.debug.print("buyPnL: {}", buyPnL)
+            #jax.debug.print("sellPnL: {}", sellPnL)
+            #jax.debug.print("reward: {}", reward)
         elif self.cfg.reward_space == "complex":
             reward =reward_complex
         elif self.cfg.reward_space == "zero_inv":
@@ -1963,12 +1995,25 @@ class MarketMakingAgent():
             inv_pen = (-1) * jnp.abs(new_inventory)
         elif self.cfg.inv_penalty == "quadratic":
             inv_pen = (-1) * (new_inventory ** 2)
+            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
+        elif self.cfg.inv_penalty == "threshold":
+            #inv_pen = (-1.0) * (jnp.abs(new_inventory) ** 2)
+            inv_pen = jax.lax.cond(
+                jnp.abs(new_inventory) > 30,
+                lambda: (-1.0) * (new_inventory ** 2),
+                lambda: 0.0
+            )    
+            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
+            #jax.debug.print("new_inventory: {}", new_inventory)
         else:
             raise ValueError("Invalid inventory penalty specified.")
-        reward = reward + inv_pen
+        reward = reward + self.cfg.inv_penalty_lambda * inv_pen
 
         # ----------04) normalize the reward ----------#
         
+        #jax.debug.print("overall reward: {}", reward)
 
         return reward, {
             "reward":reward,
@@ -2083,6 +2128,7 @@ class MarketMakingAgent():
                                        lob_state_before=lob_state_before) 
         elif self.cfg.observation_space == "basic":
             return self.observation_fn(world_state=world_state, 
+                                       agent_state=agent_state,
                                        normalize=normalize)
         else:
             raise ValueError("Invalid observation_space specified.")
@@ -2253,11 +2299,41 @@ class MarketMakingAgent():
       
 
 
-    def _get_obs_basic(self, world_state: WorldState) -> chex.Array:
-        """ Return very basic obs space consisting only of the mid price"""
+    def _get_obs_basic(self, world_state: WorldState, agent_state: MMEnvState, normalize: bool, flatten: bool = True) -> chex.Array:
+        """ Return very basic obs space"""
         obs = {
-            "mid_price": world_state.mid_price,
+            #"best_ask_price": world_state.best_asks[-1][0],
+            #"best_bid_price": world_state.best_bids[-1][0],
+            "inventory": agent_state.inventory,
+            #"cash_balance": agent_state.cash_balance,
         }
+
+        #jax.debug.print("best_ask_price: {}", obs["best_ask_price"])
+        #jax.debug.print("best_bid_price: {}", obs["best_bid_price"])
+        #jax.debug.print("inventory: {}", obs["inventory"])
+        #jax.debug.print("cash_balance: {}", obs["cash_balance"])
+
+        means = {
+            #"best_ask_price": 1550000,
+            #"best_bid_price": 1550000,
+            "inventory": 0,
+            #"cash_balance": 0,
+        }
+
+        stds = {
+            #"best_ask_price": 1e3,
+            #"best_bid_price": 1e3,
+            "inventory": 1000,
+            #"cash_balance": 100000,
+        }
+
+        if normalize:
+            obs = self.normalize_obs(obs, means, stds)
+            # jax.debug.print('normalized obs:\n {}', obs)
+
+        if flatten:
+            obs, _ = jax.flatten_util.ravel_pytree(obs) # Important: this can change the order of the values
+        
         return obs
     
 
@@ -2347,7 +2423,7 @@ class MarketMakingAgent():
         """ normalized observation by substracting 'mean' and dividing by 'std'
             (config values don't need to be actual mean and std)
         """
-        obs = jax.tree_map(lambda x, m, s: (x - m) / s, obs, means, stds)
+        obs = jax.tree.map(lambda x, m, s: (x - m) / s, obs, means, stds)
         return obs
 
 
@@ -2358,7 +2434,7 @@ class MarketMakingAgent():
         elif self.cfg.action_space == "fixed_prices":
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
-            return spaces.Discrete(9)
+            return spaces.Discrete(8) #TODO change back to 8
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         else:
@@ -2369,7 +2445,7 @@ class MarketMakingAgent():
     def observation_space(self):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-1000, 1000, (17+3*self.cfg.num_action_messages_by_agent,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
+             return spaces.Box(-1000, 1000, (12,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
                 return spaces.Box(low=-1*self.world_config.maxint, high=self.world_config.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
@@ -2386,7 +2462,7 @@ class MarketMakingAgent():
                 dtype=jnp.int32,
             )
         elif self.cfg.observation_space == "basic":
-            return spaces.Box(low=0, high=1000000, shape=(1,), dtype=jnp.float32)
+            return spaces.Box(low=-10000, high=10000, shape=(1,), dtype=jnp.float32)
         else:
             raise ValueError("Invalid observation_space specified.")
 

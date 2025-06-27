@@ -21,13 +21,8 @@ jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_traceback_in_locations_limit", -1)
 jax.config.update("jax_log_compiles", False)
 
-from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
-from gymnax_exchange.jaxen.from_JAXMARL.multi_agent_env import MultiAgentEnv
 #from gymnax_exchange.jaxen.from_JAXMARL.spaces import Box, MultiDiscrete, Discrete
 
-from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
 
 
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
@@ -59,7 +54,7 @@ def main():
     ]
     n_data_msg_options = [1, 10, 50, 100]
     num_envs_options = [1000, 3000, 5000, 8000, 10000]
-    num_steps_options = [50, 100, 500, 1000, 5000]
+    num_steps_options = [1000, 5000]
 
     results = []
 
