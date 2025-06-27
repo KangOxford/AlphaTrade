@@ -2,6 +2,9 @@
 Based on PureJaxRL Implementation of PPO
 """
 
+import os
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.45" 
+
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -512,11 +515,18 @@ def make_train(config):
                     "clip_frac": loss_info[1][5],
                 })
             metrics['avg_reward'] = [jnp.mean(tr.reward) for tr in traj_batch]
-            
-            
+            metrics["traj_batch"] = traj_batch
+
             rng = update_state[-1]
 
             def callback(metric):
+                action_distribution = {}
+                for i, tr in enumerate(metric["traj_batch"]):
+                    actions = np.array(tr.action).flatten()
+                    unique_actions, counts = np.unique(actions, return_counts=True)
+                    # Add each action count to the dictionary with a unique key
+                    for a, c in zip(unique_actions, counts):
+                        action_distribution[f"action_{i}_{int(a)}"] = int(c)
                 wandb.log(
                     {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
@@ -525,6 +535,7 @@ def make_train(config):
                         * config["NUM_STEPS"],
                         **{f"network_{i}": m for i,m in enumerate(metric["loss"])},
                         **{f"avg_reward_{i}": metric["avg_reward"][i] for i in range(len(metric["avg_reward"]))},
+                        **action_distribution
                     }
                 )
 

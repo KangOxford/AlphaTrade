@@ -975,6 +975,9 @@ class MarketMakingAgent():
         # Use the most recent best_ask and best_bid values
         best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+
+        #jax.debug.print("old best ask: {}", best_ask)
+       # jax.debug.print("old best bid: {}", best_bid)
         
         # Define mappings for each action: [0-7]
         bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 5, -1], dtype=jnp.float32)
@@ -1891,6 +1894,18 @@ class MarketMakingAgent():
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
 
+        #jax.debug.print("averageMidprice: {}", averageMidprice)
+        #jax.debug.print("buyPnL: {}", buyPnL)
+        #jax.debug.print("sellPnL: {}", sellPnL)
+        #jax.debug.print("agent_buys[:, 0]: {}", agent_buys[:, 0])
+        #jax.debug.print("agent_sells[:, 0]: {}", agent_sells[:, 0])
+        #jax.debug.print("jnp.abs(agent_buys[:, 1]): {}", jnp.abs(agent_buys[:, 1]))
+        #jax.debug.print("(averageMidprice - agent_buys[:, 0]): {}", (averageMidprice - agent_buys[:, 0]))
+        #jax.debug.print("(agent_sells[:, 0] - averageMidprice): {}", (agent_sells[:, 0] - averageMidprice))
+        #jax.debug.print("((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum(): {}", ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum())
+
+
+
         ##aggresive
         aggresive_buyPnL = ((bestasks[-1][0] - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
         aggresive_sellPnL = ((agent_sells[:, 0] - bestbids[-1][0]) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
@@ -1953,6 +1968,11 @@ class MarketMakingAgent():
             reward = reward_portfolio_value/100
         elif self.cfg.reward_space == "pnl":
             reward = PnL
+        elif self.cfg.reward_space == "buy_sell_pnl":
+            reward = buyPnL + sellPnL
+            #jax.debug.print("buyPnL: {}", buyPnL)
+            #jax.debug.print("sellPnL: {}", sellPnL)
+            #jax.debug.print("reward: {}", reward)
         elif self.cfg.reward_space == "complex":
             reward =reward_complex
         elif self.cfg.reward_space == "zero_inv":
@@ -1975,12 +1995,25 @@ class MarketMakingAgent():
             inv_pen = (-1) * jnp.abs(new_inventory)
         elif self.cfg.inv_penalty == "quadratic":
             inv_pen = (-1) * (new_inventory ** 2)
+            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
+        elif self.cfg.inv_penalty == "threshold":
+            #inv_pen = (-1.0) * (jnp.abs(new_inventory) ** 2)
+            inv_pen = jax.lax.cond(
+                jnp.abs(new_inventory) > 30,
+                lambda: (-1.0) * (new_inventory ** 2),
+                lambda: 0.0
+            )    
+            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
+            #jax.debug.print("new_inventory: {}", new_inventory)
         else:
             raise ValueError("Invalid inventory penalty specified.")
-        reward = reward + inv_pen
+        reward = reward + self.cfg.inv_penalty_lambda * inv_pen
 
         # ----------04) normalize the reward ----------#
         
+        #jax.debug.print("overall reward: {}", reward)
 
         return reward, {
             "reward":reward,
@@ -2269,10 +2302,10 @@ class MarketMakingAgent():
     def _get_obs_basic(self, world_state: WorldState, agent_state: MMEnvState, normalize: bool, flatten: bool = True) -> chex.Array:
         """ Return very basic obs space"""
         obs = {
-            "best_ask_price": world_state.best_asks[-1][0],
-            "best_bid_price": world_state.best_bids[-1][0],
+            #"best_ask_price": world_state.best_asks[-1][0],
+            #"best_bid_price": world_state.best_bids[-1][0],
             "inventory": agent_state.inventory,
-            "cash_balance": agent_state.cash_balance,
+            #"cash_balance": agent_state.cash_balance,
         }
 
         #jax.debug.print("best_ask_price: {}", obs["best_ask_price"])
@@ -2281,17 +2314,17 @@ class MarketMakingAgent():
         #jax.debug.print("cash_balance: {}", obs["cash_balance"])
 
         means = {
-            "best_ask_price": 1550000,
-            "best_bid_price": 1550000,
+            #"best_ask_price": 1550000,
+            #"best_bid_price": 1550000,
             "inventory": 0,
-            "cash_balance": 0,
+            #"cash_balance": 0,
         }
 
         stds = {
-            "best_ask_price": 1e3,
-            "best_bid_price": 1e3,
-            "inventory": 100,
-            "cash_balance": 100000,
+            #"best_ask_price": 1e3,
+            #"best_bid_price": 1e3,
+            "inventory": 1000,
+            #"cash_balance": 100000,
         }
 
         if normalize:
@@ -2401,7 +2434,7 @@ class MarketMakingAgent():
         elif self.cfg.action_space == "fixed_prices":
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
-            return spaces.Discrete(8)
+            return spaces.Discrete(8) #TODO change back to 8
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         else:
@@ -2429,7 +2462,7 @@ class MarketMakingAgent():
                 dtype=jnp.int32,
             )
         elif self.cfg.observation_space == "basic":
-            return spaces.Box(low=-10000, high=10000, shape=(4,), dtype=jnp.float32)
+            return spaces.Box(low=-10000, high=10000, shape=(1,), dtype=jnp.float32)
         else:
             raise ValueError("Invalid observation_space specified.")
 
