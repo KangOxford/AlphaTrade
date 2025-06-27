@@ -22,7 +22,7 @@ ExecEnvState:   Dataclass to encapsulate the current state of the environment,
             including the raw order book, trades, and time information.
 ExecEnvParams:  Configuration class for environment-specific parameters, 
             such as task details, message and book data, and episode timing.
-ExecutionEnv: Environment class inheriting from BaseLOBEnv, 
+ExecutionAgent: Environment class inheriting from BaseLOBEnv, 
               offering specialized methods for order placement and 
               execution tasks in trading environments. 
 
@@ -142,7 +142,7 @@ import jax.tree_util as jtu
 
 
 
-class ExecutionEnv():
+class ExecutionAgent():
     def __init__(
             self, 
             cfg:Execution_EnvironmentConfig,
@@ -1899,8 +1899,8 @@ if __name__ == "__main__":
     rng = jax.random.PRNGKey(0)
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
-    # env=ExecutionEnv(ATFolder,"sell",1)
-    env = ExecutionEnv(
+    # env=ExecutionAgent(ATFolder,"sell",1)
+    env = ExecutionAgent(
         cfg = env_cfg,
         key = key_reset,
         alphatradePath = config["ATFOLDER"],

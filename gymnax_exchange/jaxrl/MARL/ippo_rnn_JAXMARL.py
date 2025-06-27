@@ -3,7 +3,8 @@ Based on PureJaxRL Implementation of PPO
 """
 
 import os
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.45" 
+
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.4"
 
 import jax
 import jax.numpy as jnp
@@ -20,8 +21,7 @@ from omegaconf import DictConfig, OmegaConf
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
 from gymnax_exchange.jaxen.marl_env import MARLEnv
-from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig
-print("MARLEnv imported")
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig
 
 import wandb
 import functools
@@ -40,18 +40,13 @@ class ScannedRNN(nn.Module):
     def __call__(self, carry, x):
         """Applies the module."""
         rnn_state = carry
-        print("State before",rnn_state)
         ins, resets = x
-        print("Input to RNN",ins)
-        print("Resets",resets)
         rnn_state = jnp.where(
             resets[:, np.newaxis],
             self.initialize_carry(*rnn_state.shape),
             rnn_state,
         )
-        print("State after",rnn_state)
         new_rnn_state, y = nn.GRUCell(features=ins.shape[1])(rnn_state, ins)
-        print("New state",new_rnn_state)
         return new_rnn_state, y
 
     @staticmethod
@@ -69,7 +64,6 @@ class ActorCriticRNN(nn.Module):
     def __call__(self, hidden, x):
         # obs, dones, avail_actions = x
         obs, dones = x
-        print("Observation to network", obs)
 
         embedding = nn.Dense(
             self.config["FC_DIM_SIZE"], kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
@@ -77,17 +71,13 @@ class ActorCriticRNN(nn.Module):
         embedding = nn.relu(embedding)
 
         rnn_in = (embedding, dones)
-        print("hidden state before RNN:", hidden)
-        print("RNN input:", rnn_in)
+
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
-        print("embedding shape after RNN:", embedding.shape)
         actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
         )
-        print("Actor mean pre relu:", actor_mean)
 
         actor_mean = nn.relu(actor_mean)
-        print("Actor mean post relu:", actor_mean)
 
         actor_mean = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
@@ -95,7 +85,6 @@ class ActorCriticRNN(nn.Module):
         # Avail actions are not used in the current implementation, but can be added if needed.
         # unavail_actions = 1 - avail_actions
         action_logits = actor_mean # - (unavail_actions * 1e10)
-        print("Action logits shape:", action_logits)
         pi = distrax.Categorical(logits=action_logits)
 
         critic = nn.Dense(self.config["FC_DIM_SIZE"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
@@ -150,8 +139,9 @@ def make_train(config):
         else config["CLIP_EPS"]
     )
 
-    print("Config:", config)
-
+    print("Config:")
+    for k, v in config.items():
+        print(f"{k}: {v}")
     # env = SMAXLogWrapper(env)
 
     def linear_schedule(count):
@@ -164,7 +154,6 @@ def make_train(config):
 
     def train(rng):
         # INIT NETWORK
-        print(env.action_space)
 
 
         # For a given agent type (instance) we need the following inputs:
@@ -180,7 +169,7 @@ def make_train(config):
         num_agents_of_instance_list = []
         init_dones_agents = []
         for i, instance in enumerate(env.instance_list):
-            print("Action space dimension for network i ",env.action_spaces[i].n)
+            # print("Action space dimension for network i ",env.action_spaces[i].n)
             network = ActorCriticRNN(env.action_spaces[i].n, config=config)
             rng, _rng = jax.random.split(rng)
             init_x = (
@@ -210,7 +199,6 @@ def make_train(config):
                 tx=tx,
             )
             init_hstate = ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"])
-            print(f"Initial hstate {init_hstate}")
 
             # Instead of appending dicts, maintain separate lists for each attribute
             networks.append(network)
@@ -248,14 +236,11 @@ def make_train(config):
                 for i, network in enumerate(networks):
                     obs_i= last_obs[i]
                     obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i])  # Reshape to match the input shape of the network
-                    print(f"The obs given to the network is {obs_i}")
-                    print(f"The hidden state given to the network is {h_states[i]}")
                     ac_in = (
                         obs_i[np.newaxis, :],
                         last_done[i][np.newaxis, :],
                         # avail_actions,
                     )
-                    print(f"The information given to the network is {ac_in}")
                     hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
                     values.append(value)
                     action = pi.sample(seed=_rng)
@@ -266,7 +251,6 @@ def make_train(config):
                     #     action, env.agents, config["NUM_ENVS"], env.num_agents
                     # )
                     # env_act = {k: v.squeeze() for k, v in env_act.items()}
-                print("Actions taken by the agents:", actions)
                 # STEP ENV
                 rng, _rng = jax.random.split(rng)
                 rng_step = jax.random.split(_rng, config["NUM_ENVS"])
@@ -275,7 +259,6 @@ def make_train(config):
                     env.step, in_axes=(0, 0, 0,None)
                 )(rng_step, env_state, actions,params)
 
-                print("Done shape",done)
                 # info = jax.tree.map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
                 
                 done_batch=done
@@ -286,13 +269,11 @@ def make_train(config):
                     action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i])
                     value = values[i]
                     log_prob = log_probs[i]
-                    print(f"info returned {i}:", info)
 
                     info_i={"world":info["world"],"agent":jax.tree.map(lambda x: x.reshape(config["NUM_ACTORS_PERTYPE"][i]),info["agents"][i])}
                     # print(f"info for agenttype {i}:", info_i)
 
 
-                    print("REWARD",reward[i])
                     transitions.append(Transition(
                         jnp.tile(done["__all__"], config["NUM_AGENTS_PERTYPE"][i]),
                         last_done[i],
@@ -304,13 +285,11 @@ def make_train(config):
                         info_i,
                         # avail_actions,
                     ))
-                    print("Transition", transitions[-1])
                 runner_state = (train_states, env_state, obsv, done_batch['agents'], hstates, rng)
                 return runner_state, transitions
 
 
             initial_hstates = runner_state[-2]
-            print("DONES IN",runner_state[3])
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state, None, config["NUM_STEPS"]
             )
@@ -490,7 +469,6 @@ def make_train(config):
                 loss_infos.append(loss_info)
 
 
-            print("Trajectories:", traj_batch)
 
             metrics= {}
             metrics['agents'] = [jax.tree.map(
@@ -499,7 +477,6 @@ def make_train(config):
                 ),
                 trjbtch.info['agent']) for i, trjbtch in enumerate(traj_batch)]
             metrics['world'] = [traj_batch.info['world'] for i, traj_batch in enumerate(traj_batch)]
-            print("Metrics are \n", metrics)
             metrics["loss"]=[]
             for loss_info in loss_infos:
                 ratio_0 = loss_info[1][3].at[0,0].get().mean()

@@ -18,11 +18,10 @@ from gymnax_exchange.utils import utils as util
 jax.config.update('jax_disable_jit', False)
 jax.config.update("jax_traceback_in_locations_limit", -1)
 jax.config.update("jax_log_compiles", False)
-
 jax.config.update("jax_enable_x64", False)
 
 from gymnax_exchange.jaxen.mm_env import MarketMakingAgent
-from gymnax_exchange.jaxen.exec_env import ExecutionEnv
+from gymnax_exchange.jaxen.exec_env import ExecutionAgent
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.jaxen.from_JAXMARL.multi_agent_env import MultiAgentEnv
 #from gymnax_exchange.jaxen.from_JAXMARL.spaces import Box, MultiDiscrete, Discrete
@@ -47,25 +46,21 @@ class MARLEnv(MultiAgentEnv):
                  key,
                  multi_agent_config: MultiAgentConfig,
                  ):
-        # Initialize the base environment
-        #jax.debug.print("Initializing MARLEnv: type(alphatradePath) = {}, alphatradePath = {}", type(alphatradePath), alphatradePath)
-
-        # Create config first
+        # Copy config first
         self.multi_agent_config = multi_agent_config
-
+        # Number of agents of all types.
         self.num_agents = sum(self.multi_agent_config.number_of_agents_per_type)
 
-
-        
+        # FIXME: The MultiAgentEnv still expects the agents to be organised in a dict. We arrange them as a list of jaxarrays.
         super().__init__(num_agents=self.num_agents)
 
-
-       # Pass config to base class
+       # Pass config to base class which does all of the work related to jaxlob.
         self.base_env = BaseLOBEnv(cfg=self.multi_agent_config.world_config, key=key)
 
 
         # Split the key for each sub-environments:
-        # TODO should we give each sub-env a different key?         for i in range(len(self.world_config.list_of_agents_configs)):
+        # TODO should we give each sub-env a different key?         
+        # for i in range(len(self.world_config.list_of_agents_configs)):
             #key_mm, key_exe = jax.random.split(key, 2)
             #mm_config = MarketMaking_EnvironmentConfig()
 
@@ -76,7 +71,7 @@ class MARLEnv(MultiAgentEnv):
             if isinstance(agent_config, MarketMaking_EnvironmentConfig):
                 self.instance_list.append(MarketMakingAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             elif isinstance(agent_config, Execution_EnvironmentConfig):
-                self.instance_list.append(ExecutionEnv(cfg=agent_config, world_config=self.multi_agent_config.world_config))
+                self.instance_list.append(ExecutionAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
 
@@ -93,13 +88,6 @@ class MARLEnv(MultiAgentEnv):
 
         self.num_msgs_per_step = int(num_msg_per_step)
         self.num_action_msgs_per_step_by_all_agents = int(num_action_msg_per_step_by_all_agents)
-
-        # print(f"num_msgs_per_step: {self.num_msgs_per_step}")
-        # print(f"num_action_msgs_per_step_by_all_agents: {self.num_action_msgs_per_step_by_all_agents}")
-
-
-        # print(self.instance_list)
-        # print("MARL Environment initialized")
 
     @property
     def default_params(self) -> MultiAgentParams:
@@ -157,7 +145,7 @@ class MARLEnv(MultiAgentEnv):
         bestbids = jnp.tile(best_bid[None, :], (self.num_msgs_per_step, 1))
         bestasks = jnp.tile(best_ask[None, :], (self.num_msgs_per_step, 1))#
         mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
-        # print(f"mid_price: {mid_price}")
+        # print(f"mid_price: {mid_price}")  
 
         # Create the world state
         world_state = WorldState(
@@ -167,8 +155,8 @@ class MARLEnv(MultiAgentEnv):
             step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
-            mid_price=mid_price,      
-            delta_time=0.0,     
+            mid_price=mid_price,
+            delta_time=0.0,
         )
 
 
@@ -368,7 +356,7 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
+        #TODO: Could use some constants for indexing here, rather than magic numbers
         final_time = combined_msgs[-1, -2:]
         # print(f"final time: {final_time}")
 
@@ -420,7 +408,7 @@ class MARLEnv(MultiAgentEnv):
         old_time=state.world_state.time
         old_mid_price=state.world_state.mid_price
 
-
+        #TODO: More magic numbers here, should be replaced with constants
         # Update other parts of the world state
         new_step_counter = state.world_state.step_counter + 1
         new_mid_price = (new_bestbids[-1, 0] + new_bestasks[-1, 0]) / 2
@@ -599,7 +587,7 @@ class MARLEnv(MultiAgentEnv):
             dones_temp = new_agent_dones_list[agent_type_index]
             #jax.debug.print("dones_temp: {}", dones_temp)
             #jax.debug.print("__all__ done: {}", dones)
-            mask = jnp.logical_and(dones_temp, jnp.logical_not(dones["__all__"])) #only reset obs if agent is done but overall env is not
+            mask = jnp.logical_and(dones_temp, jnp.logical_not(dones["__all__"])) #only set obs to 0 if agent is done but overall env is not
             #jax.debug.print("mask: {}", mask)
             obs = jnp.where(
                 mask[..., None],  # expand dims for broadcasting

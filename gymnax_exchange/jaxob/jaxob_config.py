@@ -4,7 +4,7 @@ import jax
 import os
 from typing import Tuple,  Literal,Union,List
 
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 
 @dataclass(frozen=True)
 class JAXLOB_Configuration:
@@ -146,12 +146,16 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
 class MultiAgentConfig():
     world_config = World_EnvironmentConfig()
 
-    list_of_agents_configs = [
-        MarketMaking_EnvironmentConfig(),
-        Execution_EnvironmentConfig(),
-        #MarketMaking_EnvironmentConfig(),
-    ]
-    number_of_agents_per_type = [2,2]
+    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig()])
+    number_of_agents_per_type: list = field(default_factory=lambda: [2])
+
+
+    # list_of_agents_configs = [
+    #     MarketMaking_EnvironmentConfig(),
+    #     #Execution_EnvironmentConfig(),
+    #     #MarketMaking_EnvironmentConfig(),
+    # ]
+    # number_of_agents_per_type = [2]
 
 
     
