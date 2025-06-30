@@ -1,4 +1,3 @@
-
 import os, sys, time, dataclasses
 from typing import Tuple, Optional, Dict
 import sys
@@ -48,28 +47,43 @@ def main():
 
 
     agent_type_options = [
-        #[1, 1],
-        #[5, 5],
+        [1, 1],
+        [5, 5],
         [10, 10],
     ]
-    n_data_msg_options = [1, 10, 50, 100]
-    num_envs_options = [1000, 3000, 5000, 8000, 10000]
-    num_steps_options = [1000, 5000]
+    n_data_msg_options = [100, 1]
+    #num_envs_options = [1000, 5000, 8000, 10000]
+   # num_steps_options = [1000, 5000]
+
+    num_steps_num_envs_options = [
+        [1000, 1000],
+        [1000, 5000],
+        [1000, 6000],
+        [3000, 3000],
+        [2000,5000],
+        [3000, 10000],
+        [2000, 15000],
+        [3000, 50000]
+    ]
+
+    save_obs_rewards = False  # Set to False to not save full trajectory
 
     results = []
 
     with open(output_file_path, "w") as f: 
         for number_of_agents_per_type in agent_type_options:
             for n_data_msg_per_step in n_data_msg_options:
-                for num_envs in num_envs_options:
-                    for num_steps in num_steps_options:
-                        
+                for num_step_num_env_option in num_steps_num_envs_options:
                             # print(f"Running with {num_envs} envs and {num_steps} steps")
 
                             # print("\n" + "="*60)
                             # print("Starting VMAP timing test loop for MARL")
                             # print("="*60)
                             # Create a new world config for this run
+
+                            num_steps = num_step_num_env_option[0]
+                            num_envs = num_step_num_env_option[1]
+
                             world_config = World_EnvironmentConfig(
                                 n_data_msg_per_step=n_data_msg_per_step,
                             )
@@ -119,11 +133,11 @@ def main():
                             master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
                             batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
-                            reset_start = time.time()
+                            reset_start = time.perf_counter_ns()
                             obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
                             # force execution to finish before timing
                             jax.block_until_ready(state)
-                            reset_time  = time.time() - reset_start
+                            reset_time  = time.perf_counter_ns() - reset_start
 
                             # -------------------------------------------------
                             # 2) Helper: one step for a single env
@@ -163,13 +177,29 @@ def main():
                                 )
                                 return (state_batch, rng), (obs, rew, done)
 
+
                             rollout_start = time.time()
-                            (final_state, _), (traj_obs, traj_rew, traj_done) = jax.lax.scan(
-                                scan_body,
-                                (state, master_key),
-                                None,
-                                length=NUM_STEPS,
-                            )
+                            if save_obs_rewards:
+                                (final_state, _), (traj_obs, traj_rew, traj_done) = jax.lax.scan(
+                                    scan_body,
+                                    (state, master_key),
+                                    None,
+                                    length=NUM_STEPS,
+                                )
+                            else:
+                                def scan_body_nosave(carry, _):
+                                    state_batch, rng = carry
+                                    rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
+                                    _, state_batch, _, _, _ = batched_step(
+                                        state_batch, jnp.stack(step_keys)
+                                    )
+                                    return (state_batch, rng), None
+                                (final_state, _), _ = jax.lax.scan(
+                                    scan_body_nosave,
+                                    (state, master_key),
+                                    None,
+                                    length=NUM_STEPS,
+                                )
                             # ensure all work is finished
                             jax.block_until_ready(final_state)
                             rollout_time = time.time() - rollout_start
