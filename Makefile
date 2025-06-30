@@ -1,7 +1,7 @@
 NVCC_RESULT := $(shell which nvcc 2> NULL; rm NULL)
 NVCC_TEST := $(notdir $(NVCC_RESULT))
 ifeq ($(NVCC_TEST),nvcc)
-GPUS=--gpus '"device=7"'
+GPUS=--gpus '"device=6"'
 else
 GPUS=
 endif
@@ -16,7 +16,7 @@ DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data
 endif
-BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8091:80 -p 8094:6006 --user $(id -r):$(id -g)
+BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8082:80 -p 8085:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS)
 
 DOCKER_IMAGE_NAME = jaxmarl

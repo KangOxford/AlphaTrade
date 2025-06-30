@@ -65,6 +65,16 @@ report*
 .local/
 .local/**
 
+.vscode-server/**
+.outputs/**
+.mycache/**
+.ssh/**
+.chache/**
+.outputs/**
+/training_oneDay/
+/training_oneDay/**
+/outputs/**
+/.dotnet/**
 .dotnet/
 .dotnet/**
 .vscode/

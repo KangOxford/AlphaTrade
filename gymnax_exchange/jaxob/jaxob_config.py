@@ -25,9 +25,12 @@ class JAXLOB_Configuration:
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
-    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "fixed_quants"
-    observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = "basic"
-    #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = env_cst.end_fn
+    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "spread_skew"
+    observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = "engineered"
+    #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
+    # Values for spread skew action space
+    spread_multiplier: float = 5.0 #50.0
+    skew_multiplier: float = 10.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -40,16 +43,15 @@ class MarketMaking_EnvironmentConfig():
     seconds_before_episode_end:int=5
    
     # Reward
-    inv_penalty: Literal["none", "linear", "quadratic"] = env_cst.inv_penalty
-    reward_space: Literal["zero_inv", "pnl", "complex", "portfolio_value", "portfolio_value_scaled","spooner","spooner_damped","spooner_scaled","delta_netWorth"] = "zero_inv"
-    reference_price_portfolio_value: Literal["mid", "best_bid_ask", "near_touch"] =env_cst.reference_price_portfolio_value
+    inv_penalty: Literal["none", "linear", "quadratic", "threshold"] = "none"
+    reward_space: Literal["zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled","spooner","spooner_damped","spooner_scaled","delta_netWorth"] = "buy_sell_pnl"
+    reference_price_portfolio_value: Literal["mid", "best_bid_ask", "near_touch"] = "best_bid_ask"
+    inv_penalty_lambda: float = 0.001
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0
     unrealizedPnL_lambda: float = 0.1
     asymmetrically_dampened_lambda: float = 0.8
-    # Values for spread skew reward function
-    spread_multiplier: float = 2.0 #50.0
-    skew_multiplier: float = 2.0 #100.0
+
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -85,10 +87,10 @@ class Execution_EnvironmentConfig():
     reward_space: Literal["normal","finish_fast","simplest_case"] = "finish_fast"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=100
-    n_actions:int=5
+    n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
-    num_messages_by_agent:int=8
-    num_action_messages_by_agent:int=4 #It seems this does adjust based on the action space. 
+    num_messages_by_agent:int=8 # will be set automatically in the post init function
+    num_action_messages_by_agent:int=4 # will be set automatically in the post init function
     reward_lambda:float=1.0
     time_delay_obs_act:int=0
     debug_mode:bool=False
@@ -125,7 +127,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 360 # counted by seconds, 1800s=0.5h
+    episode_time = 200 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
