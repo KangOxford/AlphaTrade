@@ -20,6 +20,7 @@ class JAXLOB_Configuration:
     start_resolution: int = env_cst.start_resolution
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
+    timePeriod: str = "2017Jan_oneday" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)

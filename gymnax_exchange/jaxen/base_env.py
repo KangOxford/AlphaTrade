@@ -68,7 +68,7 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
+from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample,loadNoMessages
 #from gymnax_exchange.jaxlobster.gen_loader import GenLoader
 from gymnax_exchange.utils.utils import *
 import pickle
@@ -157,16 +157,17 @@ class BaseLOBEnv(environment.Environment):
         self.tick_size=cfg.tick_size
         self.start_resolution = cfg.start_resolution  # Use value from config
         self.cfg = cfg
+
         loader=LoadLOBSTER_resample(self.cfg.dataPath,
-                                    self.book_depth,
-                                    self.ep_type,
-                                    window_length=self.episode_time,
-                                    n_data_msg_per_step=self.n_data_msg_per_step,
-                                    window_resolution=self.start_resolution,
-                                    day_start=self.day_start,
-                                    day_end=self.day_end) 
+                                self.book_depth,
+                                self.ep_type,
+                                window_length=self.episode_time,
+                                n_data_msg_per_step=self.n_data_msg_per_step,
+                                window_resolution=self.start_resolution,
+                                day_start=self.day_start,
+                                day_end=self.day_end,
+                                time_period=self.cfg.timePeriod) 
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
-        #jax.debug.print("starts:{}",starts)
         self.max_messages_in_episode_arr = max_messages_arr
         self.messages=msgs #Is different to trad. base: all msgs concat. TODO this should not be saved here
         self.books=books
