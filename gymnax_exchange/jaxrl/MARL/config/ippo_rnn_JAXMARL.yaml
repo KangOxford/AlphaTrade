@@ -1,29 +1,33 @@
-"LR": 0.004
+# Those hparams which are in a list 
+# apply differently to each ntwrk
+# Should match with NUM_AGENTS_PER_TYPE
+
+"LR": [0.00005]
 "NUM_ENVS": 128
 "NUM_STEPS": 128
 "GRU_HIDDEN_DIM": 128
 "FC_DIM_SIZE": 128
-"TOTAL_TIMESTEPS": 1e7
+"TOTAL_TIMESTEPS": 5e6
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 4
-"GAMMA": 0.99
-"GAE_LAMBDA": 0.95
-"CLIP_EPS": 0.05
-"SCALE_CLIP_EPS": False
-"ENT_COEF": 0.001
-"VF_COEF": 0.00000001
-"MAX_GRAD_NORM": 0.25
-"ACTIVATION": "relu"
+"GAMMA": [0.999]
+"GAE_LAMBDA": [0.99]
+"CLIP_EPS": 0.2
+"SCALE_CLIP_EPS": [False]
+"ENT_COEF": [0.001]
+"VF_COEF": [0.000000001]
+"MAX_GRAD_NORM": [0.5]
+"ACTIVATION": ["relu"]
 "ENV_NAME": "JAXMARL-Lob-v0"
-# "NUM_AGENTS_PER_TYPE": [2,2]
+"NUM_AGENTS_PER_TYPE": [1]
 "SEED": 0
 # "ENV_KWARGS": 
-#   "see_enemy_actions": True
-#   "walls_cause_death": True
-#   "attack_mode": "closest"
-"ANNEAL_LR": True
+#     "LIST_OF_AGENTS_CONFIGS: []
+#     "NUM_AGENTS_PER_TYPE": True
+# #   "attack_mode": "closest"
+"ANNEAL_LR": [True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "JAXMARL for LOB"
-"WANDB_MODE" : "online"
+"PROJECT": "Testing Simple EXEC"
+"WANDB_MODE" : "disabled" 
