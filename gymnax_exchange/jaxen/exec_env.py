@@ -98,7 +98,6 @@ from gymnax.environments import environment, spaces
 sys.path.append(os.path.abspath('/home/duser/AlphaTrade'))
 sys.path.append('.')
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 # ---------------------------------------------- 
 import chex
 from jax import config
@@ -131,10 +130,10 @@ from gymnax_exchange.jaxob import JaxOrderBookArrays as job
 from gymnax_exchange.jaxen.base_env import BaseLOBEnv
 from gymnax_exchange.utils import utils
 import dataclasses
-from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig
-from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, LoadedEnvParams, LoadedEnvState, WorldState
+from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig,World_EnvironmentConfig
+from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, WorldState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
-from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, MultiAgentParams, LoadedEnvParams, LoadedEnvState, WorldState
+from gymnax_exchange.jaxen.StatesandParams import MultiAgentState, WorldState
 
 
 #from gymnax_exchange.jaxen.from_JAXMARL import spaces
@@ -406,7 +405,7 @@ class ExecutionAgent():
             "is_sell_task": state.is_sell_task,
             }
 
-        return self._get_obs(state, params), state, reward, done, info
+        return self.get_observation(state, params), state, reward, done, info
     
 
 
@@ -422,7 +421,7 @@ class ExecutionAgent():
 
 
         if self.cfg.task == 'random':
-            is_sell_task = jax.random.randint(key_, minval=0, maxval=2, shape=())
+            is_sell_task = jax.random.randint(key, minval=0, maxval=2, shape=())
         else:
             is_sell_task = 0 if self.cfg.task == 'buy' else 1
         n_trades=self.cfg.num_action_messages_by_agent
@@ -1178,7 +1177,7 @@ class ExecutionAgent():
         elif self.cfg.action_space == "fixed_quants_complex":
             return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
         else:
-            raise ValueError("Invalid action sspace specified.")    
+            raise ValueError("Invalid action space specified.")    
     
 
     def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize):

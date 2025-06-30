@@ -68,7 +68,7 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample,loadNoMessages
+from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
 #from gymnax_exchange.jaxlobster.gen_loader import GenLoader
 from gymnax_exchange.utils.utils import *
 import pickle
