@@ -387,9 +387,10 @@ class LoadLOBSTER_resample():
         obs=jnp.concatenate(obs,0)
 
         max_msgs_in_windows_arr=ends-starts
-        (msgs,
-         max_msgs_in_windows_arr)=self._pad_last_ep(msgs,
-                                                       max_msgs_in_windows_arr)
+        if self.n_data_msg_per_step !=0:
+            (msgs,
+            max_msgs_in_windows_arr)=self._pad_last_ep(msgs,
+                                                        max_msgs_in_windows_arr)
         return msgs,starts,ends,obs,max_msgs_in_windows_arr
     
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
@@ -455,9 +456,14 @@ class LoadLOBSTER_resample():
                     to slice the data array. 
         """
         if type == "fixed_steps":
-            end_index = ((end-start)
-                         // self.n_data_msg_per_step*self.n_data_msg_per_step+start+1)
-            indices = list(range(start, end_index, self.n_data_msg_per_step*interval))
+            if self.n_data_msg_per_step == 0:
+                raise ValueError("n_data_msg_per_step cannot be 0 if using 'fixed_steps' as an episode end condition.")
+            elif self.n_data_msg_per_step <0:
+                raise ValueError("Negative messages per step makes no sense...")
+            else:
+                end_index = ((end-start)
+                            // self.n_data_msg_per_step*self.n_data_msg_per_step+start+1)
+                indices = list(range(start, end_index, self.n_data_msg_per_step*interval))
         elif type == "fixed_time":
             indices = list(range(start, end+1, interval))
         else: raise NotImplementedError('Use either "fixed_time" or' 

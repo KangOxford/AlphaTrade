@@ -17,7 +17,7 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = env_cst.start_resolution
+    start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     timePeriod: str = "2017Jan_oneday" # Needs to be the appropriate directory name. 
