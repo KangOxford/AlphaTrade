@@ -121,7 +121,12 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
-    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig())
+    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(
+        list_of_agents_configs=[Execution_EnvironmentConfig(action_space="simplest_case",
+                                                            observation_space="simplest_case",
+                                                            reward_space="simplest_case",
+                                                            task="random")],
+        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]),)
     config["NUM_AGENTS_PERTYPE"]=env.multi_agent_config.number_of_agents_per_type
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PERTYPE"]]  # Should be a list.
@@ -497,6 +502,7 @@ def make_train(config):
             rng = update_state[-1]
 
             def callback(metric):
+                print("Update step:", metric["update_steps"])
                 wandb.log(
                     {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
