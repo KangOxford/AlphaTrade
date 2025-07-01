@@ -41,6 +41,18 @@ class OrderSideFeat(Enum):
     SEC=4 #Seconds
     NSEC=5 #Nanoseconds 
 
+class TradesFeat(Enum):
+    P=0 #Price
+    Q=1 #Quantity
+    PASS_OID=2 #Order ID
+    AGRS_OID=3 # Trade ID
+    SEC=4 #Seconds
+    NSEC=5 #Nanoseconds 
+    PASS_TID=6 #Order ID
+    AGRS_TID=7 # Trade ID
+
+
+
 class BidAskSide(Enum):
     BID=1
     ASK=-1

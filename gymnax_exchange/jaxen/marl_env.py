@@ -249,6 +249,8 @@ class MARLEnv(MultiAgentEnv):
             agent_params = params.agent_params[agent_type_index]
             agent_actions = actions[agent_type_index]
             vmapped_function = vmap(self.instance_list[agent_type_index]._get_messages, in_axes=(0,None,0,0), out_axes = (0,0))
+            if self.multi_agent_config.number_of_agents_per_type[agent_type_index]==1:
+                agent_actions=jnp.expand_dims(agent_actions,axis=0)
             action_msgs, cancel_msgs = vmapped_function(agent_actions, state.world_state, agent_state, agent_params)
             all_action_msgs_list.append(action_msgs)
             all_cancel_msgs_list.append(cancel_msgs)

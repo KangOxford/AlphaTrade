@@ -121,7 +121,12 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
-    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig())
+    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(
+        list_of_agents_configs=[Execution_EnvironmentConfig(action_space="simplest_case",
+                                                            observation_space="simplest_case",
+                                                            reward_space="simplest_case",
+                                                            task="random")],
+        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]),)
     config["NUM_AGENTS_PERTYPE"]=env.multi_agent_config.number_of_agents_per_type
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PERTYPE"]]  # Should be a list.
@@ -144,13 +149,13 @@ def make_train(config):
         print(f"{k}: {v}")
     # env = SMAXLogWrapper(env)
 
-    def linear_schedule(count):
+    def linear_schedule(lr,count):
         frac = (
             1.0
             - (count // (config["NUM_MINIBATCHES"] * config["UPDATE_EPOCHS"]))
             / config["NUM_UPDATES"]
         )
-        return config["LR"] * frac
+        return lr * frac
 
     def train(rng):
         # INIT NETWORK
@@ -183,15 +188,15 @@ def make_train(config):
             # FIXME: very unsure about this, why is it NUM_ENVS and not NUM_ACTORS?
             init_hstate = ScannedRNN.initialize_carry(config["NUM_ENVS"], config["GRU_HIDDEN_DIM"])
             network_params = network.init(_rng, init_hstate, init_x)
-            if config["ANNEAL_LR"]:
+            if config["ANNEAL_LR"][i]:
                 tx = optax.chain(
-                    optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                    optax.adam(learning_rate=linear_schedule, eps=1e-5),
+                    optax.clip_by_global_norm(config["MAX_GRAD_NORM"][i]),
+                    optax.adam(learning_rate=functools.partial(linear_schedule,config["LR"][i]), eps=1e-5),
                 )
             else:
                 tx = optax.chain(
-                    optax.clip_by_global_norm(config["MAX_GRAD_NORM"]),
-                    optax.adam(config["LR"], eps=1e-5),
+                    optax.clip_by_global_norm(config["MAX_GRAD_NORM"][i]),
+                    optax.adam(config["LR"][i], eps=1e-5),
                 )
             train_state = TrainState.create(
                 apply_fn=network.apply,
@@ -299,7 +304,7 @@ def make_train(config):
             # CALCULATE ADVANTAGE
             train_states, env_state, last_obs, last_dones, hstates_new, rng = runner_state
 
-            def _calculate_gae(traj_batch, last_val):
+            def _calculate_gae(gamma,gae_lambda,traj_batch, last_val):
                     def _get_advantages(gae_and_next_value, transition):
                         gae, next_value = gae_and_next_value
                         done, value, reward = (
@@ -307,10 +312,10 @@ def make_train(config):
                             transition.value,
                             transition.reward,
                         )
-                        delta = reward + config["GAMMA"] * next_value * (1 - done) - value
+                        delta = reward + gamma * next_value * (1 - done) - value
                         gae = (
                             delta
-                            + config["GAMMA"] * config["GAE_LAMBDA"] * (1 - done) * gae
+                            + gamma * gae_lambda * (1 - done) * gae
                         )
                         return (gae, value), gae
 
@@ -338,7 +343,7 @@ def make_train(config):
                 _, _, last_val = network.apply(train_states[i].params, hstates_new[i], ac_in)
                 last_val = last_val.squeeze()
 
-                advantages_i, targets_i = _calculate_gae(traj_batch[i], last_val)
+                advantages_i, targets_i = _calculate_gae(config["GAMMA"][i],config["GAE_LAMBDA"][i],traj_batch[i], last_val)
                 advantages.append(advantages_i)
                 targets.append(targets_i)
 
@@ -391,8 +396,8 @@ def make_train(config):
 
                             total_loss = (
                                 loss_actor
-                                + config["VF_COEF"] * value_loss
-                                - config["ENT_COEF"] * entropy
+                                + config["VF_COEF"][i] * value_loss
+                                - config["ENT_COEF"][i] * entropy
                             )
                             return total_loss, (value_loss, loss_actor, entropy, ratio, approx_kl, clip_frac)
 
@@ -497,6 +502,7 @@ def make_train(config):
             rng = update_state[-1]
 
             def callback(metric):
+                print("Update step:", metric["update_steps"])
                 action_distribution = {}
                 for i, tr in enumerate(metric["traj_batch"]):
                     actions = np.array(tr.action).flatten()

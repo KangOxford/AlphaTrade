@@ -17,9 +17,10 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = env_cst.start_resolution
+    start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
+    timePeriod: str = "2017Jan_oneday" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)
@@ -81,9 +82,9 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: Literal["random", "buy", "sell"] = "buy"
     action_type: Literal["delta", "pure"] = "pure"
-    action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex"] = "fixed_quants"
-    observation_space: Literal["engineered", "basic"] = "engineered"
-    reward_space: Literal["normal","finish_fast"] = "normal" # by default its normal
+    action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex","simplest_case"]="fixed_quants"
+    observation_space: Literal["engineered", "basic","simplest_case"] = "basic"
+    reward_space: Literal["normal","finish_fast","simplest_case"] = "finish_fast"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=100
     n_actions:int=5 # will be set automatically in the post init function
@@ -112,6 +113,10 @@ class Execution_EnvironmentConfig():
             object.__setattr__(self, 'n_actions', 13)
             object.__setattr__(self, 'num_messages_by_agent', 8)
             object.__setattr__(self, 'num_action_messages_by_agent', 4)
+        elif self.action_space == "simplest_case":
+            object.__setattr__(self, 'n_actions', 3)
+            object.__setattr__(self, 'num_messages_by_agent', 4) # Includes cancel messages
+            object.__setattr__(self, 'num_action_messages_by_agent', 2)
 
 
 
