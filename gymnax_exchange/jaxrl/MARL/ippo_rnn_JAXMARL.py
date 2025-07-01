@@ -122,9 +122,9 @@ def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
     env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(
-        list_of_agents_configs=[Execution_EnvironmentConfig(action_space="simplest_case",
-                                                            observation_space="simplest_case",
-                                                            reward_space="simplest_case",
+        list_of_agents_configs=[Execution_EnvironmentConfig(action_space="fixed_quants",
+                                                            observation_space="engineered",
+                                                            reward_space="normal",
                                                             task="random")],
         number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]),)
     config["NUM_AGENTS_PERTYPE"]=env.multi_agent_config.number_of_agents_per_type
@@ -548,7 +548,7 @@ def make_train(config):
     return train
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL")
+@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_fine_sweep")
 def main(config):
     config = OmegaConf.to_container(config)
     wandb.init(

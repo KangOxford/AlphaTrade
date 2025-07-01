@@ -80,18 +80,18 @@ class MarketMaking_EnvironmentConfig():
 @dataclass(frozen=True)
 class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
-    task: Literal["random", "buy", "sell"] = "buy"
+    task: Literal["random", "buy", "sell"] = "random"
     action_type: Literal["delta", "pure"] = "pure"
     action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex","simplest_case"]="fixed_quants"
     observation_space: Literal["engineered", "basic","simplest_case"] = "basic"
-    reward_space: Literal["normal","finish_fast","simplest_case"] = "finish_fast"
+    reward_space: Literal["normal","finish_fast","simplest_case"] = "normal"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=100
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
-    reward_lambda:float=1.0
+    reward_lambda:float=0
     time_delay_obs_act:int=0
     debug_mode:bool=False
     normalize:bool=True
@@ -127,7 +127,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 200 # counted by seconds, 1800s=0.5h
+    episode_time = 60*5 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
