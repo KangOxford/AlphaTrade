@@ -139,7 +139,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     debug_mode:bool=True
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
-    shuffle_action_messages:bool=False
+    shuffle_action_messages:bool=True
 
 
 @dataclass(frozen=True)
@@ -147,7 +147,7 @@ class MultiAgentConfig():
     world_config = World_EnvironmentConfig()
 
     list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2])
+    number_of_agents_per_type: list = field(default_factory=lambda: [1])
 
 
     # list_of_agents_configs = [
