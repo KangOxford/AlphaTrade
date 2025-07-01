@@ -121,12 +121,7 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
-    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(
-        list_of_agents_configs=[Execution_EnvironmentConfig(action_space="simplest_case",
-                                                            observation_space="simplest_case",
-                                                            reward_space="simplest_case",
-                                                            task="random")],
-        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]),)
+    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig())
     config["NUM_AGENTS_PERTYPE"]=env.multi_agent_config.number_of_agents_per_type
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PERTYPE"]]  # Should be a list.
@@ -495,6 +490,8 @@ def make_train(config):
                     "ratio_0": ratio_0,
                     "approx_kl": loss_info[1][4],
                     "clip_frac": loss_info[1][5],
+                    "weighted_entropy_loss": loss_info[1][2]*config["ENT_COEF"][i],
+                    "weighted_value_loss": loss_info[1][0]*config["VF_COEF"][i],
                 })
             metrics['avg_reward'] = [jnp.mean(tr.reward) for tr in traj_batch]
             metrics["traj_batch"] = traj_batch
