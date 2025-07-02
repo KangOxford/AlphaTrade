@@ -63,7 +63,6 @@ def main():
         [2000,5000],
         [3000, 10000],
         [2000, 15000],
-        [3000, 50000]
     ]
 
     save_obs_rewards = False  # Set to False to not save full trajectory
@@ -133,11 +132,11 @@ def main():
                             master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
                             batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
-                            reset_start = time.perf_counter_ns()
+                            reset_start = time.time()
                             obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
                             # force execution to finish before timing
                             jax.block_until_ready(state)
-                            reset_time  = time.perf_counter_ns() - reset_start
+                            reset_time  = time.time() - reset_start
 
                             # -------------------------------------------------
                             # 2) Helper: one step for a single env

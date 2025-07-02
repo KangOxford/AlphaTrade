@@ -790,7 +790,7 @@ if __name__ == "__main__":
         obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
         #DEBUG PRINTS
-        print("obs main function: ", obs)
+        #print("obs main function: ", obs)
 
 
         

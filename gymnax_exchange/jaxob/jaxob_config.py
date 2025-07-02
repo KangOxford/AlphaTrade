@@ -23,7 +23,7 @@ class JAXLOB_Configuration:
     start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
-    timePeriod: str = "2017Jan" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2017_onequarter" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class MarketMaking_EnvironmentConfig():
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 5.0 #50.0
-    skew_multiplier: float = 10.0 #100.0
+    skew_multiplier: float = 20.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -150,7 +150,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     debug_mode:bool=True
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
-    shuffle_action_messages:bool=False
+    shuffle_action_messages:bool=True
     use_pickles_for_init:bool= False
 
 
@@ -158,11 +158,12 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
 class MultiAgentConfig():
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    number_of_agents_per_type: List = field(default_factory=lambda: [2])
+    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
+    number_of_agents_per_type: list = field(default_factory=lambda: [2,2]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [
-    list_of_agents_configs: List =field(default_factory=lambda :[Execution_EnvironmentConfig()])
+    # list_of_agents_configs: List =field(default_factory=lambda :[Execution_EnvironmentConfig()])
     #     MarketMaking_EnvironmentConfig(),
     #     #Execution_EnvironmentConfig(),
     #     #MarketMaking_EnvironmentConfig(),
