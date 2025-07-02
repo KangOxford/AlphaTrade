@@ -291,9 +291,12 @@ class BaseLOBEnv(environment.Environment):
                          + '.pkl')
         print("pre-reset will be saved to ", pkl_file_name)
         try:
-            with open(pkl_file_name, 'rb') as f:
-                self.init_states_array = pickle.load(f)
-                print("LOADING STATES FROM PKL...")
+            if self.cfg.use_pickles_for_init:
+                with open(pkl_file_name, 'rb') as f:
+                    self.init_states_array = pickle.load(f)
+                    print("LOADING STATES FROM PKL...")
+            else:
+                raise ValueError("Throw error so re-computes")
         except:
             print("COMPUTING INIT STATES...")
             #for i in range(self.n_windows):
