@@ -1,10 +1,13 @@
 import gymnax_exchange.jaxob.jaxob_constants as cst
 import gymnax_exchange.jaxob.jaxenv_constants as env_cst
-import jax
 import os
 from typing import Tuple,  Literal,Union,List
 
 from dataclasses import dataclass,field
+
+
+
+
 
 @dataclass(frozen=True)
 class JAXLOB_Configuration:
@@ -20,13 +23,15 @@ class JAXLOB_Configuration:
     start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
-    timePeriod: str = "2017Jan_oneday" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2017Jan" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
-    action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "spread_skew"
-    observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = "engineered"
+    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading"
+    action_space: str = "spread_skew"
+    # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
+    observation_space: str = "engineered"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 5.0 #50.0
@@ -80,11 +85,11 @@ class MarketMaking_EnvironmentConfig():
 @dataclass(frozen=True)
 class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
-    task: Literal["random", "buy", "sell"] = "buy"
-    action_type: Literal["delta", "pure"] = "pure"
-    action_space: Literal["fixed_quants","fixed_prices","fixed_quants_complex","simplest_case"]="fixed_quants"
-    observation_space: Literal["engineered", "basic","simplest_case"] = "basic"
-    reward_space: Literal["normal","finish_fast","simplest_case"] = "finish_fast"
+    task: str = "random"  # options: "random", "buy", "sell"
+    action_type: str = "pure"  # options: "delta", "pure"
+    action_space: str = "simplest_case"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case"
+    observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
+    reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
     task_size:int=100
     n_actions:int=5 # will be set automatically in the post init function
@@ -98,6 +103,7 @@ class Execution_EnvironmentConfig():
     short_name:str="EXE"
     seconds_before_episode_end:int=5
     
+
 
     def __post_init__(self):
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
@@ -145,17 +151,18 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=False
+    use_pickles_for_init:bool= False
 
 
 @dataclass(frozen=True)
 class MultiAgentConfig():
-    world_config = World_EnvironmentConfig()
+    world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2])
+    number_of_agents_per_type: List = field(default_factory=lambda: [2])
 
 
     # list_of_agents_configs = [
+    list_of_agents_configs: List =field(default_factory=lambda :[Execution_EnvironmentConfig()])
     #     MarketMaking_EnvironmentConfig(),
     #     #Execution_EnvironmentConfig(),
     #     #MarketMaking_EnvironmentConfig(),
@@ -163,4 +170,3 @@ class MultiAgentConfig():
     # number_of_agents_per_type = [2]
 
 
-    

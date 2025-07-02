@@ -550,17 +550,9 @@ def make_train(config):
 
 @hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL")
 def main(config):
-    config = OmegaConf.to_container(config)
-    wandb.init(
-        entity=config["ENTITY"],
-        project=config["PROJECT"],
-        tags=["IPPO", "RNN"],
-        config=config,
-        mode=config["WANDB_MODE"],
-    )
-    rng = jax.random.PRNGKey(config["SEED"])
-    train_jit = jax.jit(make_train(config), device=jax.devices()[0])
-    out = train_jit(rng)
+    env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+    final_config=OmegaConf.merge(config,env_config)
+    config = OmegaConf.to_container(final_config)
 
 
 if __name__ == "__main__":
