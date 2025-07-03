@@ -3,7 +3,7 @@ FROM nvcr.io/nvidia/jax:25.04-py3
 # Create user
 ARG UID
 ARG MYUSER
-RUN useradd -u $UID --create-home ${MYUSER} && \
+RUN useradd -m -u $UID --create-home ${MYUSER} && \
     echo "${MYUSER}: ${MYUSER}" | chpasswd && \
     adduser ${MYUSER} sudo && \
     # mkdir -p /home/${MYUSER}/.local/bin && \
