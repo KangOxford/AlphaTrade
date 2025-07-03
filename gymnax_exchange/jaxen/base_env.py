@@ -63,7 +63,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import lax
 from gymnax.environments import environment, spaces
-from typing import Tuple, Optional
+from typing import Tuple, Optional,Union
 import chex
 from flax import struct
 import itertools
@@ -166,6 +166,7 @@ class BaseLOBEnv(environment.Environment):
                                 window_resolution=self.start_resolution,
                                 day_start=self.day_start,
                                 day_end=self.day_end,
+                                stock=self.cfg.stock,
                                 time_period=self.cfg.timePeriod) 
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
         self.max_messages_in_episode_arr = max_messages_arr
@@ -284,10 +285,12 @@ class BaseLOBEnv(environment.Environment):
         print("START:  pre-reset in the initialization")
         os.makedirs(alphatradePath + '/pre_reset_states/', exist_ok=True)
         pkl_file_name = (alphatradePath + '/pre_reset_states/'
-                         + 'reset_for_' + type(self).__name__
-                         + '_window_resolution_' + str(self.start_resolution)
-                         + '_dtype_"' + self.ep_type
-                         + '"_depth_' + str(self.book_depth)
+                         + 'ResetState_window_resolution_' + str(self.cfg.start_resolution)
+                         + '_eptype_"' + str(self.cfg.ep_type)
+                         + '"_depth_' + str(self.cfg.book_depth)
+                         + "_stock_" + str(self.cfg.stock)
+                         + "_windowidx_"+str(self.cfg.window_selector)
+                         + "_nMsgPerStep_"+str(self.cfg.n_data_msg_per_step)
                          + '.pkl')
         print("pre-reset will be saved to ", pkl_file_name)
         try:
@@ -391,7 +394,7 @@ class BaseLOBEnv(environment.Environment):
 
     def action_space(
         self, params: Optional[LoadedEnvParams] = None
-    ) -> spaces.Discrete:
+    ) -> Union[spaces.Discrete,spaces.Dict]:
         """Action space of the environment."""
         return spaces.Dict(
             {

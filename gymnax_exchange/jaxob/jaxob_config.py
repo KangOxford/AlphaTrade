@@ -23,6 +23,7 @@ class JAXLOB_Configuration:
     start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
+    stock: str = "AMZN"
     timePeriod: str = "2017_onequarter" # Needs to be the appropriate directory name. 
 
 
