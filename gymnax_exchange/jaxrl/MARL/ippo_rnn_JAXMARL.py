@@ -4,14 +4,14 @@ Based on PureJaxRL Implementation of PPO
 
 import os
 
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.4"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 
-import jax
-import jax.numpy as jnp
+import jax # type: ignore
+import jax.numpy as jnp # type: ignore
 import flax.linen as nn
 import numpy as np
 import optax
-from flax.linen.initializers import constant, orthogonal
+from flax.linen.initializers import constant, orthogonal # type: ignore
 from typing import Sequence, NamedTuple, Any, Dict
 from flax.training.train_state import TrainState
 import distrax
@@ -27,6 +27,7 @@ import wandb
 import functools
 import matplotlib.pyplot as plt
 
+import sys
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -80,7 +81,7 @@ class ActorCriticRNN(nn.Module):
         actor_mean = nn.relu(actor_mean)
 
         actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0) # type: ignore
         )(actor_mean)
         # Avail actions are not used in the current implementation, but can be added if needed.
         # unavail_actions = 1 - avail_actions
@@ -121,23 +122,28 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
-    env = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig())
-    config["NUM_AGENTS_PERTYPE"]=env.multi_agent_config.number_of_agents_per_type
 
-    config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PERTYPE"]]  # Should be a list.
+
+
+
+    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+    if config["CALC_EVAL"]:
+        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+
+    config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PER_TYPE"]]  # Should be a list.
     config["NUM_ACTORS_TOTAL"] = env.num_agents * config["NUM_ENVS"]
 
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
-    config["MINIBATCH_SIZE"] = (
-        config["NUM_ACTORS_TOTAL"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
-    )
-    config["CLIP_EPS"] = (
-        config["CLIP_EPS"] / env.num_agents
-        if config["SCALE_CLIP_EPS"]
-        else config["CLIP_EPS"]
-    )
+    config["MINIBATCH_SIZES"] = [
+        nact * config["NUM_STEPS"] // config["NUM_MINIBATCHES"] for i,nact in enumerate(config["NUM_ACTORS_PERTYPE"])
+    ]
+    # config["CLIP_EPS"] = (
+    #     config["CLIP_EPS"] / env.num_agents
+    #     if config["SCALE_CLIP_EPS"]
+    #     else config["CLIP_EPS"]
+    # )
 
     print("Config:")
     for k, v in config.items():
@@ -211,8 +217,8 @@ def make_train(config):
         # INIT ENV
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-        params=env.default_params
-        obsv, env_state = jax.vmap(env.reset, in_axes=(0,None))(reset_rng,params)
+        env_params=env.default_params
+        obsv, env_state = jax.vmap(env.reset, in_axes=(0,None))(reset_rng,env_params)
         # TRAIN LOOP
         def _update_step(update_runner_state, unused):
             # COLLECT TRAJECTORIES
@@ -257,7 +263,7 @@ def make_train(config):
 
                 obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0,None)
-                )(rng_step, env_state, actions,params)
+                )(rng_step, env_state, actions,env_params)
 
                 # info = jax.tree.map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
                 
@@ -275,7 +281,7 @@ def make_train(config):
 
 
                     transitions.append(Transition(
-                        jnp.tile(done["__all__"], config["NUM_AGENTS_PERTYPE"][i]),
+                        jnp.tile(done["__all__"], config["NUM_AGENTS_PER_TYPE"][i]),
                         last_done[i],
                         action_batch.squeeze(),
                         value.squeeze(),
@@ -473,7 +479,7 @@ def make_train(config):
             metrics= {}
             metrics['agents'] = [jax.tree.map(
                 lambda x: x.reshape(
-                    (config["NUM_STEPS"], config["NUM_ENVS"], config["NUM_AGENTS_PERTYPE"][i])
+                    (config["NUM_STEPS"], config["NUM_ENVS"], config["NUM_AGENTS_PER_TYPE"][i])
                 ),
                 trjbtch.info['agent']) for i, trjbtch in enumerate(traj_batch)]
             metrics['world'] = [traj_batch.info['world'] for i, traj_batch in enumerate(traj_batch)]
@@ -496,7 +502,109 @@ def make_train(config):
             metrics['avg_reward'] = [jnp.mean(tr.reward) for tr in traj_batch]
             metrics["traj_batch"] = traj_batch
 
-            rng = update_state[-1]
+
+
+            if config["CALC_EVAL"]:
+                def _eval_step(eval_runner_state, unused):
+                    train_states, eval_env_state, last_obs, last_done,hstates, rng = eval_runner_state
+                    rng, _rng = jax.random.split(rng)
+                
+                    actions=[]
+                    values=[]
+                    log_probs=[]
+
+                    for i, network in enumerate(networks):
+                        obs_i= last_obs[i]
+                        obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i])  # Reshape to match the input shape of the network
+                        ac_in = (
+                            obs_i[np.newaxis, :],
+                            last_done[i][np.newaxis, :],
+                            # avail_actions,
+                        )
+                        hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
+                        values.append(value)
+                        action = pi.sample(seed=_rng)
+                        log_probs.append(pi.log_prob(action))
+                        action=unbatchify(action, config["NUM_ENVS"], env.multi_agent_config.number_of_agents_per_type[i])  # Reshape to match the action shape
+                        actions.append(action.squeeze())
+
+                        rng, _rng = jax.random.split(rng)
+                        rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+
+                
+
+
+
+
+
+                    # STEP ENV
+                    rng, _rng = jax.random.split(rng)
+                    rng_step = jax.random.split(_rng, config["NUM_ENVS"])
+                    obsv, eval_env_state, reward, done, info = jax.vmap(
+                        eval_env.step, in_axes=(0, 0, 0, None) # type: ignore
+                    )(rng_step, eval_env_state, actions, eval_env_params)
+                    done_batch=done
+                    transitions=[]    
+
+                    for i,network in enumerate(networks):
+                        done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]).squeeze()
+                        obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i])
+                        action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i])
+                        value = values[i]
+                        log_prob = log_probs[i]
+
+                        info_i={"world":info["world"],"agent":jax.tree.map(lambda x: x.reshape(config["NUM_ACTORS_PERTYPE"][i]),info["agents"][i])}
+                        # print(f"info for agenttype {i}:", info_i)
+
+
+                        transitions.append(Transition(
+                            jnp.tile(done["__all__"], config["NUM_AGENTS_PER_TYPE"][i]),
+                            last_done[i],
+                            action_batch.squeeze(),
+                            value.squeeze(),
+                            batchify(reward[i], config["NUM_ACTORS_PERTYPE"][i]).squeeze(),
+                            log_prob.squeeze(),
+                            obs_batch,
+                            info_i,
+                            # avail_actions,
+                        ))
+                    eval_runner_state = (train_states, eval_env_state, obsv, done_batch['agents'], hstates, rng)
+                    return eval_runner_state, transitions
+
+                rng, _rng = jax.random.split(rng)
+                reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
+                eval_env_params=eval_env.default_params # type: ignore
+                eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params) # type: ignore
+
+
+                eval_hstates=[]
+                init_dones_agents_eval=[]
+                for i,network in enumerate(networks):
+                    eval_hstates.append(ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"]))
+                    init_dones_agents_eval.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
+
+
+                
+                eval_runner_state = (
+                train_states,
+                eval_env_state,
+                eval_obsv,
+                init_dones_agents_eval,
+                eval_hstates,
+                _rng,
+                )
+                eval_runner_state, eval_traj_batch = jax.lax.scan(
+                    _eval_step, eval_runner_state, None,  config["NUM_STEPS_EVAL"]
+                )
+                metrics['agents_eval'] = [jax.tree.map(
+                    lambda x: x.reshape(
+                        (config["NUM_STEPS_EVAL"], config["NUM_ENVS"], config["NUM_AGENTS_PER_TYPE"][i])
+                    ),
+                    trjbtch.info['agent']) for i, trjbtch in enumerate(eval_traj_batch)]
+                metrics['world_eval'] = [trjbtch.info['world'] for i, trjbtch in enumerate(eval_traj_batch)]
+                metrics['avg_reward_eval'] = [jnp.mean(tr.reward) for tr in eval_traj_batch]
+                metrics["traj_batch_eval"] = eval_traj_batch
+
 
             def callback(metric):
                 print("Update step:", metric["update_steps"])
@@ -504,9 +612,10 @@ def make_train(config):
                 for i, tr in enumerate(metric["traj_batch"]):
                     actions = np.array(tr.action).flatten()
                     unique_actions, counts = np.unique(actions, return_counts=True)
+                    tot_counts=sum(counts)
                     # Add each action count to the dictionary with a unique key
                     for a, c in zip(unique_actions, counts):
-                        action_distribution[f"action_{i}_{int(a)}"] = int(c)
+                        action_distribution[f"action_{i}_{int(a)}"] = c/tot_counts*100
                 wandb.log(
                     {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
@@ -515,9 +624,12 @@ def make_train(config):
                         * config["NUM_STEPS"],
                         **{f"network_{i}": m for i,m in enumerate(metric["loss"])},
                         **{f"avg_reward_{i}": metric["avg_reward"][i] for i in range(len(metric["avg_reward"]))},
+                        **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
                         **action_distribution
                     }
                 )
+                for i in range(len(metric["avg_reward"])):
+                    print(f"avg_reward_{i} {metric["avg_reward"][i]}")
 
             metrics["update_steps"] = update_steps
             jax.experimental.io_callback(callback, None, metrics)
@@ -545,11 +657,77 @@ def make_train(config):
     return train
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL")
+@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
 def main(config):
     env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
+
+
+    print(config)
+
+    def sweep_fun():
+        print(f"WANDB CONFIG PRIOR {wandb.config}")
+
+
+        run=wandb.init(
+            entity=config["ENTITY"], # type: ignore
+            project=config["PROJECT"], # type: ignore
+            tags=["IPPO", "RNN"], # type: ignore
+            config=config, # type: ignore
+            mode=config["WANDB_MODE"], # type: ignore
+            allow_val_change=True
+        )
+        # params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
+        
+        
+        # print(f"WANDB CONFIG {wandb.config}")
+        # +++++ Single GPU +++++
+        rng = jax.random.PRNGKey(0)
+        train_jit = jax.jit(make_train(wandb.config))
+        # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+        out = train_jit(rng)
+        # train_state = out['runner_state'][0] # runner_state.train_state
+        # params = train_state.params
+    
+        # # Save the params to a file using flax.serialization.to_bytes
+        # with open(params_file_name, 'wb') as f:
+        #     f.write(flax.serialization.to_bytes(params))
+        #     print(f"params saved")
+
+        # Load the params from the file using flax.serialization.from_bytes
+        # with open(params_file_name, 'rb') as f:
+        #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
+        #     print(f"params restored")
+
+        run.finish()
+
+    # NOTE: Sweep Parameters will override the config file, but cannot be used to override any environment params currently. 
+    # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
+    sweep_parameters = {
+        "LR": {"values": [config["LR"]]},
+        # "env_params" : {"parameters": {
+        #                 "world_params" : {"parameters":
+        #                                 {"n_data_msg_per_step": {"values":[50,150]},
+        #                                 }
+        #                                 },
+        #                 }},
+    }
+
+    sweep_config={
+        "method": "grid",
+        "parameters": sweep_parameters,
+    }
+    print(sweep_config)
+    sweep_id = wandb.sweep(sweep=sweep_config, project=config["PROJECT"],entity=config["ENTITY"])
+    print(sweep_id)
+    wandb.agent(sweep_id, function=sweep_fun, count=500)
+
+
+    sys.exit(0)
+
+
+
 
 
 if __name__ == "__main__":

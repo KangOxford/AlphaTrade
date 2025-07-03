@@ -160,7 +160,7 @@ class MultiAgentConfig():
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
     list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2,2]) # This is only the default value, we change it in the yaml RL file
+    number_of_agents_per_type: list = field(default_factory=lambda: [1,1]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [
