@@ -130,10 +130,10 @@ def make_train(config):
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
-    config["MINIBATCH_SIZE"] = (
+    config["MINIBATCH_SIZE"] = ( # TODO: shouldnt this be per agent type?
         config["NUM_ACTORS_TOTAL"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
     )
-    config["CLIP_EPS"] = (
+    config["CLIP_EPS"] = ( # TODO: shouldnt this be per agent type?
         config["CLIP_EPS"] / env.num_agents
         if config["SCALE_CLIP_EPS"]
         else config["CLIP_EPS"]
@@ -490,8 +490,8 @@ def make_train(config):
                     "ratio_0": ratio_0,
                     "approx_kl": loss_info[1][4],
                     "clip_frac": loss_info[1][5],
-                    "weighted_entropy_loss": loss_info[1][2]*config["ENT_COEF"][i],
-                    "weighted_value_loss": loss_info[1][0]*config["VF_COEF"][i],
+                    "weighted_entropy_loss": loss_info[1][2] * config["ENT_COEF"][i],
+                    "weighted_value_loss": loss_info[1][0] * config["VF_COEF"][i],
                 })
             metrics['avg_reward'] = [jnp.mean(tr.reward) for tr in traj_batch]
             metrics["traj_batch"] = traj_batch

@@ -166,6 +166,7 @@ class BaseLOBEnv(environment.Environment):
                                 window_resolution=self.start_resolution,
                                 day_start=self.day_start,
                                 day_end=self.day_end,
+                                stock=self.cfg.stock,
                                 time_period=self.cfg.timePeriod) 
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
         self.max_messages_in_episode_arr = max_messages_arr

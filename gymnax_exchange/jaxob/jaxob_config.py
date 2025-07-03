@@ -20,17 +20,17 @@ class JAXLOB_Configuration:
     start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
-    timePeriod: str = "2017_onequarter" # Needs to be the appropriate directory name. 
-
+    timePeriod: str = "2019" # Needs to be the appropriate directory name. 
+    stock: str = "GOOG"
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     action_space: Literal["fixed_prices", "fixed_quants", "AvSt","spread_skew","directional_trading"] = "spread_skew"
-    observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = "engineered"
+    observation_space: Literal["engineered", "messages", "messages_new_tokenizer", "basic"] = "basic"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 5.0 #50.0
-    skew_multiplier: float = 20.0 #100.0
+    skew_multiplier: float = 50.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -127,7 +127,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 200 # counted by seconds, 1800s=0.5h
+    episode_time = 6000 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
