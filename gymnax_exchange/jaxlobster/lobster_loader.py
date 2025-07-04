@@ -33,6 +33,7 @@ Cubes_withOB_padding:   pad the cubes to have the shape shape
 from os import listdir
 from os.path import isfile, join
 import warnings
+import os
 
 import itertools
 import pandas as pd
@@ -336,7 +337,7 @@ class LoadLOBSTER_resample():
         self.window_type=type_
         self.window_length=window_length
         self.window_resolution=window_resolution
-        self.n_data_msg_per_step=n_data_msg_per_step #TODO rename this to n_data_msg_per_step?
+        self.n_data_msg_per_step=n_data_msg_per_step 
         self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
@@ -345,7 +346,8 @@ class LoadLOBSTER_resample():
         print("self.datapath",self.datapath)
         self.message_files = sorted(glob(self.datapath + '*message*.csv'))
         self.book_files = sorted(glob(self.datapath + '*orderbook*.csv'))
-
+        #self.message_files = sorted([f for f in glob(self.datapath + '*message*.csv') if os.path.getsize(f) > 0])
+        #self.book_files = sorted([f for f in glob(self.datapath + '*orderbook*.csv') if os.path.getsize(f) > 0])
 
         print('found', len(self.message_files), 'message files')
         print('found', len(self.book_files), 'book files')
@@ -402,7 +404,18 @@ class LoadLOBSTER_resample():
         messages=jnp.concatenate((messages,pad))
         max_msgs_in_windows_arr=max_msgs_in_windows_arr.at[-1].set(new_length)
         return messages,max_msgs_in_windows_arr
+    
 
+    
+    # def _load_files(self):
+    #         """Loads the csvs as pandas arrays. Files are seperated by days
+    #         Could potentially be optimised to work around pandas, very slow.         
+    #         """
+    #         dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
+    #         print("self.message_files",self.message_files)
+    #         messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
+    #         orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
+    #         return messageCSVs, orderbookCSVs
 
     def _load_files(self):
         """Loads the csvs as pandas arrays. Files are seperated by days
@@ -410,8 +423,28 @@ class LoadLOBSTER_resample():
         """
         dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
         print("self.message_files",self.message_files)
-        messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
-        orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
+        #messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
+        #orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
+        messageCSVs = []
+        orderbookCSVs = []
+
+        for message_file, book_file in zip(self.message_files, self.book_files):
+            if message_file[-3:] == "csv" and book_file[-3:] == "csv":
+                try:
+                    df_message = pd.read_csv(message_file, usecols=range(6), dtype=dtype, header=None)
+                    df_book = pd.read_csv(book_file, header=None)
+                    if not df_message.empty and not df_book.empty:
+                        messageCSVs.append(df_message)
+                        orderbookCSVs.append(df_book)
+                        print(f"file appended: {message_file}")
+                    else:
+                        if df_message.empty:
+                            print(f"Skipping message file with no data rows: {message_file}")
+                        if df_book.empty:
+                            print(f"Skipping orderbook file with no data rows: {book_file}")
+                except pd.errors.EmptyDataError:
+                    print(f"Skipping truly empty message or orderbookfile: {message_file}")
+        print("Done with for loop loading")
         return messageCSVs, orderbookCSVs
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):
