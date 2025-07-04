@@ -484,7 +484,7 @@ def make_train(config):
                 trjbtch.info['agent']) for i, trjbtch in enumerate(traj_batch)]
             metrics['world'] = [traj_batch.info['world'] for i, traj_batch in enumerate(traj_batch)]
             metrics["loss"]=[]
-            for loss_info in loss_infos:
+            for i,loss_info in enumerate(loss_infos):
                 ratio_0 = loss_info[1][3].at[0,0].get().mean()
                 loss_info = jax.tree.map(lambda x: x.mean(), loss_info)
                 metrics["loss"].append({
@@ -684,6 +684,9 @@ def main(config):
         # print(f"WANDB CONFIG {wandb.config}")
         # +++++ Single GPU +++++
         rng = jax.random.PRNGKey(0)
+
+        print("wandb.config", wandb.config)
+
         train_jit = jax.jit(make_train(wandb.config))
         # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
         out = train_jit(rng)
