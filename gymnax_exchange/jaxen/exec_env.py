@@ -1480,14 +1480,19 @@ class ExecutionAgent():
         #jax.debug.print("mid_price:{}",mid_price)
 
 
-        # print("bestbid 0", bestbids[-1,0])
+        #jax.debug.print(f"bestbid 0: {bestbids[-1,0]}")
+        #jax.debug.print(f"bestask 0: {bestasks[-1,0]}")
         # print(bestasks[-10,0])
+
+        penalty = self.cfg.doom_price_penalty
 
         doom_price = jax.lax.cond(
             agent_state.is_sell_task,
-            lambda: ((bestbids[-1,0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-            lambda: ((bestasks[-1,0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (((bestbids[-1,0]) * (1-penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (((bestasks[-1,0]) * (1+penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
         )
+
+        #jax.debug.print("doom_price: {}", doom_price)
 
         def place_midprice_trade(trades, price, quant, time):
             '''Place a doom trade at a trade at mid price to close out our mm agent at the end of the episode.'''
