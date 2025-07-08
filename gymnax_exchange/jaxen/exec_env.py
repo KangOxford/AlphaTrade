@@ -855,6 +855,18 @@ class ExecutionAgent():
             [0, 0, 1, 0],  # NT
             [0, 0, 0, 1],  # PP
         ])
+
+        if self.cfg.larger_far_touch_quant:
+            quant_array = jnp.array([
+                [0, 0, 0, 0],  # No trade
+                [10, 0, 0, 0],  # FT
+                [0, 1, 0, 0],  # M
+                [0, 0, 1, 0],  # NT
+                [0, 0, 0, 1],  # PP
+            ])
+
+
+
         quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
         #----03 get the rest of the message----#
         types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
@@ -1622,7 +1634,7 @@ class ExecutionAgent():
         "quant_left": quant_left,
         "trade_duration": trade_duration,
         }
-        reward_scaled = reward / 10
+        reward_scaled = reward / 10000
 
 
         if self.cfg.reward_space == "finish_fast":

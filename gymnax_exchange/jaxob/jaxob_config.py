@@ -35,7 +35,7 @@ class MarketMaking_EnvironmentConfig():
     observation_space: str = "engineered"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
-    spread_multiplier: float = 5.0 #50.0
+    spread_multiplier: float = 2.0 #50.0
     skew_multiplier: float = 50.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
@@ -88,7 +88,7 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "simplest_case"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case"
+    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
@@ -103,6 +103,8 @@ class Execution_EnvironmentConfig():
     normalize:bool=True
     short_name:str="EXE"
     seconds_before_episode_end:int=5
+    doom_price_penalty: float = 0.1
+    larger_far_touch_quant: bool = True
     
 
 
@@ -134,7 +136,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time = 6000 # counted by seconds, 1800s=0.5h
+    episode_time: int = 10 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -152,15 +154,16 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= False
+    use_pickles_for_init:bool= True
 
 
 @dataclass(frozen=True)
 class MultiAgentConfig():
+    #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
     list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [1,1]) # This is only the default value, we change it in the yaml RL file
+    number_of_agents_per_type: list = field(default_factory=lambda: [2,2]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [
