@@ -1025,6 +1025,8 @@ class MarketMakingAgent():
             world_state.time + self.cfg.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
+
+
         # Stack components into message array
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
@@ -1241,8 +1243,9 @@ class MarketMakingAgent():
 
 
         #jax.debug.print("Best Ask: {}, Best Bid: {}, Mid Price: {}", best_ask, best_bid, mid_price)
-        #jax.debug.print("best asks: {}", world_state.best_asks)
-        #jax.debug.print("best bids: {}", world_state.best_bids)
+        #jax.debug.print("action: {}", action)
+        #jax.debug.print("best asks: {}",best_ask)
+        #jax.debug.print("best bids: {}", best_bid)
         
         # Get current spread
         current_spread = best_ask - best_bid
@@ -1269,7 +1272,7 @@ class MarketMakingAgent():
         skewed_mid = mid_price + skew_ticks * self.world_config.tick_size
 
         #jax.debug.print("mid price: {}", mid_price)
-        # jax.debug.print("skew ticks: {}", skew_ticks)
+        #jax.debug.print("skew ticks: {}", skew_ticks)
         #jax.debug.print("skewed mid: {}", skewed_mid)
         
         # Calculate final bid and ask prices
@@ -1277,10 +1280,35 @@ class MarketMakingAgent():
         bid_price = skewed_mid - half_spread
         ask_price = skewed_mid + half_spread
         
+
+
+
+
+
+
+        #spread4 = current_spread * self.cfg.spread_multiplier
+        #half_spread4 = spread4 // 2
+       # bid_price_4 = mid_price - half_spread4
+        #ask_price_4 = mid_price + half_spread4
+        #bid_price = bid_price_4
+        #ask_price = ask_price_4
+
+        #jax.debug.print("bid price: agent {}", bid_price)
+        #jax.debug.print("ask price: agent{}", ask_price)
+
+
+
+
+
+        #jax.debug.print("best asks: {}", best_ask)
         # Ensure prices are a multiple of tick size
         bid_price = (bid_price // self.world_config.tick_size) * self.world_config.tick_size
         ask_price = (ask_price // self.world_config.tick_size) * self.world_config.tick_size
         
+        #jax.debug.print("bid price: agent {}", bid_price)
+        #jax.debug.print("ask price: agent{}", ask_price)
+
+
         # Set fixed quantities
         bid_quant = self.cfg.fixed_quant_value
         ask_quant = self.cfg.fixed_quant_value
@@ -1289,7 +1317,14 @@ class MarketMakingAgent():
         types = jnp.array([1, 1], dtype=jnp.int32)  # 1 = limit order
         sides = jnp.array([1, -1], dtype=jnp.int32)  # 1 = bid, -1 = ask
         quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
+
+
         prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
+        #print("prices:{}",prices)
+
+        prices = jnp.array([bid_price, ask_price], dtype=jnp.int32).reshape(-1)
+        #print("prices:{}",prices)
+
         trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
         
         # Placeholder for order ids
@@ -1297,7 +1332,19 @@ class MarketMakingAgent():
         
         # Time fields
         times = jnp.resize(world_state.time + self.cfg.time_delay_obs_act, (2, 2))
-        
+
+
+        #jax.debug.print("types shape: {}", types.shape)
+        #jax.debug.print("sides shape: {}", sides.shape)
+        #jax.debug.print("quants shape: {}", quants.shape)
+        #jax.debug.print("prices shape: {}", prices.shape)
+        #jax.debug.print("order_ids shape: {}", order_ids.shape)
+        #jax.debug.print("trader_ids shape: {}", trader_ids.shape)
+        #jax.debug.print("times shape: {}", times.shape)
+    
+
+
+
         # Stack messages
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times], axis=1)
