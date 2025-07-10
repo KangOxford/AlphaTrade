@@ -47,22 +47,31 @@ def main():
 
 
     agent_type_options = [
-        [1, 1],
-        [5, 5],
-        [10, 10],
+        #[[1,], [MarketMaking_EnvironmentConfig()]],
+        #[[1,], [Execution_EnvironmentConfig()]],
+        #[[10,], [MarketMaking_EnvironmentConfig()]],
+        #[[10,], [Execution_EnvironmentConfig()]],
+        [[1], [MarketMaking_EnvironmentConfig()]],
+        [[5], [MarketMaking_EnvironmentConfig()]],
+        [[10], [MarketMaking_EnvironmentConfig()]],
     ]
-    n_data_msg_options = [100, 1]
+    n_data_msg_options = [100,0]
     #num_envs_options = [1000, 5000, 8000, 10000]
    # num_steps_options = [1000, 5000]
 
     num_steps_num_envs_options = [
-        [1000, 1000],
-        [1000, 5000],
-        [1000, 6000],
-        [3000, 3000],
-        [2000,5000],
-        [3000, 10000],
-        [2000, 15000],
+        #[1000, 5000],
+        #[1000, 6000],
+        #[1000, 7000],
+        #[1000, 8000],
+        [2000, 5000],
+        #[2000, 6000],
+        #[2000, 7000],
+        #[2000, 8000],
+        #[3000, 5000],
+        #[3000, 6000],
+        #[3000, 7000],
+        #[3000, 8000],
     ]
 
     save_obs_rewards = False  # Set to False to not save full trajectory
@@ -70,7 +79,7 @@ def main():
     results = []
 
     with open(output_file_path, "w") as f: 
-        for number_of_agents_per_type in agent_type_options:
+        for i, agent_type_option in enumerate(agent_type_options):
             for n_data_msg_per_step in n_data_msg_options:
                 for num_step_num_env_option in num_steps_num_envs_options:
                             # print(f"Running with {num_envs} envs and {num_steps} steps")
@@ -87,10 +96,10 @@ def main():
                                 n_data_msg_per_step=n_data_msg_per_step,
                             )
 
-                            list_of_agents_configs = [
-                                MarketMaking_EnvironmentConfig(),
-                                Execution_EnvironmentConfig(),
-                            ]
+                            list_of_agents_configs = agent_type_option[1]
+                            number_of_agents_per_type = agent_type_option[0]
+
+                            print(number_of_agents_per_type)
                             # Create a new MultiAgentConfig for this run
                             multi_agent_config = MultiAgentConfig()
                             # Set the fields (dataclasses are frozen, so use object.__setattr__)

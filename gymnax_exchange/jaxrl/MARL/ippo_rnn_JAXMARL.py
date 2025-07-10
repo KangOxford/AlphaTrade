@@ -769,8 +769,8 @@ def main(config):
         #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
        # "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]},
        #"SEED": {"values": [2,3,4,5,6,7,8,9,10]},
-       "NUM_ENVS": {"values": [config["NUM_ENVS"], 8192, 2048]},
-       "NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 64, 32,16,8]},
+       #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
+       #"NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 32, 8]},
        
         
         # "env_params" : {"parameters": {

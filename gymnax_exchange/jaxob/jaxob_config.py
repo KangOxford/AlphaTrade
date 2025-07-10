@@ -51,7 +51,7 @@ class MarketMaking_EnvironmentConfig():
     # Reward
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth"
-    reference_price_portfolio_value: str = "best_bid_ask"  # options: "mid", "best_bid_ask", "near_touch"
+    reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 0.001
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0
@@ -162,8 +162,8 @@ class MultiAgentConfig():
     #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2,2]) # This is only the default value, we change it in the yaml RL file
+    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig()])
+    number_of_agents_per_type: list = field(default_factory=lambda: [1]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [
