@@ -291,6 +291,7 @@ class BaseLOBEnv(environment.Environment):
                          + "_stock_" + str(self.cfg.stock)
                          + "_windowidx_"+str(self.cfg.window_selector)
                          + "_nMsgPerStep_"+str(self.cfg.n_data_msg_per_step)
+                         + "_episode_time_"+str(self.cfg.episode_time)
                          + '.pkl')
         print("pre-reset will be saved to ", pkl_file_name)
         try:
