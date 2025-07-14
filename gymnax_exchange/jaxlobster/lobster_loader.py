@@ -445,6 +445,8 @@ class LoadLOBSTER_resample():
                 except pd.errors.EmptyDataError:
                     print(f"Skipping truly empty message or orderbookfile: {message_file}")
         print("Done with for loop loading")
+        print("Length Message:", len(messageCSVs))
+        print("Length OB:", len(orderbookCSVs))
         return messageCSVs, orderbookCSVs
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):

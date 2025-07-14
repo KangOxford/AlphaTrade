@@ -39,7 +39,7 @@ from gymnax_exchange.jaxen.marl_env import MARLEnv
 
 def main():
 
-    output_file_path = "/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_more_envs.txt"
+    output_file_path = "/home/myuser/gymnax_exchange/jaxen/Timing_speed/vmap_timing_results_simplest_case.txt"
     #with open(output_file_path, "w") as f:
     #    f.write(f"Running with {10} envs and {10} steps\n")
 
@@ -58,7 +58,7 @@ def main():
         #[[10,], [MarketMaking_EnvironmentConfig()]],
         #[[10,], [Execution_EnvironmentConfig()]]
     ]
-    n_data_msg_options = [100 , 1]
+    n_data_msg_options = [1]
     #num_envs_options = [1000, 5000, 8000, 10000]
    # num_steps_options = [1000, 5000]
 
@@ -67,10 +67,10 @@ def main():
         #[1000, 6000],
         #[1000, 7000],
         #[1000, 8000],
-        [250, 20000],
-        [120, 40000],
-        [500, 10000],
-        [50, 80000],
+        [2000, 5000],
+        #[1024, 4096],
+        #[5000, 5000],
+        #[2000, 8000],
         #[3000, 5000],
         #[3000, 6000],
         #[3000, 7000],
@@ -151,57 +151,70 @@ def main():
                             jax.block_until_ready(state)
                             reset_time  = time.time() - reset_start
 
-                             # ------------------------------------
-                            # helper: step one whole batch ON device
-                            # ------------------------------------
-                            def _batched_step(state_batch, key_batch, env_params):
-                                def _single_step(state, key):
-                                    subkeys = jax.random.split(key, len(env.action_spaces))
-                                    actions = [
-                                        jax.vmap(space.sample)(
-                                            jax.random.split(sk, n_agents)
-                                        )
-                                        for sk, space, n_agents in zip(
-                                            subkeys,
-                                            env.action_spaces,
-                                            env.multi_agent_config.number_of_agents_per_type,
-                                        )
-                                    ]
-                                    return env.step(key, state, actions, env_params)
+                            # -------------------------------------------------
+                            # 2) Helper: one step for a single env
+                            # -------------------------------------------------
+                            def single_step(state, key, env_params):
+                                # one sub-key per agent type
+                                subkeys = jax.random.split(key, len(env.action_spaces))
+                                # sample random actions for every agent of each type
+                                actions = [
+                                    jax.vmap(space.sample)(
+                                        jax.random.split(sk, n_agents)
+                                    )
+                                    for sk, space, n_agents in zip(
+                                        subkeys,
+                                        env.action_spaces,
+                                        env.multi_agent_config.number_of_agents_per_type,
+                                    )
+                                ]
+                                # env.step auto-resets when done
+                                return env.step(key, state, actions, env_params)
 
-                                return jax.vmap(_single_step, in_axes=(0, 0))(state_batch, key_batch)
+                            # JIT & vmap
+                            @jax.jit
+                            def batched_step(state_batch, key_batch):
+                                return jax.vmap(single_step, in_axes=(0, 0, None))(
+                                    state_batch, key_batch, env_params
+                                )
 
-                            # ------------------------------------
-                            # FULL rollout over NUM_STEPS
-                            # ------------------------------------
-                            @partial(jax.jit, static_argnums=(3,))          #  NUM_STEPS is static
-                            def rollout(state0, rng0, env_params, num_steps):
-                                def body(carry, _):
+                            # -------------------------------------------------
+                            # 3) Scan across a fixed number of steps
+                            # -------------------------------------------------
+                            def scan_body(carry, _):
+                                state_batch, rng = carry
+                                rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
+                                obs, state_batch, rew, done, _ = batched_step(
+                                    state_batch, jnp.stack(step_keys)
+                                )
+                                return (state_batch, rng), (obs, rew, done)
+
+
+                            rollout_start = time.time()
+                            if save_obs_rewards:
+                                (final_state, _), (traj_obs, traj_rew, traj_done) = jax.lax.scan(
+                                    scan_body,
+                                    (state, master_key),
+                                    None,
+                                    length=NUM_STEPS,
+                                )
+                            else:
+                                def scan_body_nosave(carry, _):
                                     state_batch, rng = carry
                                     rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
-                                    _, state_batch, _, _, _ = _batched_step(
-                                        state_batch, jnp.stack(step_keys), env_params
+                                    _, state_batch, _, _, _ = batched_step(
+                                        state_batch, jnp.stack(step_keys)
                                     )
                                     return (state_batch, rng), None
-
-                                (stateN, _), _ = jax.lax.scan(body, (state0, rng0), None, length=num_steps)
-                                return stateN                          
-
-
-                            # -------------------------------------------------
-                            # 2) Compile first
-                            # -------------------------------------------------
-                            print("Start first rollout and compile")
-                            _ = rollout(state, master_key, env_params, NUM_STEPS)
-
-                            print("Start second rollout and measure runtime")
-
-                            start = time.time()
-                            final_state = rollout(state, master_key, env_params, NUM_STEPS)
-                            jax.block_until_ready(final_state)          # garantiert fertig
-                            rollout_time = time.time() - start
-
-
+                                (final_state, _), _ = jax.lax.scan(
+                                    scan_body_nosave,
+                                    (state, master_key),
+                                    None,
+                                    length=NUM_STEPS,
+                                )
+                            # ensure all work is finished
+                            jax.block_until_ready(final_state)
+                            rollout_time = time.time() - rollout_start
 
                             # -------------------------------------------------
                             # 4) Timing statistics
@@ -254,7 +267,7 @@ def main():
                             # print("=" * 60)
 
     df = pd.DataFrame(results)
-    df.to_csv("/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_more_envs.csv", index=False)
+    df.to_csv("/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_simplest_case.csv", index=False)
 
 
 if __name__ == "__main__":
