@@ -137,7 +137,7 @@ class MARLEnv(MultiAgentEnv):
         ###########################
 
         # Get the Load State
-        load_state = self.base_env.reset_env(key=world_key, params=params.loaded_params, config=self.multi_agent_config.world_config)
+        _,load_state = self.base_env.reset_env(key=world_key, params=params.loaded_params)
 
         # Reset all variables in the world state that are not on the Load State
         # For bet bids and ask repeat the inital best bids and ask num of messages times
@@ -152,7 +152,6 @@ class MARLEnv(MultiAgentEnv):
             **dataclasses.asdict(load_state),  # copy all fields from the loaded state
             best_bids=bestbids,
             best_asks=bestasks,
-            step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
             mid_price=mid_price,
@@ -260,38 +259,31 @@ class MARLEnv(MultiAgentEnv):
        # print(f"all action msgs shape: {all_action_msgs_list[0].shape}")
        # print(f"all cancel msgs shape: {all_cancel_msgs_list[0].shape}")
 
-        all_action_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_action_msgs_list])
-        all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
+        if len(self.instance_list) > 0:
+            all_action_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_action_msgs_list])
+            all_cancel_msgs = jnp.vstack([x.reshape(-1, x.shape[-1]) for x in all_cancel_msgs_list])
 
 
-        #jax.debug.print("action: {}", actions)
-        #jax.debug.print("best bid: {}", state.world_state.best_bids[-1])
-       # jax.debug.print("best ask: {}", state.world_state.best_asks[-1])
+
+
+            # Replace order ids in the action messages:
+            new_order_ids = jnp.arange( 0 , 0 - self.num_action_msgs_per_step_by_all_agents, -1)
         
-        #jax.debug.print("all action msgs before shuffle: {}", all_action_msgs)
-        #jax.debug.print("all cancel msgs: {}", all_cancel_msgs)    
+            new_order_ids = new_order_ids + jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter)
+       
+            all_action_msgs = all_action_msgs.at[:, 4].set(new_order_ids)
+            new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state, order ids are counter downwards (negative numbers)
+
+            # Shuffle the action messages if the config is set to True
+            if self.multi_agent_config.world_config.shuffle_action_messages:
+                key, shuffle_key = jax.random.split(key)
+                all_action_msgs = jax.random.permutation(shuffle_key, all_action_msgs, axis=0)
+        else:
+            all_action_msgs = jnp.empty((0, 8), dtype=jnp.int32)
+            all_cancel_msgs = jnp.empty((0, 8), dtype=jnp.int32)
+            new_order_id_counter=state.world_state.order_id_counter # No new order ids, so we keep the old one
 
 
-        # Replace order ids in the action messages:
-
-        new_order_ids = jnp.arange( 0 , 0 - self.num_action_msgs_per_step_by_all_agents, -1)
-        #print(f"new_order_ids before shift: {new_order_ids}")
-        #print("jnp full: ", jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter))
-
-        new_order_ids = new_order_ids + jnp.full(self.num_action_msgs_per_step_by_all_agents, state.world_state.order_id_counter)
-        #jax.debug.print("new_order_ids: {}", new_order_ids)
-        #print(f"new_order_ids after shift: {new_order_ids}")
-
-        all_action_msgs = all_action_msgs.at[:, 4].set(new_order_ids)
-        new_order_id_counter = state.world_state.order_id_counter - self.num_action_msgs_per_step_by_all_agents # Used later when we update the state, order ids are counter downwards (negative numbers)
-
-        # Shuffle the action messages if the config is set to True
-        if self.multi_agent_config.world_config.shuffle_action_messages:
-            key, shuffle_key = jax.random.split(key)
-            all_action_msgs = jax.random.permutation(shuffle_key, all_action_msgs, axis=0)
-
-
-        #jax.debug.print("all action msgs after shuffle: {}", all_action_msgs)
 
 
         # Combine action and cancel messages
@@ -492,10 +484,16 @@ class MARLEnv(MultiAgentEnv):
         # print("dones: ", new_agent_dones_list)
 
         # Flatten all done flags into a single array
-        all_dones_flat = jnp.concatenate(new_agent_dones_list)
+        if len(new_agent_dones_list) > 0:
+            all_dones_flat = jnp.concatenate(new_agent_dones_list)
+            overall_done = jnp.all(all_dones_flat) # Done if all agents are done
+
+        else:
+            all_dones_flat = jnp.array([])
+            overall_done = (new_world_state.time-new_world_state.init_time)[0]>=self.multi_agent_config.world_config.episode_time
+
 
         # __all__ is True only if every agent is done
-        overall_done = jnp.all(all_dones_flat) # Done if all agents are done
 
         # print("overall_done: ", overall_done)
         # print("all_dones_flat: ", all_dones_flat)
@@ -741,13 +739,16 @@ if __name__ == "__main__":
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # Instantiate the MARL environment.
+
     env = MARLEnv(
         key=key_reset,
         multi_agent_config=multi_agent_config,
     )
     # Get the default combined parameters.
     print("starting default parameters")
+
     env_params = env.default_params
+    jax.device_put(env_params)  # Ensure params are on the device
 
     # Reset the environment.
     obs, state = env.reset(key_reset, env_params)
@@ -802,26 +803,14 @@ if __name__ == "__main__":
         #print("Done:", done)
         if done["__all__"]:
             print("Episode finished!")
-            break
+            # break
     # jax.profiler.stop_trace()
+    jax.block_until_ready(state)
+    jax.profiler.stop_trace()
 
     
     # Set number of environments to batch
      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     #=======================================#
     #=========== Old VMAP TIMING TEST =========#
@@ -959,19 +948,19 @@ if __name__ == "__main__":
         print("="*60)
 
 
-# ----------------------------------------------
-# New VMAP rollout script + timing statistics
-# ----------------------------------------------
-enable_vmap = False
-if enable_vmap:
+    # ----------------------------------------------
+    # New VMAP rollout script + timing statistics
+    # ----------------------------------------------
+    enable_vmap = True
+    if enable_vmap:
 
         print("\n" + "="*60)
         print("Starting VMAP timing test loop for MARL")
         print("="*60)
 
 
-        NUM_ENVS   = 10000         # number of parallel environments
-        NUM_STEPS  = 1000     # total steps per environment
+        NUM_ENVS   = 1000        # number of parallel environments
+        NUM_STEPS  = 50     # total steps per environment
         MASTER_KEY = jax.random.PRNGKey(0)
 
         # -------------------------------------------------
@@ -981,6 +970,8 @@ if enable_vmap:
         batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
         reset_start = time.time()
+        jax.profiler.start_trace("/tmp/profile-data")
+
         obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
         # force execution to finish before timing
         jax.block_until_ready(state)
@@ -1034,6 +1025,10 @@ if enable_vmap:
         # ensure all work is finished
         jax.block_until_ready(final_state)
         rollout_time = time.time() - rollout_start
+
+        jax.profiler.stop_trace()
+
+        
 
         # -------------------------------------------------
         # 4) Timing statistics

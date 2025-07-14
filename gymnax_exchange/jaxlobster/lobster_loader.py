@@ -35,15 +35,17 @@ from os.path import isfile, join
 import warnings
 import os
 
+import jax
 import itertools
 import pandas as pd
 from pandas.errors import SettingWithCopyWarning
 import numpy as np
 
-from jax import numpy as jnp
-import jax
-from jax import lax
+# from jax import numpy as jnp
+# import jax
+# from jax import lax
 from glob import glob
+from functools import partial
 
 class LoadLOBSTER():
     """
@@ -112,11 +114,11 @@ class LoadLOBSTER():
                                    in zip(message_days,orderbook_days)]
         cubes_withOB = list(itertools.chain \
                             .from_iterable(slicedCubes_withOB_list))
-        max_steps_in_windows_arr = jnp.array([m.shape[0] 
+        max_steps_in_windows_arr = np.array([m.shape[0] 
                                               for m,o 
-                                              in cubes_withOB],jnp.int32)
+                                              in cubes_withOB],np.int32)
         cubes_withOB=self._pad_window_cubes(cubes_withOB)
-        loaded_msg_windows,loaded_book_windows=map(jnp.array,
+        loaded_msg_windows,loaded_book_windows=map(np.array,
                                                     zip(*cubes_withOB))
         n_windows=len(loaded_book_windows)
         return (loaded_msg_windows,
@@ -368,6 +370,7 @@ class LoadLOBSTER_resample():
                 max_window_size (Int)
         """
         message_days, orderbook_days = self._load_files()
+
         pairs = [self._pre_process_msg_ob(msg,ob) 
                  for msg,ob 
                  in zip(message_days,orderbook_days)]
@@ -380,15 +383,17 @@ class LoadLOBSTER_resample():
                                    for msg_day,ob_day 
                                    in zip(message_days,orderbook_days)]
         msgs,starts,ends,obs = zip(*pairs)
+        jax.profiler.start_trace("/tmp/profile-data")
+
         
         #Concatenate the data from all the days.
-        msgs=jnp.concatenate(msgs,0)
+        msgs=np.concatenate(msgs,0)
         
-        starts=jnp.concatenate(starts,0)
-        ends=jnp.concatenate(ends,0)
-        obs=jnp.concatenate(obs,0)
+        starts=np.concatenate(starts,0)
+        ends=np.concatenate(ends,0)
+        obs=np.concatenate(obs,0)
+        max_msgs_in_windows_arr=ends - starts
 
-        max_msgs_in_windows_arr=ends-starts
         if self.n_data_msg_per_step !=0:
             (msgs,
             max_msgs_in_windows_arr)=self._pad_last_ep(msgs,
@@ -398,11 +403,11 @@ class LoadLOBSTER_resample():
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
         length_last_ep=max_msgs_in_windows_arr[-1]
         new_length=(length_last_ep//self.n_data_msg_per_step+1)*self.n_data_msg_per_step
-        pad=jnp.zeros((new_length-length_last_ep,messages.shape[1]),dtype=jnp.int32)
-        last_time=jnp.array([messages[-1,-2:][0]+1,0])
-        pad=pad.at[:,-2:].set(last_time)
-        messages=jnp.concatenate((messages,pad))
-        max_msgs_in_windows_arr=max_msgs_in_windows_arr.at[-1].set(new_length)
+        pad=np.zeros((new_length-length_last_ep,messages.shape[1]),dtype=np.int32)
+        last_time=np.array([messages[-1,-2:][0]+1,0])
+        pad[:,-2:]=last_time
+        messages=np.concatenate((messages,pad))
+        max_msgs_in_windows_arr[-1]=new_length
         return messages,max_msgs_in_windows_arr
     
 
@@ -421,22 +426,24 @@ class LoadLOBSTER_resample():
         """Loads the csvs as pandas arrays. Files are seperated by days
         Could potentially be optimised to work around pandas, very slow.         
         """
-        dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
+        dtypes = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
         print("self.message_files",self.message_files)
-        #messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
-        #orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
+        # messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
+        # orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
         messageCSVs = []
         orderbookCSVs = []
 
-        for message_file, book_file in zip(self.message_files, self.book_files):
+        import concurrent.futures
+
+        def read_pair(files):
+            message_file, book_file = files
             if message_file[-3:] == "csv" and book_file[-3:] == "csv":
                 try:
-                    df_message = pd.read_csv(message_file, usecols=range(6), dtype=dtype, header=None)
+                    df_message = pd.read_csv(message_file, usecols=range(6), dtype=dtypes, header=None, engine='c')
                     df_book = pd.read_csv(book_file, header=None)
                     if not df_message.empty and not df_book.empty:
-                        messageCSVs.append(df_message)
-                        orderbookCSVs.append(df_book)
                         print(f"file appended: {message_file}")
+                        return (df_message, df_book)
                     else:
                         if df_message.empty:
                             print(f"Skipping message file with no data rows: {message_file}")
@@ -444,7 +451,22 @@ class LoadLOBSTER_resample():
                             print(f"Skipping orderbook file with no data rows: {book_file}")
                 except pd.errors.EmptyDataError:
                     print(f"Skipping truly empty message or orderbookfile: {message_file}")
-        print("Done with for loop loading")
+            return None
+
+        pairs = list(zip(self.message_files, self.book_files))
+        messageCSVs = []
+        orderbookCSVs = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=128) as executor:
+            results = list(executor.map(read_pair, pairs))
+
+        for res in results:
+            if res is not None:
+                df_message, df_book = res
+                messageCSVs.append(df_message)
+                orderbookCSVs.append(df_book)
+
+        print("Done with parallel loading")
         return messageCSVs, orderbookCSVs
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):
@@ -563,14 +585,14 @@ class LoadLOBSTER_resample():
                     # If no data is found, print a warning (seems to happen quite often for smaller window sizes)
                     print(f"  Warning: Window {i} has no data!")
 
-        init_OBs=jnp.array(orderbook_day.iloc[jnp.array(index_s),:])
-        index_s=jnp.array(index_s)+jnp.ones_like(jnp.array(index_s))*self.index_offest
-        index_e=jnp.array(index_e)+jnp.ones_like(jnp.array(index_e))*self.index_offest
+        init_OBs=np.array(orderbook_day.iloc[np.array(index_s),:])
+        index_s=np.array(index_s)+np.ones_like(np.array(index_s))*self.index_offest
+        index_e=np.array(index_e)+np.ones_like(np.array(index_e))*self.index_offest
         self.index_offest=self.index_offest+message_day.shape[0]
         columns = ['type','direction','qty','price',
                    'trader_id','order_id','time_s','time_ns']
         message_day=message_day[columns].to_numpy()
-        return jnp.array(message_day),index_s,index_e,init_OBs
+        return message_day,index_s,index_e,init_OBs
     
 
 

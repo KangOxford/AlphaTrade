@@ -20,6 +20,7 @@ class LoadedEnvState:
     window_index:int
     max_steps_in_episode: int
     start_index: int # This should be here because its the same for all agents, but it changes for all agents when resetting (this is why its not in Params)
+    step_counter: int
     
 
 
@@ -28,7 +29,6 @@ class WorldState(LoadedEnvState):
     # But everything here that is not loaded from the base config but shared by all agents
     best_bids: jnp.ndarray
     best_asks: jnp.ndarray
-    step_counter: int
     time: jnp.ndarray
     order_id_counter: int
     mid_price:float

@@ -2,4 +2,4 @@
 	email = saschayvesfrey@gmail.com
 	name = saschafrey
 [credential]
-	helper = "!f() { /home/myuser/.vscode-server/bin/dfaf44141ea9deb3b4096f7cd6d24e00c147a4b1/node /tmp/vscode-remote-containers-9846912e-9850-49b9-9eac-2e4cd0c35013.js git-credential-helper $*; }; f"
+	helper = "!f() { /home/myuser/.vscode-server/bin/2901c5ac6db8a986a5666c3af51ff804d05af0d4/node /tmp/vscode-remote-containers-ffc765c8-e357-4888-b636-176db2e82e79.js git-credential-helper $*; }; f"

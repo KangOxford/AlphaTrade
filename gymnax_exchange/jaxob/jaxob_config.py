@@ -24,7 +24,7 @@ class JAXLOB_Configuration:
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2017_onequarter" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2024" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)
@@ -136,7 +136,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time: int = 10 # counted by seconds, 1800s=0.5h
+    episode_time: int = 600 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -162,8 +162,8 @@ class MultiAgentConfig():
     #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2,2]) # This is only the default value, we change it in the yaml RL file
+    list_of_agents_configs: list = field(default_factory=lambda: [Execution_EnvironmentConfig()])#[MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
+    number_of_agents_per_type: list = field(default_factory=lambda: [2])#[2,2]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [
