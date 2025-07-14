@@ -1269,7 +1269,10 @@ class MarketMakingAgent():
 
 
         # Calculate skewed mid price
-        skewed_mid = mid_price + skew_ticks * self.world_config.tick_size
+        if self.cfg.multiplier_type == "spread":
+            skewed_mid = mid_price + skew_ticks * new_spread
+        elif self.cfg.multiplier_type == "tick":
+            skewed_mid = mid_price + skew_ticks * self.world_config.tick_size
 
         #jax.debug.print("mid price: {}", mid_price)
         #jax.debug.print("skew ticks: {}", skew_ticks)
@@ -1288,7 +1291,7 @@ class MarketMakingAgent():
 
         #spread4 = current_spread * self.cfg.spread_multiplier
         #half_spread4 = spread4 // 2
-       # bid_price_4 = mid_price - half_spread4
+        #bid_price_4 = mid_price - half_spread4
         #ask_price_4 = mid_price + half_spread4
         #bid_price = bid_price_4
         #ask_price = ask_price_4
@@ -2019,7 +2022,7 @@ class MarketMakingAgent():
             reward = buyPnL + sellPnL
             #jax.debug.print("buyPnL: {}", buyPnL)
             #jax.debug.print("sellPnL: {}", sellPnL)
-            #jax.debug.print("reward: {}", reward)
+            #jax.debug.print("reward without penalty: {}", reward)
         elif self.cfg.reward_space == "complex":
             reward =reward_complex
         elif self.cfg.reward_space == "zero_inv":
@@ -2040,6 +2043,7 @@ class MarketMakingAgent():
             inv_pen = 0.0
         elif self.cfg.inv_penalty == "linear":
             inv_pen = (-1) * jnp.abs(new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "quadratic":
             inv_pen = (-1) * (new_inventory ** 2)
             #jax.debug.print("new_inventory: {}", new_inventory)
@@ -2396,60 +2400,111 @@ class MarketMakingAgent():
         # NOTE: only uses most recent observation from state
         time = world_state.time[0] + world_state.time[1]/1e9
         time_elapsed = time - (world_state.init_time[0] + world_state.init_time[1]/1e9)
-        obs = {
-            "p_bid" : world_state.best_bids[-1][0],  
-            "p_ask":world_state.best_asks[-1][0], 
-            "spread": jnp.abs(world_state.best_asks[-1][0] - world_state.best_bids[-1][0]),
-            "q_bid": world_state.best_bids[-1][1],
-            "q_ask": world_state.best_asks[-1][1],
-            "delta_time": world_state.delta_time,
-            "time_remaining": self.world_config.episode_time - time_elapsed,
-            "mid_price":world_state.mid_price,
-            "step_counter": world_state.step_counter,
+        if self.world_config.ep_type == "fixed_time":
+            obs = {
+                "p_bid" : world_state.best_bids[-1][0],  
+                "p_ask":world_state.best_asks[-1][0], 
+                "spread": jnp.abs(world_state.best_asks[-1][0] - world_state.best_bids[-1][0]),
+                "q_bid": world_state.best_bids[-1][1],
+                "q_ask": world_state.best_asks[-1][1],
+                "delta_time": world_state.delta_time,
+                "time_remaining": self.world_config.episode_time - time_elapsed,
+                "mid_price":world_state.mid_price,
+                "step_counter": world_state.step_counter,
 
-            # Set Agent specific stuff
-            "total_PnL" : agent_state.total_PnL,
-            "cash_balance" : agent_state.cash_balance,
-            "inventory" : agent_state.inventory,
-        }
+                # Set Agent specific stuff
+                "total_PnL" : agent_state.total_PnL,
+                "cash_balance" : agent_state.cash_balance,
+                "inventory" : agent_state.inventory,
+            }
 
-        # TODO: put this into config somewhere?
-        #       also check if we can get rid of manual normalization
-        #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
+            # TODO: put this into config somewhere?
+            #       also check if we can get rid of manual normalization
+            #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
 
-        means = {
-            "p_bid" : 0,
-            "p_ask":0, 
-            "spread": 0,
-            "q_bid": 0,
-            "q_ask": 0,
-            "delta_time": 0,
-            "time_remaining": 0,
-            "mid_price":0,
-            "step_counter": 0,
+            means = {
+                "p_bid" : 0,
+                "p_ask":0, 
+                "spread": 0,
+                "q_bid": 0,
+                "q_ask": 0,
+                "delta_time": 0,
+                "time_remaining": 0,
+                "mid_price":0,
+                "step_counter": 0,
 
-            # Set Agent specific stuff
-            "total_PnL" : 0,
-            "cash_balance" : 0,
-            "inventory" : 0,
-        }
+                # Set Agent specific stuff
+                "total_PnL" : 0,
+                "cash_balance" : 0,
+                "inventory" : 0,
+            }
 
-        stds = {
-            "p_bid" : 1e7,
-            "p_ask":1e7, 
-            "spread": 1e4,
-            "q_bid": 100,
-            "q_ask": 100,
-            "delta_time": 10,
-            "time_remaining": self.world_config.episode_time,
-            "mid_price":1e7,
-            "step_counter": 10,
+            stds = {
+                "p_bid" : 1e7,
+                "p_ask":1e7, 
+                "spread": 1e4,
+                "q_bid": 100,
+                "q_ask": 100,
+                "delta_time": 10,
+                "time_remaining": self.world_config.episode_time,
+                "mid_price":1e7,
+                "step_counter": 10,
 
-            # Set Agent specific stuff
-            "total_PnL" : 1000,
-            "cash_balance" : 1000,
-            "inventory" : 10,
-        }
+                # Set Agent specific stuff
+                "total_PnL" : 1000,
+                "cash_balance" : 1000,
+                "inventory" : 10,
+            }
+
+        elif self.world_config.ep_type == "fixed_steps": # leave away time related stuff
+            obs = {
+                "p_bid" : world_state.best_bids[-1][0],  
+                "p_ask":world_state.best_asks[-1][0], 
+                "spread": jnp.abs(world_state.best_asks[-1][0] - world_state.best_bids[-1][0]),
+                "q_bid": world_state.best_bids[-1][1],
+                "q_ask": world_state.best_asks[-1][1],
+                "mid_price":world_state.mid_price,
+                "step_counter": world_state.step_counter,
+
+                # Set Agent specific stuff
+                "total_PnL" : agent_state.total_PnL,
+                "cash_balance" : agent_state.cash_balance,
+                "inventory" : agent_state.inventory,
+            }
+
+            # TODO: put this into config somewhere?
+            #       also check if we can get rid of manual normalization
+            #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
+
+            means = {
+                "p_bid" : 0,
+                "p_ask":0, 
+                "spread": 0,
+                "q_bid": 0,
+                "q_ask": 0,
+                "mid_price":0,
+                "step_counter": 0,
+
+                # Set Agent specific stuff
+                "total_PnL" : 0,
+                "cash_balance" : 0,
+                "inventory" : 0,
+            }
+
+            stds = {
+                "p_bid" : 1e7,
+                "p_ask":1e7, 
+                "spread": 1e4,
+                "q_bid": 100,
+                "q_ask": 100,
+                "mid_price":1e7,
+                "step_counter": 10,
+
+                # Set Agent specific stuff
+                "total_PnL" : 1000,
+                "cash_balance" : 1000,
+                "inventory" : 10,
+            }
 
         if normalize:
             obs = self.normalize_obs(obs, means, stds)
@@ -2492,7 +2547,10 @@ class MarketMakingAgent():
     def observation_space(self):
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
-             return spaces.Box(-1000, 1000, (12,), dtype=jnp.float32) # Obvs space is hard coded as size 17. We then add an object size n_trades plus an object size 2 by n_trades. (total =+3*n_trades)
+            if self.world_config.ep_type == "fixed_time":
+             return spaces.Box(-1000, 1000, (12,), dtype=jnp.float32)
+            elif self.world_config.ep_type == "fixed_steps":
+                return spaces.Box(-1000, 1000, (10,), dtype=jnp.float32)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
                 return spaces.Box(low=-1*self.world_config.maxint, high=self.world_config.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)

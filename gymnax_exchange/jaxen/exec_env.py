@@ -975,6 +975,7 @@ class ExecutionAgent():
             [0, 0, 0, 5],  # PP*3 quant
         ])
         quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
+        quants = quants.flatten() #Flatten the array to 1D
         #----03 get the rest of the message----#
         types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
         sides = (1 - agent_state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
@@ -1835,74 +1836,130 @@ class ExecutionAgent():
         time_elapsed = time - (world_state.init_time[0] + world_state.init_time[1]/1e9)
         # print('prev_action_shape', world_state.prev_action.shape)
         sign_switch = 2 * agent_state.is_sell_task - 1
-        obs = {
-            "is_sell_task": agent_state.is_sell_task,
-            "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
-            "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
-            "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
-            "q_aggr": quote_aggr[1],
-            "q_pass": quote_pass[1],
-            #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
-            # "q_before2": None, # how much quantity lies above this price level
-            "time": time,
-            "delta_time": world_state.delta_time,
-            # "episode_time": state.time - state.init_time,
-            "time_remaining": self.world_config.episode_time - time_elapsed,
-            "init_price": agent_state.init_price,
-            "current_task_size": agent_state.task_to_execute,
-            "executed_quant": agent_state.quant_executed,
-            "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
-            "step_counter": world_state.step_counter,
-            # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
-            "remaining_ratio": jnp.where(world_state.max_steps_in_episode==0, 0., 1. - world_state.step_counter / world_state.max_steps_in_episode),#17
-        }
-        # jax.debug.print('prev_action {}', state.prev_action)
-        # jax.debug.print('prev_executed {}', state.prev_executed)
-        # jax.debug.print('obs:\n {}', obs)
-        # TODO: put this into config somewhere?
-        #       also check if we can get rid of manual normalization
-        #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
-        p_mean = 3.5e7
-        p_std = 1e6
-        means = {
-            "is_sell_task": 0,
-            "p_aggr": agent_state.init_price * sign_switch, #p_mean,
-            "p_pass": agent_state.init_price * sign_switch, #p_mean,
-            "spread": 0,
-            "q_aggr": 0,
-            "q_pass": 0,
-            #"q_pass2": 0,
-            "time": 0,
-            "delta_time": 0,
-            # "episode_time": jnp.array([0, 0]),
-            "time_remaining": 0,
-            "init_price": 0, #p_mean,
-            "current_task_size": 0,
-            "executed_quant": 0,
-            "remaining_quant": 0,
-            "step_counter": 0,
-            "remaining_ratio": 0,
-        }
-        stds = {
-            "is_sell_task": 1,
-            "p_aggr": 1e5, #p_std,
-            "p_pass": 1e5, #p_std,
-            "spread": 1e4,
-            "q_aggr": 100,
-            "q_pass": 100,
-           #"q_pass2": 100,
-            "time": 1e5,
-            "delta_time": 10,
-            # "episode_time": jnp.array([1e3, 1e9]),
-            "time_remaining": self.world_config.episode_time, # 10 minutes = 600 seconds
-            "init_price": 1e7, #p_std,
-            "current_task_size": self.cfg.task_size,
-            "executed_quant": self.cfg.task_size,
-            "remaining_quant": self.cfg.task_size,
-            "step_counter": 30,  # TODO: find way to make this dependent on episode length
-            "remaining_ratio": 1,
-        }
-
+        if self.world_config.ep_type == "fixed_time":
+            obs = {
+                "is_sell_task": agent_state.is_sell_task,
+                "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
+                "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
+                "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
+                "q_aggr": quote_aggr[1],
+                "q_pass": quote_pass[1],
+                #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
+                # "q_before2": None, # how much quantity lies above this price level
+                "time": time,
+                "delta_time": world_state.delta_time,
+                # "episode_time": state.time - state.init_time,
+                "time_remaining": self.world_config.episode_time - time_elapsed,
+                "init_price": agent_state.init_price,
+                "current_task_size": agent_state.task_to_execute,
+                "executed_quant": agent_state.quant_executed,
+                "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
+                "step_counter": world_state.step_counter,
+                # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
+                "remaining_ratio": jnp.where(world_state.max_steps_in_episode==0, 0., 1. - world_state.step_counter / world_state.max_steps_in_episode),#17
+            }
+            # jax.debug.print('prev_action {}', state.prev_action)
+            # jax.debug.print('prev_executed {}', state.prev_executed)
+            # jax.debug.print('obs:\n {}', obs)
+            # TODO: put this into config somewhere?
+            #       also check if we can get rid of manual normalization
+            #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
+            p_mean = 3.5e7
+            p_std = 1e6
+            means = {
+                "is_sell_task": 0,
+                "p_aggr": agent_state.init_price * sign_switch, #p_mean,
+                "p_pass": agent_state.init_price * sign_switch, #p_mean,
+                "spread": 0,
+                "q_aggr": 0,
+                "q_pass": 0,
+                #"q_pass2": 0,
+                "time": 0,
+                "delta_time": 0,
+                # "episode_time": jnp.array([0, 0]),
+                "time_remaining": 0,
+                "init_price": 0, #p_mean,
+                "current_task_size": 0,
+                "executed_quant": 0,
+                "remaining_quant": 0,
+                "step_counter": 0,
+                "remaining_ratio": 0,
+            }
+            stds = {
+                "is_sell_task": 1,
+                "p_aggr": 1e5, #p_std,
+                "p_pass": 1e5, #p_std,
+                "spread": 1e4,
+                "q_aggr": 100,
+                "q_pass": 100,
+            #"q_pass2": 100,
+                "time": 1e5,
+                "delta_time": 10,
+                # "episode_time": jnp.array([1e3, 1e9]),
+                "time_remaining": self.world_config.episode_time, # 10 minutes = 600 seconds
+                "init_price": 1e7, #p_std,
+                "current_task_size": self.cfg.task_size,
+                "executed_quant": self.cfg.task_size,
+                "remaining_quant": self.cfg.task_size,
+                "step_counter": 30,  # TODO: find way to make this dependent on episode length
+                "remaining_ratio": 1,
+            }
+        elif self.world_config.ep_type == "fixed_steps": # leave away time related stuff
+            obs = {
+                "is_sell_task": agent_state.is_sell_task,
+                "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
+                "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
+                "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
+                "q_aggr": quote_aggr[1],
+                "q_pass": quote_pass[1],
+                #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
+                # "q_before2": None, # how much quantity lies above this price level
+                "init_price": agent_state.init_price,
+                "current_task_size": agent_state.task_to_execute,
+                "executed_quant": agent_state.quant_executed,
+                "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
+                "step_counter": world_state.step_counter,
+                # "remaining_ratio": 1. - jnp.nan_to_num(state.step_counter / state.max_steps_in_episode, nan=1.),
+                "remaining_ratio": jnp.where(world_state.max_steps_in_episode==0, 0., 1. - world_state.step_counter / world_state.max_steps_in_episode),#17
+            }
+            # jax.debug.print('prev_action {}', state.prev_action)
+            # jax.debug.print('prev_executed {}', state.prev_executed)
+            # jax.debug.print('obs:\n {}', obs)
+            # TODO: put this into config somewhere?
+            #       also check if we can get rid of manual normalization
+            #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
+            p_mean = 3.5e7
+            p_std = 1e6
+            means = {
+                "is_sell_task": 0,
+                "p_aggr": agent_state.init_price * sign_switch, #p_mean,
+                "p_pass": agent_state.init_price * sign_switch, #p_mean,
+                "spread": 0,
+                "q_aggr": 0,
+                "q_pass": 0,
+                #"q_pass2": 0,
+                "init_price": 0, #p_mean,
+                "current_task_size": 0,
+                "executed_quant": 0,
+                "remaining_quant": 0,
+                "step_counter": 0,
+                "remaining_ratio": 0,
+            }
+            stds = {
+                "is_sell_task": 1,
+                "p_aggr": 1e5, #p_std,
+                "p_pass": 1e5, #p_std,
+                "spread": 1e4,
+                "q_aggr": 100,
+                "q_pass": 100,
+            #"q_pass2": 100,
+                "init_price": 1e7, #p_std,
+                "current_task_size": self.cfg.task_size,
+                "executed_quant": self.cfg.task_size,
+                "remaining_quant": self.cfg.task_size,
+                "step_counter": 30,  # TODO: find way to make this dependent on episode length
+                "remaining_ratio": 1,
+            }
         # print("obs:", obs)
 
 
@@ -2025,7 +2082,10 @@ class ExecutionAgent():
         if self.cfg.observation_space == "basic":
             return spaces.Box(low=-10000, high=10000, shape=(3,), dtype=jnp.float32)
         elif self.cfg.observation_space == "engineered":
-            space = spaces.Box(-10000, 10000, (15,), dtype=jnp.float32) 
+            if self.world_config.ep_type == "fixed_time":
+                space = spaces.Box(-10000, 10000, (15,), dtype=jnp.float32) 
+            elif self.world_config.ep_type == "fixed_steps":
+                space = spaces.Box(-10000, 10000, (12,), dtype=jnp.float32) 
             return space
         elif self.cfg.observation_space == "simplest_case":
             space = spaces.Box(-10000, 10000, (3,), dtype=jnp.float32) 
