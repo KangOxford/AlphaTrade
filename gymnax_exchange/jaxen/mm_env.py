@@ -2035,6 +2035,11 @@ class MarketMakingAgent():
             reward=reward_spooner_scaled/10
         elif self.cfg.reward_space=="delta_netWorth":
             reward=reward_delta_netWorth
+
+        elif self.cfg.reward_space=="weight_pnl_inventory_pnl":
+            ##Im going to use "inventoryPnL_lambda", this is already on config, and will be easy to change.
+            weighted_inventory_pnl=self.cfg.inventoryPnL_lambda*InventoryPnL #INV pnl defined as: InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)/self.world_config.tick_size 
+            reward=buyPnL+sellPnL+weighted_inventory_pnl
         else:
             raise ValueError("Invalid reward_space specified.")
         
