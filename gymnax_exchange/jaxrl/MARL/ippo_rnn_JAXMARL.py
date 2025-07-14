@@ -4,8 +4,10 @@ Based on PureJaxRL Implementation of PPO
 
 import os
 
+import pandas as pd
+import csv
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
-
+import time
 import jax # type: ignore
 import jax.numpy as jnp # type: ignore
 import flax.linen as nn
@@ -122,6 +124,7 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
+    print("init_key: ", init_key)
 
 
 
@@ -573,37 +576,39 @@ def make_train(config):
 
                 rng, _rng = jax.random.split(rng)
                 reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-                eval_env_params=eval_env.default_params # type: ignore
-                eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params) # type: ignore
+                if config["CALC_EVAL"]:
+                    eval_env_params=eval_env.default_params # type: ignore
+                    eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params) # type: ignore
 
 
-                eval_hstates=[]
-                init_dones_agents_eval=[]
-                for i,network in enumerate(networks):
-                    eval_hstates.append(ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"]))
-                    init_dones_agents_eval.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
+                    eval_hstates=[]
+                    init_dones_agents_eval=[]
+                    for i,network in enumerate(networks):
+                        eval_hstates.append(ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"]))
+                        init_dones_agents_eval.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
 
 
-                
-                eval_runner_state = (
-                train_states,
-                eval_env_state,
-                eval_obsv,
-                init_dones_agents_eval,
-                eval_hstates,
-                _rng,
-                )
-                eval_runner_state, eval_traj_batch = jax.lax.scan(
-                    _eval_step, eval_runner_state, None,  config["NUM_STEPS_EVAL"]
-                )
-                metrics['agents_eval'] = [jax.tree.map(
-                    lambda x: x.reshape(
-                        (config["NUM_STEPS_EVAL"], config["NUM_ENVS"], config["NUM_AGENTS_PER_TYPE"][i])
-                    ),
-                    trjbtch.info['agent']) for i, trjbtch in enumerate(eval_traj_batch)]
-                metrics['world_eval'] = [trjbtch.info['world'] for i, trjbtch in enumerate(eval_traj_batch)]
-                metrics['avg_reward_eval'] = [jnp.mean(tr.reward) for tr in eval_traj_batch]
-                metrics["traj_batch_eval"] = eval_traj_batch
+                    
+                    eval_runner_state = (
+                    train_states,
+                    eval_env_state,
+                    eval_obsv,
+                    init_dones_agents_eval,
+                    eval_hstates,
+                    _rng,
+                    )
+                    eval_runner_state, eval_traj_batch = jax.lax.scan(
+                        _eval_step, eval_runner_state, None,  config["NUM_STEPS_EVAL"]
+                    )
+                    metrics['agents_eval'] = [jax.tree.map(
+                        lambda x: x.reshape(
+                            (config["NUM_STEPS_EVAL"], config["NUM_ENVS"], config["NUM_AGENTS_PER_TYPE"][i])
+                        ),
+                        trjbtch.info['agent']) for i, trjbtch in enumerate(eval_traj_batch)]
+                    metrics['world_eval'] = [trjbtch.info['world'] for i, trjbtch in enumerate(eval_traj_batch)]
+                    if config["CALC_EVAL"]:
+                        metrics['avg_reward_eval'] = [jnp.mean(tr.reward) for tr in eval_traj_batch]
+                        metrics["traj_batch_eval"] = eval_traj_batch
 
 
             def callback(metric):
@@ -616,18 +621,21 @@ def make_train(config):
                     # Add each action count to the dictionary with a unique key
                     for a, c in zip(unique_actions, counts):
                         action_distribution[f"action_{i}_{int(a)}"] = c/tot_counts*100
-                wandb.log(
-                    {
+                logging_dict = {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
                         "env_step": metric["update_steps"]
                         * config["NUM_ENVS"]
                         * config["NUM_STEPS"],
                         **{f"network_{i}": m for i,m in enumerate(metric["loss"])},
                         **{f"avg_reward_{i}": metric["avg_reward"][i] for i in range(len(metric["avg_reward"]))},
-                        **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
                         **action_distribution
                     }
-                )
+                if config["CALC_EVAL"]:
+                    logging_dict.update({
+                        **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
+                    })
+                wandb.log(logging_dict)
+
                 for i in range(len(metric["avg_reward"])):
                     print(f"avg_reward_{i} {metric["avg_reward"][i]}")
 
@@ -659,6 +667,7 @@ def make_train(config):
 
 @hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
 def main(config):
+    print("MultiAgentConfig", MultiAgentConfig().world_config)
     env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
@@ -689,10 +698,52 @@ def main(config):
 
         train_jit = jax.jit(make_train(wandb.config))
         # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+
+
+        if config["Timing"]:
+            start_time = time.time()
+
+
         out = train_jit(rng)
         # train_state = out['runner_state'][0] # runner_state.train_state
         # params = train_state.params
-    
+
+        if config["Timing"]:
+            end_time = time.time()
+            elapsed = end_time - start_time
+            total_steps = config["TOTAL_TIMESTEPS"]
+            agents_per_type = config["NUM_AGENTS_PER_TYPE"]
+            num_data_msgs = config.get("n_data_msg_per_step", None)
+            num_envs = config["NUM_ENVS"]
+
+            # Print results
+            print(f"Total steps: {total_steps}")
+            print(f"Elapsed time: {elapsed} seconds")
+            print(f"Steps per second: {total_steps / elapsed}")
+            print(f"Agents per type: {agents_per_type}")
+            print(f"Num data messages: {num_data_msgs}")
+            print(f"Num envs: {num_envs}")
+
+            # Save to CSV
+            results = {
+                "total_steps": [total_steps],
+                "elapsed_seconds": [elapsed],
+                "steps_per_second": [total_steps / elapsed],
+                "agents_per_type": [str(agents_per_type)],
+                "num_data_msgs": [num_data_msgs],
+                "num_envs": [num_envs],
+            }
+            df = pd.DataFrame(results)
+            csv_path = "timing_results.csv"
+            # Append if file exists, else write header
+            try:
+                with open(csv_path, "x", newline="") as f:
+                    df.to_csv(f, index=False)
+            except FileExistsError:
+                with open(csv_path, "a", newline="") as f:
+                    df.to_csv(f, index=False, header=False)
+
+        
         # # Save the params to a file using flax.serialization.to_bytes
         # with open(params_file_name, 'wb') as f:
         #     f.write(flax.serialization.to_bytes(params))
@@ -709,6 +760,19 @@ def main(config):
     # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
     sweep_parameters = {
         "LR": {"values": [config["LR"]]},
+        #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
+        #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
+        #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
+        #"NUM_STEPS": {"values": [config["NUM_STEPS"], 2048 ,512]},
+        #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
+        #"VF_COEF": {"values": [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]},
+        #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
+       # "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]},
+       #"SEED": {"values": [2,3,4,5,6,7,8,9,10]},
+       "NUM_ENVS": {"values": [config["NUM_ENVS"], 8192, 2048]},
+       "NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 64, 32,16,8]},
+       
+        
         # "env_params" : {"parameters": {
         #                 "world_params" : {"parameters":
         #                                 {"n_data_msg_per_step": {"values":[50,150]},
