@@ -868,6 +868,7 @@ class ExecutionAgent():
 
 
         quants=quant_array[action,:]*self.cfg.fixed_quant_value #Get the quant array based on the action
+        quants = quants.flatten() #Flatten the array to 1D
         #----03 get the rest of the message----#
         types = jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
         sides = (1 - agent_state.is_sell_task*2) * jnp.ones((self.cfg.num_action_messages_by_agent,), jnp.int32)
@@ -898,6 +899,7 @@ class ExecutionAgent():
         quants=jnp.array(quants)
         #jax.debug.print("quants:{}",quants)
         price_levels=jnp.array(price_levels)
+
         #---form messages---#
 
         # print([types, sides, quants, price_levels, order_ids,trader_ids])
