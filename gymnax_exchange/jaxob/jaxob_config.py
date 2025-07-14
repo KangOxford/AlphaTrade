@@ -51,7 +51,7 @@ class MarketMaking_EnvironmentConfig():
     # Reward
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth"
-    reference_price_portfolio_value: str = "best_bid_ask"  # options: "mid", "best_bid_ask", "near_touch"
+    reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 0.001
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0

@@ -294,7 +294,7 @@ class MARLEnv(MultiAgentEnv):
         #jax.debug.print("best ask prices: {}", state.world_state.best_asks[-1])
         #jax.debug.print("best bid prices: {}", state.world_state.best_bids[-1])
         #jax.debug.print("combined msgs: {}", combined_msgs)
-        # print(f"all action msgs: {all_action_msgs}")
+        #jax.debug.print(f"all action msgs: {all_action_msgs}")
         
 
 
@@ -757,7 +757,7 @@ if __name__ == "__main__":
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
 
-    num_steps = 30
+    num_steps = 10
     fixed_actions = False
 
     for i in range(1, num_steps+1):
@@ -788,6 +788,7 @@ if __name__ == "__main__":
             actions_per_type = [jnp.array([3]),jnp.array([1])]
             #print("actions_per_type fixed: ", actions_per_type)
 
+        print("actions_per_type: ", actions_per_type)
         obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
         #DEBUG PRINTS
@@ -795,8 +796,8 @@ if __name__ == "__main__":
 
 
         
-        #print(f"Actions: {actions}")
-        #print("Step rewards:", rewards)
+        print(f"Actions: {actions_per_type}")
+        print("Step rewards:", rewards)
         #print("Step info:", info)
         #print("Market Maker Raw Action:", action_mm.tolist())
         #print("Execution Raw Action:", action_exe.tolist())
