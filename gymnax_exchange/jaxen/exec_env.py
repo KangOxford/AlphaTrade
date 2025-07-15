@@ -169,6 +169,8 @@ class ExecutionAgent():
             self.action_fn = self._getActionMsgs_fixedQuant_complex
         elif self.cfg.action_space == "simplest_case":
             self.action_fn = self._getActionMsgs_simpleCase
+        elif self.cfg.action_space == "fixed_quants_1msg":
+            self.action_fn = self._getActionMsgs_fixedQuant_1msg
         else:
             raise ValueError("Invalid action_space specified.")
 
@@ -487,6 +489,8 @@ class ExecutionAgent():
             return done
         
         elif self.world_config.ep_type == 'fixed_steps':
+            #jax.debug.print(f"done exec step: {world_state.max_steps_in_episode - world_state.step_counter <= 1}")
+            #jax.debug.print(f"done exec task: {agent_state.task_to_execute - agent_state.quant_executed <= 0}")
             return (
                 (world_state.max_steps_in_episode - world_state.step_counter <= 1)  # last step
                 |  (agent_state.task_to_execute - agent_state.quant_executed <= 0)  # task done
@@ -907,6 +911,124 @@ class ExecutionAgent():
         #jax.debug.print("action_msgs exec: {}", action_msgs)
         return action_msgs 
 
+
+
+
+
+
+    #-------Action Functions-------#
+    def _getActionMsgs_fixedQuant_1msg(self, action: jax.Array, world_state: MultiAgentState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
+        """Action function for the fixed Quant Action space
+        Pick for a ladder of quant execution options
+        Always send 4 messages
+        0 = No trade
+        1=      # FT
+        2=     # M
+        3=    # NT
+        4=    # PP
+       """
+
+
+        #######################################################
+        # new way of implementing it with just 1 message
+        #######################################################
+
+
+        #----01 get price levels----#
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+
+        def buy_task_prices(best_ask, best_bid):
+            FT = best_ask
+            M = ((best_bid + best_ask) // 2 // self.world_config.tick_size) * self.world_config.tick_size
+            NT = best_bid
+            PP = best_bid - self.world_config.tick_size*self.cfg.n_ticks_in_book
+            return FT, M, NT, PP
+        
+        def sell_task_prices(best_ask, best_bid):
+            FT = best_bid
+            M = (jnp.ceil((best_bid + best_ask) / 2 // self.world_config.tick_size)
+                * self.world_config.tick_size).astype(jnp.int32)
+            NT = best_ask
+            PP = best_ask + self.world_config.tick_size*self.cfg.n_ticks_in_book
+            return FT, M, NT, PP
+        
+        price_levels = jax.lax.cond(
+            agent_state.is_sell_task,
+            sell_task_prices,
+            buy_task_prices,
+            best_ask, best_bid
+        )
+
+        #jax.debug.print("price_levels 1msg: {}", price_levels)
+
+        #----02 get price and quantity based on action----#
+        # Map action to specific price level and quantity
+        # Action 0: No trade (quantity = 0, price = 0)
+        # Action 1-4: Trade at specific price level with fixed quantity
+        
+        # Get the price for the selected action
+        prices_array = jnp.array([0, price_levels[0], price_levels[1], price_levels[2], price_levels[3]])
+        selected_price = prices_array[action]
+        
+        # Get the quantity for the selected action
+        base_quant = self.cfg.fixed_quant_value
+        if self.cfg.larger_far_touch_quant and action == 1:  # FT action
+            base_quant = base_quant * 10
+        
+        quant_array = jnp.array([0, base_quant, base_quant, base_quant, base_quant])
+
+        selected_quant = quant_array[action]
+        
+        #----03 check if quantity exceeds remaining inventory----#
+        quant_left = agent_state.task_to_execute - agent_state.quant_executed
+        selected_quant = jnp.where(
+            selected_quant <= quant_left,
+            selected_quant,
+            0  # If exceeds inventory, set to 0 (no trade)
+        ).astype(jnp.int32)
+
+        #----04 construct single message----#
+        # Message components for single message
+        types = jnp.array([1], dtype=jnp.int32)  # 1 = limit order
+        sides = jnp.array([(1 - agent_state.is_sell_task*2)], dtype=jnp.int32)  # 1 for buy, -1 for sell
+        quants = jnp.array([selected_quant], dtype=jnp.int32).flatten()
+        prices = jnp.array([selected_price], dtype=jnp.int32).flatten()
+        trader_ids = jnp.array([agent_params.trader_id], dtype=jnp.int32)
+        
+        # Placeholder for order ids
+        order_ids = jnp.array([self.world_config.placeholder_order_id], dtype=jnp.int32)
+        
+        # Time fields
+        times = jnp.resize(
+            world_state.time + self.cfg.time_delay_obs_act,
+            (1, 2)  # Shape (1 message, 2 time fields)
+        )
+
+
+        #jax.debug.print("task to execute: {}", agent_state.task_to_execute)
+        #jax.debug.print("quant executed: {}", agent_state.quant_executed)
+
+        #----05 form message----#
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids, trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+
+
+        #jax.debug.print("action_msgs exec 1msg: {}", action_msgs)
+
+
+        #jax.debug.print("action_msgs exec: {}", action_msgs)
+        return action_msgs 
+
+
+
+
+
+
+
+
+
+
     def _getActionMsgs_fixedQuant_complex(self, action: jax.Array, world_state: MultiAgentState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
@@ -1262,6 +1384,8 @@ class ExecutionAgent():
             return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
         elif self.cfg.action_space == "simplest_case":
             return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
+        elif self.cfg.action_space == "fixed_quants_1msg":
+            return self.action_fn(action = action, world_state = world_state, agent_state = agent_state, agent_params = agent_params)
         else:
             raise ValueError("Invalid action space specified.")    
     
@@ -1479,9 +1603,11 @@ class ExecutionAgent():
         quant_executed_this_step = jnp.abs(agent_trades_before_unwind[:,1].sum()) # QUants can be negative, therefore take absolute value
         quant_left = agent_state.task_to_execute - (agent_state.quant_executed + quant_executed_this_step)
 
+        #jax.debug.print(f"quant_left: {quant_left}")
+
         # print("trader id: ", agent_params.trader_id)
         # print("trades before unwind: ", agent_trades_before_unwind)
-        # print(f"quant_executed_this_step: {quant_executed_this_step}")
+        #jax.debug.print(f"quant_executed_this_step: {quant_executed_this_step}")
         # print(f"agent_state.task_to_execute: {agent_state.task_to_execute}")
         # print(f"quant_left: {quant_left}")
 
@@ -1489,8 +1615,15 @@ class ExecutionAgent():
         if self.world_config.ep_type == 'fixed_time':
             remainingTime = self.world_config.episode_time - jnp.array((time - world_state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= self.world_config.last_step_seconds   # 5 seconds
+            #jax.debug.print("ep_is_over fixed time: {}", ep_is_over)
+            #jax.debug.print("remainingTime: {}", remainingTime)
+            #jax.debug.print("world_state.init_time: {}", world_state.init_time)
+            #jax.debug.print("time: {}", time)
         else:
-            ep_is_over = world_state.max_steps_in_episode - world_state.step_counter <= 1
+            ep_is_over = world_state.max_steps_in_episode - world_state.step_counter - 1 <= 1
+            #jax.debug.print("ep_is_over: {}", ep_is_over)
+            #jax.debug.print("world_state.max_steps_in_episode: {}", world_state.max_steps_in_episode)
+            #jax.debug.print("world_state.step_counter: {}", world_state.step_counter)
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() // self.world_config.tick_size * self.world_config.tick_size
         #jax.debug.print("mid_price:{}",mid_price)
 
@@ -1598,6 +1731,12 @@ class ExecutionAgent():
         # switch sign for buy task
         direction_switch = jnp.sign(agent_state.is_sell_task * 2 - 1)
         advantage = direction_switch * (revenue - vwap * agentQuant) # advantage_vwap
+
+
+        #jax.debug.print("advantage: {}", advantage)
+        #jax.debug.print("vwap: {}", vwap)
+
+
         drift = direction_switch * agentQuant * (vwap - agent_state.init_price//self.world_config.tick_size)
         
         # ---------- compute the final reward ----------
@@ -2068,6 +2207,8 @@ class ExecutionAgent():
             else:
                 raise ValueError("Invalid action_type specified.")
         elif self.cfg.action_space=="fixed_quants":
+            return spaces.Discrete(self.cfg.n_actions)
+        elif self.cfg.action_space=="fixed_quants_1msg":
             return spaces.Discrete(self.cfg.n_actions)
         elif self.cfg.action_space=="fixed_quants_complex":
             return spaces.Discrete(self.cfg.n_actions)
