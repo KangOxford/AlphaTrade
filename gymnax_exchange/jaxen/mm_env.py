@@ -1015,6 +1015,9 @@ class MarketMakingAgent():
         quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
         prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
         trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
+
+        quants = quants.flatten() # Flatten so they have the same shape
+        prices = prices.flatten()
         
         # Placeholder for order ids
         order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
@@ -1025,6 +1028,7 @@ class MarketMakingAgent():
             world_state.time + self.cfg.time_delay_obs_act,
             (2, 2)  # Shape (2 messages, 2 time fields)
         )
+
 
 
         # Stack components into message array
