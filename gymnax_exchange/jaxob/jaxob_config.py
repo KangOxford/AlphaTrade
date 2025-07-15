@@ -24,7 +24,7 @@ class JAXLOB_Configuration:
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2017_onequarter" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2017_onequarter" # Needs to be the appropriate directory name. # options: "2017_onequarter", "2017Jan_oneday"
 
 
 @dataclass(frozen=True)
@@ -89,7 +89,7 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 100
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case"
+    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
@@ -127,6 +127,10 @@ class Execution_EnvironmentConfig():
             object.__setattr__(self, 'n_actions', 3)
             object.__setattr__(self, 'num_messages_by_agent', 4) # Includes cancel messages
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
+        elif self.action_space == "fixed_quants_1msg":
+            object.__setattr__(self, 'n_actions', 5)
+            object.__setattr__(self, 'num_messages_by_agent', 2)
+            object.__setattr__(self, 'num_action_messages_by_agent', 1)
 
 
 
