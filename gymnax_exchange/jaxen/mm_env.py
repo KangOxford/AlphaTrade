@@ -970,7 +970,7 @@ class MarketMakingAgent():
         return price_quantity_pairs
       
     
-    def _getActionMsgs_fixedQuant(self, action: jax.Array, world_state: MultiAgentState, agent_params: MMEnvParams):
+    def _getActionMsgs_fixedQuant(self, action: jax.Array, world_state: MultiAgentState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
         best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
@@ -980,10 +980,18 @@ class MarketMakingAgent():
        # jax.debug.print("old best bid: {}", best_bid)
         
         # Define mappings for each action: [0-7]
-        bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 5, -1], dtype=jnp.float32)
-        ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, -1, 5], dtype=jnp.float32)
-        bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
-        ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
+        #bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 5, -1], dtype=jnp.float32)
+        #ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, -1, 5], dtype=jnp.float32)
+        #bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
+        #ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
+
+        #New option to sell and buy whole inventory
+        inventory=agent_state.inventory
+        bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 20, 0], dtype=jnp.float32)
+        ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, 0, 20], dtype=jnp.float32)
+        bid_quants = jnp.array([0, 1, 1, 1, 1, 1,inventory//self.cfg.fixed_quant_value, 0], dtype=jnp.int32)
+        ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 0, inventory//self.cfg.fixed_quant_value], dtype=jnp.int32)##config quant....
+
        
         tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
         
@@ -2201,7 +2209,7 @@ class MarketMakingAgent():
         Wrapper function to call the appropriate action function.
         """
         if self.cfg.action_space == "fixed_quants":
-            return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
+            return self.action_fn(action=action, world_state=world_state, agent_state=agent_state, agent_params=agent_params)
         elif self.cfg.action_space == "fixed_prices":
             return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
         elif self.cfg.action_space == "AvSt":
