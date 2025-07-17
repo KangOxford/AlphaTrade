@@ -1856,9 +1856,11 @@ class MarketMakingAgent():
             remainingTime = self.world_config.episode_time - jnp.array((time - world_state.init_time)[0], dtype=jnp.int32)
             ep_is_over = remainingTime <= self.world_config.last_step_seconds  # 5 seconds
         else:
-            ep_is_over = world_state.max_steps_in_episode - world_state.step_counter <= 1
+            ep_is_over = world_state.max_steps_in_episode - world_state.step_counter - 1 <= 1
 
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+
+        #jax.debug.print("new_inventory_before_unwind: {}", new_inventory_before_unwind)
 
         is_sell_task = jnp.where(new_inventory_before_unwind > 0, 1, 0)
         FT_price = jax.lax.cond(
@@ -1953,8 +1955,16 @@ class MarketMakingAgent():
     
         #Market Making PNL:     
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+
+
+        #jax.debug.print("averageMidprice: {}", averageMidprice)
+
+
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
+
+        #jax.debug.print("buyPnL: {}", buyPnL)
+        #jax.debug.print("sellPnL: {}", sellPnL)
 
         #jax.debug.print("averageMidprice: {}", averageMidprice)
         #jax.debug.print("buyPnL: {}", buyPnL)
