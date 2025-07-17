@@ -978,19 +978,19 @@ class MarketMakingAgent():
 
         #jax.debug.print("old best ask: {}", best_ask)
        # jax.debug.print("old best bid: {}", best_bid)
-        
-        # Define mappings for each action: [0-7]
-        #bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 5, -1], dtype=jnp.float32)
-        #ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, -1, 5], dtype=jnp.float32)
-        #bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
-        #ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
-
+        if self.cfg.sell_buy_all_option==False:
+            # Define mappings for each action: [0-7]
+            bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 5, -1], dtype=jnp.float32)
+            ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, -1, 5], dtype=jnp.float32)
+            bid_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
+            ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
+        elif self.cfg.sell_buy_all_option==True:
         #New option to sell and buy whole inventory
-        inventory=agent_state.inventory
-        bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, 20, 0], dtype=jnp.float32)
-        ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, 0, 20], dtype=jnp.float32)
-        bid_quants = jnp.array([0, 1, 1, 1, 1, 1,inventory//self.cfg.fixed_quant_value, 0], dtype=jnp.int32)
-        ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 0, inventory//self.cfg.fixed_quant_value], dtype=jnp.int32)##config quant....
+            inventory=agent_state.inventory
+            bid_offsets = jnp.array([0, 2, 4, -1, 0, 2, -20, 0], dtype=jnp.float32)
+            ask_offsets = jnp.array([0, 2, 4, -1, 2, 0, 0, -20], dtype=jnp.float32)
+            bid_quants = jnp.array([0, 1, 1, 1, 1, 1,inventory//self.cfg.fixed_quant_value, 0], dtype=jnp.int32)
+            ask_quants = jnp.array([0, 1, 1, 1, 1, 1, 0, inventory//self.cfg.fixed_quant_value], dtype=jnp.int32)##config quant....
 
        
         tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
