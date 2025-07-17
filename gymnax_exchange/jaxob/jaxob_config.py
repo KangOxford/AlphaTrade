@@ -30,7 +30,9 @@ class JAXLOB_Configuration:
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading"
-    action_space: str = "spread_skew"
+    action_space: str = "fixed_quants"
+    #Control for fixed quantity market making action space
+    sell_buy_all_option: bool= False
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
     observation_space: str = "basic"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
