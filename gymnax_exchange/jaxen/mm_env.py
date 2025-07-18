@@ -178,6 +178,8 @@ class MarketMakingAgent():
             self.action_fn = self._getActionMsgs_spread_skew
         elif self.cfg.action_space == "directional_trading":
             self.action_fn = self._getActionMsgs_directional_trading
+        elif self.cfg.action_space == "simple":
+            self.action_fn = self._getActionMsgs_simple
         else:
             raise ValueError("Invalid action_space specified.")
         
@@ -1049,6 +1051,97 @@ class MarketMakingAgent():
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
         return action_msgs
+
+
+
+    
+    def _getActionMsgs_simple(self, action: jax.Array, world_state: MultiAgentState, agent_state: MMEnvState, agent_params: MMEnvParams):
+        '''Transform discrete action into bid and ask order messages based on current best prices.'''
+        # Use the most recent best_ask and best_bid values
+        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+
+        #jax.debug.print("old best ask: {}", best_ask)
+        #jax.debug.print("old best bid: {}", best_bid)
+        if self.cfg.sell_buy_all_option==False:
+            # Define mappings for each action: [0-7]
+            bid_offsets = jnp.array([-1, -200, 0], dtype=jnp.float32)
+            ask_offsets = jnp.array([-1, 0,  -200], dtype=jnp.float32)
+            bid_quants = jnp.array([1,  1,  0], dtype=jnp.int32)
+            ask_quants = jnp.array([1,  0,  1], dtype=jnp.int32)##config quant....
+        elif self.cfg.sell_buy_all_option==True:
+        #New option to sell and buy whole inventory
+            inventory=agent_state.inventory
+            bid_offsets = jnp.array([-1, -20, 0], dtype=jnp.float32)
+            ask_offsets = jnp.array([-1,  0, -20], dtype=jnp.float32)
+            bid_quants = jnp.array([1,  inventory//self.cfg.fixed_quant_value, 0], dtype=jnp.int32)
+            ask_quants = jnp.array([1,  0, inventory//self.cfg.fixed_quant_value], dtype=jnp.int32)##config quant....
+
+       
+        tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
+
+        #jax.debug.print("tick_offset: {}", tick_offset)
+
+
+        # Get parameters for current action
+        bid_offset = bid_offsets[action]
+        ask_offset = ask_offsets[action]
+
+        #jax.debug.print("bid_offset: {}", bid_offset)
+        #jax.debug.print("ask_offset: {}", ask_offset)
+
+        bid_quant = bid_quants[action]*self.cfg.fixed_quant_value
+        ask_quant = ask_quants[action]*self.cfg.fixed_quant_value
+        
+        # Calculate prices with bounds checking
+        bid_price = best_bid - bid_offset * tick_offset
+        ask_price = best_ask + ask_offset * tick_offset
+
+        #jax.debug.print("bid_price before:{}",bid_price)
+        #jax.debug.print("ask_price before:{}",ask_price)
+
+        bid_price = jnp.maximum(bid_price, 0) // self.world_config.tick_size * self.world_config.tick_size
+        bid_price = bid_price.astype(jnp.int32)
+        ask_price =  ask_price // self.world_config.tick_size * self.world_config.tick_size
+        ask_price = ask_price.astype(jnp.int32)
+        
+        #jax.debug.print("bid_price after:{}",bid_price)
+        #jax.debug.print("ask_price after:{}",ask_price)
+        
+        # --------------- Construct messages ---------------#
+        # Message components (2 messages: bid then ask)
+        types = jnp.array([1, 1], dtype=jnp.int32)  # 1=limit order
+        sides = jnp.array([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
+        quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
+        prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
+
+        quants = quants.flatten() # Flatten so they have the same shape
+        prices = prices.flatten()
+        
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
+
+        
+        # Time fields (replicated for each message)
+        times = jnp.resize(
+            world_state.time + self.cfg.time_delay_obs_act,
+            (2, 2)  # Shape (2 messages, 2 time fields)
+        )
+
+
+
+        # Stack components into message array
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+
+
+        #jax.debug.print("action_msgs mm:{}",action_msgs)
+
+        return action_msgs
+
+
+
     
     def _getActionMsgs_AvSt(self, action: jax.Array, world_state: MultiAgentState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''AvST action space: Discrete selections to paramterise K in the AvSt forumla.
@@ -2092,6 +2185,11 @@ class MarketMakingAgent():
             raise ValueError("Invalid inventory penalty specified.")
         reward = reward + self.cfg.inv_penalty_lambda * inv_pen
 
+        if self.cfg.clip_reward:
+            reward = jnp.clip(reward, -10000, 10000)
+
+        
+
         # ----------04) normalize the reward ----------#
         
         #jax.debug.print("overall reward: {}", reward)
@@ -2231,6 +2329,8 @@ class MarketMakingAgent():
             return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
         elif self.cfg.action_space == "directional_trading":
             return self._getActionMsgs_directional_trading(action=action, world_state=world_state, agent_params=agent_params)
+        elif self.cfg.action_space == "simple":
+            return self.action_fn(action=action, world_state=world_state, agent_state=agent_state, agent_params=agent_params)
         else:
             raise ValueError("Invalid action sspace specified.")
         
@@ -2569,6 +2669,8 @@ class MarketMakingAgent():
             return spaces.Discrete(8) #TODO change back to 8
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
+        elif self.cfg.action_space == "simple":
+            return spaces.Discrete(3)
         else:
             raise ValueError("Invalid action_space specified.")
        
