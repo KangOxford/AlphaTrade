@@ -3,9 +3,9 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.0004,0.0004]
-"NUM_ENVS": 4096
+"NUM_ENVS": 512
 "NUM_STEPS": 512
-"NUM_STEPS_EVAL" : 64
+"NUM_STEPS_EVAL" : 50
 "GRU_HIDDEN_DIM": 128
 "FC_DIM_SIZE": 128
 "TOTAL_TIMESTEPS": 1e8
@@ -30,7 +30,7 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "CHOOSE_NAME"
+"PROJECT": "fixed_steps_experiments"
 "WANDB_MODE" : "online"
 
 # High-Level Params

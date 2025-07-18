@@ -29,12 +29,12 @@ class JAXLOB_Configuration:
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
-    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading"
-    action_space: str = "fixed_quants"
+    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
+    action_space: str = "spread_skew"
     #Control for fixed quantity market making action space
     sell_buy_all_option: bool= False
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
-    observation_space: str = "basic"
+    observation_space: str = "engineered"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 3.0 #50.0
@@ -51,11 +51,12 @@ class MarketMaking_EnvironmentConfig():
     seconds_before_episode_end:int=5
    
     # Reward
-    inv_penalty: str = "threshold"  # options: "none", "linear", "quadratic", "threshold"
+    inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
-    multiplier_type: str = "spread" # options: "spread", "tick"
+    multiplier_type: str = "tick" # options: "spread", "tick"
+    clip_reward: bool = False
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0
     unrealizedPnL_lambda: float = 0.1
@@ -88,7 +89,7 @@ class MarketMaking_EnvironmentConfig():
 
 @dataclass(frozen=True)
 class Execution_EnvironmentConfig():
-    n_ticks_in_book : int = 100
+    n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
     action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
