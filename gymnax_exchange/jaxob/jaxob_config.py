@@ -20,7 +20,7 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = env_cst.start_resolution # Episodes from data start every n seconds.
+    start_resolution: int = 50  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
@@ -29,14 +29,16 @@ class JAXLOB_Configuration:
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
-    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading"
+    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
     action_space: str = "spread_skew"
+    #Control for fixed quantity market making action space
+    sell_buy_all_option: bool= False
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
     observation_space: str = "engineered"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
-    spread_multiplier: float = 2.0 #50.0
-    skew_multiplier: float = 50.0 #100.0
+    spread_multiplier: float = 3.0 #50.0
+    skew_multiplier: float = 5 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -50,9 +52,11 @@ class MarketMaking_EnvironmentConfig():
    
     # Reward
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
-    reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth"
+    reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
-    inv_penalty_lambda: float = 0.001
+    inv_penalty_lambda: float = 1.0
+    multiplier_type: str = "tick" # options: "spread", "tick"
+    clip_reward: bool = False
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0
     unrealizedPnL_lambda: float = 0.1
@@ -88,23 +92,23 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case"
+    action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int=100
+    task_size:int= 300
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
-    reward_lambda:float=1.0
+    reward_lambda:float= 0
     time_delay_obs_act:int=0
     debug_mode:bool=False
     normalize:bool=True
     short_name:str="EXE"
     seconds_before_episode_end:int=5
     doom_price_penalty: float = 0.1
-    larger_far_touch_quant: bool = True
+    larger_far_touch_quant: bool = False
     
 
 
@@ -126,6 +130,10 @@ class Execution_EnvironmentConfig():
             object.__setattr__(self, 'n_actions', 3)
             object.__setattr__(self, 'num_messages_by_agent', 4) # Includes cancel messages
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
+        elif self.action_space == "fixed_quants_1msg":
+            object.__setattr__(self, 'n_actions', 5)
+            object.__setattr__(self, 'num_messages_by_agent', 2)
+            object.__setattr__(self, 'num_action_messages_by_agent', 1)
 
 
 
@@ -150,7 +158,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     last_step_seconds = 5
     artificial_trader_id_end_episode = -666666 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
     artificial_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
-    debug_mode:bool=True
+    debug_mode:bool=False
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True

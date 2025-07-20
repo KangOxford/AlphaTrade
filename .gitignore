@@ -89,3 +89,9 @@ outputs/**
 
 .venv/
 .venv/**
+/mycache/**
+/cache/**
+
+/gymnax_exchange/jaxen/Timing_speed/** */
+
+.netrc
