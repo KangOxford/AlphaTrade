@@ -29,7 +29,7 @@ class WorldState(LoadedEnvState):
     # But everything here that is not loaded from the base config but shared by all agents
     best_bids: jnp.ndarray
     best_asks: jnp.ndarray
-    time: jnp.ndarray
+    time: chex.Array
     order_id_counter: int
     mid_price:float
     delta_time: float

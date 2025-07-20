@@ -220,7 +220,7 @@ class BaseLOBEnv(environment.Environment):
 
     def reset_env(
         self, key: chex.PRNGKey, params: LoadedEnvParams
-    ) -> LoadedEnvState:
+    ) -> Tuple[int,LoadedEnvState]:
         """Reset environment state by sampling initial position in OB."""
         idx_data_window = jnp.where(
             self.cfg.window_selector == -1,
