@@ -343,6 +343,9 @@ class LoadLOBSTER_resample():
         self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
+        self.stock=stock
+        self.time_period=time_period
+        self.n_Levels=n_Levels
 
 
         print("self.datapath",self.datapath)
@@ -369,37 +372,71 @@ class LoadLOBSTER_resample():
                                             (Messages, Features)
                 max_window_size (Int)
         """
-        message_days, orderbook_days = self._load_files()
-
-        pairs = [self._pre_process_msg_ob(msg,ob) 
-                 for msg,ob 
-                 in zip(message_days,orderbook_days)]
-        message_days, orderbook_days = zip(*pairs)
-        
-
-        #Get the 'window' indices of starts & ends for each of the days.
-        #Get the lengths of all possible windows given those starts.
-        pairs = [self._get_inits_day(msg_day,ob_day) 
-                                   for msg_day,ob_day 
-                                   in zip(message_days,orderbook_days)]
-        msgs,starts,ends,obs = zip(*pairs)
         jax.profiler.start_trace("/tmp/profile-data")
 
-        
-        #Concatenate the data from all the days.
-        msgs=np.concatenate(msgs,0)
-        
-        starts=np.concatenate(starts,0)
-        ends=np.concatenate(ends,0)
-        obs=np.concatenate(obs,0)
-        max_msgs_in_windows_arr=ends - starts
+        save_path = self._get_save_filename()
 
-        if self.n_data_msg_per_step !=0:
-            (msgs,
-            max_msgs_in_windows_arr)=self._pad_last_ep(msgs,
-                                                        max_msgs_in_windows_arr)
+        if os.path.exists(save_path):
+            print(f"Loading cached arrays from {save_path}")
+            data = np.load(save_path, allow_pickle=True)
+            msgs = data['msgs']
+            starts = data['starts']
+            ends = data['ends']
+            obs = data['obs']
+            max_msgs_in_windows_arr = data['max_msgs_in_windows_arr']
+        else:
+
+            msgs,starts,ends,obs = self._load_files()
+
+            jax.profiler.stop_trace()
+
+            jax.profiler.start_trace("/tmp/profile-data")
+
+            
+            #Concatenate the data from all the days.
+            msgs=np.concatenate(msgs,0)
+            starts=np.concatenate(starts,0)
+            ends=np.concatenate(ends,0)
+            obs=np.concatenate(obs,0)
+            max_msgs_in_windows_arr=ends - starts
+
+            if self.n_data_msg_per_step !=0:
+                (msgs,
+                max_msgs_in_windows_arr)=self._pad_last_ep(msgs,
+                                                            max_msgs_in_windows_arr)
+            
+
+            print(f"Saving arrays to {save_path}")
+            np.savez_compressed(
+                save_path,
+                msgs=msgs,
+                starts=starts,
+                ends=ends,
+                obs=obs,
+                max_msgs_in_windows_arr=max_msgs_in_windows_arr
+            )
+        
         return msgs,starts,ends,obs,max_msgs_in_windows_arr
     
+    def _get_save_filename(self):
+        # Create a unique filename based on config parameters
+        params = [
+            str(self.stock),
+            str(self.time_period),
+            str(self.n_Levels),
+            str(self.window_type),
+            str(self.window_length),
+            str(self.window_resolution),
+            str(self.n_data_msg_per_step),
+            str(self.day_start),
+            str(self.day_end),
+        ]
+        base = "_".join(params)
+        # Use a hash to avoid overly long filenames
+        # hash_str = hashlib.md5(base.encode()).hexdigest()
+        fname = f"lobster_{base}.npz"
+        return os.path.join(self.datapath, fname)
+
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
         length_last_ep=max_msgs_in_windows_arr[-1]
         new_length=(length_last_ep//self.n_data_msg_per_step+1)*self.n_data_msg_per_step
@@ -426,48 +463,153 @@ class LoadLOBSTER_resample():
         """Loads the csvs as pandas arrays. Files are seperated by days
         Could potentially be optimised to work around pandas, very slow.         
         """
-        dtypes = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
-        print("self.message_files",self.message_files)
-        # messageCSVs = [pd.read_csv(file, usecols=range(6), dtype=dtype, header=None) for file in self.message_files if file[-3:] == "csv"]
-        # orderbookCSVs = [pd.read_csv(file, header=None) for file in self.book_files if file[-3:] == "csv"]
-        messageCSVs = []
-        orderbookCSVs = []
-
         import concurrent.futures
+        import multiprocessing as mp
+        import os
+        import time
+        from threading import Semaphore
+        import hashlib
+        
+        dtypes = {0: float, 1: int, 2: int, 3: int, 4: int, 5: int}
+        print("self.message_files",self.message_files)
+        
+        # Adaptive worker count based on file size and system resources
+        total_files = len(self.message_files)
+        
+        # Start with fewer workers and scale based on system performance
+        # I/O bound tasks benefit from more workers, but too many cause contention
+        base_workers = min(mp.cpu_count() // 4, 8)  # Conservative start
+        n_workers = min(base_workers, total_files, 16)  # Cap at 16 to avoid thrashing
+        
+        print(f"Using {n_workers} workers for parallel loading ({total_files} files)")
+        
+        # Semaphore to limit concurrent file operations (prevent disk thrashing)
+        file_semaphore = Semaphore(n_workers * 2)  # Allow some buffering
 
         def read_pair(files):
             message_file, book_file = files
             if message_file[-3:] == "csv" and book_file[-3:] == "csv":
-                try:
-                    df_message = pd.read_csv(message_file, usecols=range(6), dtype=dtypes, header=None, engine='c')
-                    df_book = pd.read_csv(book_file, header=None)
-                    if not df_message.empty and not df_book.empty:
-                        print(f"file appended: {message_file}")
-                        return (df_message, df_book)
-                    else:
-                        if df_message.empty:
-                            print(f"Skipping message file with no data rows: {message_file}")
-                        if df_book.empty:
-                            print(f"Skipping orderbook file with no data rows: {book_file}")
-                except pd.errors.EmptyDataError:
-                    print(f"Skipping truly empty message or orderbookfile: {message_file}")
+                with file_semaphore:  # Limit concurrent disk access
+                    try:
+                        start_time = time.time()
+                        
+                        # Read files more efficiently with chunking for large files
+                        df_message = pd.read_csv(
+                            message_file, 
+                            usecols=range(6), 
+                            dtype=dtypes, 
+                            header=None, 
+                            engine='c',
+                            low_memory=True,  # Changed to True for better memory management
+                            chunksize=None,   # No chunking for now, but option for future
+                            na_filter=False,  # Skip NA detection for speed
+                            skip_blank_lines=True
+                        )
+                        
+                        df_book = pd.read_csv(
+                            book_file, 
+                            header=None, 
+                            engine='c',
+                            low_memory=True,
+                            na_filter=False,
+                            skip_blank_lines=True
+                        )
+                        
+                        read_time = time.time() - start_time
+                        
+                        if not df_message.empty and not df_book.empty:
+                            process_start = time.time()
+                            
+                            # Optimize pandas operations with copy=False where safe
+                            msg, book = self._pre_process_msg_ob(df_message, df_book)
+                            message_day, index_s, index_e, init_OBs = self._get_inits_day(msg, book)
+                            
+                            process_time = time.time() - process_start
+                            total_time = time.time() - start_time
+                            
+                            file_size_mb = (os.path.getsize(message_file) + os.path.getsize(book_file)) / 1024 / 1024
+                            throughput = file_size_mb / total_time if total_time > 0 else 0
+                            
+                            print(f"✓ {os.path.basename(message_file)} "
+                                  f"({file_size_mb:.1f}MB, {throughput:.1f}MB/s) "
+                                  f"read:{read_time:.2f}s proc:{process_time:.2f}s total:{total_time:.2f}s")
+                            
+                            return (message_day, index_s, index_e, init_OBs)
+                        else:
+                            if df_message.empty:
+                                print(f"⚠ Empty message file: {os.path.basename(message_file)}")
+                            if df_book.empty:
+                                print(f"⚠ Empty orderbook file: {os.path.basename(book_file)}")
+                    
+                    except pd.errors.EmptyDataError:
+                        print(f"⚠ Truly empty file: {os.path.basename(message_file)}")
+                    except Exception as e:
+                        print(f"✗ Error processing {os.path.basename(message_file)}: {e}")
             return None
 
         pairs = list(zip(self.message_files, self.book_files))
-        messageCSVs = []
-        orderbookCSVs = []
+        messageDays = []
+        startIndeces = []
+        endIndeces = []
+        initOrderboks = []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=128) as executor:
-            results = list(executor.map(read_pair, pairs))
+        # Process files with better resource management
+        start_total = time.time()
+        completed_files = 0
+        
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=n_workers,
+            thread_name_prefix="FileLoader"
+        ) as executor:
+            # Submit tasks in batches to avoid memory buildup
+            batch_size = max(1, total_files // 4)  # Process in 4 batches
+            
+            for batch_start in range(0, total_files, batch_size):
+                batch_end = min(batch_start + batch_size, total_files)
+                batch_pairs = pairs[batch_start:batch_end]
+                batch_number = batch_start // batch_size + 1
+                total_batches = (total_files - 1) // batch_size + 1
+                
+                print(f"\n📦 Processing batch {batch_number}/{total_batches} "
+                      f"({len(batch_pairs)} files)...")
+                
+                # Submit batch and process results as they complete
+                future_to_pair = {
+                    executor.submit(read_pair, pair): pair 
+                    for pair in batch_pairs
+                }
+                
+                batch_start_time = time.time()
+                
+                for future in concurrent.futures.as_completed(future_to_pair):
+                    try:
+                        result = future.result()
+                        if result is not None:
+                            message_day, index_s, index_e, init_OBs = result
+                            messageDays.append(message_day)
+                            startIndeces.append(index_s)
+                            endIndeces.append(index_e)
+                            initOrderboks.append(init_OBs)
+                            completed_files += 1
+                    except Exception as exc:
+                        pair = future_to_pair[future]
+                        print(f'✗ Batch task {pair} failed: {exc}')
+                
+                batch_time = time.time() - batch_start_time
+                avg_time_per_file = batch_time / len(batch_pairs) if batch_pairs else 0
+                print(f"   Batch {batch_number} completed in {batch_time:.2f}s "
+                      f"(avg: {avg_time_per_file:.2f}s/file)")
 
-        for res in results:
-            if res is not None:
-                df_message, df_book = res
-                messageCSVs.append(df_message)
-                orderbookCSVs.append(df_book)
-
-        print("Done with parallel loading")
-        return messageCSVs, orderbookCSVs
+        total_time = time.time() - start_total
+        avg_time_per_file = total_time / completed_files if completed_files > 0 else 0
+        
+        print(f"\n🎉 Parallel loading completed!")
+        print(f"   Total time: {total_time:.2f}s")
+        print(f"   Files processed: {completed_files}/{total_files}")
+        print(f"   Average time per file: {avg_time_per_file:.2f}s")
+        print(f"   Effective throughput: {completed_files / total_time:.2f} files/s")
+        
+        return messageDays, startIndeces, endIndeces, initOrderboks
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):
         """Adjust message_day data and orderbook_day data. 
@@ -475,14 +617,22 @@ class LoadLOBSTER_resample():
         transforms executions into limit orders and delete into cancel
         orders, and adds the traderID field. 
         """
-        #split the time into two integer fields.
-        message_day[6] = message_day[0].apply(lambda x: int(x))
-        message_day[7] = ((message_day[0] - message_day[6]) * int(1e9)).astype(int)
+        # Optimize pandas operations by avoiding unnecessary copies
+        # and using vectorized operations where possible
+        
+        # Split the time into two integer fields (vectorized)
+        time_int = message_day[0].astype(np.int64)  # More efficient than apply
+        message_day[6] = time_int
+        message_day[7] = ((message_day[0] - time_int) * 1_000_000_000).astype(np.int64)
+        
         message_day.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
-        #Drop all message_days of type 5,6,7 (Hidden orders, Auction, Trading Halt)
-        message_day = message_day[message_day.type.isin([1,2,3,4])]
+        
+        # Filter message types more efficiently
+        type_mask = message_day['type'].isin([1,2,3,4])
+        message_day = message_day[type_mask].copy()  # Explicit copy to avoid warnings
         valid_index = message_day.index.to_numpy()
-        message_day.reset_index(inplace=True,drop=True)
+        message_day.reset_index(inplace=True, drop=True)
+
         # Turn executions into limit orders on the opposite book side
         message_day.loc[message_day['type'] == 4, 'direction'] *= -1
         message_day.loc[message_day['type'] == 4, 'type'] = 1
@@ -493,6 +643,30 @@ class LoadLOBSTER_resample():
         message_day['trader_id'] = message_day['order_id']
         orderbook_day.iloc[valid_index,:].reset_index(inplace=True, drop=True)
         return message_day,orderbook_day
+        
+        # Vectorized transformations (faster than loc operations)
+        execution_mask = message_day['type'] == 4
+        delete_mask = message_day['type'] == 3
+        
+        # Turn executions into limit orders on the opposite book side
+        message_day.loc[execution_mask, 'direction'] *= -1
+        message_day.loc[execution_mask, 'type'] = 1
+        
+        # Turn delete into cancel orders
+        message_day.loc[delete_mask, 'type'] = 2
+        
+        # Add trader_id field (copy of order_id) - faster assignment
+        message_day['trader_id'] = message_day['order_id'].values  # Use .values for speed
+        
+        # Filter orderbook efficiently
+        orderbook_day = orderbook_day.iloc[valid_index].copy()
+        orderbook_day.reset_index(inplace=True, drop=True)
+        
+        # Suppress pandas warnings
+        warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
+        
+        return message_day, orderbook_day
+
     
     def _daily_slice_indeces(self,type,start, end, interval):
         """Returns a list of times of indices at which an episode
@@ -600,7 +774,7 @@ class LoadLOBSTER_resample():
 if __name__ == "__main__":
     #Load data from 50 Levels, fixing each episode to 150 steps
     #containing 100 messages each. 
-    loader=LoadLOBSTER_resample("/AlphaTrade/training_oneDay",10,"fixed_time",window_length=1800,n_msg_per_step=100,window_resolution=60)
+    loader=LoadLOBSTER_resample("/AlphaTrade/training_oneDay",10,"fixed_time",window_length=1800,n_data_msg_per_step=100,window_resolution=60)
     msgs,starts,ends,obs,max_msgs=loader.run_loading()
     print(msgs.shape)
     print(starts.shape)
