@@ -30,9 +30,8 @@ class JAXLOB_Configuration:
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
-    action_space: str = "spread_skew"
-    #Control for fixed quantity market making action space
-    sell_buy_all_option: bool= False
+    action_space: str = "simple"
+
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
     observation_space: str = "engineered"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
@@ -42,14 +41,16 @@ class MarketMaking_EnvironmentConfig():
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
-    fixed_quant_value:int=env_cst.fixed_quant_value
+    fixed_quant_value:int=1
     n_actions: int = env_cst.n_actions # Only used for fixed_prices
     debug_mode:bool=False
     time_delay_obs_act:int=0
     normalize:bool=True
     short_name:str="MM" # For agent naming e.g. in the obs dict
     seconds_before_episode_end:int=5
-   
+    #Control for fixed quantity market making action space
+    sell_buy_all_option: bool= False
+
     # Reward
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
@@ -57,6 +58,8 @@ class MarketMaking_EnvironmentConfig():
     inv_penalty_lambda: float = 1.0
     multiplier_type: str = "tick" # options: "spread", "tick"
     clip_reward: bool = False
+    based_on_mid_price_of_action: bool = True
+    exclude_extreme_spreads: bool= False
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0
     unrealizedPnL_lambda: float = 0.1
@@ -85,6 +88,10 @@ class MarketMaking_EnvironmentConfig():
         elif self.action_space == "fixed_prices":
             object.__setattr__(self, 'num_messages_by_agent', self.n_actions*2)
             object.__setattr__(self, 'num_action_messages_by_agent', self.n_actions)
+        elif self.action_space == "simple":
+            object.__setattr__(self, 'n_actions', 4)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_action_messages_by_agent', 2)
 
 
 @dataclass(frozen=True)
@@ -92,13 +99,13 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
+    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 300
+    task_size:int= 30
     n_actions:int=5 # will be set automatically in the post init function
-    fixed_quant_value:int=10
+    fixed_quant_value:int=1
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
     reward_lambda:float= 0
@@ -162,7 +169,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= True
+    use_pickles_for_init:bool= False
 
 
 @dataclass(frozen=True)
