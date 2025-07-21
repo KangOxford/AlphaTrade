@@ -6,9 +6,18 @@ import os
 
 import pandas as pd
 import csv
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
+
+from docs.source import conf
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
+os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
+# os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
+
+
 import time
-import jax # type: ignore
+import jax # type: ignorepip 
+jax.config.update('jax_disable_jit', False)
+
 import jax.numpy as jnp # type: ignore
 import flax.linen as nn
 import numpy as np
@@ -19,6 +28,7 @@ from flax.training.train_state import TrainState
 import distrax
 import hydra
 from omegaconf import DictConfig, OmegaConf
+import gc
 
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
@@ -45,7 +55,7 @@ class ScannedRNN(nn.Module):
         rnn_state = carry
         ins, resets = x
         rnn_state = jnp.where(
-            resets[:, np.newaxis],
+            resets[:, jnp.newaxis],
             self.initialize_carry(*rnn_state.shape),
             rnn_state,
         )
@@ -69,7 +79,7 @@ class ActorCriticRNN(nn.Module):
         obs, dones = x
 
         embedding = nn.Dense(
-            self.config["FC_DIM_SIZE"], kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0)
+            self.config["FC_DIM_SIZE"], kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0.0)
         )(obs)
         embedding = nn.relu(embedding)
 
@@ -170,7 +180,6 @@ def make_train(config):
 
         # The outputs that depends on these and are kept seperate are;
         # - network, init_x, init_hstate, network_params, train_state
-
         networks = []
         hstates = []
         network_params_list = []
@@ -221,9 +230,13 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         env_params=env.default_params
+        # env_params=jax.device_put(env_params)
         obsv, env_state = jax.vmap(env.reset, in_axes=(0,None))(reset_rng,env_params)
         # TRAIN LOOP
-        def _update_step(update_runner_state, unused):
+        
+
+        def _update_step(update_runner_state,env_params, unused):
+            jax.profiler.start_trace("/tmp/profile-data")
             # COLLECT TRAJECTORIES
             runner_state, update_steps = update_runner_state
             def _env_step(runner_state, unused):
@@ -246,11 +259,11 @@ def make_train(config):
                     obs_i= last_obs[i]
                     obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i])  # Reshape to match the input shape of the network
                     ac_in = (
-                        obs_i[np.newaxis, :],
-                        last_done[i][np.newaxis, :],
+                        obs_i[jnp.newaxis, :],
+                        last_done[i][jnp.newaxis, :],
                         # avail_actions,
                     )
-                    hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
+                    h_states[i], pi, value = network.apply(train_states[i].params, h_states[i], ac_in)
                     values.append(value)
                     action = pi.sample(seed=_rng)
                     log_probs.append(pi.log_prob(action))
@@ -297,11 +310,15 @@ def make_train(config):
                 runner_state = (train_states, env_state, obsv, done_batch['agents'], hstates, rng)
                 return runner_state, transitions
 
+            _env_step=jax.profiler.annotate_function(_env_step,name="env_step")
 
             initial_hstates = runner_state[-2]
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state, None, config["NUM_STEPS"]
             )
+            runner_state=jax.block_until_ready(runner_state)
+
+
 
             
 
@@ -340,8 +357,8 @@ def make_train(config):
                 #     (config["NUM_ACTORS"], env.action_space(env.agents[0]).n)
                 # )
                 ac_in = (
-                    last_obs_batch[np.newaxis, :],
-                    last_dones[i][np.newaxis, :],
+                    last_obs_batch[jnp.newaxis, :],
+                    last_dones[i][jnp.newaxis, :],
                     # avail_actions,
                 )
                 _, _, last_val = network.apply(train_states[i].params, hstates_new[i], ac_in)
@@ -520,8 +537,8 @@ def make_train(config):
                         obs_i= last_obs[i]
                         obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i])  # Reshape to match the input shape of the network
                         ac_in = (
-                            obs_i[np.newaxis, :],
-                            last_done[i][np.newaxis, :],
+                            obs_i[jnp.newaxis, :],
+                            last_done[i][jnp.newaxis, :],
                             # avail_actions,
                         )
                         hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
@@ -610,7 +627,6 @@ def make_train(config):
                         metrics['avg_reward_eval'] = [jnp.mean(tr.reward) for tr in eval_traj_batch]
                         metrics["traj_batch_eval"] = eval_traj_batch
 
-
             def callback(metric):
                 print("Update step:", metric["update_steps"])
                 action_distribution = {}
@@ -634,7 +650,8 @@ def make_train(config):
                     logging_dict.update({
                         **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
                     })
-                wandb.log(logging_dict)
+                if config["WANDB"]:
+                    wandb.log(logging_dict)
 
                 for i in range(len(metric["avg_reward"])):
                     print(f"avg_reward_{i} {metric["avg_reward"][i]}")
@@ -643,7 +660,11 @@ def make_train(config):
             jax.experimental.io_callback(callback, None, metrics)
             update_steps = update_steps + 1
             runner_state = (train_states, env_state, last_obs, last_dones, hstates_new, rng)
-            return (runner_state, update_steps), metrics
+            runner_state = jax.block_until_ready(runner_state)
+            jax.profiler.stop_trace()
+
+            # jax.profiler.save_device_memory_profile(f"memory_{update_steps}.prof")
+            return (runner_state, update_steps), {}
 
         rng, _rng = jax.random.split(rng)
         runner_state = (
@@ -655,11 +676,24 @@ def make_train(config):
             _rng,
         )
 
+        jitted_update_step = jax.jit(_update_step)
+
+        updates=0
+        for i in range(config["NUM_UPDATES"]):
+            print(f"Update step {i+1}/{config['NUM_UPDATES']}")
+            # Run the update step:
+            (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,None)
+            runner_state=jax.block_until_ready(runner_state)
+            del metrics
+            gc.collect()
 
 
-        runner_state, metrics = jax.lax.scan(
-            _update_step, (runner_state, 0), None, config["NUM_UPDATES"]
-        )
+
+        # runner_state, metrics = jax.lax.scan(
+        #     _update_step, (runner_state, 0), None, config["NUM_UPDATES"]
+        # )
+        
+        
         return {"runner_state": runner_state}
 
     return train
@@ -685,13 +719,15 @@ def main(config):
             tags=["IPPO", "RNN"], # type: ignore
             config=config, # type: ignore
             mode=config["WANDB_MODE"], # type: ignore
-            allow_val_change=True
+            allow_val_change=True,
         )
         # params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
         
         
         # print(f"WANDB CONFIG {wandb.config}")
         # +++++ Single GPU +++++
+        jax.profiler.start_trace("/tmp/profile-data")
+
         rng = jax.random.PRNGKey(0)
 
         print("wandb.config", wandb.config)
@@ -703,8 +739,9 @@ def main(config):
         if config["Timing"]:
             start_time = time.time()
 
-
         out = train_jit(rng)
+        jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
+        jax.profiler.stop_trace()
         # train_state = out['runner_state'][0] # runner_state.train_state
         # params = train_state.params
 
@@ -733,15 +770,15 @@ def main(config):
                 "num_data_msgs": [num_data_msgs],
                 "num_envs": [num_envs],
             }
-            df = pd.DataFrame(results)
-            csv_path = "timing_results.csv"
-            # Append if file exists, else write header
-            try:
-                with open(csv_path, "x", newline="") as f:
-                    df.to_csv(f, index=False)
-            except FileExistsError:
-                with open(csv_path, "a", newline="") as f:
-                    df.to_csv(f, index=False, header=False)
+            # df = pd.DataFrame(results)
+            # csv_path = "timing_results.csv"
+            # # Append if file exists, else write header
+            # try:
+            #     with open(csv_path, "x", newline="") as f:
+            #         df.to_csv(f, index=False)
+            # except FileExistsError:
+            #     with open(csv_path, "a", newline="") as f:
+            #         df.to_csv(f, index=False, header=False)
 
         
         # # Save the params to a file using flax.serialization.to_bytes
@@ -793,9 +830,25 @@ def main(config):
 
     sys.exit(0)
 
+@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
+def seperate_main(config):
+    print("MultiAgentConfig", MultiAgentConfig().world_config)
+    env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+    final_config=OmegaConf.merge(config,env_config)
+    config = OmegaConf.to_container(final_config)
 
 
+    
 
+    rng = jax.random.PRNGKey(0)
+    dummy = jnp.array(1.)
+
+    train_fun = make_train(config)
+    # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+    out = train_fun(rng)
+    out=jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
+    (dummy * dummy).block_until_ready()
+    
 
 if __name__ == "__main__":
-    main()
+    seperate_main()

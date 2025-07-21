@@ -95,3 +95,6 @@ outputs/**
 /gymnax_exchange/jaxen/Timing_speed/** */
 
 .netrc
+
+/go/*
+.config/*

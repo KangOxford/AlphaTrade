@@ -828,7 +828,7 @@ if __name__ == "__main__":
                 break
     # jax.profiler.stop_trace()
     jax.block_until_ready(state)
-    jax.profiler.stop_trace()
+    # jax.profiler.stop_trace()
     
 
     for i in range(len(rewards_list[0])):  # Number of agent types
@@ -948,11 +948,11 @@ if __name__ == "__main__":
         step_counter = jnp.zeros(NUM_ENVS, dtype=int)
 
 
-        jax.profiler.start_trace("tensorboard_logs")
+        # jax.profiler.start_trace("tensorboard_logs")
         state, rng, done_flags, step_counter = jax.lax.while_loop(
             cond_fn, body_fn, (state, rng, done_flags, step_counter)
         )
-        jax.profiler.stop_trace()
+        # jax.profiler.stop_trace()
 
         rollout_end = time.time()
         rollout_time = rollout_end - rollout_start
@@ -997,7 +997,7 @@ if __name__ == "__main__":
         batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
         reset_start = time.time()
-        jax.profiler.start_trace("/tmp/profile-data")
+        # jax.profiler.start_trace("/tmp/profile-data")
 
         obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
         # force execution to finish before timing
@@ -1056,7 +1056,7 @@ if __name__ == "__main__":
         jax.block_until_ready(final_state)
         rollout_time = time.time() - rollout_start
 
-        jax.profiler.stop_trace()
+        # jax.profiler.stop_trace()
 
         
 
