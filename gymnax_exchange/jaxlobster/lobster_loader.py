@@ -372,7 +372,7 @@ class LoadLOBSTER_resample():
                                             (Messages, Features)
                 max_window_size (Int)
         """
-        jax.profiler.start_trace("/tmp/profile-data")
+        # jax.profiler.start_trace("/tmp/profile-data")
 
         save_path = self._get_save_filename()
 
@@ -388,9 +388,9 @@ class LoadLOBSTER_resample():
 
             msgs,starts,ends,obs = self._load_files()
 
-            jax.profiler.stop_trace()
+            # jax.profiler.stop_trace()
 
-            jax.profiler.start_trace("/tmp/profile-data")
+            # jax.profiler.start_trace("/tmp/profile-data")
 
             
             #Concatenate the data from all the days.
@@ -415,7 +415,7 @@ class LoadLOBSTER_resample():
                 obs=obs,
                 max_msgs_in_windows_arr=max_msgs_in_windows_arr
             )
-        
+
         return msgs,starts,ends,obs,max_msgs_in_windows_arr
     
     def _get_save_filename(self):
@@ -624,6 +624,15 @@ class LoadLOBSTER_resample():
         time_int = message_day[0].astype(np.int64)  # More efficient than apply
         message_day[6] = time_int
         message_day[7] = ((message_day[0] - time_int) * 1_000_000_000).astype(np.int64)
+        
+        
+        # Filter messages outside of trading hours (before day_start and after day_end)
+        time_mask = (message_day[6] >= self.day_start) & (message_day[6] <= self.day_end)
+        dropped_count = (~time_mask).sum()
+        if dropped_count > 0:
+            print(f"Dropped {dropped_count} messages outside trading hours ({self.day_start}-{self.day_end}s)")
+        
+        message_day = message_day[time_mask]
         
         message_day.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
         

@@ -20,13 +20,13 @@
 "MAX_GRAD_NORM": [0.5,0.5]
 "ACTIVATION": ["relu","relu"]
 "ENV_NAME": "JAXMARL-Lob-v0"
-"NUM_AGENTS_PER_TYPE": [1,1]
+"NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2
 # "ENV_KWARGS": 
 #     "LIST_OF_AGENTS_CONFIGS: []
 #     "NUM_AGENTS_PER_TYPE": True
 # #   "attack_mode": "closest"
-"ANNEAL_LR": [True,True]
+"ANNEAL_LR": [True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
@@ -34,9 +34,9 @@
 "WANDB_MODE" : "online"
 
 # High-Level Params
-"CALC_EVAL" : True
-"Calculate Baseline" : True
-"Timing" : True
+"CALC_EVAL" : False
+"Calculate Baseline" : False
+"Timing" : False
 
 
 

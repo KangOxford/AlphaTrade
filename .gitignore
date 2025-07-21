@@ -97,3 +97,6 @@ outputs/**
 .netrc
 /gymnax_exchange/jaxen/output/**
 /old/.netrc
+
+/go/*
+.config/*

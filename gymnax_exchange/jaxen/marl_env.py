@@ -862,7 +862,7 @@ if __name__ == "__main__":
         batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
         reset_start = time.time()
-        jax.profiler.start_trace("/tmp/profile-data")
+        # jax.profiler.start_trace("/tmp/profile-data")
 
         obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
         # force execution to finish before timing
@@ -921,7 +921,7 @@ if __name__ == "__main__":
         jax.block_until_ready(final_state)
         rollout_time = time.time() - rollout_start
 
-        jax.profiler.stop_trace()
+        # jax.profiler.stop_trace()
 
         
 
