@@ -905,6 +905,8 @@ class ExecutionAgent():
         price_levels=jnp.array(price_levels)
 
         #---form messages---#
+
+        # print([types, sides, quants, price_levels, order_ids,trader_ids])
         action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
 
