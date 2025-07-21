@@ -93,5 +93,7 @@ outputs/**
 /cache/**
 
 /gymnax_exchange/jaxen/Timing_speed/** */
-
+/gymnax_exchange/jaxen/Timing_speed/**
 .netrc
+/gymnax_exchange/jaxen/output/**
+/old/.netrc
