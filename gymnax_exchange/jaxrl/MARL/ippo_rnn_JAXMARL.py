@@ -502,10 +502,17 @@ def make_train(config):
                     "weighted_entropy_loss": loss_info[1][2] * config["ENT_COEF"][i],
                     "weighted_value_loss": loss_info[1][0] * config["VF_COEF"][i],
                 })
+
+
+            #jax.debug.print(f"traj_batch: {len(traj_batch)}")
+            #for i, tr in enumerate(traj_batch):
+            #    jax.debug.print(f"traj_batch {i} reward shape: {tr.reward.shape}")
+            #    jax.debug.print(f"current mean: {jnp.mean(tr.reward)}")
+            #    jax.debug.print("flattened mean: ", jnp.mean(tr.reward.flatten()))
+
             metrics['avg_reward'] = [jnp.mean(tr.reward) for tr in traj_batch]
+            metrics['avg_reward_flattened'] = [jnp.mean(tr.reward.flatten()) for tr in traj_batch]
             metrics["traj_batch"] = traj_batch
-
-
 
             if config["CALC_EVAL"]:
                 def _eval_step(eval_runner_state, unused):
@@ -613,6 +620,23 @@ def make_train(config):
 
             def callback(metric):
                 print("Update step:", metric["update_steps"])
+
+
+
+
+                print("=== DEBUGGING REWARD SHAPES ===")
+                print(f"len of traj_batch: {len(metric['traj_batch'])}")
+                for i, tr in enumerate(metric["traj_batch"]):
+                    print(f"Agent {i} - tr.reward shape: {tr.reward.shape}")
+                    print(f"Agent {i} - tr.reward mean: {jnp.mean(tr.reward)}")
+                    print(f"Agent {i} - tr.reward flattened mean: {jnp.mean(tr.reward.flatten())}")
+                    #print(f"All rewards: {tr.reward}")
+                    print(f"Agent {i} - tr.reward min/max: {jnp.min(tr.reward.flatten())} / {jnp.max(tr.reward.flatten())}")
+                    print(f"Agent {i} - tr.reward flattened mean: {metric['avg_reward_flattened'][i]}")
+                    print("---")
+
+
+
                 action_distribution = {}
                 for i, tr in enumerate(metric["traj_batch"]):
                     actions = np.array(tr.action).flatten()
@@ -696,19 +720,17 @@ def main(config):
 
         print("wandb.config", wandb.config)
 
-        train_jit = jax.jit(make_train(wandb.config))
+        
         # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
+        
 
 
         if config["Timing"]:
+            print("Start compilation")
+            train_jit = jax.jit(make_train(wandb.config)).lower(rng).compile()
+            print("Start training")
             start_time = time.time()
-
-
-        out = train_jit(rng)
-        # train_state = out['runner_state'][0] # runner_state.train_state
-        # params = train_state.params
-
-        if config["Timing"]:
+            jax.block_until_ready(train_jit(rng))
             end_time = time.time()
             elapsed = end_time - start_time
             total_steps = config["TOTAL_TIMESTEPS"]
@@ -736,12 +758,13 @@ def main(config):
             df = pd.DataFrame(results)
             csv_path = "timing_results.csv"
             # Append if file exists, else write header
-            try:
-                with open(csv_path, "x", newline="") as f:
-                    df.to_csv(f, index=False)
-            except FileExistsError:
-                with open(csv_path, "a", newline="") as f:
-                    df.to_csv(f, index=False, header=False)
+            with open(csv_path, "w", newline="") as f:
+                df.to_csv(f, index=False)
+        else:
+            print("Start compilation")
+            train_jit = jax.jit(make_train(wandb.config))
+            print("Start training")
+            out = train_jit(rng)
 
         
         # # Save the params to a file using flax.serialization.to_bytes
@@ -767,10 +790,10 @@ def main(config):
         #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
         #"VF_COEF": {"values": [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]},
         #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
-       # "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]},
+        #"NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [5,5], [10,10]]},
        #"SEED": {"values": [2,3,4,5,6,7,8,9,10]},
-       #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
-       #"NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 32, 8]},
+       "NUM_ENVS": {"values": [config["NUM_ENVS"]]},
+       #"NUM_STEPS": {"values": [config["NUM_STEPS"], 32, 4]},
        
         
         # "env_params" : {"parameters": {
