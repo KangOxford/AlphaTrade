@@ -1065,23 +1065,38 @@ class MarketMakingAgent():
         #jax.debug.print("old best bid: {}", best_bid)
         if self.cfg.sell_buy_all_option==False:
             # Define mappings for each action: [0-7]
-            bid_offsets = jnp.array([-1, -200, 0], dtype=jnp.float32)
-            ask_offsets = jnp.array([-1, 0,  -200], dtype=jnp.float32)
+            bid_offsets = jnp.array([0, -2000, 0], dtype=jnp.float32)
+            ask_offsets = jnp.array([0, 0,  -2000], dtype=jnp.float32)
             bid_quants = jnp.array([1,  1,  0], dtype=jnp.int32)
             ask_quants = jnp.array([1,  0,  1], dtype=jnp.int32)##config quant....
         elif self.cfg.sell_buy_all_option==True:
-        #New option to sell and buy whole inventory
+             #New option to sell and buy whole inventory
             inventory=agent_state.inventory
-            bid_offsets = jnp.array([-1, -20, 0], dtype=jnp.float32)
-            ask_offsets = jnp.array([-1,  0, -20], dtype=jnp.float32)
-            bid_quants = jnp.array([1,  inventory//self.cfg.fixed_quant_value, 0], dtype=jnp.int32)
-            ask_quants = jnp.array([1,  0, inventory//self.cfg.fixed_quant_value], dtype=jnp.int32)##config quant....
+            def quants_positive_inventory(inventory):
+                bid_quant = self.cfg.fixed_quant_value
+                ask_quant = jnp.maximum(jnp.abs(inventory),self.cfg.fixed_quant_value)
+                return ask_quant, bid_quant
+            def quants_negative_inventory(inventory):
+                bid_quant = jnp.maximum(jnp.abs(inventory),self.cfg.fixed_quant_value)
+                ask_quant = self.cfg.fixed_quant_value
+                return ask_quant, bid_quant
+            ask_quant , bid_quant = jax.lax.cond(
+                inventory > 0,
+                quants_positive_inventory,
+                quants_negative_inventory,
+                inventory
+            )
+            bid_offsets = jnp.array([0, -2000, 0, 0 ], dtype=jnp.float32)
+            ask_offsets = jnp.array([0,  0, -2000, 0], dtype=jnp.float32)
+            bid_quants = jnp.array([self.cfg.fixed_quant_value,  bid_quant, 0, 0], dtype=jnp.int32)
+            ask_quants = jnp.array([self.cfg.fixed_quant_value,  0, ask_quant, 0], dtype=jnp.int32)##config quant....
 
-       
+
+        #jax.debug.print("bid_quants: {}", bid_quants)
+        #jax.debug.print("ask_quants: {}", ask_quants)
         tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
 
         #jax.debug.print("tick_offset: {}", tick_offset)
-
 
         # Get parameters for current action
         bid_offset = bid_offsets[action]
@@ -1090,8 +1105,12 @@ class MarketMakingAgent():
         #jax.debug.print("bid_offset: {}", bid_offset)
         #jax.debug.print("ask_offset: {}", ask_offset)
 
-        bid_quant = bid_quants[action]*self.cfg.fixed_quant_value
-        ask_quant = ask_quants[action]*self.cfg.fixed_quant_value
+        if self.cfg.sell_buy_all_option==True:
+            bid_quant = bid_quants[action]
+            ask_quant = ask_quants[action]
+        else:
+            bid_quant = bid_quants[action]*self.cfg.fixed_quant_value
+            ask_quant = ask_quants[action]*self.cfg.fixed_quant_value
         
         # Calculate prices with bounds checking
         bid_price = best_bid - bid_offset * tick_offset
@@ -1954,6 +1973,7 @@ class MarketMakingAgent():
             ep_is_over = world_state.max_steps_in_episode - world_state.step_counter - 1 <= 1
 
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+        last_mid_price = (world_state.best_bids[-1,0] + world_state.best_asks[-1,0]) / 2
 
         #jax.debug.print("new_inventory_before_unwind: {}", new_inventory_before_unwind)
 
@@ -1974,6 +1994,8 @@ class MarketMakingAgent():
         ##Get the price to unwind at based on the config
         if self.cfg.reference_price_portfolio_value == "mid":
             reference_price = averageMidprice
+            if self.cfg.based_on_mid_price_of_action:
+                reference_price = last_mid_price
         elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
             reference_price=FT_price
         elif self.cfg.reference_price_portfolio_value == "near_touch":
@@ -2057,6 +2079,28 @@ class MarketMakingAgent():
 
         buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
         sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
+
+
+
+
+        first_mid_price = (bestbids[0,0] + bestasks[0,0]) / 2
+        last_mid_price = (world_state.best_bids[-1,0] + world_state.best_asks[-1,0]) / 2
+
+
+        #jax.debug.print("bestbids: {}", bestbids[:,0])
+        #jax.debug.print("bestasks: {}", bestasks[:,0])
+        #jax.debug.print("first_mid_price: {}", first_mid_price)
+        #jax.debug.print("averageMidprice: {}", averageMidprice)
+        #jax.debug.print("last_mid_price: {}", last_mid_price)
+
+        if self.cfg.based_on_mid_price_of_action:
+            buyPnL = ((last_mid_price - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
+            sellPnL = ((agent_sells[:, 0] - last_mid_price) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
+
+            #jax.debug.print("buyPnL: {}", buyPnL)
+            #jax.debug.print("sellPnL: {}", sellPnL)
+
+
 
         #jax.debug.print("buyPnL: {}", buyPnL)
         #jax.debug.print("sellPnL: {}", sellPnL)
@@ -2173,13 +2217,12 @@ class MarketMakingAgent():
         elif self.cfg.inv_penalty == "threshold":
             #inv_pen = (-1.0) * (jnp.abs(new_inventory) ** 2)
             inv_pen = jax.lax.cond(
-                jnp.abs(new_inventory) > 30,
+                jnp.abs(new_inventory) > 50,
                 lambda: (-1.0) * (new_inventory ** 2),
                 lambda: 0.0
             )    
             #jax.debug.print("new_inventory: {}", new_inventory)
-            #jax.debug.print("inv_pen: {}", inv_pen)
-            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)[]
             #jax.debug.print("reward before: {}", reward)
         else:
             raise ValueError("Invalid inventory penalty specified.")
@@ -2189,6 +2232,27 @@ class MarketMakingAgent():
             reward = jnp.clip(reward, -10000, 10000)
 
         
+
+        if self.cfg.exclude_extreme_spreads==True:
+            #jax.debug.print("reward before: {}", reward)
+            # If spread is larger than 0.1 (which would most likely only happen if the book is empty)
+            all_spreads = (world_state.best_asks[:, 0] - world_state.best_bids[:, 0]) 
+            mid_prices = (world_state.best_asks[:, 0] + world_state.best_bids[:, 0]) / 2
+            #jax.debug.print("all_spreads: {}", all_spreads)
+            spread_ratio = all_spreads / mid_prices
+            #jax.debug.print("spread_ratio: {}", spread_ratio)
+            any_large_spread = jnp.any(spread_ratio > 0.1)
+            #jax.debug.print("any_large_spread: {}", any_large_spread)
+            reward = jax.lax.cond(
+                any_large_spread,
+                lambda: 0.0,
+                lambda: reward
+            )
+            #jax.debug.print("reward: {}", reward)
+
+
+
+
 
         # ----------04) normalize the reward ----------#
         
