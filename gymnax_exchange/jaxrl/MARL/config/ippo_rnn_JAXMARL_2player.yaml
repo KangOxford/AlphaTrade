@@ -3,12 +3,12 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.0004]
-"NUM_ENVS": 256
-"NUM_STEPS": 256
-"NUM_STEPS_EVAL" : 50
+"NUM_ENVS": 2048
+"NUM_STEPS": 64
+"NUM_STEPS_EVAL" : 64
 "GRU_HIDDEN_DIM": 128
 "FC_DIM_SIZE": 128
-"TOTAL_TIMESTEPS": 262144
+"TOTAL_TIMESTEPS": 1e9
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 16
 "GAMMA": [0.999]
@@ -30,11 +30,11 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "fixed_steps_experiments"
+"PROJECT": "PostEditsTest"
 "WANDB_MODE" : "online"
 
 # High-Level Params
-"CALC_EVAL" : False
+"CALC_EVAL" : True
 "Calculate Baseline" : False
 "Timing" : False
 
