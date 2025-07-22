@@ -159,6 +159,7 @@ class BaseLOBEnv(environment.Environment):
         self.cfg = cfg
 
         loader=LoadLOBSTER_resample(self.cfg.dataPath,
+                                    self.cfg.alphatradePath,
                                 self.book_depth,
                                 self.ep_type,
                                 window_length=self.episode_time,
