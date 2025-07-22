@@ -451,6 +451,7 @@ def ask_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
     msg["quantity"]=matchtuple[1] #Remaining quantity
     asks=add_order(askside,msg)
     return asks,matchtuple[0],matchtuple[3]
+
 @partial(jax.jit,static_argnums=0)
 def ask_cancel(cfg:JAXLOB_Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
     """Function for processing a cancel order on the ask side.
@@ -609,9 +610,10 @@ def cond_type_side_save_states(cfg:JAXLOB_Configuration,book_state,it_data):
                                      askside,
                                      bidside,
                                      trades)
+
     return (ask,bid,trade),(ask,bid,trade)
 
-@partial(jax.jit,static_argnums=0)
+# @partial(jax.jit,static_argnums=0)
 def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
@@ -634,28 +636,28 @@ def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
     (key,data)=it_data
     askside,bidside,trades=book_state
     msg={'side':data[1],
-         'type':data[0],
-         'price':data[3],
-         'quantity':data[2],
-         'orderid':data[4],
-         'traderid':data[5],
-         'time':data[6],
-         'time_ns':data[7]}
+        'type':data[0],
+        'price':data[3],
+        'quantity':data[2],
+        'orderid':data[4],
+        'traderid':data[5],
+        'time':data[6],
+        'time_ns':data[7]}
 
     s = msg["side"]
     t = msg["type"]
     index = ((((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0
-             + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 
-             + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
-             + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
-             +((s==0)&(t==0))*4)
+            + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 
+            + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
+            + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
+            +((s==0)&(t==0))*4)
     ask, bid, trade = jax.lax.switch(index,
-                                     (partial(ask_lim,cfg), partial(bid_lim,cfg),
-                                       partial(ask_cancel,cfg,key), partial(bid_cancel,cfg,key),doNothing),
-                                     msg,
-                                     askside,
-                                     bidside,
-                                     trades)
+                                    (jax.jit(partial(ask_lim,cfg)), jax.jit(partial(bid_lim,cfg)),
+                                    jax.jit(partial(ask_cancel,cfg,key)), jax.jit(partial(bid_cancel,cfg,key)),doNothing),
+                                    msg,
+                                    askside,
+                                    bidside,
+                                    trades)
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(cfg,ask,bid)
 
 ################ SCAN FUNCTIONS ################
@@ -682,6 +684,7 @@ def scan_through_entire_array(cfg:JAXLOB_Configuration,
     book_state,_=jax.lax.scan(func,book_state,(keys,msg_array))
     return book_state
 
+@partial(jax.jit,static_argnums=(0,4))
 def scan_through_entire_array_save_states(cfg:JAXLOB_Configuration,
                                           key:chex.PRNGKey,
                                           msg_array: chex.Array,
@@ -714,6 +717,7 @@ def scan_through_entire_array_save_states(cfg:JAXLOB_Configuration,
                                        (keys,msg_array))
     return (all_states[0][-N_steps:],all_states[1][-N_steps:],last_state[2])
 
+@partial(jax.jit,static_argnums=(0,4))
 def scan_through_entire_array_save_bidask(cfg:JAXLOB_Configuration,
                                           key:chex.PRNGKey,
                                           msg_array,

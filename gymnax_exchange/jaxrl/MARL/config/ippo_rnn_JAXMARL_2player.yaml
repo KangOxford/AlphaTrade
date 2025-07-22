@@ -34,7 +34,7 @@
 "WANDB_MODE" : "online"
 
 # High-Level Params
-"CALC_EVAL" : False
+"CALC_EVAL" : True
 "Calculate Baseline" : False
 "Timing" : False
 

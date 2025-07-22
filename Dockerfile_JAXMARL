@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/jax:25.04-py3
+FROM nvcr.io/nvidia/jax:25.01-py3
 
 # Create user
 ARG UID
@@ -23,7 +23,9 @@ RUN apt-get update && \
     libgl1 \
     p7zip-full \
     unrar \
-    htop
+    htop \
+    graphviz \
+    libcupti-dev
 # Copy requirements.txt and verify its contents
 COPY --chown=${MYUSER}:${MYUSER} requirements2.txt /home/${MYUSER}/AlphaTrade/
 RUN ls -l && cat requirements2.txt
@@ -31,6 +33,13 @@ RUN ls -l && cat requirements2.txt
 #jaxmarl from source if needed, all the requirements
 # RUN pip install -e .[algs,dev]
 RUN pip install -r requirements2.txt
+
+
+RUN wget https://go.dev/dl/go1.24.5.linux-amd64.tar.gz
+RUN rm -rf /usr/local/go
+RUN tar -C /usr/local -xzf go1.24.5.linux-amd64.tar.gz
+
+RUN export PATH=$PATH:/usr/local/go/bin
 
 USER ${MYUSER}
 

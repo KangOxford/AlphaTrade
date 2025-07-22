@@ -10,7 +10,7 @@ import csv
 from docs.source import conf
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
-os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
+# os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
 # os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
 
@@ -33,7 +33,7 @@ import gc
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
 from gymnax_exchange.jaxen.marl_env import MARLEnv
-from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig
 
 import wandb
 import functools
@@ -123,7 +123,7 @@ class Transition(NamedTuple):
     # avail_actions: jnp.ndarray
 
 
-def batchify(x: jnp.array, num_actors):
+def batchify(x: jnp.ndarray, num_actors):
     return x.reshape((num_actors, -1))
 
 
@@ -141,12 +141,12 @@ def make_train(config):
 
     env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
     if config["CALC_EVAL"]:
-        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(timePeriod="2024_Eval")))
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PER_TYPE"]]  # Should be a list.
     config["NUM_ACTORS_TOTAL"] = env.num_agents * config["NUM_ENVS"]
 
-    config["NUM_UPDATES"] = (
+    config["NUM_UPDATES"] = int(
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
     )
     config["MINIBATCH_SIZES"] = [
@@ -230,13 +230,16 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         env_params=env.default_params
+        if config["CALC_EVAL"]:
+            eval_env_params=eval_env.default_params # type: ignore
+        else:
+            eval_env_params = None
         # env_params=jax.device_put(env_params)
         obsv, env_state = jax.vmap(env.reset, in_axes=(0,None))(reset_rng,env_params)
         # TRAIN LOOP
         
 
-        def _update_step(update_runner_state,env_params, unused):
-            jax.profiler.start_trace("/tmp/profile-data")
+        def _update_step(update_runner_state,env_params,eval_env_params, unused):
             # COLLECT TRAJECTORIES
             runner_state, update_steps = update_runner_state
             def _env_step(runner_state, unused):
@@ -310,13 +313,10 @@ def make_train(config):
                 runner_state = (train_states, env_state, obsv, done_batch['agents'], hstates, rng)
                 return runner_state, transitions
 
-            _env_step=jax.profiler.annotate_function(_env_step,name="env_step")
-
             initial_hstates = runner_state[-2]
             runner_state, traj_batch = jax.lax.scan(
                 _env_step, runner_state, None, config["NUM_STEPS"]
             )
-            runner_state=jax.block_until_ready(runner_state)
 
 
 
@@ -600,39 +600,37 @@ def make_train(config):
 
                 rng, _rng = jax.random.split(rng)
                 reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
+                eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params) # type: ignore
+
+
+                eval_hstates=[]
+                init_dones_agents_eval=[]
+                for i,network in enumerate(networks):
+                    eval_hstates.append(ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"]))
+                    init_dones_agents_eval.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
+
+
+                
+                eval_runner_state = (
+                train_states,
+                eval_env_state,
+                eval_obsv,
+                init_dones_agents_eval,
+                eval_hstates,
+                _rng,
+                )
+                eval_runner_state, eval_traj_batch = jax.lax.scan(
+                    _eval_step, eval_runner_state, None,  config["NUM_STEPS_EVAL"]
+                )
+                metrics['agents_eval'] = [jax.tree.map(
+                    lambda x: x.reshape(
+                        (config["NUM_STEPS_EVAL"], config["NUM_ENVS"], config["NUM_AGENTS_PER_TYPE"][i])
+                    ),
+                    trjbtch.info['agent']) for i, trjbtch in enumerate(eval_traj_batch)]
+                metrics['world_eval'] = [trjbtch.info['world'] for i, trjbtch in enumerate(eval_traj_batch)]
                 if config["CALC_EVAL"]:
-                    eval_env_params=eval_env.default_params # type: ignore
-                    eval_obsv, eval_env_state = jax.vmap(eval_env.reset, in_axes=(0, None))(reset_rng, eval_env_params) # type: ignore
-
-
-                    eval_hstates=[]
-                    init_dones_agents_eval=[]
-                    for i,network in enumerate(networks):
-                        eval_hstates.append(ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"]))
-                        init_dones_agents_eval.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
-
-
-                    
-                    eval_runner_state = (
-                    train_states,
-                    eval_env_state,
-                    eval_obsv,
-                    init_dones_agents_eval,
-                    eval_hstates,
-                    _rng,
-                    )
-                    eval_runner_state, eval_traj_batch = jax.lax.scan(
-                        _eval_step, eval_runner_state, None,  config["NUM_STEPS_EVAL"]
-                    )
-                    metrics['agents_eval'] = [jax.tree.map(
-                        lambda x: x.reshape(
-                            (config["NUM_STEPS_EVAL"], config["NUM_ENVS"], config["NUM_AGENTS_PER_TYPE"][i])
-                        ),
-                        trjbtch.info['agent']) for i, trjbtch in enumerate(eval_traj_batch)]
-                    metrics['world_eval'] = [trjbtch.info['world'] for i, trjbtch in enumerate(eval_traj_batch)]
-                    if config["CALC_EVAL"]:
-                        metrics['avg_reward_eval'] = [jnp.mean(tr.reward) for tr in eval_traj_batch]
-                        metrics["traj_batch_eval"] = eval_traj_batch
+                    metrics['avg_reward_eval'] = [jnp.mean(tr.reward) for tr in eval_traj_batch]
+                    metrics["traj_batch_eval"] = eval_traj_batch
 
             def callback(metric):
                 print("Update step:", metric["update_steps"])
@@ -674,7 +672,7 @@ def make_train(config):
                     logging_dict.update({
                         **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
                     })
-                if config["WANDB"]:
+                if config["WANDB_MODE"]!= "disabled":
                     wandb.log(logging_dict)
 
                 for i in range(len(metric["avg_reward"])):
@@ -684,8 +682,6 @@ def make_train(config):
             jax.experimental.io_callback(callback, None, metrics)
             update_steps = update_steps + 1
             runner_state = (train_states, env_state, last_obs, last_dones, hstates_new, rng)
-            runner_state = jax.block_until_ready(runner_state)
-            jax.profiler.stop_trace()
 
             # jax.profiler.save_device_memory_profile(f"memory_{update_steps}.prof")
             return (runner_state, update_steps), {}
@@ -700,17 +696,23 @@ def make_train(config):
             _rng,
         )
 
-        jitted_update_step = jax.jit(_update_step)
+        jitted_update_step = jax.jit(_update_step,)
+
+
 
         updates=0
         for i in range(config["NUM_UPDATES"]):
             print(f"Update step {i+1}/{config['NUM_UPDATES']}")
             # Run the update step:
-            (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,None)
-            runner_state=jax.block_until_ready(runner_state)
+            if i>2 and i<4:
+                jax.profiler.start_trace("/tmp/profile-data")
+            (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,eval_env_params,None)
+            if i>2 and i<4:
+                jax.block_until_ready((runner_state,updates,metrics))
+                jax.profiler.stop_trace()
             del metrics
             gc.collect()
-
+        
 
 
         # runner_state, metrics = jax.lax.scan(
@@ -750,7 +752,7 @@ def main(config):
         
         # print(f"WANDB CONFIG {wandb.config}")
         # +++++ Single GPU +++++
-        jax.profiler.start_trace("/tmp/profile-data")
+        
 
         rng = jax.random.PRNGKey(0)
 
@@ -767,9 +769,9 @@ def main(config):
             print("Start training")
             start_time = time.time()
 
-        out = train_jit(rng)
-        jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
-        jax.profiler.stop_trace()
+
+        train_fun = make_train(config)
+        out = train_fun(rng)
         # train_state = out['runner_state'][0] # runner_state.train_state
         # params = train_state.params
 
@@ -866,18 +868,18 @@ def seperate_main(config):
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
 
+    # jax.profiler.start_trace("/tmp/profile-data")
 
     
-
     rng = jax.random.PRNGKey(0)
-    dummy = jnp.array(1.)
 
     train_fun = make_train(config)
     # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
     out = train_fun(rng)
-    out=jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
-    (dummy * dummy).block_until_ready()
-    
+    # out=jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
+    # (dummy * dummy).block_until_ready()
+    # jax.profiler.stop_trace()
+
 
 if __name__ == "__main__":
-    seperate_main()
+    main()

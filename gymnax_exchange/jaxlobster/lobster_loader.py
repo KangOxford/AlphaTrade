@@ -326,6 +326,7 @@ class LoadLOBSTER_resample():
     """
     def __init__(self,
                  datapath,
+                 atpath,
                  n_Levels=10,
                  type_="fixed_time",
                  window_length=1800,
@@ -346,6 +347,7 @@ class LoadLOBSTER_resample():
         self.stock=stock
         self.time_period=time_period
         self.n_Levels=n_Levels
+        self.alphatrade_path=atpath
 
 
         print("self.datapath",self.datapath)
@@ -434,8 +436,10 @@ class LoadLOBSTER_resample():
         base = "_".join(params)
         # Use a hash to avoid overly long filenames
         # hash_str = hashlib.md5(base.encode()).hexdigest()
-        fname = f"lobster_{base}.npz"
-        return os.path.join(self.datapath, fname)
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.join(self.alphatrade_path, "saved_npz"), exist_ok=True)
+        fname = f"saved_npz/lobster_{base}.npz"
+        return os.path.join(self.alphatrade_path, fname)
 
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
         length_last_ep=max_msgs_in_windows_arr[-1]
