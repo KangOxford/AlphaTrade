@@ -39,7 +39,7 @@ from gymnax_exchange.jaxen.marl_env import MARLEnv
 
 def main():
 
-    output_file_path = "/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_more_envs.txt"
+    output_file_path = "/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_4000_50_compile_before_save_obs.txt"
     #with open(output_file_path, "w") as f:
     #    f.write(f"Running with {10} envs and {10} steps\n")
 
@@ -67,17 +67,19 @@ def main():
         #[1000, 6000],
         #[1000, 7000],
         #[1000, 8000],
-        [250, 20000],
-        [120, 40000],
-        [500, 10000],
-        [50, 80000],
+        [50, 4000],
+        #[32, 4000],
+        #[250, 20000],
+        #[120, 40000],
+        #[500, 10000],
+        #[50, 80000],
         #[3000, 5000],
         #[3000, 6000],
         #[3000, 7000],
         #[3000, 8000],
     ]
 
-    save_obs_rewards = False  # Set to False to not save full trajectory
+    save_obs_rewards = True  # Set to False to not save full trajectory
 
     results = []
 
@@ -145,6 +147,12 @@ def main():
                             master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
                             batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
+                            print("Start reset compilation")
+                            #reset_jit = batched_reset.lower(jnp.stack(reset_keys), env_params).compile()
+                            _ = batched_reset(jnp.stack(reset_keys), env_params)
+                            jax.block_until_ready(_)
+                            print("start batched reset")
+
                             reset_start = time.time()
                             obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
                             # force execution to finish before timing
@@ -191,14 +199,18 @@ def main():
                             # -------------------------------------------------
                             # 2) Compile first
                             # -------------------------------------------------
-                            print("Start first rollout and compile")
+                            print("Start compilation")
                             _ = rollout(state, master_key, env_params, NUM_STEPS)
+                            jax.block_until_ready(_)
+
+                            # Complete pre-compilation
+                            #rollout_jit = rollout.lower(state, master_key, env_params, NUM_STEPS).compile()
 
                             print("Start second rollout and measure runtime")
 
                             start = time.time()
                             final_state = rollout(state, master_key, env_params, NUM_STEPS)
-                            jax.block_until_ready(final_state)          # garantiert fertig
+                            jax.block_until_ready(final_state)         
                             rollout_time = time.time() - start
 
 
@@ -254,7 +266,7 @@ def main():
                             # print("=" * 60)
 
     df = pd.DataFrame(results)
-    df.to_csv("/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_more_envs.csv", index=False)
+    df.to_csv("/home/myuser/gymnax_exchange/jaxen/Timing_speed/timing_results_4000_50_compile_before_save_obs.csv", index=False)
 
 
 if __name__ == "__main__":
