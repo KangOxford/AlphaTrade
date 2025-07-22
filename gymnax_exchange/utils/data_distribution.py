@@ -2,8 +2,8 @@
 
 import os
 
-folder_path = "/home/myuser/data/rawLOBSTER/AMZN/2024"
-output_path = "/home/myuser/gymnax_exchange/jaxen/Results/message_file_row_counts.txt"
+folder_path = "/home/myuser/data/rawLOBSTER/AMZN/2017_onequarter"
+output_path = "/home/myuser/gymnax_exchange/jaxen/Results/message_file_row_counts_2017_onequarter.txt"
 
 
 total_rows = 0
@@ -20,6 +20,7 @@ for filename in os.listdir(folder_path):
 
 output_lines.append(f"Total rows in all message files: {total_rows}")
 print(f"Total rows in all message files: {total_rows}")
+print(f"Total number of days: {len(os.listdir(folder_path))/2}")
 
 with open(output_path, "w") as out_file:
     for line in output_lines:

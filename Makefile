@@ -16,7 +16,7 @@ DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data
 endif
-BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8070:80 -p 8071:6006
+BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8016:80 -p 8017:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS)
 
 DOCKER_IMAGE_NAME = jaxmarl_lob

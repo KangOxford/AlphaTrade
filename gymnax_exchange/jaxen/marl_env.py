@@ -808,9 +808,11 @@ if __name__ == "__main__":
 
             #DEBUG PRINTS
             print("obs main function: ", obs)
+            print("rewards main function: ", rewards)
 
             if check_extreme:
                 for agent_type, reward in enumerate(rewards):
+                    print(f"Agent {agent_type} reward: {reward}")
                     if abs(reward) > EXTREME_THRESHOLD:
                         print(f"EXTREME REWARD! Agent {agent_type}: {reward}")
                         found_extreme = True
@@ -842,7 +844,7 @@ if __name__ == "__main__":
     # ----------------------------------------------
     # New VMAP rollout script + timing statistics
     # ----------------------------------------------
-    enable_vmap = False
+    enable_vmap = True
     if enable_vmap:
 
         print("\n" + "="*60)

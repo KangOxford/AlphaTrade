@@ -30,7 +30,7 @@ class JAXLOB_Configuration:
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
-    action_space: str = "simple"
+    action_space: str = "spread_skew"
 
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
     observation_space: str = "engineered"
@@ -41,7 +41,7 @@ class MarketMaking_EnvironmentConfig():
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
-    fixed_quant_value:int=1
+    fixed_quant_value:int=10
     n_actions: int = env_cst.n_actions # Only used for fixed_prices
     debug_mode:bool=False
     time_delay_obs_act:int=0
@@ -55,10 +55,10 @@ class MarketMaking_EnvironmentConfig():
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
-    inv_penalty_lambda: float = 1.0
-    multiplier_type: str = "tick" # options: "spread", "tick"
+    inv_penalty_lambda: float = 0.001
+    multiplier_type: str = "spread" # options: "spread", "tick"
     clip_reward: bool = False
-    based_on_mid_price_of_action: bool = True
+    based_on_mid_price_of_action: bool = False
     exclude_extreme_spreads: bool= False
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 1.0
@@ -99,13 +99,13 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
+    action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 30
+    task_size:int= 300
     n_actions:int=5 # will be set automatically in the post init function
-    fixed_quant_value:int=1
+    fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
     reward_lambda:float= 0
@@ -151,7 +151,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time: int = 600 # counted by seconds, 1800s=0.5h
+    episode_time: int = 50 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -169,7 +169,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= False
+    use_pickles_for_init:bool= True
 
 
 @dataclass(frozen=True)
@@ -177,8 +177,8 @@ class MultiAgentConfig():
     #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [Execution_EnvironmentConfig()])#[MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2])#[2,2]) # This is only the default value, we change it in the yaml RL file
+    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
+    number_of_agents_per_type: list = field(default_factory=lambda: [1,1])#[2,2]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [

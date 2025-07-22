@@ -6,7 +6,7 @@
 n_actions=8
 
 
-fixed_quant_value=10
+
 
 
 
