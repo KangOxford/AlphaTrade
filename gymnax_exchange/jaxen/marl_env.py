@@ -153,6 +153,7 @@ class MARLEnv(MultiAgentEnv):
             **dataclasses.asdict(load_state),  # copy all fields from the loaded state
             best_bids=bestbids,
             best_asks=bestasks,
+            step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
             mid_price=mid_price,
@@ -751,7 +752,6 @@ if __name__ == "__main__":
     print("starting default parameters")
 
     env_params = env.default_params
-    jax.device_put(env_params)  # Ensure params are on the device
 
 
     #print("obs", obs)
@@ -759,11 +759,12 @@ if __name__ == "__main__":
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
 
-    num_steps = 50
+    num_steps = 100
     fixed_actions = False
     rewards_list = []
 
-    EXTREME_THRESHOLD = 1000  
+    EXTREME_THRESHOLD = 1000 
+    check_extreme = True
     found_extreme = False 
 
     extreme_rewards = []
@@ -799,7 +800,7 @@ if __name__ == "__main__":
             #print("actions_per_type:", actions_per_type)
 
             if fixed_actions:
-                actions_per_type = [jnp.array([4]),jnp.array([1])]
+                actions_per_type = [jnp.array([0]),jnp.array([1])]
                 #print("actions_per_type fixed: ", actions_per_type)
 
             print("actions_per_type: ", actions_per_type)
@@ -808,10 +809,11 @@ if __name__ == "__main__":
             #DEBUG PRINTS
             print("obs main function: ", obs)
             print("\n Rewards: ", rewards)
-            for agent_type, reward in enumerate(rewards):
-                if (abs(reward) > EXTREME_THRESHOLD).any():
-                    print(f"EXTREME REWARD! Agent {agent_type}: {reward}")
-                    found_extreme = True
+            if check_extreme:
+                for agent_type, reward in enumerate(rewards):
+                    if (abs(reward) > EXTREME_THRESHOLD).any():
+                        print(f"EXTREME REWARD! Agent {agent_type}: {reward}")
+                        found_extreme = True
             
             print(f"Actions: {actions_per_type}")
             print("Step rewards:", rewards)
@@ -822,8 +824,9 @@ if __name__ == "__main__":
             #print("Done:", done)
             if done["__all__"]:
                 print("Episode finished!")
+
                 break
-            if found_extreme:  # Add this condition
+            if found_extreme and check_extreme:  # Add this condition
                 print(f"Found extreme reward in episode {episode + 1}! Stopping.")
                 break
     # jax.profiler.stop_trace()
@@ -838,140 +841,6 @@ if __name__ == "__main__":
     # Set number of environments to batch
      
 
-    #=======================================#
-    #=========== Old VMAP TIMING TEST =========#
-    #=======================================#
-
-    enable_vmap_old = False
-    if enable_vmap_old:
-        NUM_ENVS = 1000
-        rng = jax.random.PRNGKey(42)
-
-        print("\n" + "="*60)
-        print("Starting VMAP timing test loop for MARL")
-        print("="*60)
-
-        #---------------------------------------
-        # Vectorized Reset
-        #---------------------------------------
-        print("\n[1] Resetting environments...")
-        keys_reset = jax.random.split(rng, NUM_ENVS)
-        batched_reset_fn = jax.vmap(env.reset_env, in_axes=(0, None)) # All envs have the same params so second arg is None?
-        
-
-        reset_start = time.time()
-        obs, state = batched_reset_fn(keys_reset, env_params)
-        #jax.debug.print("obs: {}", obs)
-        #jax.debug.print("state: {}", state)
-        reset_end = time.time()
-        reset_time = reset_end - reset_start
-        print(f"Reset completed in {reset_time:.4f} seconds")
-
-        #---------------------------------------
-        # Define VMapped Step Function
-        #---------------------------------------
-        def step_fn(state, key):
-            # For each agent type, sample actions for all agents of that type
-            subkeys = jax.random.split(key, len(env.action_spaces))
-            actions_per_type = []
-            for i, (space, num_agents) in enumerate(zip(env.action_spaces, env.multi_agent_config.number_of_agents_per_type)):
-                keys = jax.random.split(subkeys[i], num_agents)
-                actions = jax.vmap(space.sample)(keys)
-                actions_per_type.append(actions)
-            return env.step(key, state, actions_per_type, env_params)
-
-        vmap_step = jax.vmap(step_fn, in_axes=(0, 0))
-
-        #---------------------------------------
-        # Rollout Loop
-        #---------------------------------------
-        print("\n[3] Starting episode rollout...")
-        done_flags = jnp.zeros(NUM_ENVS, dtype=bool)
-        rng = jax.random.PRNGKey(999)
-
-        rollout_start = time.time()
-
-        NUM_STEPS = 10  # or any number of steps you want
-
-
-        def step_fn_tojit(state, rng):
-            rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
-            keys = jnp.stack(keys)
-            obs, state, rewards, done, info = vmap_step(state, keys)
-            return state, rng
-        step_fn_jit= jax.jit(step_fn_tojit)
-
-        # jax.profiler.start_trace("tensorboard_logs")
-        for step_counter in range(NUM_STEPS):                
-            state,rng=step_fn_jit(state, rng)
-            # # Masked state update for active environments
-            # def masked_update(s, ns):
-            #     mask = done_flags
-            #     while mask.ndim < s.ndim:
-            #         mask = mask[..., None]
-            #     return jnp.where(mask, s, ns)
-
-            # state = jax.tree_map(masked_update, state, next_state)
-            # done_flags = jnp.logical_or(done_flags, done["__all__"])
-            # step_counter += jnp.where(done_flags, 0, 1)
-            # if jnp.all(done_flags):
-            #     break
-
-        # jax.profiler.stop_trace()
-
-        def cond_fn(val):
-            _, _, done_flags, _ = val
-            return jnp.any(~done_flags)
-
-        def body_fn(val):
-            # 
-            state, rng, done_flags, step_counter = val
-            rng, *keys = jax.random.split(rng, NUM_ENVS + 1)
-            keys = jnp.stack(keys)
-
-            obs, next_state, rewards, done, info = vmap_step(state, keys)
-
-            # Masked state update for active environments
-            def masked_update(s, ns):
-                mask = done_flags
-                while mask.ndim < s.ndim:
-                    mask = mask[..., None]
-                return jnp.where(mask, s, ns)
-
-            state = jax.tree_map(masked_update, state, next_state)
-            done_flags = jnp.logical_or(done_flags, done["__all__"])
-            step_counter += jnp.where(done_flags, 0, 1)
-
-            return (state, rng, done_flags, step_counter)
-        
-
-        step_counter = jnp.zeros(NUM_ENVS, dtype=int)
-
-
-        # jax.profiler.start_trace("tensorboard_logs")
-        state, rng, done_flags, step_counter = jax.lax.while_loop(
-            cond_fn, body_fn, (state, rng, done_flags, step_counter)
-        )
-        # jax.profiler.stop_trace()
-
-        rollout_end = time.time()
-        rollout_time = rollout_end - rollout_start
-        total_steps = jnp.sum(step_counter)
-        avg_steps_per_env = jnp.mean(step_counter)
-        avg_time_per_step = rollout_time / total_steps
-
-        #---------------------------------------
-        # Final Stats
-        #---------------------------------------
-        print("\n[4] Timing Results")
-        print("-" * 60)
-        print(f"Total Envs:           {NUM_ENVS}")
-        print(f"Reset time:           {reset_time:.4f} seconds")
-        print(f"Rollout (steps) time: {rollout_time:.4f} seconds")
-        print(f"Total steps:          {int(total_steps)}")
-        print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
-        print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
-        print("="*60)
 
 
     # ----------------------------------------------
@@ -980,185 +849,237 @@ if __name__ == "__main__":
     enable_vmap = False
     if enable_vmap:
 
-        print("\n" + "="*60)
-        print("Starting VMAP timing test loop for MARL")
-        print("="*60)
+            print("\n" + "="*60)
+            print("Starting VMAP timing test loop for MARL")
+            print("="*60)
 
 
-        NUM_ENVS   = 1000        # number of parallel environments
-        NUM_STEPS  = 50     # total steps per environment
-        MASTER_KEY = jax.random.PRNGKey(0)
-        fixed_actions = False
+            NUM_ENVS   = 1000     # number of parallel environments
+            NUM_STEPS  = 2000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         # total steps per environment
+            MASTER_KEY = jax.random.PRNGKey(6)
+            fixed_actions = False
 
-        # -------------------------------------------------
-        # 1) Initial reset of all envs (batched)
-        # -------------------------------------------------
-        master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
-        batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
+            # -------------------------------------------------
+            # 1) Initial reset of all envs (batched)
+            # -------------------------------------------------
+            master_key, *reset_keys = jax.random.split(MASTER_KEY, NUM_ENVS + 1)
+            batched_reset = jax.vmap(env.reset_env, in_axes=(0, None))
 
-        reset_start = time.time()
-        # jax.profiler.start_trace("/tmp/profile-data")
+            reset_start = time.time()
+            obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
+            # force execution to finish before timing
+            jax.block_until_ready(state)
+            reset_time  = time.time() - reset_start
 
-        obs, state  = batched_reset(jnp.stack(reset_keys), env_params)
-        # force execution to finish before timing
-        jax.block_until_ready(state)
-        reset_time  = time.time() - reset_start
+            # -------------------------------------------------
+            # 2) Helper: one step for a single env
+            # -------------------------------------------------
+            def single_step(state, key, env_params):
+                # one sub-key per agent type
+                subkeys = jax.random.split(key, len(env.action_spaces))
+                # sample random actions for every agent of each type
+                if fixed_actions:
+                    actions = [jnp.array([4]),jnp.array([1])]
+                else:
+                    actions = [
+                        jax.vmap(space.sample)(
+                            jax.random.split(sk, n_agents)
+                        )
+                        for sk, space, n_agents in zip(
+                            subkeys,
+                            env.action_spaces,
+                            env.multi_agent_config.number_of_agents_per_type,
+                        )
+                ]
+                # env.step auto-resets when done
+                return env.step(key, state, actions, env_params)
 
-        # -------------------------------------------------
-        # 2) Helper: one step for a single env
-        # -------------------------------------------------
-        def single_step(state, key, env_params):
-            # one sub-key per agent type
-            subkeys = jax.random.split(key, len(env.action_spaces))
-            # sample random actions for every agent of each type
-            if fixed_actions:
-                actions = [jnp.array([4]),jnp.array([1])]
-            else:
-                actions = [
-                    jax.vmap(space.sample)(
-                        jax.random.split(sk, n_agents)
-                    )
-                    for sk, space, n_agents in zip(
-                        subkeys,
-                        env.action_spaces,
-                        env.multi_agent_config.number_of_agents_per_type,
-                    )
-            ]
-            # env.step auto-resets when done
-            return env.step(key, state, actions, env_params)
+            # JIT & vmap
+            @jax.jit
+            def batched_step(state_batch, key_batch):
+                return jax.vmap(single_step, in_axes=(0, 0, None))(
+                    state_batch, key_batch, env_params
+                )
 
-        # JIT & vmap
-        @jax.jit
-        def batched_step(state_batch, key_batch):
-            return jax.vmap(single_step, in_axes=(0, 0, None))(
-                state_batch, key_batch, env_params
+            # -------------------------------------------------
+            # 3) Scan across a fixed number of steps
+            # -------------------------------------------------
+            def scan_body(carry, _):
+                state_batch, rng = carry
+                rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
+                obs, state_batch, rew, done, info = batched_step(
+                    state_batch, jnp.stack(step_keys)
+                )
+                return (state_batch, rng), (obs, rew, done, info)
+
+            rollout_start = time.time()
+            (final_state, _), (traj_obs, traj_rew, traj_done, traj_info) = jax.lax.scan(
+                scan_body,
+                (state, master_key),
+                None,
+                length=NUM_STEPS,
             )
+            # ensure all work is finished
+            jax.block_until_ready(final_state)
+            rollout_time = time.time() - rollout_start
 
-        # -------------------------------------------------
-        # 3) Scan across a fixed number of steps
-        # -------------------------------------------------
-        def scan_body(carry, _):
-            state_batch, rng = carry
-            rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
-            obs, state_batch, rew, done, info = batched_step(
-                state_batch, jnp.stack(step_keys)
-            )
-            return (state_batch, rng), (obs, rew, done, info)
+            # -------------------------------------------------
+            # 4) Timing statistics
+            # -------------------------------------------------
+            total_steps       = NUM_STEPS * NUM_ENVS          # every env took NUM_STEPS steps
+            avg_steps_per_env = NUM_STEPS
+            avg_time_per_step = rollout_time / total_steps
+            avg_steps_per_sec = total_steps / rollout_time
 
-        rollout_start = time.time()
-        (final_state, _), (traj_obs, traj_rew, traj_done) = jax.lax.scan(
-            scan_body,
-            (state, master_key),
-            None,
-            length=NUM_STEPS,
-        )
-        # ensure all work is finished
-        jax.block_until_ready(final_state)
-        rollout_time = time.time() - rollout_start
-
-        # jax.profiler.stop_trace()
-
-        
-
-        # -------------------------------------------------
-        # 4) Timing statistics
-        # -------------------------------------------------
-        total_steps       = NUM_STEPS * NUM_ENVS          # every env took NUM_STEPS steps
-        avg_steps_per_env = NUM_STEPS
-        avg_time_per_step = rollout_time / total_steps
-        avg_steps_per_sec = total_steps / rollout_time
-
-        print("\n[4] Timing Results")
-        print("-" * 60)
-        print(f"Total Envs:           {NUM_ENVS}")
-        print(f"Reset time:           {reset_time:.4f} seconds")
-        print(f"Rollout (steps) time: {rollout_time:.4f} seconds")
-        print(f"Total steps:          {total_steps}")
-        print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
-        print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
-        print(f"Avg steps per sec:    {avg_steps_per_sec:.2f}")
-        print(f"traj_rew: {len(traj_rew)}")
-        #print(f"traj_rew: {traj_rew}")
-        for i in range(len(traj_rew)):  # Number of agent types
-            # Extract rewards for agent type i across all steps
-            print("###################################")
-            print(f"Agent type {i}")
-            #print(f"traj_rew of agent type {i}: {traj_rew[i]}")
-            #print(f"traj_rew of agent type {i} length: {len(traj_rew[i])}")
-            print(f"Agent type {i} mean reward: {jnp.mean(traj_rew[i].flatten())}")
-            print(f"Agent type {i} min/max reward: {jnp.min(traj_rew[i].flatten())} / {jnp.max(traj_rew[i].flatten())}")
-            print(f"Agent type {i} std reward: {jnp.std(traj_rew[i].flatten())}")
+            print("\n[4] Timing Results")
+            print("-" * 60)
+            print(f"Total Envs:           {NUM_ENVS}")
+            print(f"Reset time:           {reset_time:.4f} seconds")
+            print(f"Rollout (steps) time: {rollout_time:.4f} seconds")
+            print(f"Total steps:          {total_steps}")
+            print(f"Avg steps per env:    {avg_steps_per_env:.2f}")
+            print(f"Avg time per step:    {avg_time_per_step:.6f} seconds")
+            print(f"Avg steps per sec:    {avg_steps_per_sec:.2f}")
+            print(f"traj_rew: {len(traj_rew)}")
+            #print(f"traj_rew: {traj_rew}")
+            for i in range(len(traj_rew)):  # Number of agent types
+                # Extract rewards for agent type i across all steps
+                print("###################################")
+                print(f"Agent type {i}")
+                #print(f"traj_rew of agent type {i}: {traj_rew[i]}")
+                #print(f"traj_rew of agent type {i} length: {len(traj_rew[i])}")
+                print(f"Agent type {i} mean reward: {jnp.mean(traj_rew[i].flatten())}")
+                print(f"Agent type {i} min/max reward: {jnp.min(traj_rew[i].flatten())} / {jnp.max(traj_rew[i].flatten())}")
+                print(f"Agent type {i} std reward: {jnp.std(traj_rew[i].flatten())}")
 
 
-            # Create histogram
-            plt.figure(figsize=(10, 6))
-            plt.hist(traj_rew[i].flatten(), bins=50, alpha=0.7, edgecolor='black')
-            plt.title(f'Agent type {i} Reward Distribution')
-            plt.xlabel('Reward')
-            plt.ylabel('Frequency')
-            plt.axvline(jnp.mean(traj_rew[i].flatten()), color='red', linestyle='--', label=f'Mean: {jnp.mean(traj_rew[i].flatten()):.2f}')
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            plt.show()
-            
-            # Print percentiles
+                # Create histogram
+                plt.figure(figsize=(10, 6))
+                plt.hist(traj_rew[i].flatten(), bins=50, alpha=0.7, edgecolor='black')
+                plt.title(f'Agent type {i} Reward Distribution')
+                plt.xlabel('Reward')
+                plt.ylabel('Frequency')
+                plt.axvline(jnp.mean(traj_rew[i].flatten()), color='red', linestyle='--', label=f'Mean: {jnp.mean(traj_rew[i].flatten()):.2f}')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                plt.show()
+                
+                # Print percentiles
+                percentiles = [1, 5, 10, 25, 50, 75, 90, 95, 99]
+                print(f"Agent type {i} percentiles:")
+                for p in percentiles:
+                    value = jnp.percentile(traj_rew[i].flatten(), p)
+                    print(f"  {p:2d}th percentile: {value:8.2f}")
+                print()
+
+
+            episode_lengths = []
+            for env_idx in range(NUM_ENVS):
+                # Find when this environment finished (first True in done flags)
+                done_flags = traj_done["__all__"][:, env_idx]  # Shape: (num_steps,)
+                if jnp.any(done_flags):
+                    # Find the first step where done is True
+                    episode_length = jnp.argmax(done_flags) + 1  # +1 because step 0 is step 1
+                else:
+                    # Episode didn't finish, so it ran for all steps
+                    episode_length = NUM_STEPS
+                episode_lengths.append(episode_length)
+
+            episode_lengths = jnp.array(episode_lengths)
+
+            print(f"Episode length statistics:")
+            print(f"  Mean: {jnp.mean(episode_lengths):.2f} steps")
+            print(f"  Std:  {jnp.std(episode_lengths):.2f} steps")
+            print(f"  Min:  {jnp.min(episode_lengths)} steps")
+            print(f"  Max:  {jnp.max(episode_lengths)} steps")
+
+            print("Episode length percentiles")
             percentiles = [1, 5, 10, 25, 50, 75, 90, 95, 99]
-            print(f"Agent type {i} percentiles:")
             for p in percentiles:
-                value = jnp.percentile(traj_rew[i].flatten(), p)
+                value = jnp.percentile(episode_lengths, p)
                 print(f"  {p:2d}th percentile: {value:8.2f}")
             print()
 
+            print_extreme_environments = True
+            if print_extreme_environments:
 
-
-        for i in range(len(traj_rew)):
-            rewards_reshaped = traj_rew[i]  # Shape: (num_steps, num_envs)
-            rewards_flat = rewards_reshaped.flatten()
-            
-            print(f"Agent type {i}:")
-            print(f"  Mean: {jnp.mean(rewards_flat):8.2f}")
-            print(f"  Std:  {jnp.std(rewards_flat):8.2f}")
-            
-            # Find the most extreme values
-            min_idx = jnp.argmin(rewards_flat)
-            max_idx = jnp.argmax(rewards_flat)
-            
-            # Convert flat index back to (step, env) coordinates
-            min_step = min_idx // rewards_reshaped.shape[1]  # Integer division
-            min_env = min_idx % rewards_reshaped.shape[1]    # Modulo
-            
-            max_step = max_idx // rewards_reshaped.shape[1]
-            max_env = max_idx % rewards_reshaped.shape[1]
-            
-            print(f"  MIN reward {rewards_flat[min_idx]:8.2f} at step {min_step}, env {min_env}")
-            print(f"  MAX reward {rewards_flat[max_idx]:8.2f} at step {max_step}, env {max_env}")
-            
-            # Show the trajectory for the extreme environments
-            print(f"  Environment {min_env} trajectory (min): {rewards_reshaped[:, min_env]}")
-            print(f"  Environment {max_env} trajectory (max): {rewards_reshaped[:, max_env]}")
-            print()
-
-
-            for env_idx in [min_env, max_env]:
-                print(f"\n{'='*80}")
-                print(f"EXTREME VALUE IN ENVIRONMENT {env_idx} TRAJECTORY:")
-                print(f"{'='*80}")
-
-                for step in range(NUM_STEPS):
-                    #print(f"traj_info: {traj_info["world"]['average_best_ask']}")
-                    world_info = traj_info["world"]
-                    agent_infos = traj_info["agents"]
-                    step_rewards = [traj_rew[agent_type][step, env_idx] for agent_type in range(len(traj_rew))]
+                for i in range(len(traj_rew)):
+                    rewards_reshaped = traj_rew[i]  # Shape: (num_steps, num_envs)
+                    rewards_flat = rewards_reshaped.flatten()
                     
-                    print(f"Step {step:2d}: ", end="")
-                    print(f"avg_ask={world_info['average_best_ask'][step,env_idx]:8.2f}, ", end="")
-                    print(f"avg_bid={world_info['average_best_bid'][step,env_idx]:8.2f}, ", end="")
-                    print(f"mid_price={world_info['end_mid_price'][step,env_idx]:8.2f}")
-                    #print(f"best bids and asks: {world_info['best_bids'][step,env_idx]} and {world_info['best_asks'][step,env_idx]}")
+                    print(f"Agent type {i}:")
+                    print(f"  Mean: {jnp.mean(rewards_flat):8.2f}")
+                    print(f"  Std:  {jnp.std(rewards_flat):8.2f}")
                     
+                    # Find the most extreme values
+                    min_idx = jnp.argmin(rewards_flat)
+                    max_idx = jnp.argmax(rewards_flat)
+                    
+                    # Convert flat index back to (step, env) coordinates
+                    min_step = min_idx // rewards_reshaped.shape[1]  # Integer division
+                    min_env = min_idx % rewards_reshaped.shape[1]    # Modulo
+                    
+                    max_step = max_idx // rewards_reshaped.shape[1]
+                    max_env = max_idx % rewards_reshaped.shape[1]
+                    
+                    #print(f"  MIN reward {rewards_flat[min_idx]:8.2f} at step {min_step}, env {min_env}")
+                    #print(f"  MAX reward {rewards_flat[max_idx]:8.2f} at step {max_step}, env {max_env}")
+                    
+                    # Show the trajectory for the extreme environments
+                    print(f"  Environment {min_env} trajectory (min): {rewards_reshaped[:, min_env]}")
+                    print(f"  Environment {max_env} trajectory (max): {rewards_reshaped[:, max_env]}")
                     print()
 
-        print("=" * 60)
+
+                    output_file_path = "/home/myuser/gymnax_exchange/jaxen/output"
+
+                    for env_idx in [min_env, max_env]:
+                        print(f"\n{'='*80}")
+                        print(f"EXTREME VALUE IN ENVIRONMENT {env_idx} TRAJECTORY:")
+                        print(f"{'='*80}")
+
+                        file_path = os.path.join(output_file_path, f"extreme_env_{env_idx}.txt")
+                        with open(file_path, "w") as f:
+                            f.write(f"EXTREME VALUE IN ENVIRONMENT {env_idx} TRAJECTORY:\n")
+                            f.write("="*80 + "\n")
+                            f.write(f"  MIN reward {rewards_flat[min_idx]:8.2f} at step {min_step}, env {min_env}")
+                            f.write(f"  MAX reward {rewards_flat[max_idx]:8.2f} at step {max_step}, env {max_env}")
+
+                            for step in range(NUM_STEPS):
+                                #print(f"traj_info: {traj_info["world"]['average_best_ask']}")
+                                world_info = traj_info["world"]
+                                agent_infos = traj_info["agents"]
+                                step_rewards = [traj_rew[agent_type][step, env_idx] for agent_type in range(len(traj_rew))]
+                                
+                                #print(f"Step {step:2d}: ", end="")
+                                #print(f"avg_ask={world_info['average_best_ask'][step,env_idx]:8.2f}, ", end="")
+                                #print(f"avg_bid={world_info['average_best_bid'][step,env_idx]:8.2f}, ", end="")
+                                #print(f"best_asks={world_info['best_asks'][step,env_idx]}")
+                                #print(f"best_bids={world_info['best_bids'][step,env_idx]}")
+                                #print(f"mid_price={world_info['end_mid_price'][step,env_idx]:8.2f}")
+                                #print(f"best bids and asks: {world_info['best_bids'][step,env_idx]} and {world_info['best_asks'][step,env_idx]}")
+                                
+                                #print()
+
+                                f.write(f"Step {step:2d}: ")
+                                f.write(f"avg_ask={world_info['average_best_ask'][step,env_idx]:8.2f}, ")
+                                f.write(f"avg_bid={world_info['average_best_bid'][step,env_idx]:8.2f}, ")
+                                f.write(f"mid_price={world_info['end_mid_price'][step,env_idx]:8.2f}\n")
+                                f.write(f"best_asks={world_info['best_asks'][step,env_idx]}\n")
+                                f.write(f"best_bids={world_info['best_bids'][step,env_idx]}\n")
+                                f.write("\n")
+
+                                if env.multi_agent_config.world_config.debug_mode==True:
+                                    f.write(f"  trades: {world_info['trades'][step,env_idx]}\n")
+                                    f.write(f"  total_msgs: {world_info['total_msgs'][step,env_idx]}\n")
+                                    f.write(f"  lob_state: {world_info['lob_state'][step,env_idx]}\n")
+                                    #f.write(f"ASK SIDE (price, quantity, orderid, traderid, time, time_ns):\n{state.world_state.ask_raw_orders}\n")
+                                    #f.write(f"BID SIDE (price, quantity, orderid, traderid, time, time_ns):\n{state.world_state.bid_raw_orders}\n")
+                                    f.write("\n")
+
+                                # Analyze episode lengths
+
+            print("=" * 60)
 
 
 

@@ -1651,6 +1651,7 @@ class ExecutionAgent():
             # print("quant shape: {}", quant.shape)
             # print("time shape: {}", time.shape)
             # print("trader id shape: {}", agent_params.trader_id.shape)
+            #jax.debug.print("quant_left: {}", jnp.abs(quant_left))
             
             
             mid_trade = job.create_trade(
@@ -1737,6 +1738,7 @@ class ExecutionAgent():
 
         #jax.debug.print("advantage: {}", advantage)
         #jax.debug.print("vwap: {}", vwap)
+       # jax.debug.print("exec quant left: {}", quant_left)
 
 
         drift = direction_switch * agentQuant * (vwap - agent_state.init_price//self.world_config.tick_size)
@@ -1756,6 +1758,7 @@ class ExecutionAgent():
             revenue - (agent_state.init_price // self.world_config.tick_size) * agentQuant
         )
         
+        #jax.debug.print("reward exec: {}", reward)
 
         # Add other extras
 
@@ -1778,7 +1781,7 @@ class ExecutionAgent():
         "quant_left": quant_left,
         "trade_duration": trade_duration,
         }
-        reward_scaled = reward / 10000
+        reward_scaled = reward
 
 
         if self.cfg.reward_space == "finish_fast":
