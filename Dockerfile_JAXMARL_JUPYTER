@@ -1,2 +1,0 @@
-FROM jaxmarl:latest
-RUN pip install jupyterlab notebook

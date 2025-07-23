@@ -3,8 +3,8 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.0004,0.0004]
-"NUM_ENVS": 4096
-"NUM_STEPS": 512
+"NUM_ENVS": 128
+"NUM_STEPS": 128
 "NUM_STEPS_EVAL" : 64
 "GRU_HIDDEN_DIM": 128
 "FC_DIM_SIZE": 128
@@ -16,7 +16,7 @@
 "CLIP_EPS": 0.2
 "SCALE_CLIP_EPS": [False,False]
 "ENT_COEF": [0.001,0.001]
-"VF_COEF": [1e-18,1e‑11]
+"VF_COEF": [1e-18, 1e-11]
 "MAX_GRAD_NORM": [0.5,0.5]
 "ACTIVATION": ["relu","relu"]
 "ENV_NAME": "JAXMARL-Lob-v0"

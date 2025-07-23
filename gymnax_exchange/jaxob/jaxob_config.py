@@ -24,13 +24,13 @@ class JAXLOB_Configuration:
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2024" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2024" # Needs to be the appropriate directory name. "2017Jan_oneday", "2024"
 
 
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
-    action_space: str = "spread_skew"
+    action_space: str = "simple"
 
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
     observation_space: str = "engineered"
@@ -150,7 +150,7 @@ class Execution_EnvironmentConfig():
 class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
-    ep_type = "fixed_time" # fixed_steps, fixed_time
+    ep_type = "fixed_steps" # fixed_steps, fixed_time
     episode_time: int = 50 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
@@ -169,7 +169,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= True
+    use_pickles_for_init:bool= False
 
 
 @dataclass(frozen=True)

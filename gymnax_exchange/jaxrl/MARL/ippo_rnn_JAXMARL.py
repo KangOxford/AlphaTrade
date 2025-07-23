@@ -822,12 +822,12 @@ def main(config):
         #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         #     print(f"params restored")
 
-        run.finish()
+        run.finish() 
 
     # NOTE: Sweep Parameters will override the config file, but cannot be used to override any environment params currently. 
     # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
     sweep_parameters = {
-        "LR": {"values": [config["LR"]]},
+        #"LR": {"values": [config["LR"]]},
         #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
         #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
         #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
@@ -837,7 +837,7 @@ def main(config):
         #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
         #"NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [5,5], [10,10]]},
        #"SEED": {"values": [2,3,4,5,6,7,8,9,10]},
-       "NUM_ENVS": {"values": [config["NUM_ENVS"]]},
+       #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
        #"NUM_STEPS": {"values": [config["NUM_STEPS"], 32, 4]},
        
         
