@@ -827,7 +827,7 @@ def main(config):
     # NOTE: Sweep Parameters will override the config file, but cannot be used to override any environment params currently. 
     # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
     sweep_parameters = {
-        #"LR": {"values": [config["LR"]]},
+        "LR": {"values": [config["LR"]]},
         #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
         #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
         #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
