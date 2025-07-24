@@ -759,7 +759,7 @@ if __name__ == "__main__":
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
 
-    num_steps = 100
+    num_steps = 190
     fixed_actions = False
     rewards_list = []
 
@@ -812,7 +812,7 @@ if __name__ == "__main__":
 
             if check_extreme:
                 for agent_type, reward in enumerate(rewards):
-                    print(f"Agent {agent_type} reward: {reward}")
+                    #print(f"Agent {agent_type} reward: {reward}")
                     if abs(reward) > EXTREME_THRESHOLD:
                         print(f"EXTREME REWARD! Agent {agent_type}: {reward}")
                         found_extreme = True
@@ -826,7 +826,7 @@ if __name__ == "__main__":
             #print("Done:", done)
             if done["__all__"]:
                 print("Episode finished!")
-                break
+                #break
     # jax.profiler.stop_trace()
         if found_extreme and check_extreme:  # Add this condition
             print(f"Found extreme reward in episode {episode + 1}! Stopping.")
@@ -844,7 +844,7 @@ if __name__ == "__main__":
     # ----------------------------------------------
     # New VMAP rollout script + timing statistics
     # ----------------------------------------------
-    enable_vmap = True
+    enable_vmap = False
     if enable_vmap:
 
         print("\n" + "="*60)
