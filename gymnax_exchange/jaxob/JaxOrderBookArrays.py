@@ -201,7 +201,7 @@ def match_order(data_tuple):
     newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm)
     qtm=qtm-orderside[top_order_idx,1]
     qtm=qtm.astype(jnp.int32)
-    emptyidx=jnp.where(trade==-1,size=1,fill_value=-1)[0]
+    emptyidx=jnp.where(trade[:,cst.LOBMSGFEAT.OID.value]==-1,size=1,fill_value=-1)[0]
     passTID=orderside[top_order_idx,3]
     #side is 1 if incoming order is a buy.//
     #This makes trade q<0 if incoming order is a buy,i.e, a standing sale, and q>0 if there is a standing buy.
@@ -613,7 +613,7 @@ def cond_type_side_save_states(cfg:JAXLOB_Configuration,book_state,it_data):
 
     return (ask,bid,trade),(ask,bid,trade)
 
-# @partial(jax.jit,static_argnums=0)
+@partial(jax.jit,static_argnums=0)
 def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
     """Branching function which calls the relevant function based on
     the side and type fields of the incoming message. Organises the 
