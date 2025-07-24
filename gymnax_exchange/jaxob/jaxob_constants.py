@@ -72,3 +72,13 @@ SEED= 42 # the meaning of life.
 class SimulatorMode(Enum):
     GENERAL_EXCHANGE=0
     LOBSTER_INTERPRETER=1
+
+class LOBMSGFEAT(Enum):
+    Type=0  # Message type
+    Side=1  # Order side (buy/sell)
+    Quant=2 # Quantity
+    Price=3 # Price
+    OID=4   # Order ID
+    TID=5   # Trade ID
+    TS=6    # Timestamp seconds
+    TNS=7   # Timestamp nanoseconds
