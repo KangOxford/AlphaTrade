@@ -153,7 +153,7 @@ class MARLEnv(MultiAgentEnv):
             **dataclasses.asdict(load_state),  # copy all fields from the loaded state
             best_bids=bestbids,
             best_asks=bestasks,
-            step_counter=0,
+            # step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
             mid_price=mid_price,
