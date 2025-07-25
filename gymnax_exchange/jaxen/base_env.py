@@ -356,14 +356,17 @@ class BaseLOBEnv(environment.Environment):
         #messages=messageData[index_offset:(index_offset+self.n_data_msg_per_step),:]
         #Replace messages after the cutoff time with padded 0s (except time)
         #jax.debug.print("m_wout_time {}",jnp.transpose(jnp.resize(messages[:,-2]>=end_time_s,messages[:,:-2].shape[::-1])))
-        m_wout_time=jnp.where(jnp.transpose(jnp.resize(
+        if self.cfg.ep_type == "fixed_time":
+            # If fixed time, we need to remove messages that are after the end time
+            # We do this by replacing the messages with 0s if they are after the end time
+            m_wout_time = jnp.where(jnp.transpose(jnp.resize(
                                 messages[:,-2]>=end_time_s,
                                 messages[:,:-2].shape[::-1])),
                               jnp.zeros_like(messages[:,:-2]),
                               messages[:,:-2])
         #jax.debug.print("m_wout_time {}",m_wout_time)
 
-        messages=jnp.concatenate((m_wout_time,messages[:,-2:]),axis=1,dtype=jnp.int32)
+            messages=jnp.concatenate((m_wout_time,messages[:,-2:]),axis=1,dtype=jnp.int32)
         return messages
     
     def _get_generative_messages(self,previous_messages,n_messages):
