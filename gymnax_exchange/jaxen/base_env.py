@@ -227,6 +227,7 @@ class BaseLOBEnv(environment.Environment):
             self.cfg.window_selector == -1,
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(self.cfg.window_selector, dtype=jnp.int32))
+        #jax.debug.print("idx_data_window: {}", idx_data_window)
         first_state = index_tree(params.init_states_array, idx_data_window)
         return 0,first_state
     

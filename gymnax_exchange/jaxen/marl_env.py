@@ -153,7 +153,7 @@ class MARLEnv(MultiAgentEnv):
             **dataclasses.asdict(load_state),  # copy all fields from the loaded state
             best_bids=bestbids,
             best_asks=bestasks,
-            step_counter=0,
+            #step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
             mid_price=mid_price,
@@ -739,7 +739,7 @@ if __name__ == "__main__":
 
     multi_agent_config = MultiAgentConfig()
 
-    rng = jax.random.PRNGKey(49) # TODO i think this should be changed to the new key function in JAX .key()
+    rng = jax.random.PRNGKey(50) # TODO i think this should be changed to the new key function in JAX .key()
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
     # Instantiate the MARL environment.
@@ -759,7 +759,7 @@ if __name__ == "__main__":
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
 
-    num_steps = 190
+    num_steps = 145
     fixed_actions = False
     rewards_list = []
 
@@ -850,8 +850,8 @@ if __name__ == "__main__":
             print("="*60)
 
 
-            NUM_ENVS   = 1000     # number of parallel environments
-            NUM_STEPS  = 2000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         # total steps per environment
+            NUM_ENVS   = 1000    # number of parallel environments
+            NUM_STEPS  = 200                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        # total steps per environment
             MASTER_KEY = jax.random.PRNGKey(6)
             fixed_actions = False
 

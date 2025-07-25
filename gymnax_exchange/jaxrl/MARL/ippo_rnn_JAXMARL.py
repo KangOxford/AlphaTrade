@@ -17,7 +17,8 @@ os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
 import time
 import jax # type: ignorepip 
 jax.config.update('jax_disable_jit', False)
-
+from flax import serialization
+import jax, os
 import jax.numpy as jnp # type: ignore
 import flax.linen as nn
 import numpy as np
@@ -812,6 +813,10 @@ def main(config):
             out = train_jit(rng)
 
         
+
+
+
+
         # # Save the params to a file using flax.serialization.to_bytes
         # with open(params_file_name, 'wb') as f:
         #     f.write(flax.serialization.to_bytes(params))
@@ -876,6 +881,9 @@ def seperate_main(config):
     train_fun = make_train(config)
     # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
     out = train_fun(rng)
+
+
+
     # out=jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
     # (dummy * dummy).block_until_ready()
     # jax.profiler.stop_trace()
