@@ -771,7 +771,7 @@ def main(config):
             start_time = time.time()
 
 
-        train_fun = make_train(config)
+        train_fun = make_train(wandb.config)
         out = train_fun(rng)
         # train_state = out['runner_state'][0] # runner_state.train_state
         # params = train_state.params
