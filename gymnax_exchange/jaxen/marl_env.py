@@ -285,17 +285,17 @@ class MARLEnv(MultiAgentEnv):
             all_cancel_msgs = jnp.empty((0, 8), dtype=jnp.int32)
             new_order_id_counter=state.world_state.order_id_counter # No new order ids, so we keep the old one
 
-        def callback_empty_messages(data_messages,state):
-            if jnp.all(data_messages[0,:-2]==0):
-                print("Empty data messages, this should not happen. Check the data messages in the config file.")
-                window_index=state.world_state.window_index
-                s=self.base_env.start_indeces[window_index]
-                e=self.base_env.end_indeces[window_index]
-                print(f"Start and end indices for window {window_index}: {s}, {e}")
-                print(f"Start index: {state.world_state.start_index}, step counter: {state.world_state.step_counter}, init time: {state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time}")
-                print("data_messages: ", data_messages)
+        # def callback_empty_messages(data_messages,state):
+        #     if jnp.all(data_messages[0,:-2]==0):
+        #         print("Empty data messages, this should not happen. Check the data messages in the config file.")
+        #         window_index=state.world_state.window_index
+        #         s=self.base_env.start_indeces[window_index]
+        #         e=self.base_env.end_indeces[window_index]
+        #         print(f"Start and end indices for window {window_index}: {s}, {e}")
+        #         print(f"Start index: {state.world_state.start_index}, step counter: {state.world_state.step_counter}, init time: {state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time}")
+        #         print("data_messages: ", data_messages)
                 
-        jax.debug.callback(callback_empty_messages, data_messages,state)
+        # jax.debug.callback(callback_empty_messages, data_messages,state)
 
 
         # Combine action and cancel messages
