@@ -743,7 +743,7 @@ def main(config):
         # +++++ Single GPU +++++
         
 
-        rng = jax.random.PRNGKey(0)
+        rng = jax.random.PRNGKey(wandb.config["SEED"])
 
         print("wandb.config", wandb.config)
 
