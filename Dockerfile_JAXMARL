@@ -56,6 +56,7 @@ RUN echo 'export PATH=$PATH:/home/duser/.local/bin' >> ~/.bashrc
 # Ensure home directory is on the Python path
 ENV PYTHONPATH="/home/${MYUSER}:$PYTHONPATH"
 RUN export PATH="$HOME/.local/bin:$PATH"
+RUN export PATH="$HOME/.local/lib:$PATH"
 # Uncomment below if you want jupyter 
 # RUN pip install jupyterlab
 
