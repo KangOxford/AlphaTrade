@@ -163,6 +163,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
     use_pickles_for_init:bool= True
+    save_raw_observations:bool=False
 
 
 @dataclass(frozen=True)

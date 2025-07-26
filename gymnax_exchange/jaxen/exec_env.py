@@ -469,7 +469,8 @@ class ExecutionAgent():
                             old_time = world_state.time,
                             old_mid_price = world_state.mid_price,
                             lob_state_before = lob_state_before,
-                            normalize = self.cfg.normalize)
+                            normalize = self.cfg.normalize,
+                            flatten=True)
 
         return obs, agent_state
 
@@ -1392,22 +1393,25 @@ class ExecutionAgent():
             raise ValueError("Invalid action space specified.")    
     
 
-    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize):
+    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize,flatten):
         """
         Wrapper function to call the appropriate observation function.
         """
         if self.cfg.observation_space == "engineered":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         elif self.cfg.observation_space == "basic":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         elif self.cfg.observation_space == "simplest_case":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         else:
             raise ValueError("Invalid observation_space specified.")
         

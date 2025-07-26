@@ -591,9 +591,10 @@ class MARLEnv(MultiAgentEnv):
             agent_state = new_multi_state.agent_states[agent_type_index]
             agent_params = params.agent_params[agent_type_index]
             agent_config = self.instance_list[agent_type_index].cfg
-            vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None), out_axes = (0))
-            obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize)
-            
+            vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None,None), out_axes = (0))
+            obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize, True)
+            if self.multi_agent_config.world_config.save_raw_observations:
+                info["agents"][agent_type_index]["obs_raw"] = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, False,False)
             # Set obs to zeros if done
             #jax.debug.print("obs before: {}", obs)
             #jax.debug.print(f"state {agent_state}:")
