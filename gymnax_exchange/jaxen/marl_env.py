@@ -362,6 +362,13 @@ class MARLEnv(MultiAgentEnv):
 
         #TODO: Could use some constants for indexing here, rather than magic numbers
         final_time = combined_msgs[-1, -2:]
+        # def debug_callback_time(world_state, final_time,combined_msgs):
+        #     print("Window Index: ", world_state.window_index)
+        #     if world_state.window_index == 427:
+        #         print("final time: ", final_time)
+        #         # print("world state time: ", world_state.time)
+        #         # print("agent state time: ", agent_state.time)
+        #         print("combined msgs: ", combined_msgs)
         # print(f"final time: {final_time}")
 
 
@@ -610,6 +617,8 @@ class MARLEnv(MultiAgentEnv):
                 obs)
             #jax.debug.print("obs after: {}", obs)
             agent_obs_list.append(obs)
+
+        # jax.debug.print("agent_obs_list: {}", agent_obs_list)s
 
 
         #jax.debug.print("agent_obs_list: {}", agent_obs_list)

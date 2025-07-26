@@ -228,6 +228,12 @@ class BaseLOBEnv(environment.Environment):
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(self.cfg.window_selector, dtype=jnp.int32))
         first_state = index_tree(params.init_states_array, idx_data_window)
+        # def debug_callback(first_state,idx_data_window):
+        #     if idx_data_window == 427:  # Debugging for specific window index
+        #         print("Debugging reset for window index:", idx_data_window)
+        #         print("Resetting environment to initial state for window index:", first_state.window_index)
+        #         print("First state details:", first_state)
+        # jax.debug.callback(debug_callback, first_state, idx_data_window)
         return 0,first_state
     
     def _internal_terminal_debug(self, state: LoadedEnvState, params: LoadedEnvParams,time : chex.Array) -> bool:

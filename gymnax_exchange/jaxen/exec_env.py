@@ -487,6 +487,23 @@ class ExecutionAgent():
             time_done = (self.world_config.episode_time - (world_state.time - world_state.init_time)[0] <= self.cfg.seconds_before_episode_end)  # time over (last 5 seconds)
             task_done = (agent_state.task_to_execute - agent_state.quant_executed <= 0)
             done = time_done | task_done
+            def done_callback(world_state, agent_state, done,time_done, task_done):
+                if done:
+                    print(f"Episode done: time_done {time_done}, task_done {task_done}")
+                    print(f"Window Index: {world_state.window_index}")
+                    if time_done:
+                        print("Episode done: time over, last 5 seconds")
+                        print(f"Seconds before episode end: {self.cfg.seconds_before_episode_end}")
+                        print(f"Episode time: {self.world_config.episode_time}")
+                        print(f"Time Elapsed: {(world_state.time - world_state.init_time)[0]}")
+                        print(f"Time : {world_state.time}")
+                        print(f"Init Time : {world_state.init_time}")
+                    if task_done:
+                        print("Episode done: task done")
+                        print(f"Task to execute: {agent_state.task_to_execute}")
+                        print(f"Quant executed: {agent_state.quant_executed}")
+
+            # jax.debug.callback(done_callback, world_state, agent_state, done, time_done, task_done)
             return done
         
         elif self.world_config.ep_type == 'fixed_steps':
@@ -1864,20 +1881,20 @@ class ExecutionAgent():
         doom_quant = extras["doom_quant"]
 
         info = {
-            "total_revenue": agent_state.total_revenue,
-            "quant_executed": agent_state.quant_executed,
-            "task_to_execute": agent_state.task_to_execute,
+            # "total_revenue": agent_state.total_revenue,
+            # "quant_executed": agent_state.quant_executed,
+            # "task_to_execute": agent_state.task_to_execute,
             "quant_left": new_quant_left,
-            "average_price": average_price,
+            # "average_price": average_price,
             "done": done,
-            "slippage_rm": agent_state.slippage_rm,
-            "price_adv_rm": agent_state.price_adv_rm,
-            "price_drift_rm": agent_state.price_drift_rm,
-            "vwap_rm": agent_state.vwap_rm,
-            "advantage_reward": agent_state.advantage_return,
-            "drift_reward": agent_state.drift_return,
-            "drift" : drift,
-            "trade_duration": agent_state.trade_duration,
+            # "slippage_rm": agent_state.slippage_rm,
+            # "price_adv_rm": agent_state.price_adv_rm,
+            # "price_drift_rm": agent_state.price_drift_rm,
+            # "vwap_rm": agent_state.vwap_rm,
+            # "advantage_reward": agent_state.advantage_return,
+            # "drift_reward": agent_state.drift_return,
+            # "drift" : drift,
+            # "trade_duration": agent_state.trade_duration,
             "doom_quant": doom_quant,
             "is_sell_task": agent_state.is_sell_task,
             "reward": new_reward,

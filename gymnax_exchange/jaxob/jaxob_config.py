@@ -20,7 +20,7 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = 50  # Episodes from data start every n seconds.
+    start_resolution: int = 60  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
@@ -55,10 +55,12 @@ class MarketMaking_EnvironmentConfig():
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
-    multiplier_type: str = "tick" # options: "spread", "tick"
+    multiplier_type: str = "spread" # options: "spread", "tick"
     clip_reward: bool = False
+    based_on_mid_price_of_action: bool = False
+    exclude_extreme_spreads: bool= False
     # Weights for complex reward function:
-    inventoryPnL_lambda: float = 1.0
+    inventoryPnL_lambda: float = 0.001
     unrealizedPnL_lambda: float = 0.1
     asymmetrically_dampened_lambda: float = 0.8
 
@@ -144,7 +146,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time: int = 600 # counted by seconds, 1800s=0.5h
+    episode_time: int = 60 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -171,8 +173,8 @@ class MultiAgentConfig():
     #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [Execution_EnvironmentConfig()])#[MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [2])#[2,2]) # This is only the default value, we change it in the yaml RL file
+    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
+    number_of_agents_per_type: list = field(default_factory=lambda: [1,1]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [
