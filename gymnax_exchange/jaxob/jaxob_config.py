@@ -1,7 +1,7 @@
 import gymnax_exchange.jaxob.jaxob_constants as cst
 import gymnax_exchange.jaxob.jaxenv_constants as env_cst
 import os
-from typing import Tuple,  Literal,Union,List
+from typing import OrderedDict, Tuple,  Literal,Union,List
 
 from dataclasses import dataclass,field
 
@@ -174,7 +174,15 @@ class MultiAgentConfig():
     #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
+    # list_of_agents_configs: List = field(default_factory=lambda: [
+    #     MarketMaking_EnvironmentConfig(),
+    #     Execution_EnvironmentConfig()
+    # ])
+
+    dict_of_agents_configs: dict = field(default_factory=lambda: dict([
+        ("MarketMaking", MarketMaking_EnvironmentConfig()),
+        ("Execution", Execution_EnvironmentConfig())
+    ]))
     number_of_agents_per_type: list = field(default_factory=lambda: [1,1]) # This is only the default value, we change it in the yaml RL file
 
 

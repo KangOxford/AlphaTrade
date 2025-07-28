@@ -142,9 +142,11 @@ def make_train(config):
 
 
 
-    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(seed=config["SEED"])))
     if config["CALC_EVAL"]:
-        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(timePeriod=config["EvalTimePeriod"])))
+        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(timePeriod=config["EvalTimePeriod"],seed=config["SEED"])))
+
+    agent_type_names = list(env.type_names)
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PER_TYPE"]]  # Should be a list.
     config["NUM_ACTORS_TOTAL"] = env.num_agents * config["NUM_ENVS"]
@@ -163,7 +165,11 @@ def make_train(config):
 
     print("Config:")
     for k, v in config.items():
-        print(f"{k}: {v}")
+        if isinstance(v, dict):
+            for sub_k, sub_v in v.items():
+                print(f"{k}.{sub_k}: {sub_v}")
+        else:
+            print(f"{k}: {v}")
     # env = SMAXLogWrapper(env)
 
     def linear_schedule(lr,count):
@@ -622,32 +628,88 @@ def make_train(config):
 
             def callback(metric):
                 print("Update step:", metric["update_steps"])
-                action_distribution = {}
-                for i, tr in enumerate(metric["traj_batch"]):
+                # for loss_idx, m in enumerate(metric["loss"]):
+                #         logging_dict[f"agent_{agent_name}/loss_{loss_idx}"] = m
+                # Needed?
+
+                for agent_index, tr in enumerate(metric["traj_batch"]):
+                    agent_name = agent_type_names[agent_index]
+
+                    action_distribution = {}
                     actions = np.array(tr.action).flatten()
                     unique_actions, counts = np.unique(actions, return_counts=True)
                     tot_counts=sum(counts)
                     # Add each action count to the dictionary with a unique key
                     for a, c in zip(unique_actions, counts):
-                        action_distribution[f"action_{i}_{int(a)}"] = c/tot_counts*100
-                logging_dict = {
+                        action_distribution[f"agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
+                    logging_dict = {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
                         "env_step": metric["update_steps"]
                         * config["NUM_ENVS"]
                         * config["NUM_STEPS"],
-                        **{f"network_{i}": m for i,m in enumerate(metric["loss"])},
-                        **{f"avg_reward_{i}": metric["avg_reward"][i] for i in range(len(metric["avg_reward"]))},
+                        **{f"agent_{agent_name}/{j}": m for j, m in metric["loss"][agent_index].items()},
+                        **{f"agent_{agent_name}/reward": metric["avg_reward"][agent_index]},
                         **action_distribution
                     }
-                if config["CALC_EVAL"]:
-                    logging_dict.update({
-                        **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
-                    })
-                if config["WANDB_MODE"]!= "disabled":
-                    wandb.log(logging_dict)
+                
+                    
+                    for key, value in tr.info['agent'].items():
+                    # Check if value is a numpy array or jax array and has elements
+                        if isinstance(value, (jnp.ndarray, np.ndarray)) and value.size > 0:
+                            flat_value = np.array(value).flatten()
+                            if flat_value.size > 0:
+                                # Get agent short_name from config
+                                logging_dict[f"agent_{agent_name}/{key}_mean"] = float(np.mean(flat_value))
+                                logging_dict[f"agent_{agent_name}/{key}_std"] = float(np.std(flat_value))
+                    
+                    # Process world info if available
+                    if 'world' in tr.info and tr.info['world']:
+                        for key, value in tr.info['world'].items():
+                            if isinstance(value, (jnp.ndarray, np.ndarray)) and value.size > 0:
+                                flat_value = np.array(value).flatten()
+                                if flat_value.size > 0:
+                                    logging_dict[f"world/{key}_mean"] = float(np.mean(flat_value))
+                    if config["WANDB_MODE"]!= "disabled":
+                        wandb.log(logging_dict)
+                    # Add evaluation metrics if available
+                if config["CALC_EVAL"] and "traj_batch_eval" in metric:
+                    for agent_index, tr in enumerate(metric["traj_batch_eval"]):
+                        agent_name = agent_type_names[agent_index]
+                        action_distribution = {}
+                        actions = np.array(tr.action).flatten()
+                        unique_actions, counts = np.unique(actions, return_counts=True)
+                        tot_counts=sum(counts)
+                        # Add each action count to the dictionary with a unique key
+                        for a, c in zip(unique_actions, counts):
+                            action_distribution[f"agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
+                        logging_dict = {
+                            **action_distribution
+                        }
+                        for key, value in tr.info['agent'].items():
+                            if isinstance(value, (jnp.ndarray, np.ndarray)) and value.size > 0:
+                                flat_value = np.array(value).flatten()
+                                if flat_value.size > 0:
+                                    logging_dict[f"eval_agent_{agent_name}/{key}_mean"] = float(np.mean(flat_value))
+                                    logging_dict[f"eval_agent_{agent_name}/{key}_std"] = float(np.std(flat_value))
+                        
+                        # Process world eval info if available
+                        if 'world' in tr.info and tr.info['world']:
+                            for key, value in tr.info['world'].items():
+                                if isinstance(value, (jnp.ndarray, np.ndarray)) and value.size > 0:
+                                    flat_value = np.array(value).flatten()
+                                    if flat_value.size > 0:
+                                        logging_dict[f"eval_world/{key}_mean"] = float(np.mean(flat_value))
 
-                for i in range(len(metric["avg_reward"])):
-                    print(f"avg_reward_{i} {metric["avg_reward"][i]}")
+                        logging_dict.update({
+                            **{f"eval_agent_{agent_name}/reward": metric["avg_reward_eval"][agent_index]},
+                        })
+                        if config["WANDB_MODE"]!= "disabled":
+                            wandb.log(logging_dict)
+
+
+                for agent_index, agent_value in enumerate(metric["avg_reward"]):
+                    agent_name = agent_type_names[agent_index]
+                    print(f"avg_reward_{agent_name} {agent_value}")
 
             metrics["update_steps"] = update_steps
             jax.experimental.io_callback(callback, None, metrics)
@@ -736,6 +798,8 @@ def main(config):
             mode=config["WANDB_MODE"], # type: ignore
             allow_val_change=True,
         )
+
+        
         # params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
         
         
