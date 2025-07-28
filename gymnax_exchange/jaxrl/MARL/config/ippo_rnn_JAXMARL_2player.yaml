@@ -31,7 +31,7 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "DEBUG" #"2Player_spread_skew_vs_fixed_quants"
+"PROJECT": "v2_2Player_spread_skew_vs_fixed_quants"
 "WANDB_MODE" : "online"
 
 # High-Level Params
