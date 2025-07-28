@@ -872,16 +872,16 @@ def main(config):
     # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
     sweep_parameters = {
         # "LR": {"values": [config["LR"]]},
-        "NUM_STEPS": {"values": [32,config["NUM_STEPS"], 512]},
+        # "NUM_STEPS": {"values": [32,config["NUM_STEPS"], 512]},
         #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
         #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
         #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
-        "UPDATE_EPOCHS": {"values": [config["UPDATE_EPOCHS"], 8]},
+        # "UPDATE_EPOCHS": {"values": [config["UPDATE_EPOCHS"], 8]},
         #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
         #"VF_COEF": {"values": [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]},
         #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
        # "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]},
-        "SEED": {"values": [config["SEED"],34]},
+        "SEED": {"values": [config["SEED"],34,434]},
        #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
        #"NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 32, 8]},
        
