@@ -51,7 +51,7 @@ class MarketMaking_EnvironmentConfig():
     seconds_before_episode_end:int=5
    
     # Reward
-    inv_penalty: str = "linear"  # options: "none", "linear", "quadratic", "threshold"
+    inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
