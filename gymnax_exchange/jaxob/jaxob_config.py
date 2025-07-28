@@ -51,14 +51,15 @@ class MarketMaking_EnvironmentConfig():
     seconds_before_episode_end:int=5
    
     # Reward
-    inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
+    inv_penalty: str = "linear"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
-    multiplier_type: str = "tick" # options: "spread", "tick"
+    inv_penalty_quadratic_factor: float = 50.0 #Represents N for penalty = 1/N * (inv ** 2) if quadratic penalty is used
+    multiplier_type: str = "tick" # options:  "tick" #DO NOT USE "spread" it is WRONG. 
     clip_reward: bool = False
     # Weights for complex reward function:
-    inventoryPnL_lambda: float = 1.0
+    inventoryPnL_lambda: float = 0.5
     unrealizedPnL_lambda: float = 0.1
     asymmetrically_dampened_lambda: float = 0.8
 
@@ -92,16 +93,16 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
+    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 300
+    task_size:int= 100
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
-    reward_lambda:float= 0
+    reward_lambda:float= 0.5
     time_delay_obs_act:int=0
     debug_mode:bool=False
     normalize:bool=True
@@ -143,8 +144,8 @@ class Execution_EnvironmentConfig():
 class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
-    ep_type = "fixed_time" # fixed_steps, fixed_time
-    episode_time: int = 600 # counted by seconds, 1800s=0.5h
+    ep_type :str = "fixed_steps" # fixed_steps, fixed_time
+    episode_time: int = 32 # counted by seconds, 1800s=0.5h or steps
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100

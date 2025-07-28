@@ -1861,6 +1861,7 @@ class ExecutionAgent():
         average_price = jnp.nan_to_num(agent_state.total_revenue 
                                             / agent_state.quant_executed, 0.0)
         drift = extras["drift"]
+        advantage= extras["advantage"]
         doom_quant = extras["doom_quant"]
 
         info = {
@@ -1870,14 +1871,16 @@ class ExecutionAgent():
             "quant_left": new_quant_left,
             "average_price": average_price,
             "done": done,
-            "slippage_rm": agent_state.slippage_rm,
-            "price_adv_rm": agent_state.price_adv_rm,
-            "price_drift_rm": agent_state.price_drift_rm,
-            "vwap_rm": agent_state.vwap_rm,
-            "advantage_reward": agent_state.advantage_return,
-            "drift_reward": agent_state.drift_return,
+            "revenue_direction_normalised": extras["reward_lam1"],  # pure revenue is not informative if direction is random (-> flip and normalise)
+            # "slippage_rm": agent_state.slippage_rm,
+            # "price_adv_rm": agent_state.price_adv_rm,
+            # "price_drift_rm": agent_state.price_drift_rm,
+            # "vwap_rm": agent_state.vwap_rm,
+            #"advantage_reward": agent_state.advantage_return,
+            #"drift_reward": agent_state.drift_return,
             "drift" : drift,
-            "trade_duration": agent_state.trade_duration,
+            "advantage": advantage,
+            # "trade_duration": agent_state.trade_duration,
             "doom_quant": doom_quant,
             "is_sell_task": agent_state.is_sell_task,
             "reward": new_reward,
