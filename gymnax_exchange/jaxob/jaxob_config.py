@@ -104,7 +104,7 @@ class Execution_EnvironmentConfig():
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
-    reward_lambda:float= 0.5
+    reward_lambda:float= 0.0
     time_delay_obs_act:int=0
     debug_mode:bool=False
     normalize:bool=True
