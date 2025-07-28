@@ -51,7 +51,7 @@ class MarketMaking_EnvironmentConfig():
     seconds_before_episode_end:int=5
    
     # Reward
-    inv_penalty: str = "quadratic"  # options: "none", "linear", "quadratic", "threshold"
+    inv_penalty: str = "linear"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
@@ -99,7 +99,7 @@ class Execution_EnvironmentConfig():
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 100
+    task_size:int= 200
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
