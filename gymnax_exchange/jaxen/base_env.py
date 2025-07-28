@@ -145,7 +145,7 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.window_selector = cfg.window_selector
         self.ep_type = cfg.ep_type # fixed_steps, fixed_time
-        self.episode_time = cfg.episode_time # counted by seconds, 1800s=0.5h
+        self.episode_time = cfg.episode_time # counted by seconds, 1800s=0.5h or steps
         self.n_data_msg_per_step = cfg.n_data_msg_per_step
         self.day_start = cfg.day_start  # 09:30
         self.day_end = cfg.day_end  # 16:00
