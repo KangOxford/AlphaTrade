@@ -17,7 +17,7 @@ else
 DATADIR=~/data
 endif
 BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G 
-PORT_FLAGS= -p 8072:80 -p 8075:6006
+PORT_FLAGS= -p 8062:80 -p 8065:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS) $(PORT_FLAGS)
 BASIC_FLAGS=$(GPUS) $(BASE_FLAGS)
 
