@@ -2212,7 +2212,7 @@ class MarketMakingAgent():
             inv_pen = (-1) * jnp.abs(new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "quadratic":
-            inv_pen = (-1) * (new_inventory ** 2)
+            inv_pen = (-1) * (new_inventory ** 2) / self.cfg.inv_penalty_quadratic_factor
             #jax.debug.print("new_inventory: {}", new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "threshold":
