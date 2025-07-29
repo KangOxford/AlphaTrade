@@ -38,7 +38,7 @@ class MarketMaking_EnvironmentConfig():
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 3.0 #50.0
-    skew_multiplier: float = 5 #100.0
+    skew_multiplier: float = 10.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -49,7 +49,13 @@ class MarketMaking_EnvironmentConfig():
     normalize:bool=True
     short_name:str="MM" # For agent naming e.g. in the obs dict
     seconds_before_episode_end:int=5
-   
+    # Fixed action settings
+    fixed_action_setting: bool = False
+    fixed_action: int = 0
+    #Control for simple market making action space
+    sell_buy_all_option: bool= False #Whether selling the entire inventory is possible
+    simple_nothing_action: bool = True # Whether or not the simple action space has a nothing action
+
     # Reward
     inv_penalty: str = "linear"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
@@ -58,6 +64,8 @@ class MarketMaking_EnvironmentConfig():
     inv_penalty_quadratic_factor: float = 50.0 #Represents N for penalty = 1/N * (inv ** 2) if quadratic penalty is used
     multiplier_type: str = "tick" # options:  "tick" #DO NOT USE "spread" it is WRONG. 
     clip_reward: bool = False
+    based_on_mid_price_of_action: bool = True
+    exclude_extreme_spreads: bool= False
     # Weights for complex reward function:
     inventoryPnL_lambda: float = 0.5
     unrealizedPnL_lambda: float = 0.1

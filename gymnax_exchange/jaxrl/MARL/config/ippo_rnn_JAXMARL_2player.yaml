@@ -2,25 +2,25 @@
 # apply differently to each ntwrk
 # Should match with NUM_AGENTS_PER_TYPE
 
-"LR": [0.0004]
-"NUM_ENVS": 2048
-"NUM_STEPS": 64
+"LR": [0.0004,0.0004]
+"NUM_ENVS": 128
+"NUM_STEPS": 128
 "NUM_STEPS_EVAL" : 64
 "GRU_HIDDEN_DIM": 128
 "FC_DIM_SIZE": 128
-"TOTAL_TIMESTEPS": 1e9
+"TOTAL_TIMESTEPS": 5e8
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 16
-"GAMMA": [0.999]
-"GAE_LAMBDA": [0.99]
+"GAMMA": [0.999,0.999]
+"GAE_LAMBDA": [0.99,0.99]
 "CLIP_EPS": 0.2
-"SCALE_CLIP_EPS": [False]
-"ENT_COEF": [0.001]
-"VF_COEF": [1e-18]
-"MAX_GRAD_NORM": [0.5]
+"SCALE_CLIP_EPS": [False,False]
+"ENT_COEF": [0.001,0.001]
+"VF_COEF": [1e-18, 1e-11]
+"MAX_GRAD_NORM": [0.5,0.5]
 "ACTIVATION": ["relu","relu"]
 "ENV_NAME": "JAXMARL-Lob-v0"
-"NUM_AGENTS_PER_TYPE": [1]
+"NUM_AGENTS_PER_TYPE": [1,1]
 "SEED": 2
 # "ENV_KWARGS": 
 #     "LIST_OF_AGENTS_CONFIGS: []
@@ -30,7 +30,7 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "PostEditsTest"
+"PROJECT": "Post_edit_2024_spread_skew"
 "WANDB_MODE" : "online"
 
 # High-Level Params
