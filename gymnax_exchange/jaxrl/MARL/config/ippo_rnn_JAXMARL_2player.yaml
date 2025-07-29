@@ -3,7 +3,7 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.0004,0.0004]
-"NUM_ENVS": 4096
+"NUM_ENVS": 4096 #128
 "NUM_STEPS": 128
 "NUM_STEPS_EVAL" : 64
 "GRU_HIDDEN_DIM": 128
@@ -33,7 +33,7 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "v2_2Player_spread_skew_vs_fixed_quants"
+"PROJECT": "v3_2Player_various_act/reward_spaces"
 "WANDB_MODE" : "online"
 
 # High-Level Params

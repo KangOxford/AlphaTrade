@@ -20,7 +20,7 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = 60  # Episodes from data start every n seconds.
+    start_resolution: int = 64  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
@@ -38,7 +38,7 @@ class MarketMaking_EnvironmentConfig():
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 3.0 #50.0
-    skew_multiplier: float = 10.0 #100.0
+    skew_multiplier: float = 5.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -57,7 +57,7 @@ class MarketMaking_EnvironmentConfig():
     simple_nothing_action: bool = True # Whether or not the simple action space has a nothing action
 
     # Reward
-    inv_penalty: str = "linear"  # options: "none", "linear", "quadratic", "threshold"
+    inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
@@ -101,11 +101,11 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
+    action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 100
+    task_size:int= 600
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
@@ -153,7 +153,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
     ep_type :str = "fixed_steps" # fixed_steps, fixed_time
-    episode_time: int = 32 # counted by seconds, 1800s=0.5h or steps
+    episode_time: int = 64 # counted by seconds, 1800s=0.5h or steps
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
