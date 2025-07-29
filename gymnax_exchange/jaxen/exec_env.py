@@ -1792,7 +1792,7 @@ class ExecutionAgent():
         "reward":reward,
         "agentQuant": agentQuant,
         "revenue": revenue,
-        "reward_lam1":reward_lam1 / 100_000,  # pure revenue is not informative if direction is random (-> flip and normalise)
+        "reward_lam1":reward_lam1 ,  # pure revenue is not informative if direction is random (-> flip and normalise)
         "slippage_rm": slippage_rm,
         "price_adv_rm": price_adv_rm,
         "price_drift_rm": price_drift_rm,
