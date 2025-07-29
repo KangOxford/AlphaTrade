@@ -36,7 +36,7 @@ import gc
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
 from gymnax_exchange.jaxen.marl_env import MARLEnv
-from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig,MarketMaking_EnvironmentConfig
 
 import wandb
 import functools
@@ -137,14 +137,61 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
+    config_dict={"MarketMaking": MarketMaking_EnvironmentConfig,"Execution": Execution_EnvironmentConfig}
     print("init_key: ", init_key)
+    ###############CLAUDE##############
+    # Create a MultiAgentConfig object with parameters from the config
+    agent_configs = {}
+    if "AGENT_CONFIGS" in config:
+        agent_configs = {
+            agent_type: config_dict[agent_type](**{k.lower(): v for k, v in agent_cfg.items()})
+            for agent_type, agent_cfg in config["AGENT_CONFIGS"].items()
+        }
+    print("agent_configs:", agent_configs)
+    
 
 
+    ma_config = MultiAgentConfig(
+        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
+        dict_of_agents_configs=agent_configs,
+        world_config=World_EnvironmentConfig(
+            seed=config["SEED"],
+            # Only override parameters that exist in both config and World_EnvironmentConfig
+            **{k.lower(): v for k, v in config.items() 
+               if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
+        )
+    )
+    print(ma_config)
 
+    print("MultiAgentInventoryPenalty",ma_config.dict_of_agents_configs["MarketMaking"].inv_penalty)
 
-    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(seed=config["SEED"])))
+    # For evaluation, create a separate config with evaluation-specific parameters
+    eval_ma_config = None
     if config["CALC_EVAL"]:
-        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(timePeriod=config["EvalTimePeriod"],seed=config["SEED"])))
+        # Reuse agent_configs from above if it exists
+        eval_agent_configs = {}
+        if "AGENT_CONFIGS" in config:
+            eval_agent_configs = {
+                agent_type: config_dict[agent_type](**{k.lower(): v for k, v in agent_cfg.items()})
+                for agent_type, agent_cfg in config["AGENT_CONFIGS"].items()
+            }
+            
+        eval_ma_config = MultiAgentConfig(
+            number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
+            dict_of_agents_configs=eval_agent_configs,
+            world_config=World_EnvironmentConfig(
+                seed=config["SEED"],
+                timePeriod=config["EvalTimePeriod"],
+                # Only override parameters that exist in both config and World_EnvironmentConfig
+                **{k.lower(): v for k, v in config.items() 
+                   if hasattr(World_EnvironmentConfig(), k.lower()) and k not in ["SEED", "EvalTimePeriod"]}
+            )
+        )
+   
+
+    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=ma_config)
+    if config["CALC_EVAL"]:
+        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=eval_ma_config)
 
     agent_type_names = list(env.type_names)
 
@@ -886,13 +933,15 @@ def main(config):
        #"NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 32, 8]},
        
         
-        # "env_params" : {"parameters": {
-        #                 "world_params" : {"parameters":
-        #                                 {"n_data_msg_per_step": {"values":[50,150]},
-        #                                 }
-        #                                 },
-        #                 }},
-    }
+        "AGENT_CONFIGS" : {"parameters": {
+                        "MarketMaking" : {"parameters":
+                                        {"inv_penalty": {"values":['none','linear','quadratic']},
+                                        "skew_multiplier": {"values":[5,10]},}
+                                        },
+                        "Execution" : {"parameters": {"reward_lambda": {"values":[0.0,0.1]}}
+                        }},
+        }}
+
 
     sweep_config={
         "method": "grid",
