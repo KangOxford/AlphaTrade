@@ -1065,11 +1065,17 @@ class MarketMakingAgent():
         #jax.debug.print("old best ask: {}", best_ask)
         #jax.debug.print("old best bid: {}", best_bid)
         if self.cfg.sell_buy_all_option==False:
-            # Define mappings for each action: [0-7]
-            bid_offsets = jnp.array([0, -2000, 0], dtype=jnp.float32)
-            ask_offsets = jnp.array([0, 0,  -2000], dtype=jnp.float32)
-            bid_quants = jnp.array([1,  1,  0], dtype=jnp.int32)
-            ask_quants = jnp.array([1,  0,  1], dtype=jnp.int32)##config quant....
+            if self.cfg.simple_nothing_action==True:
+                # Define mappings for each action: [0-7]
+                bid_offsets = jnp.array([0, -2000, 0,0], dtype=jnp.float32)
+                ask_offsets = jnp.array([0, 0,  -2000,0], dtype=jnp.float32)
+                bid_quants = jnp.array([1,  1,  0,0], dtype=jnp.int32)
+                ask_quants = jnp.array([1,  0,  1,0], dtype=jnp.int32)##config quant....
+            else:
+                bid_offsets = jnp.array([0, -2000, 0], dtype=jnp.float32)
+                ask_offsets = jnp.array([0, 0,  -2000], dtype=jnp.float32)
+                bid_quants = jnp.array([1,  1,  0], dtype=jnp.int32)
+                ask_quants = jnp.array([1,  0,  1], dtype=jnp.int32)##config quant....
         elif self.cfg.sell_buy_all_option==True:
              #New option to sell and buy whole inventory
             inventory=agent_state.inventory
@@ -1087,17 +1093,28 @@ class MarketMakingAgent():
                 quants_negative_inventory,
                 inventory
             )
-            bid_offsets = jnp.array([0, -2000, 0, 0 ], dtype=jnp.float32)
-            ask_offsets = jnp.array([0,  0, -2000, 0], dtype=jnp.float32)
-            bid_quants = jnp.array([self.cfg.fixed_quant_value,  bid_quant, 0, 0], dtype=jnp.int32)
-            ask_quants = jnp.array([self.cfg.fixed_quant_value,  0, ask_quant, 0], dtype=jnp.int32)##config quant....
-
-
+            if self.cfg.simple_nothing_action==True:
+                bid_offsets = jnp.array([0, -2000, 0, 0 ], dtype=jnp.float32)
+                ask_offsets = jnp.array([0,  0, -2000, 0], dtype=jnp.float32)
+                bid_quants = jnp.array([self.cfg.fixed_quant_value,  bid_quant, 0, 0], dtype=jnp.int32)
+                ask_quants = jnp.array([self.cfg.fixed_quant_value,  0, ask_quant, 0], dtype=jnp.int32)##config quant....
+            else:
+                bid_offsets = jnp.array([0, -2000, 0 ], dtype=jnp.float32)
+                ask_offsets = jnp.array([0,  0, -2000], dtype=jnp.float32)
+                bid_quants = jnp.array([self.cfg.fixed_quant_value,  bid_quant, 0], dtype=jnp.int32)
+                ask_quants = jnp.array([self.cfg.fixed_quant_value,  0, ask_quant], dtype=jnp.int32)##config quant....
         #jax.debug.print("bid_quants: {}", bid_quants)
         #jax.debug.print("ask_quants: {}", ask_quants)
         tick_offset = self.cfg.n_ticks_in_book * self.world_config.tick_size  # Total price offset per direction
 
         #jax.debug.print("tick_offset: {}", tick_offset)
+        #if self.fixed_action_setting == True:
+            
+        #jax.debug.print("action: {}", action)
+        if self.cfg.fixed_action_setting == True:
+            action = jnp.array([self.cfg.fixed_action])
+
+        #jax.debug.print("action after: {}", action)
 
         # Get parameters for current action
         bid_offset = bid_offsets[action]
@@ -2215,6 +2232,10 @@ class MarketMakingAgent():
             inv_pen = (-1) * (new_inventory ** 2) / self.cfg.inv_penalty_quadratic_factor
             #jax.debug.print("new_inventory: {}", new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
+        elif self.cfg.inv_penalty == "exp4":
+            inv_pen = (-1) * (jnp.exp(new_inventory) ** 4)
+            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "threshold":
             #inv_pen = (-1.0) * (jnp.abs(new_inventory) ** 2)
             inv_pen = jax.lax.cond(
@@ -2745,7 +2766,10 @@ class MarketMakingAgent():
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         elif self.cfg.action_space == "simple":
-            return spaces.Discrete(3)
+            if self.cfg.simple_nothing_action==True:
+                return spaces.Discrete(4)
+            else:
+                return spaces.Discrete(3)
         else:
             raise ValueError("Invalid action_space specified.")
        

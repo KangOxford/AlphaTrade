@@ -789,8 +789,8 @@ def make_train(config):
         for i in range(config["NUM_UPDATES"]):
             print(f"Update step {i+1}/{config['NUM_UPDATES']}")
             # Run the update step:
-            if i>2 and i<4:
-                jax.profiler.start_trace("/tmp/profile-data")
+            #if i>2 and i<4:
+                #jax.profiler.start_trace("/tmp/profile-data")
             (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,eval_env_params,None)
             if i>2 and i<4:
                 jax.block_until_ready((runner_state,updates,metrics))
@@ -921,7 +921,7 @@ def main(config):
         # "LR": {"values": [config["LR"]]},
         # "NUM_STEPS": {"values": [32,config["NUM_STEPS"], 512]},
         #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
-        #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
+        "LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
         #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
         # "UPDATE_EPOCHS": {"values": [config["UPDATE_EPOCHS"], 8]},
         #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
