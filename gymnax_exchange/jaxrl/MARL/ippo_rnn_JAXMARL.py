@@ -642,13 +642,13 @@ def make_train(config):
                 print("=== DEBUGGING REWARD SHAPES ===")
                 print(f"len of traj_batch: {len(metric['traj_batch'])}")
                 for i, tr in enumerate(metric["traj_batch"]):
-                    print(f"Agent {i} - tr.reward shape: {tr.reward.shape}")
-                    print(f"Agent {i} - tr.reward mean: {jnp.mean(tr.reward)}")
+                    #print(f"Agent {i} - tr.reward shape: {tr.reward.shape}")
+                    #print(f"Agent {i} - tr.reward mean: {jnp.mean(tr.reward)}")
                     print(f"Agent {i} - tr.reward flattened mean: {jnp.mean(tr.reward.flatten())}")
                     #print(f"All rewards: {tr.reward}")
                     print(f"Agent {i} - tr.reward min/max: {jnp.min(tr.reward.flatten())} / {jnp.max(tr.reward.flatten())}")
-                    print(f"Agent {i} - tr.reward flattened mean: {metric['avg_reward_flattened'][i]}")
-                    print("---")
+                    #print(f"Agent {i} - tr.reward flattened mean: {metric['avg_reward_flattened'][i]}")
+                    #print("---")
 
 
 
@@ -705,12 +705,12 @@ def make_train(config):
         for i in range(config["NUM_UPDATES"]):
             print(f"Update step {i+1}/{config['NUM_UPDATES']}")
             # Run the update step:
-            if i>2 and i<4:
-                jax.profiler.start_trace("/tmp/profile-data")
+            #if i>2 and i<4:
+                #jax.profiler.start_trace("/tmp/profile-data")
             (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,eval_env_params,None)
-            if i>2 and i<4:
-                jax.block_until_ready((runner_state,updates,metrics))
-                jax.profiler.stop_trace()
+            #if i>2 and i<4:
+                #jax.block_until_ready((runner_state,updates,metrics))
+                #jax.profiler.stop_trace()
             del metrics
             gc.collect()
         
@@ -755,7 +755,7 @@ def main(config):
         # +++++ Single GPU +++++
         
 
-        rng = jax.random.PRNGKey(0)
+        rng = jax.random.PRNGKey(config["SEED"])
 
         print("wandb.config", wandb.config)
 
@@ -834,14 +834,14 @@ def main(config):
     sweep_parameters = {
         "LR": {"values": [config["LR"]]},
         #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
-        #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
+        "LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
         #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
         #"NUM_STEPS": {"values": [config["NUM_STEPS"], 2048 ,512]},
         #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
         #"VF_COEF": {"values": [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]},
         #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
-        #"NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [5,5], [10,10]]},
-       #"SEED": {"values": [2,3,4,5,6,7,8,9,10]},
+        "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [5,5], [10,10]]},
+       #"SEED": {"values": [2,3]},
        #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
        #"NUM_STEPS": {"values": [config["NUM_STEPS"], 32, 4]},
        
