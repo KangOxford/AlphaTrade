@@ -31,11 +31,11 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "v4_2Player_reference_price_ablation" #"DEBUG"
+"PROJECT": "PMAP" #"v4_2Player_reference_price_ablation" #"DEBUG"
 "WANDB_MODE" : "online"
 
 # High-Level Params
-"CALC_EVAL" : True
+"CALC_EVAL" : False
 "EvalTimePeriod" : "2024_Eval"
 "Calculate Baseline" : False
 "Timing" : False

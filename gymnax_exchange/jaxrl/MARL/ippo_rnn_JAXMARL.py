@@ -9,7 +9,7 @@ import csv
 import wandb.sdk
 
 from docs.source import conf
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
 # os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
 # os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
@@ -684,7 +684,7 @@ def make_train(config):
                         action_distribution[f"agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
                     logging_dict = {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
-                        "env_step": metric["update_steps"]
+                        "env_step": (metric["update_steps"]+1)
                         * config["NUM_ENVS"]
                         * config["NUM_STEPS"],
                         **{f"agent_{agent_name}/{j}": m for j, m in metric["loss"][agent_index].items()},
@@ -709,8 +709,7 @@ def make_train(config):
                                 flat_value = np.array(value).flatten()
                                 if flat_value.size > 0:
                                     logging_dict[f"world/{key}_mean"] = float(np.mean(flat_value))
-                    if config["WANDB_MODE"]!= "disabled":
-                        wandb.log(logging_dict)
+
                     # Add evaluation metrics if available
                     if config["CALC_EVAL"] and "traj_batch_eval" in metric:
                         tr= metric["traj_batch_eval"][agent_index]
@@ -776,6 +775,8 @@ def make_train(config):
              f'/home/myuser/data/checkpoints/MARLCheckpoints/{config["PROJECT"]}/{(run.name if run.name else run.id) if run else "GENERIC_RUN"}', orbax_checkpointer, options
                 )
 
+
+        
         updates=0
         for i in range(config["NUM_UPDATES"]):
             print(f"Update step {i+1}/{config['NUM_UPDATES']}")
@@ -787,14 +788,23 @@ def make_train(config):
             #     jax.block_until_ready((runner_state,updates,metrics))
             #     jax.profiler.stop_trace()
             print(f"Update step {updates} completed with metrics {metrics['avg_reward']}")
-            ckpt = {
-                'model': runner_state[0],  # train_states
-                # 'config': config if isinstance(config, dict) else config.as_dict(),
-                'metrics': {
-                    'train_rewards': metrics["avg_reward"],
-                    'eval_rewards': metrics["avg_reward_eval"],
-                    }
-            }
+            if config["CALC_EVAL"]:
+                ckpt = {
+                    'model': runner_state[0],  # train_states
+                    # 'config': config if isinstance(config, dict) else config.as_dict(),
+                    'metrics': {
+                        'train_rewards': metrics["avg_reward"],
+                        'eval_rewards': metrics["avg_reward_eval"],
+                        }
+                }
+            else:
+                ckpt = {
+                    'model': runner_state[0],  # train_states
+                    # 'config': config if isinstance(config, dict) else config.as_dict(),
+                    'metrics': {
+                        'train_rewards': metrics["avg_reward"],
+                        }
+                }
             print(f"Saving checkpoint {updates} with metrics {metrics['avg_reward']}")
             save_args = orbax_utils.save_args_from_target(ckpt)
             checkpoint_manager.save(updates, ckpt, save_kwargs={"save_args": save_args})

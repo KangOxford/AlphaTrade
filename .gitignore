@@ -57,6 +57,7 @@ report*
 .nv/ */
 
 
+eval_results/**
 
 .cache/
 .cache/**
@@ -100,3 +101,5 @@ outputs/**
 .config/*
 saved_npz/**
 saved_npz/
+
+test.py
