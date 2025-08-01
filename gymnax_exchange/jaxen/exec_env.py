@@ -84,7 +84,6 @@ import timeit
 import random
 import dataclasses
 from ast import Dict
-from webbrowser import Elinks
 from flax import struct
 from typing import Tuple, Optional, Dict
 from functools import partial

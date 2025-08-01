@@ -33,7 +33,7 @@ import gc
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
 from gymnax_exchange.jaxen.marl_env import MARLEnv
-from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig,MarketMaking_EnvironmentConfig
 
 import wandb
 import functools
@@ -134,14 +134,72 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
+    config_dict={"MarketMaking": MarketMaking_EnvironmentConfig,"Execution": Execution_EnvironmentConfig}
     print("init_key: ", init_key)
+    ###############CLAUDE##############
+    # Create a MultiAgentConfig object with parameters from the config
+    agent_configs = {}
+    if "AGENT_CONFIGS" in config:
+        agent_configs = {
+            agent_type: config_dict[agent_type](**{k.lower(): v for k, v in agent_cfg.items()})
+            for agent_type, agent_cfg in config["AGENT_CONFIGS"].items()
+        }
+    else:
+        agent_configs = {
+            agent_type: config_dict[agent_type]()
+            for agent_type, agent_cfg in config_dict.items()
+        }
+    print("agent_configs:", agent_configs)
+    
+
+
+    ma_config = MultiAgentConfig(
+        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
+        dict_of_agents_configs=agent_configs,
+        world_config=World_EnvironmentConfig(
+            seed=config["SEED"],
+            # Only override parameters that exist in both config and World_EnvironmentConfig
+            **{k.lower(): v for k, v in config.items() 
+               if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
+        )
+    )
+    print(ma_config)
+
+    print("MultiAgentInventoryPenalty",ma_config.dict_of_agents_configs["MarketMaking"].inv_penalty)
+
+    # For evaluation, create a separate config with evaluation-specific parameters
+        # Reuse agent_configs from above if it exists
+    eval_agent_configs = {}
+    if "AGENT_CONFIGS" in config:
+        eval_agent_configs = {
+            agent_type: config_dict[agent_type](**{k.lower(): v for k, v in agent_cfg.items()})
+            for agent_type, agent_cfg in config["AGENT_CONFIGS"].items()
+        }
+    else:
+        eval_agent_configs = {
+            agent_type: config_dict[agent_type]()
+            for agent_type, agent_cfg in config_dict.items()
+        }
+        
+    eval_ma_config = MultiAgentConfig(
+        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
+        dict_of_agents_configs=eval_agent_configs,
+        world_config=World_EnvironmentConfig(
+            seed=config["SEED"],
+            timePeriod=config["EvalTimePeriod"],
+            # Only override parameters that exist in both config and World_EnvironmentConfig
+            **{k.lower(): v for k, v in config.items() 
+                if hasattr(World_EnvironmentConfig(), k.lower()) and k not in ["SEED", "EvalTimePeriod"]}
+        )
+    )
+   
 
 
 
-
-    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
-    if config["CALC_EVAL"]:
-        eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],world_config=World_EnvironmentConfig(timePeriod="2024_Eval")))
+    env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=ma_config)
+    eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=eval_ma_config)
+    
+    agent_type_names = list(env.type_names)
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PER_TYPE"]]  # Should be a list.
     config["NUM_ACTORS_TOTAL"] = env.num_agents * config["NUM_ENVS"]
@@ -157,11 +215,6 @@ def make_train(config):
     #     if config["SCALE_CLIP_EPS"]
     #     else config["CLIP_EPS"]
     # )
-
-    print("Config:")
-    for k, v in config.items():
-        print(f"{k}: {v}")
-    # env = SMAXLogWrapper(env)
 
     def linear_schedule(lr,count):
         frac = (
@@ -180,7 +233,6 @@ def make_train(config):
 
         # The outputs that depends on these and are kept seperate are;
         # - network, init_x, init_hstate, network_params, train_state
-        networks = []
         hstates = []
         network_params_list = []
         train_states = []
@@ -219,7 +271,6 @@ def make_train(config):
             init_hstate = ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], config["GRU_HIDDEN_DIM"])
 
             # Instead of appending dicts, maintain separate lists for each attribute
-            networks.append(network)
             hstates.append(init_hstate)
             network_params_list.append(network_params)
             train_states.append(train_state)
@@ -230,10 +281,8 @@ def make_train(config):
         rng, _rng = jax.random.split(rng)
         reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
         env_params=env.default_params
-        if config["CALC_EVAL"]:
-            eval_env_params=eval_env.default_params # type: ignore
-        else:
-            eval_env_params = None
+        eval_env_params=eval_env.default_params # type: ignore
+
         # env_params=jax.device_put(env_params)
         obsv, env_state = jax.vmap(env.reset, in_axes=(0,None))(reset_rng,env_params)
         # TRAIN LOOP
@@ -295,7 +344,7 @@ def make_train(config):
                     action_distribution[f"action_{i}_{int(a)}"] = c/tot_counts*100
             logging_dict = {
                     # TODO: Log the quantities of interest. Keep it trivial for now.
-                    "env_step": metric["update_steps"].sum()
+                    "env_step": (metric["update_steps"].sum()+1)
                     * config["NUM_ENVS"]// config["N_DEVICES"]
                     * config["NUM_STEPS"],
                     **{f"network_{i}": m for i,m in enumerate(metric["loss"])},
@@ -311,9 +360,17 @@ def make_train(config):
 
             for i in range(len(metric["avg_reward"])):
                 print(f"avg_reward_{i} {metric["avg_reward"][i]}")
-                print(f"avg_reward_eval{i} {metric["avg_reward_eval"][i]}")
+                if config["CALC_EVAL"]:
+                    print(f"avg_eval_reward_{i} {metric["avg_reward_eval"][i]}")
 
-            print("LOGGED_DICT", logging_dict)
+        def speed_only_callback(metric):
+            logging_dict = {
+                    # TODO: Log the quantities of interest. Keep it trivial for now.
+                    "env_step": (metric["update_steps"].sum()+1)
+                    * config["NUM_ENVS"]
+                    * config["NUM_STEPS"]}
+            if config["WANDB_MODE"]!= "disabled":
+                wandb.log(logging_dict)
 
 
         def _update_step(update_runner_state,env_params,eval_env_params):
@@ -335,7 +392,7 @@ def make_train(config):
                 values=[]
                 log_probs=[]
 
-                for i, network in enumerate(networks):
+                for i, train_state in enumerate(train_states):
                     rng_, _rng = jax.random.split(_rng)
                     obs_i= last_obs[i]
                     obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])  # Reshape to match the input shape of the network
@@ -344,7 +401,7 @@ def make_train(config):
                         last_done[i][jnp.newaxis, :],
                         # avail_actions,
                     )
-                    h_states[i], pi, value = network.apply(train_states[i].params, h_states[i], ac_in)
+                    h_states[i], pi, value = train_state.apply_fn(train_state.params, h_states[i], ac_in)
                     values.append(value)
                     action = pi.sample(seed=_rng)
                     log_probs.append(pi.log_prob(action))
@@ -366,7 +423,7 @@ def make_train(config):
                 
                 done_batch=done
                 transitions=[]
-                for i,network in enumerate(networks):
+                for i,train_state in enumerate(train_states):
                     done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"]).squeeze()
                     obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
                     action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
@@ -428,7 +485,7 @@ def make_train(config):
 
             advantages=[]
             targets=[]
-            for i, network in enumerate(networks):
+            for i, train_state in enumerate(train_states):
                 last_obs_batch = batchify(last_obs[i], config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
                 # avail_actions = jnp.ones(
                 #     (config["NUM_ACTORS"], env.action_space(env.agents[0]).n)
@@ -438,7 +495,7 @@ def make_train(config):
                     last_dones[i][jnp.newaxis, :],
                     # avail_actions,
                 )
-                _, _, last_val = network.apply(train_states[i].params, hstates_new[i], ac_in)
+                _, _, last_val = train_state.apply_fn(train_state.params, hstates_new[i], ac_in)
                 last_val = last_val.squeeze()
 
                 advantages_i, targets_i = _calculate_gae(config["GAMMA"][i],config["GAE_LAMBDA"][i],traj_batch[i], last_val)
@@ -447,14 +504,14 @@ def make_train(config):
 
             # UPDATE NETWORKS
             loss_infos = []
-            for i, network in enumerate(networks):
+            for i, train_state in enumerate(train_states):
                 def _update_epoch(update_state, unused):
                     def _update_minbatch(train_state, batch_info):
                         init_hstate, traj_batch, advantages, targets = batch_info
 
                         def _loss_fn(params, init_hstate, traj_batch, gae, targets):
                             # RERUN NETWORK
-                            _, pi, value = network.apply(
+                            _, pi, value = train_state.apply_fn(
                                 params,
                                 init_hstate.squeeze(),
                                 (traj_batch.obs, traj_batch.done),
@@ -560,7 +617,7 @@ def make_train(config):
                     return update_state, total_loss
 
                 update_state = (
-                    train_states[i],
+                    train_state,
                     initial_hstates[i],
                     traj_batch[i],
                     advantages[i],
@@ -612,7 +669,7 @@ def make_train(config):
                     values=[]
                     log_probs=[]
 
-                    for i, network in enumerate(networks):
+                    for i, train_state in enumerate(train_states):
                         obs_i= last_obs[i]
                         obs_i=batchify(obs_i,config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])  # Reshape to match the input shape of the network
                         ac_in = (
@@ -620,7 +677,7 @@ def make_train(config):
                             last_done[i][jnp.newaxis, :],
                             # avail_actions,
                         )
-                        hstates[i], pi, value = network.apply(train_states[i].params, hstates[i], ac_in)
+                        hstates[i], pi, value = train_state.apply_fn(train_state.params, hstates[i], ac_in)
                         values.append(value)
                         action = pi.sample(seed=_rng)
                         log_probs.append(pi.log_prob(action))
@@ -644,7 +701,7 @@ def make_train(config):
                     done_batch=done
                     transitions=[]    
 
-                    for i,network in enumerate(networks):
+                    for i,train_state in enumerate(train_states):
                         done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"]).squeeze()
                         obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
                         action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
@@ -676,7 +733,7 @@ def make_train(config):
 
                 eval_hstates=[]
                 init_dones_agents_eval=[]
-                for i,network in enumerate(networks):
+                for i,train_state in enumerate(train_states):
                     eval_hstates.append(ScannedRNN.initialize_carry(config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"], config["GRU_HIDDEN_DIM"]))
                     init_dones_agents_eval.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"]), dtype=bool))
 
@@ -731,6 +788,9 @@ def make_train(config):
             in_axes=(((0, 0, 0, 0, 0, 0),None),None,None),
             out_axes=(((0, 0, 0, 0, 0, 0),None), 0),
         )
+        updates=0
+        # compiled_update_step = jax.jit(pmapped_update_step).trace((runner_state,updates),env_params,eval_env_params).lower().compile()  # type: ignore
+
 
 
         # Print details about the runner state components before training starts
@@ -753,19 +813,21 @@ def make_train(config):
         for i, h in enumerate(hstates):
             print(f"Agent type {i} hidden state shape: {h.shape}")
 
-        updates=0
+        
         for i in range(config["NUM_UPDATES"]):
             print(f"Update step {i+1}/{config['NUM_UPDATES']}")
             # Run the update step:
-            if i>2 and i<4:
-                jax.profiler.start_trace("/tmp/profile-data")
-            (runner_state,updates),metrics=pmapped_update_step((runner_state,updates),env_params,eval_env_params)
-            if i>2 and i<4:
-                jax.block_until_ready((runner_state,updates,metrics))
-                jax.profiler.stop_trace()
+            # if i>2 and i<4:
+            #     jax.profiler.start_trace("/tmp/profile-data")
+            (runner_state,updates),metrics=compiled_update_step((runner_state,updates),env_params,eval_env_params)
+            speed_only_callback(metrics)
+
+            # if i>2 and i<4:
+            #     jax.block_until_ready((runner_state,updates,metrics))
+            #     jax.profiler.stop_trace()
 
 
-            callback(metrics)
+            # callback(metrics)
             
 
             
@@ -784,7 +846,7 @@ def make_train(config):
     return train
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
+@hydra.main(version_base=None, config_path="config", config_name="PMAP_ippo_rnn_JAXMARL_2player")
 def main(config):
     print("MultiAgentConfig", MultiAgentConfig().world_config)
     env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
@@ -813,7 +875,7 @@ def main(config):
         # +++++ Single GPU +++++
         
 
-        rng = jax.random.PRNGKey(0)
+        rng = jax.random.PRNGKey(config["SEED"])
 
         print("wandb.config", wandb.config)
 
@@ -911,7 +973,7 @@ def main(config):
 
     sys.exit(0)
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
+@hydra.main(version_base=None, config_path="config", config_name="PMAP_ippo_rnn_JAXMARL_2player")
 def seperate_main(config):
     print("MultiAgentConfig", MultiAgentConfig().world_config)
     env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))

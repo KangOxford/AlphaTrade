@@ -210,13 +210,6 @@ def make_train(config):
     #     else config["CLIP_EPS"]
     # )
 
-    print("Config:")
-    for k, v in config.items():
-        if isinstance(v, dict):
-            for sub_k, sub_v in v.items():
-                print(f"{k}.{sub_k}: {sub_v}")
-        else:
-            print(f"{k}: {v}")
     # env = SMAXLogWrapper(env)
 
     def linear_schedule(lr,count):
@@ -719,8 +712,8 @@ def make_train(config):
                     if config["WANDB_MODE"]!= "disabled":
                         wandb.log(logging_dict)
                     # Add evaluation metrics if available
-                if config["CALC_EVAL"] and "traj_batch_eval" in metric:
-                    for agent_index, tr in enumerate(metric["traj_batch_eval"]):
+                    if config["CALC_EVAL"] and "traj_batch_eval" in metric:
+                        tr= metric["traj_batch_eval"][agent_index]
                         agent_name = agent_type_names[agent_index]
                         action_distribution = {}
                         actions = np.array(tr.action).flatten()
@@ -728,10 +721,8 @@ def make_train(config):
                         tot_counts=sum(counts)
                         # Add each action count to the dictionary with a unique key
                         for a, c in zip(unique_actions, counts):
-                            action_distribution[f"agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
-                        logging_dict = {
-                            **action_distribution
-                        }
+                            action_distribution[f"eval_agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
+                        logging_dict.update(action_distribution)
                         for key, value in tr.info['agent'].items():
                             if isinstance(value, (jnp.ndarray, np.ndarray)) and value.size > 0:
                                 flat_value = np.array(value).flatten()
@@ -750,8 +741,8 @@ def make_train(config):
                         logging_dict.update({
                             **{f"eval_agent_{agent_name}/reward": metric["avg_reward_eval"][agent_index]},
                         })
-                        if config["WANDB_MODE"]!= "disabled":
-                            wandb.log(logging_dict)
+                    if config["WANDB_MODE"]!= "disabled":
+                        wandb.log(logging_dict)
 
 
                 for agent_index, agent_value in enumerate(metric["avg_reward"]):
@@ -792,9 +783,9 @@ def make_train(config):
             #if i>2 and i<4:
                 #jax.profiler.start_trace("/tmp/profile-data")
             (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,eval_env_params,None)
-            if i>2 and i<4:
-                jax.block_until_ready((runner_state,updates,metrics))
-                jax.profiler.stop_trace()
+            # if i>2 and i<4:
+            #     jax.block_until_ready((runner_state,updates,metrics))
+            #     jax.profiler.stop_trace()
             print(f"Update step {updates} completed with metrics {metrics['avg_reward']}")
             ckpt = {
                 'model': runner_state[0],  # train_states
@@ -912,7 +903,13 @@ def main(config):
         # with open(params_file_name, 'rb') as f:
         #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
         #     print(f"params restored")
+        # Clean up resources after training
+        del out
+        gc.collect()
 
+        # Force JAX to release memory
+        jax.clear_caches()
+        jax.local_devices()  # This can help trigger cleanup of device buffers
         run.finish()
 
     # NOTE: Sweep Parameters will override the config file, but cannot be used to override any environment params currently. 
@@ -935,14 +932,15 @@ def main(config):
         
         "AGENT_CONFIGS" : {"parameters": {
                         "MarketMaking" : {"parameters":
-                                        {"inv_penalty": {"values":['none','linear','quadratic']},
-                                        "skew_multiplier": {"values":[5]},
-                                        "action_space": {"values":["simple"]}, #"spread_skew",,"fixed_quants"
-                                        "reward_space" : {"values":["buy_sell_pnl"]}, # "spooner"
-                                        },
-                        "Execution" : {"parameters": {"reward_lambda": {"values":[0.0,0.1]},
-                                                      "fixed_quant_value": {"values":[10]}, #200 on fixed quants
-                                                      "action_space": {"values":["fixed_quants_complex"]}, #fixed_quants
+                                        {"inv_penalty": {"values":['quadratic']}, # "none" "linear "quadratic"
+                                        "skew_multiplier": {"values":[10]},
+                                        "action_space": {"values":["fixed_quants"]}, #"spread_skew",,"fixed_quants"simple
+                                        "reward_space" : {"values":["spooner","buy_sell_pnl"]}, # "spooner"buy_sell_pnl
+                                        "reference_price_portfolio_value":{"values":["best_bid_ask"]}, #best_bid_ask "mid"
+                        }},
+                        "Execution" : {"parameters": {"reward_lambda": {"values":[0.0]},
+                                                      "fixed_quant_value": {"values":[10]}, #20 on fixed quants
+                                                      "action_space": {"values":["fixed_quants_complex"]}, #fixed_quants,fixed_quants_complex
                                                       "task_size": {"values":[600]},
                                                       "doom_price_penalty": {"values":[0.1]},
                         }},
@@ -957,7 +955,7 @@ def main(config):
     print(sweep_config)
     sweep_id = wandb.sweep(sweep=sweep_config, project=config["PROJECT"],entity=config["ENTITY"])
     print(sweep_id)
-    wandb.agent(sweep_id, function=sweep_fun, count=500)
+    wandb.agent(sweep_id, function=sweep_fun, count=500,)
 
 
     sys.exit(0)

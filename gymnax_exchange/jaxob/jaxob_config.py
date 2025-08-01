@@ -143,7 +143,10 @@ class Execution_EnvironmentConfig():
             object.__setattr__(self, 'n_actions', 5)
             object.__setattr__(self, 'num_messages_by_agent', 2)
             object.__setattr__(self, 'num_action_messages_by_agent', 1)
-
+        elif self.action_space == "twap":
+            object.__setattr__(self, 'n_actions', 1)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_action_messages_by_agent', 2)
 
 
 

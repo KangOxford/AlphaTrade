@@ -178,24 +178,25 @@ def unbatchify(x: jnp.ndarray,num_envs, num_agents):
     return  x.reshape((num_envs, num_agents, -1))
 
 
+config_dict={"MarketMaking": MarketMaking_EnvironmentConfig,"Execution": Execution_EnvironmentConfig}
+
+
 def make_sim(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
     print("init_key: ", init_key)
 
+    print("init_key: ", init_key)
+    
 
 
 
-    env : MARLEnv = MARLEnv(key=init_key,
-                            multi_agent_config=MultiAgentConfig(
-                                    number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
-                                    list_of_agents_configs=
-                                        [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()], 
-                                    world_config=World_EnvironmentConfig(timePeriod=config["EvalTimePeriod"])
-                            ))
+
+    # env_baseline : MARLEnv = MARLEnv(key=init_key, multi_agent_config=ma_config_baseline)
+
 
     config["NUM_ACTORS_PERTYPE"] = [n * config["NUM_ENVS"] for n in config["NUM_AGENTS_PER_TYPE"]]  # Should be a list.
-    config["NUM_ACTORS_TOTAL"] = env.num_agents * config["NUM_ENVS"]
+    config["NUM_ACTORS_TOTAL"] = sum(config["NUM_ACTORS_PERTYPE"])
 
 
     # config["CLIP_EPS"] = (
@@ -229,6 +230,9 @@ def make_sim(config):
                 # print("Action space dimension for network i ",env.action_spaces[i].n)
                 network = ActorCriticRNN(env.action_spaces[i].n, config=config)
                 rng, _rng = jax.random.split(rng)
+
+                # print("Observation spaces at init:", env.observation_spaces[i].shape)
+
                 init_x = (
                     jnp.zeros(
                         (1, config["NUM_ENVS"], env.observation_spaces[i].shape[0])
@@ -263,6 +267,8 @@ def make_sim(config):
                 num_agents_of_instance_list.append(env.multi_agent_config.number_of_agents_per_type[i])
                 init_dones_agents.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
 
+
+            train_states.reverse()  # Reverse the list to match the order of instances
             target_ckpt= {
                 'model': train_states,  # train_states
                 # 'config': {} ,
@@ -284,10 +290,21 @@ def make_sim(config):
                 restore_kwargs={'restore_args': orbax_utils.restore_args_from_target(target_ckpt)}
             )
 
-
+            # print(isinstance(restored_state["model"], list))
             restored_train_states = restored_state['model']
+            restored_train_states.reverse()
+            # print(len(restored_train_states), " restored train states")
+
+            # for i,ts in enumerate(restored_train_states):
+            #     # Print all dimensions of train state pytree leaves
+            #     flat_params = jax.tree_util.tree_leaves(ts)
+            #     for j, param in enumerate(flat_params):
+            #         if hasattr(param, "shape") and j==2:
+            #             print(f"  Leaf {j}: shape={param.shape}, dtype={param.dtype}")
+            #     print("Apply function for agent type", i, ":", ts.apply_fn)
 
             return hstates, restored_train_states, init_dones_agents
+
 
         # BASELINE POLICY ONLY
         def init_baseline_policies(config: Dict, env: MARLEnv,rng :jax.random.PRNGKey) -> tuple[list, list, list]:
@@ -310,7 +327,7 @@ def make_sim(config):
 
                 init_hstate = FixedAction.initialize_carry(config["NUM_ACTORS_PERTYPE"][i], 1)
                 network_params = network.init(_rng, init_hstate, init_x)
-                print("Params", network_params)
+                # print("Params", network_params)
                 train_state = TrainState.create(
                     apply_fn=network.apply,
                     params=network_params,
@@ -323,34 +340,6 @@ def make_sim(config):
                 train_states.append(train_state)
                 init_dones_agents.append(jnp.zeros((config["NUM_ACTORS_PERTYPE"][i]), dtype=bool))
             return hstates, train_states, init_dones_agents
-
-        bl_init_hiddens , bl_train_states, bl_init_dones_agents = init_baseline_policies(config, env,rng)
-        lrn_hstates, lrn_train_states, lrn_init_dones_agents = load_network_from_checkpoint(config, env,rng)
-
-        # INIT ENV
-        rng, _rng = jax.random.split(rng)
-        reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
-        env_params=env.default_params
-
-        # env_params=jax.device_put(env_params)
-        obsv, env_state = jax.vmap(env.reset, in_axes=(0,None))(reset_rng,env_params)
-        # TRAIN LOOP
-
-        # env_params.loaded_params.message_data
-        # window_index=38847
-        # s=env.base_env.start_indeces[window_index]
-        # e=env.base_env.end_indeces[window_index]
-        # print("Start and end indices for window:", s, e)
-        # print(env_params.loaded_params.message_data[s:e].shape)
-        # print(env_params.loaded_params.message_data[s:s+10])
-        # print(env_params.loaded_params.message_data[e-10:e])
-        # theoretical_end_time = env_params.loaded_params.message_data[s, -2] + env.multi_agent_config.world_config.episode_time
-        # print("Datamessages outside",env.base_env._get_data_messages(
-        #                                     env_params.loaded_params.message_data,
-        #                                     s,
-        #                                     0,
-        #                                     theoretical_end_time
-        # ))
 
 
         def callback(metric, combo_desc=None):
@@ -382,10 +371,14 @@ def make_sim(config):
             if config["WANDB_MODE"]!= "disabled":
                 wandb.log(logging_dict)
 
-            for i in range(len(metric["avg_reward"])):
-                print(f"avg_reward_{i} {metric["avg_reward"][i]}")
+            # for i in range(len(metric["avg_reward"])):
+            #     print(f"avg_reward_{i} {metric["avg_reward"][i]}")
+            #     # print(metric["traj_batch"][i].info['agent'].keys())
+            #     for main_metric in ["total_PnL","revenue_direction_normalised"]:
+            #         if main_metric in metric["traj_batch"][i].info['agent'].keys():
+            #             print(f"avg_PNL_{i} {metric["traj_batch"][i].info['agent'][main_metric].mean()}")
 
-            print(f"Completed Episodes: {metric['total_dones']}")
+            # print(f"Completed Episodes: {metric['total_dones']}")
 
             # Save trajectory batch to a pickle file
 
@@ -398,16 +391,18 @@ def make_sim(config):
                 combo_desc = "default"
             filename = f"trajectories/traj_batch_{combo_desc}__{timestamp}.pkl"
 
-            # Save the trajectory batch
-            with open(filename, "wb") as f:
-                pickle.dump(metric["traj_batch"], f)
 
-            print(f"Saved trajectory batch to {filename}")
+            if config["TINY_RUN"]:
+                # Save the trajectory batch
+                with open(filename, "wb") as f:
+                    pickle.dump(metric["traj_batch"], f)
+
+                print(f"Saved trajectory batch to {filename}")
 
             # if config["TINY_RUN"]:
             #     plot_episode_features(metric["traj_batch"])
 
-        def _update_step(update_runner_state,env_params):
+        def _update_step(update_runner_state,env_params,env):
             # COLLECT TRAJECTORIES
             runner_state, update_steps = update_runner_state
             def _env_step(runner_state, unused):
@@ -425,6 +420,23 @@ def make_sim(config):
                 actions=[]
                 values=[]
                 log_probs=[]
+                # for i, train_state in enumerate(train_states):
+
+                #     # print("Observation space for agent type{}, {} and actual array shape {}:",i,env.observation_spaces[i].shape,last_obs[i].shape)
+
+                    # Print all dimensions of train state pytree leaves
+                    # print(f"Train state dimensions for agent type {i}:")
+                    # flat_params = jax.tree_util.tree_leaves(train_state)
+                    # for j, param in enumerate(flat_params):
+                    #     if hasattr(param, "shape"):
+                    #         print(f"  Leaf {j}: shape={param.shape}, dtype={param.dtype}")
+
+
+
+                    # jax.debug.print("Action space for agent type{}, {}:",i,env.action_spaces[i].n)
+                    # print(i)
+
+
 
                 for i, train_state in enumerate(train_states):
                     obs_i= last_obs[i]
@@ -434,6 +446,13 @@ def make_sim(config):
                         last_done[i][jnp.newaxis, :],
                         # avail_actions,
                     )
+                    # print(i, " ac_in shape:", ac_in[0].shape, "last_done shape:", ac_in[1].shape)
+                    # flat_params = jax.tree_util.tree_leaves(train_state)
+                    # for j, param in enumerate(flat_params):
+                    #     if hasattr(param, "shape"):
+                    #         print(f"  Leaf {j}: shape={param.shape}, dtype={param.dtype}")
+
+                    # print(train_state.apply_fn)
                     h_states[i], pi, value = train_state.apply_fn(train_state.params, h_states[i], ac_in)
                     values.append(value)
                     action = pi.sample(seed=_rng)
@@ -441,7 +460,7 @@ def make_sim(config):
                     log_probs.append(pi.log_prob(action))
                     action=unbatchify(action, config["NUM_ACTORS_PERTYPE"][i], env.multi_agent_config.number_of_agents_per_type[i])  # Reshape to match the action shape
                     actions.append(action.squeeze())
-                    print(actions)
+                    # print(actions)
                     # env_act = unbatchify(
                     #     action, env.agents, config["NUM_ENVS"], env.num_agents
                     # )
@@ -516,9 +535,9 @@ def make_sim(config):
             return (runner_state, update_steps), metrics
 
 
-        jitted_update_step = jax.jit(_update_step)
+        jitted_update_step = jax.jit(_update_step,static_argnums=(2,))
         
-        def eval_policies(rng,env_params, config):
+        def eval_policies(rng, config):
             """
             Run evaluation with different policy combinations:
             - Learned vs. Baseline
@@ -529,26 +548,53 @@ def make_sim(config):
             Generalizes to n agents per type.
             """
 
-            n_agent_types = len(config["NUM_AGENTS_PER_TYPE"])
+            
             
             # All possible policy combinations
             policy_combinations = []
             
             # For n agent types, we have 2^n possible combinations (each type can be either learned or baseline)
-            for i in range(2**n_agent_types):
+            n_combos= 2 ** len(config["NUM_AGENTS_PER_TYPE"])
+            for i in range(n_combos):
                 # Convert i to binary, padded to n_agent_types digits
                 # '1' means learned policy, '0' means baseline policy
-                binary = format(i, f'0{n_agent_types}b')
+                binary = format(i, f'0{len(config["NUM_AGENTS_PER_TYPE"])}b')
                 policy_choices = [int(bit) for bit in binary]
                 policy_combinations.append(policy_choices)
             
             results = {}
+
+            policy_choice = policy_combinations[0]
             
-            for combo_idx, policy_choice in enumerate(policy_combinations):
+            bl_init_hiddens , bl_train_states, bl_init_dones_agents = None, None, None
+            lrn_hstates, lrn_train_states, lrn_init_dones_agents = None, None, None
+            baselinetuple=((),(),())
+            learnedtuple=((),(),())
+            # INIT ENV
+            rng, _rng = jax.random.split(rng)
+            env_params = None
+
+
+            def eval_policy_choice(env_params,results,combo_idx,policy_choice,rng,baselinetuple,learnedtuple):
+                n_agent_types = len(config["NUM_AGENTS_PER_TYPE"])    
+                # policy_choice=[1,1]
                 # Create a description of this combination (e.g., "L-B" for Learned-Baseline)
                 combo_desc = ''.join(['L' if choice == 1 else 'B' for choice in policy_choice])
-                print(f"\nEvaluating policy combination {combo_idx+1}/{len(policy_combinations)}: {combo_desc}")
                 
+                print(f"\nEvaluating policy combination {combo_idx+1}/{len(policy_combinations)}: {combo_desc}")
+
+                # Create a dictionary of agent configs based on policy choice
+                ma_config = get_ma_config(config, policy_choice, combo_desc)
+                env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=ma_config)
+                if combo_idx == 0:
+                    print("Initializing baseline policies for the first combination...")
+                    baselinetuple = init_baseline_policies(config, env,rng)
+                    env_params=env.default_params
+                if combo_idx == n_combos-1:
+                    print("Loading learned policies for the last combination...")
+                    learnedtuple = load_network_from_checkpoint(config, env,rng)
+                bl_init_hiddens , bl_train_states, bl_init_dones_agents = baselinetuple
+                lrn_hstates, lrn_train_states, lrn_init_dones_agents = learnedtuple
                 # Reset environment
                 rng, _rng = jax.random.split(rng)
                 reset_rng = jax.random.split(_rng, config["NUM_ENVS"])
@@ -563,10 +609,12 @@ def make_sim(config):
                 
                 for i in range(n_agent_types):
                     if policy_choice[i] == 1:  # Use learned policy
+                        print("appending Learned policy for agent type", i)
                         hstates_eval.append(lrn_hstates[i])
                         train_states_eval.append(lrn_train_states[i])
                         dones_eval.append(lrn_init_dones_agents[i])
                     else:  # Use baseline policy
+                        print("Appending Baseline policy for agent type", i)
                         hstates_eval.append(bl_init_hiddens[i])
                         train_states_eval.append(bl_train_states[i])
                         dones_eval.append(bl_init_dones_agents[i])
@@ -581,7 +629,7 @@ def make_sim(config):
                     rng,
                 )
                 
-                (eval_runner_state, _), eval_metrics = jitted_update_step((eval_runner_state, 0), env_params)
+                (eval_runner_state, _), eval_metrics = jitted_update_step((eval_runner_state, 0), env_params,env)
                 callback(eval_metrics, combo_desc)
 
                 # Store results
@@ -595,16 +643,29 @@ def make_sim(config):
                 for i in range(n_agent_types):
                     agent_type = 'L' if policy_choice[i] == 1 else 'B'
                     print(f"  {agent_type} (Agent type {i}): avg_reward = {eval_metrics['avg_reward'][i]:.4f}")
+                    for main_metric in ["reward_portfolio_value","revenue_direction_normalised"]:
+                        if main_metric in eval_metrics["traj_batch"][i].info['agent'].keys():
+                            print(f"    {agent_type} (Agent type {i}): PNL = {eval_metrics["traj_batch"][i].info['agent'][main_metric].mean()}")
+                            if main_metric == "reward_portfolio_value":
+                                print(f"    {agent_type} (Agent type {i}): Dimensions = {eval_metrics["traj_batch"][i].info['agent'][main_metric].shape}")
+                                print(f"    {agent_type} (Agent type {i}): PNL std = {eval_metrics["traj_batch"][i].info['agent'][main_metric][63::64,:].mean()}")
                 # callback(eval_metrics)
                 del eval_metrics
                 gc.collect()
+                return results,env_params,baselinetuple,learnedtuple
 
-            
+            results,env_params,baselinetuple,learnedtuple = eval_policy_choice(env_params, results, 0, policy_combinations[0],rng=rng,baselinetuple=baselinetuple,learnedtuple=learnedtuple)
+            results,env_params,baselinetuple,learnedtuple = eval_policy_choice(env_params, results, n_combos-1, policy_combinations[-1],rng=rng,baselinetuple=baselinetuple,learnedtuple=learnedtuple)
+
+            for combo_idx, policy_choice in enumerate(policy_combinations[1:-1], start=1):
+                print("COMBOD INDEX",combo_idx)
+                results,env_params,baselinetuple,learnedtuple = eval_policy_choice(env_params, results, combo_idx, policy_choice,rng=rng,baselinetuple=baselinetuple,learnedtuple=learnedtuple)
+
             return results
 
         # Run all policy combinations
         print("Running evaluations with all possible policy combinations...")
-        eval_results = eval_policies(rng, env_params, config)
+        eval_results = eval_policies(rng, config)
 
         # # Define which combination is the main training combination - this will be used for callbacks
         # train_states = runner_state[0]  # Get current train states
@@ -660,6 +721,52 @@ def make_sim(config):
 
     return run
 
+def get_ma_config(config, policy_choice, combo_desc):
+    agent_configs = {}
+    print(policy_choice)
+    for i, use_learned in enumerate(policy_choice):
+        agent_type = list(config["AGENT_CONFIGS"].keys())[i]
+        
+        # Start with common agent config
+        agent_config = config["AGENT_CONFIGS"][agent_type].copy()
+        
+        if use_learned == 0:  # Use baseline policy - apply baseline overrides
+            # Update with baseline-specific overrides
+            agent_config.update(config["BASELINE_CONFIGS"][agent_type])
+        
+        # Convert all keys to lowercase for the environment config
+        agent_configs[agent_type] = config_dict[agent_type](**{k.lower(): v for k, v in agent_config.items()})
+
+    # Print agent configs with decorative formatting to make it stand out
+    print("\n" + "="*80)
+    print("🚀 POLICY COMBINATION: " + combo_desc + " 🚀")
+    print("="*80)
+    print("📊 AGENT CONFIGURATIONS:")
+    for agent_type, config_obj in agent_configs.items():
+        print(f"\n{'*'*40}")
+        print(f"🤖 AGENT TYPE: {agent_type}")
+        print(f"{'*'*40}")
+        for param_name, param_value in vars(config_obj).items():
+            print(f"  • {param_name}: {param_value}")
+    print("="*80 + "\n")
+
+    ma_config = MultiAgentConfig(
+        number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
+        dict_of_agents_configs=agent_configs,
+        world_config=World_EnvironmentConfig(
+            seed=config["SEED"],
+            timePeriod=config["EvalTimePeriod"],
+            save_raw_observations=True,
+
+            # Only override parameters that exist in both config and World_EnvironmentConfig
+            **{k.lower(): v for k, v in config.items() 
+            if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
+        )
+    )
+    print("MultiAgentConfig for Learned Agents \n","%"*50,ma_config)
+    return ma_config
+
+
 
 @hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
 def main(config):
@@ -690,7 +797,7 @@ def main(config):
         # +++++ Single GPU +++++
         
 
-        rng = jax.random.PRNGKey(0)
+        rng = jax.random.PRNGKey(wand.config["SEED"])
 
         print("wandb.config", wandb.config)
 
