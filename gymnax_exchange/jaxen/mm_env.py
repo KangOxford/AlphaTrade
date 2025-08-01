@@ -2191,11 +2191,11 @@ class MarketMakingAgent():
         
 
         #===================== 03) Set reward based on config file==================#
-        if self.cfg.reward_space == "portfolio_value":
+        if self.cfg.reward_space == "portfolio_value": #Cash balance + value of portfolio at midprice (or BB/BA)
             reward = reward_portfolio_value
         elif self.cfg.reward_space == "portfolio_value_scaled":
             reward = reward_portfolio_value/100
-        elif self.cfg.reward_space == "pnl":
+        elif self.cfg.reward_space == "pnl": #Cash balance, useless as a reward function. Will just sell to -inf. 
             reward = PnL
         elif self.cfg.reward_space == "buy_sell_pnl":
             reward = buyPnL + sellPnL
@@ -2328,9 +2328,9 @@ class MarketMakingAgent():
         # Get info
         info = {
             "reward":extras["reward"],
-            # "reward_portfolio_value":extras["reward_portfolio_value"],
+            "reward_portfolio_value":extras["reward_portfolio_value"],
             # "reward_complex":extras["reward_complex"],
-            # "reward_spooner":extras[ "reward_spooner"],
+            "reward_spooner":extras[ "reward_spooner"],
             # "reward_spooner_damped":extras["reward_spooner_damped"],
             # "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
             # "reward_delta_netWorth":extras["reward_delta_netWorth"],
@@ -2341,10 +2341,10 @@ class MarketMakingAgent():
             "buyPnL":extras["buyPnL"],
             # "scaledInventoryPnL":extras["scaledInventoryPnL"],
             # "netWorth":extras["netWorth"],
-            # "sellPnL":extras["sellPnL"],
+            "sellPnL":extras["sellPnL"],
             # "buyQuant":extras["buyQuant"],
             # "sellQuant":extras["sellQuant"],
-            # "inventoryValue":extras["inventoryValue"],
+            "inventoryValue":extras["inventoryValue"],
             # "other_exec_quants":extras["other_exec_quants"],
             # "Step_PnL":extras["PnL"],
             # "InventoryPnL":extras["InventoryPnL"],
