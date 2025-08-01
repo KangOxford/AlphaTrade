@@ -6,6 +6,7 @@ import glob
 
 import matplotlib.pyplot as plt
 
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.1"
 
 
 from gymnax_exchange.jaxen.marl_env import MARLEnv
@@ -34,6 +35,8 @@ def main():
                             help="Directory containing trajectory pickle files")
         parser.add_argument("--combo", "-c", type=str, nargs='+', default=["BB"], 
                     help="Combo description(s) to filter pickle files (can provide multiple)")
+        parser.add_argument("--save", type=str, default="intra-episode-figs", 
+                    help="Save Directory for plots (can provide multiple)")
         return parser.parse_args()
 
     args = parse_args()
@@ -48,7 +51,7 @@ def main():
                 traj_batch = pickle.load(f)
             print(f"Loaded trajectory batch with {len(traj_batch)} agents.")
             # Plot episode features
-            plot_episode_features(traj_batch, output_dir="intra-episode-figs"+f"/{combo}",)
+            plot_episode_features(traj_batch, output_dir=args.save+f"/{combo}",)
             print(f"Plotting complete. Check the 'intra-episode-figs' directory for output.")
             
         except Exception as e:
