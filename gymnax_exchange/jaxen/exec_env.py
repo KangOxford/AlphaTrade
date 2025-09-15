@@ -1125,6 +1125,8 @@ class ExecutionAgent():
         #---form messages---#
         action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
+        #jax.debug.print("action_msgs exec complex: {}", action_msgs)
+        #jax.debug.print("quant_left: {}", quant_left)
         return action_msgs         
 
 
@@ -1721,6 +1723,8 @@ class ExecutionAgent():
             lambda: (otherTrades[:, 0] // self.world_config.tick_size * jnp.abs(otherTrades[:, 1])).sum() / other_exec_quants
         )
         
+        #jax.debug.print("vwap: {} ", vwap) 
+
         revenue = (agentTrades[:,0] // self.world_config.tick_size * jnp.abs(agentTrades[:,1])).sum()
         
         # ---------- used for slippage, price_drift, and RM(rolling mean) ----------
@@ -1735,7 +1739,7 @@ class ExecutionAgent():
         direction_switch = jnp.sign(agent_state.is_sell_task * 2 - 1)
         advantage = direction_switch * (revenue - vwap * agentQuant) # advantage_vwap
 
-
+        #jax.debug.print("init price: {}", agent_state.init_price)
         #jax.debug.print("advantage: {}", advantage)
         #jax.debug.print("vwap: {}", vwap)
        # jax.debug.print("exec quant left: {}", quant_left)

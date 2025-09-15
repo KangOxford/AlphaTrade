@@ -100,3 +100,4 @@ outputs/**
 
 /go/*
 .config/*
+.netrc

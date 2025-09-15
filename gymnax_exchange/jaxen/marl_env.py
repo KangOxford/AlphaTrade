@@ -295,7 +295,7 @@ class MARLEnv(MultiAgentEnv):
                 print(f"Start index: {state.world_state.start_index}, step counter: {state.world_state.step_counter}, init time: {state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time}")
                 print("data_messages: ", data_messages)
                 
-        jax.debug.callback(callback_empty_messages, data_messages,state)
+        #jax.debug.callback(callback_empty_messages, data_messages,state)
 
 
         # Combine action and cancel messages
@@ -769,7 +769,7 @@ if __name__ == "__main__":
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
 
-    num_steps = 145
+    num_steps = 105
     fixed_actions = False
     rewards_list = []
 
@@ -860,7 +860,7 @@ if __name__ == "__main__":
             print("="*60)
 
 
-            NUM_ENVS   = 1000    # number of parallel environments
+            NUM_ENVS   = 500    # number of parallel environments
             NUM_STEPS  = 200                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        # total steps per environment
             MASTER_KEY = jax.random.PRNGKey(6)
             fixed_actions = False
@@ -876,10 +876,12 @@ if __name__ == "__main__":
             # force execution to finish before timing
             jax.block_until_ready(state)
             reset_time  = time.time() - reset_start
+            print(f"Reset time: {reset_time:.4f} seconds")
 
             # -------------------------------------------------
             # 2) Helper: one step for a single env
             # -------------------------------------------------
+            @partial(jax.jit, static_argnums=(2,))
             def single_step(state, key, env_params):
                 # one sub-key per agent type
                 subkeys = jax.random.split(key, len(env.action_spaces))
@@ -928,6 +930,7 @@ if __name__ == "__main__":
             # ensure all work is finished
             jax.block_until_ready(final_state)
             rollout_time = time.time() - rollout_start
+            print(f"Rollout time: {rollout_time:.4f} seconds")
 
             # -------------------------------------------------
             # 4) Timing statistics
