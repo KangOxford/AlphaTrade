@@ -769,7 +769,7 @@ if __name__ == "__main__":
     # run a loop that samples random actions for each agent.
     # jax.profiler.start_trace("tensorboard_logs")
 
-    num_steps = 105
+    num_steps = 10
     fixed_actions = False
     rewards_list = []
 
@@ -852,7 +852,7 @@ if __name__ == "__main__":
     # ----------------------------------------------
     # New VMAP rollout script + timing statistics
     # ----------------------------------------------
-    enable_vmap = False
+    enable_vmap = True
     if enable_vmap:
 
             print("\n" + "="*60)
@@ -860,8 +860,8 @@ if __name__ == "__main__":
             print("="*60)
 
 
-            NUM_ENVS   = 500    # number of parallel environments
-            NUM_STEPS  = 200                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        # total steps per environment
+            NUM_ENVS   = 1    # number of parallel environments
+            NUM_STEPS  = 10                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        # total steps per environment
             MASTER_KEY = jax.random.PRNGKey(6)
             fixed_actions = False
 
@@ -881,7 +881,8 @@ if __name__ == "__main__":
             # -------------------------------------------------
             # 2) Helper: one step for a single env
             # -------------------------------------------------
-            @partial(jax.jit, static_argnums=(2,))
+            #@partial(jax.jit, static_argnums=(2,))
+            @jax.jit
             def single_step(state, key, env_params):
                 # one sub-key per agent type
                 subkeys = jax.random.split(key, len(env.action_spaces))
