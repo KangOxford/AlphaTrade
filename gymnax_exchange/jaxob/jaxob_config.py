@@ -30,14 +30,14 @@ class JAXLOB_Configuration:
 @dataclass(frozen=True)
 class MarketMaking_EnvironmentConfig():
     # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
-    action_space: str = "simple"
+    action_space: str = "spread_skew"
 
     # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
     observation_space: str = "engineered"
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 3.0 #50.0
-    skew_multiplier: float = 10.0 #100.0
+    skew_multiplier: float = 5.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -103,7 +103,7 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants_complex"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
+    action_space: str = "fixed_quants_1msg"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
