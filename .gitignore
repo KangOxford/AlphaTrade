@@ -100,4 +100,6 @@ outputs/**
 
 /go/*
 .config/*
+saved_npz/**
+saved_npz/
 .netrc

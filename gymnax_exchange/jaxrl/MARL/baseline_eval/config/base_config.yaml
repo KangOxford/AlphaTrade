@@ -1,0 +1,70 @@
+# Those hparams which are in a list 
+# apply differently to each ntwrk
+# Should match with NUM_AGENTS_PER_TYPE
+
+"NUM_ENVS": 8
+"NUM_STEPS": 16
+
+
+"ENV_NAME": "JAXMARL-Lob-v0"
+"NUM_AGENTS_PER_TYPE": [1,1]
+"SEED": 2
+"N_DEVICES": 1
+"TINY_RUN": True
+
+"FIXED_ACTIONS" : [[1],[10,11,12]]
+
+# WandB Params
+"ENTITY": "oxford-lob"
+"PROJECT": "Baseline_JAXMARL"
+"WANDB_MODE" : "disabled"
+
+# High-Level Params
+"CALC_EVAL" : False
+"EvalTimePeriod" : "2024_Eval" #"2024"
+
+
+#Network params that must be manually matched with the config used in the original training
+"GRU_HIDDEN_DIM": 128
+"FC_DIM_SIZE": 128
+#Training params which are irellevant for the eval.
+"ANNEAL_LR": True
+"LR": 20
+"MAX_GRAD_NORM" : 25
+
+
+"RESTORE_PROJECT" : "2Player_spread_skew_vs_fixed_quants"
+"RESTORE_RUN" : "GENERIC_RUN"
+
+
+
+
+      #   """Action function for the fixed Quant Action space
+      #   Pick for a ladder of quant execution options
+      #   Always send 4 messages
+      #   0 = No trade
+      #   1=      # FT
+      #   2=     # M
+      #   3=    # NT
+      #   4=    # PP
+      #   5=    # FT*2 quant
+      #   6=    # M*2 quant
+      #   7=    # NT*2 quant
+      #   8=    # PP*2 quant
+      #   9=    # FT*5 quant
+      #   10=   # M*5 quant
+      #   11=   # NT*5 quant
+      #   12=   # PP*5 quant
+
+        
+      #  """
+
+
+        # Mapping:
+        # 0: tight spread, bid skew
+        # 1: tight spread, neutral 
+        # 2: tight spread, ask skew
+        # 3: wide spread, bid skew
+        # 4: wide spread, neutral
+        # 5: wide spread, ask skew
+        # '''

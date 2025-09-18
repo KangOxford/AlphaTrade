@@ -1,7 +1,7 @@
 import gymnax_exchange.jaxob.jaxob_constants as cst
 import gymnax_exchange.jaxob.jaxenv_constants as env_cst
 import os
-from typing import Tuple,  Literal,Union,List
+from typing import OrderedDict, Tuple,  Literal,Union,List
 
 from dataclasses import dataclass,field
 
@@ -37,7 +37,7 @@ class MarketMaking_EnvironmentConfig():
     #end_fn: Literal["force_market_order", "unwind_ref_price","do_nothing"] = "unwind_ref_price"
     # Values for spread skew action space
     spread_multiplier: float = 3.0 #50.0
-    skew_multiplier: float = 5.0 #100.0
+    skew_multiplier: float = 10.0 #100.0
     n_ticks_in_book : int = 1
     num_messages_by_agent:int=env_cst.num_messages_by_agent
     num_action_messages_by_agent=2 # will be set automcatically down below
@@ -56,16 +56,17 @@ class MarketMaking_EnvironmentConfig():
     simple_nothing_action: bool = True # Whether or not the simple action space has a nothing action
 
     # Reward
-    inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold", "exp4"
+    inv_penalty: str = "linear"  # options: "none", "linear", "quadratic", "threshold"
     reward_space: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"
     reference_price_portfolio_value: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
     inv_penalty_lambda: float = 1.0
-    multiplier_type: str = "spread" # options: "spread", "tick"
+    inv_penalty_quadratic_factor: float = 50.0 #Represents N for penalty = 1/N * (inv ** 2) if quadratic penalty is used
+    multiplier_type: str = "tick" # options:  "tick" #DO NOT USE "spread" it is WRONG. 
     clip_reward: bool = False
     based_on_mid_price_of_action: bool = True
     exclude_extreme_spreads: bool= False
     # Weights for complex reward function:
-    inventoryPnL_lambda: float = 1.0
+    inventoryPnL_lambda: float = 0.5
     unrealizedPnL_lambda: float = 0.1
     asymmetrically_dampened_lambda: float = 0.8
 
@@ -103,16 +104,16 @@ class Execution_EnvironmentConfig():
     n_ticks_in_book : int = 1
     task: str = "random"  # options: "random", "buy", "sell"
     action_type: str = "pure"  # options: "delta", "pure"
-    action_space: str = "fixed_quants_1msg"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
+    action_space: str = "fixed_quants"  # options: "fixed_quants", "fixed_prices", "fixed_quants_complex", "simplest_case", "fixed_quants_1msg"
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 500
+    task_size:int= 100
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
     num_action_messages_by_agent:int=4 # will be set automatically in the post init function
-    reward_lambda:float= 0
+    reward_lambda:float= 0.5
     time_delay_obs_act:int=0
     debug_mode:bool=False
     normalize:bool=True
@@ -154,8 +155,8 @@ class Execution_EnvironmentConfig():
 class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 1
     window_selector = -1 # -1 means random window
-    ep_type: str = "fixed_steps" # fixed_steps, fixed_time
-    episode_time: int = 64 # counted by seconds, 1800s=0.5h
+    ep_type :str = "fixed_steps" # fixed_steps, fixed_time
+    episode_time: int = 32 # counted by seconds, 1800s=0.5h or steps
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -173,7 +174,8 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= False
+    use_pickles_for_init:bool= True
+    save_raw_observations:bool=False
 
 
 @dataclass(frozen=True)
@@ -181,8 +183,16 @@ class MultiAgentConfig():
     #world_config: World_EnvironmentConfig = field(default_factory=lambda: World_EnvironmentConfig())
     world_config: World_EnvironmentConfig = World_EnvironmentConfig()
 
-    list_of_agents_configs: list = field(default_factory=lambda: [MarketMaking_EnvironmentConfig(), Execution_EnvironmentConfig()])
-    number_of_agents_per_type: list = field(default_factory=lambda: [1,1])#[2,2]) # This is only the default value, we change it in the yaml RL file
+    # list_of_agents_configs: List = field(default_factory=lambda: [
+    #     MarketMaking_EnvironmentConfig(),
+    #     Execution_EnvironmentConfig()
+    # ])
+
+    dict_of_agents_configs: dict = field(default_factory=lambda: dict([
+        ("MarketMaking", MarketMaking_EnvironmentConfig()),
+        ("Execution", Execution_EnvironmentConfig())
+    ]))
+    number_of_agents_per_type: list = field(default_factory=lambda: [1,1]) # This is only the default value, we change it in the yaml RL file
 
 
     # list_of_agents_configs = [

@@ -457,7 +457,8 @@ class MarketMakingAgent():
                                    old_time = world_state.time, 
                                    old_mid_price = world_state.mid_price, 
                                    lob_state_before = lob_state_before,
-                                   normalize = self.cfg.normalize)
+                                   normalize = self.cfg.normalize,
+                                   flatten  = True)
 
         return obs, agent_state
 
@@ -2230,7 +2231,11 @@ class MarketMakingAgent():
             inv_pen = (-1) * jnp.abs(new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "quadratic":
-            inv_pen = (-1) * (new_inventory ** 2)
+            inv_pen = (-1) * (new_inventory ** 2) / self.cfg.inv_penalty_quadratic_factor
+            #jax.debug.print("new_inventory: {}", new_inventory)
+            #jax.debug.print("inv_pen: {}", inv_pen)
+        elif self.cfg.inv_penalty == "exp4":
+            inv_pen = (-1) * (jnp.exp(new_inventory) ** 4)
             #jax.debug.print("new_inventory: {}", new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "exp4":
@@ -2376,14 +2381,23 @@ class MarketMakingAgent():
         else:
             raise ValueError("Invalid end_fn specified.")
 
-    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize):
+    def get_observation(self, world_state,
+                         agent_state,
+                           agent_param,
+                             total_messages,
+                               old_time,
+                                 old_mid_price,
+                                   lob_state_before,
+                                     normalize,
+                                     flatten):
         """
         Wrapper function to call the appropriate observation function.
         """
         if self.cfg.observation_space == "engineered":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         elif self.cfg.observation_space == "messages":
             return self.observation_fn(total_messages=total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
@@ -2395,7 +2409,8 @@ class MarketMakingAgent():
         elif self.cfg.observation_space == "basic":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state,
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         else:
             raise ValueError("Invalid observation_space specified.")
         

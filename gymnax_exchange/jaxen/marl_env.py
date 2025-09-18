@@ -64,17 +64,20 @@ class MARLEnv(MultiAgentEnv):
         # for i in range(len(self.world_config.list_of_agents_configs)):
             #key_mm, key_exe = jax.random.split(key, 2)
             #mm_config = MarketMaking_EnvironmentConfig()
-
+        self.type_names=[]
         
         self.instance_list=[] # List of different agent types. Each type can have several instances of it
-        for agent_type_index in range(len(self.multi_agent_config.list_of_agents_configs)):
-            agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
+        self.list_of_agents_configs = []
+        for agent_type_index, (agent_type, agent_config) in enumerate(self.multi_agent_config.dict_of_agents_configs.items()):
+            self.list_of_agents_configs.append(agent_config)  # Store the config for later use in default_params
+            self.type_names.append(agent_config.short_name)
             if isinstance(agent_config, MarketMaking_EnvironmentConfig):
                 self.instance_list.append(MarketMakingAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             elif isinstance(agent_config, Execution_EnvironmentConfig):
                 self.instance_list.append(ExecutionAgent(cfg=agent_config, world_config=self.multi_agent_config.world_config))
             else:
                 raise ValueError(f"Invalid agent type: {i}")
+        
 
         self.action_spaces = [self.instance_list[i].action_space() for i in range(len(self.instance_list))]
         self.observation_spaces = [self.instance_list[i].observation_space() for i in range(len(self.instance_list))]
@@ -82,7 +85,7 @@ class MARLEnv(MultiAgentEnv):
         num_msg_per_step = self.multi_agent_config.world_config.n_data_msg_per_step
         num_action_msg_per_step_by_all_agents = 0
         for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
-            agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
+            agent_config = self.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             num_msg_per_step += agent_config.num_messages_by_agent * num_agents_per_type
             num_action_msg_per_step_by_all_agents += agent_config.num_action_messages_by_agent * num_agents_per_type
@@ -104,7 +107,7 @@ class MARLEnv(MultiAgentEnv):
         for agent_type_index in range(len(self.multi_agent_config.number_of_agents_per_type)):
             # print(f"next_trader_id_range_start: {next_trader_id_range_start}")
             # print(f"agent type: {self.multi_agent_config.list_of_agents_configs[agent_type_index]}")
-            agent_config = self.multi_agent_config.list_of_agents_configs[agent_type_index]
+            agent_config = self.list_of_agents_configs[agent_type_index]
             num_agents_per_type = self.multi_agent_config.number_of_agents_per_type[agent_type_index]
             agent_params, next_trader_id_range_start = self.instance_list[agent_type_index].default_params(agent_config, next_trader_id_range_start, num_agents_per_type)
             # print(f"agent_params: {type(agent_params)}")
@@ -170,7 +173,7 @@ class MARLEnv(MultiAgentEnv):
         agent_obs_list = []
 
         
-        for config_index, (instance, agent_param, agent_key, agent_config) in enumerate(zip(self.instance_list, params.agent_params, agent_keys, self.multi_agent_config.list_of_agents_configs)):
+        for config_index, (instance, agent_param, agent_key, agent_config) in enumerate(zip(self.instance_list, params.agent_params, agent_keys, self.list_of_agents_configs)):
 
             vmapped_function = vmap(instance.reset_env, in_axes=(0,None,None,None), out_axes = (0,0))
             agent_obs, agent_state = vmapped_function(agent_param, agent_key, world_state, self.num_msgs_per_step)
@@ -285,17 +288,17 @@ class MARLEnv(MultiAgentEnv):
             all_cancel_msgs = jnp.empty((0, 8), dtype=jnp.int32)
             new_order_id_counter=state.world_state.order_id_counter # No new order ids, so we keep the old one
 
-        def callback_empty_messages(data_messages,state):
-            if jnp.all(data_messages[0,:-2]==0):
-                print("Empty data messages, this should not happen. Check the data messages in the config file.")
-                window_index=state.world_state.window_index
-                s=self.base_env.start_indeces[window_index]
-                e=self.base_env.end_indeces[window_index]
-                print(f"Start and end indices for window {window_index}: {s}, {e}")
-                print(f"Start index: {state.world_state.start_index}, step counter: {state.world_state.step_counter}, init time: {state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time}")
-                print("data_messages: ", data_messages)
+        # def callback_empty_messages(data_messages,state):
+        #     if jnp.all(data_messages[0,:-2]==0):
+        #         print("Empty data messages, this should not happen. Check the data messages in the config file.")
+        #         window_index=state.world_state.window_index
+        #         s=self.base_env.start_indeces[window_index]
+        #         e=self.base_env.end_indeces[window_index]
+        #         print(f"Start and end indices for window {window_index}: {s}, {e}")
+        #         print(f"Start index: {state.world_state.start_index}, step counter: {state.world_state.step_counter}, init time: {state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time}")
+        #         print("data_messages: ", data_messages)
                 
-        #jax.debug.callback(callback_empty_messages, data_messages,state)
+        # jax.debug.callback(callback_empty_messages, data_messages,state)
 
 
         # Combine action and cancel messages
@@ -591,9 +594,10 @@ class MARLEnv(MultiAgentEnv):
             agent_state = new_multi_state.agent_states[agent_type_index]
             agent_params = params.agent_params[agent_type_index]
             agent_config = self.instance_list[agent_type_index].cfg
-            vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None), out_axes = (0))
-            obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize)
-            
+            vmapped_function = vmap(self.instance_list[agent_type_index].get_observation, in_axes=(None,0,0,None,None,None,None,None,None), out_axes = (0))
+            obs = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, agent_config.normalize, True)
+            if self.multi_agent_config.world_config.save_raw_observations:
+                info["agents"][agent_type_index]["obs_raw"] = vmapped_function(new_world_state, agent_state, agent_params, combined_msgs, old_time, old_mid_price, lob_state_before, False,False)
             # Set obs to zeros if done
             #jax.debug.print("obs before: {}", obs)
             #jax.debug.print(f"state {agent_state}:")
@@ -798,7 +802,7 @@ if __name__ == "__main__":
             
             # Get random actions from each agent's action space.
             actions_per_type = []
-            key, *subkeys = jax.random.split(key_step, len(multi_agent_config.list_of_agents_configs) + 1)
+            key, *subkeys = jax.random.split(key_step, len(env.list_of_agents_configs) + 1)
             subkeys = jnp.array(subkeys)
             for i, (space, num_agents) in enumerate(zip(env.action_spaces, multi_agent_config.number_of_agents_per_type)):
                 # Split keys for this agent type

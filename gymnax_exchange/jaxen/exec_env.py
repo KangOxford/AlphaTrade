@@ -469,7 +469,8 @@ class ExecutionAgent():
                             old_time = world_state.time,
                             old_mid_price = world_state.mid_price,
                             lob_state_before = lob_state_before,
-                            normalize = self.cfg.normalize)
+                            normalize = self.cfg.normalize,
+                            flatten=True)
 
         return obs, agent_state
 
@@ -1394,22 +1395,25 @@ class ExecutionAgent():
             raise ValueError("Invalid action space specified.")    
     
 
-    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize):
+    def get_observation(self, world_state, agent_state, agent_param, total_messages, old_time, old_mid_price, lob_state_before, normalize,flatten):
         """
         Wrapper function to call the appropriate observation function.
         """
         if self.cfg.observation_space == "engineered":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         elif self.cfg.observation_space == "basic":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         elif self.cfg.observation_space == "simplest_case":
             return self.observation_fn(world_state=world_state, 
                                        agent_state=agent_state, 
-                                       normalize=normalize)
+                                       normalize=normalize,
+                                       flatten=flatten)
         else:
             raise ValueError("Invalid observation_space specified.")
         
@@ -1861,6 +1865,7 @@ class ExecutionAgent():
         average_price = jnp.nan_to_num(agent_state.total_revenue 
                                             / agent_state.quant_executed, 0.0)
         drift = extras["drift"]
+        advantage= extras["advantage"]
         doom_quant = extras["doom_quant"]
 
         info = {
@@ -1870,14 +1875,16 @@ class ExecutionAgent():
             "quant_left": new_quant_left,
             "average_price": average_price,
             "done": done,
-            "slippage_rm": agent_state.slippage_rm,
-            "price_adv_rm": agent_state.price_adv_rm,
-            "price_drift_rm": agent_state.price_drift_rm,
-            "vwap_rm": agent_state.vwap_rm,
-            "advantage_reward": agent_state.advantage_return,
-            "drift_reward": agent_state.drift_return,
+            "revenue_direction_normalised": extras["reward_lam1"],  # pure revenue is not informative if direction is random (-> flip and normalise)
+            # "slippage_rm": agent_state.slippage_rm,
+            # "price_adv_rm": agent_state.price_adv_rm,
+            # "price_drift_rm": agent_state.price_drift_rm,
+            # "vwap_rm": agent_state.vwap_rm,
+            #"advantage_reward": agent_state.advantage_return,
+            #"drift_reward": agent_state.drift_return,
             "drift" : drift,
-            "trade_duration": agent_state.trade_duration,
+            "advantage": advantage,
+            # "trade_duration": agent_state.trade_duration,
             "doom_quant": doom_quant,
             "is_sell_task": agent_state.is_sell_task,
             "reward": new_reward,

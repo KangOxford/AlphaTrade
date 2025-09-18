@@ -16,12 +16,16 @@ DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data
 endif
-BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G -p 8040:80 -p 8041:6006
-RUN_FLAGS=$(GPUS) $(BASE_FLAGS)
+BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G 
+PORT_FLAGS= -p 8072:80 -p 8075:6006
+RUN_FLAGS=$(GPUS) $(BASE_FLAGS) $(PORT_FLAGS)
+BASIC_FLAGS=$(GPUS) $(BASE_FLAGS)
+
 
 DOCKER_IMAGE_NAME = jaxmarl_lob
 IMAGE = $(DOCKER_IMAGE_NAME):latest #  for working image: IMAGE = $(DOCKER_IMAGE_NAME):working or 
 DOCKER_RUN=docker run $(RUN_FLAGS) $(IMAGE)
+DOCKER_RUN_BASIC=docker run --gpus "device=$(gpu)" $(BASE_FLAGS) $(IMAGE)
 USE_CUDA = $(if $(GPUS),true,false)
 ID = $(shell id -u)
 
@@ -37,6 +41,9 @@ run:
 
 test:
 	$(DOCKER_RUN) /bin/bash -c "pytest ./tests/"
+
+ppo:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py"
 
 workflow-test:
 	# without -it flag
