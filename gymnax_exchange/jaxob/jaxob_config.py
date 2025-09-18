@@ -20,7 +20,7 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = 50  # Episodes from data start every n seconds.
+    start_resolution: int = 640  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
@@ -152,10 +152,10 @@ class Execution_EnvironmentConfig():
 
 @dataclass(frozen=True)
 class World_EnvironmentConfig(JAXLOB_Configuration):
-    n_data_msg_per_step: int = 100
+    n_data_msg_per_step: int = 1
     window_selector = -1 # -1 means random window
     ep_type: str = "fixed_steps" # fixed_steps, fixed_time
-    episode_time: int = 50 # counted by seconds, 1800s=0.5h
+    episode_time: int = 64 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100
@@ -173,7 +173,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
     shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= True
+    use_pickles_for_init:bool= False
 
 
 @dataclass(frozen=True)
