@@ -49,7 +49,7 @@ def create_triangular_plot(df, reward_label='Reward', save_path=None):
     }
     
     # Color settings
-    vmin, vmax = -35, 0
+    vmin, vmax = -40, 0
     cmap = mcolors.LinearSegmentedColormap.from_list('RdYlGn', ['red', 'yellow', 'green'])
     norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     
@@ -91,15 +91,15 @@ def create_triangular_plot(df, reward_label='Reward', save_path=None):
             # Add labels and values for both triangles
             # Upper triangle: MM label and value
             ax.text(grid_col+0.75, grid_row+0.85, 'MM', 
-                   ha='center', va='center', fontsize=8, fontweight='bold', color='white')
+                   ha='center', va='center', fontsize=18, fontweight='bold', color='black')
             ax.text(grid_col+0.75, grid_row+0.65, f'{mm_reward:.1f}', 
-                   ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+                   ha='center', va='center', fontsize=18, fontweight='bold', color='black')
             
             # Lower triangle: EXEC label and value  
             ax.text(grid_col+0.25, grid_row+0.35, 'EXEC', 
-                   ha='center', va='center', fontsize=8, fontweight='bold', color='white')
+                   ha='center', va='center', fontsize=18, fontweight='bold', color='black')
             ax.text(grid_col+0.25, grid_row+0.15, f'{ea_reward:.1f}', 
-                   ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+                   ha='center', va='center', fontsize=18, fontweight='bold', color='black')
             
             print(f"  -> Placed at grid position ({grid_row}, {grid_col})")
     
@@ -110,25 +110,25 @@ def create_triangular_plot(df, reward_label='Reward', save_path=None):
     
     # Set ticks and labels
     ax.set_xticks([0.5, 1.5])
-    ax.set_xticklabels(['Baseline', 'Learned'])
-    ax.set_xlabel('ExecutionAgent (Slippage)', fontsize=14)
+    ax.set_xticklabels(['Baseline', 'Learned'], fontsize=18)
+    ax.set_xlabel('ExecutionAgent (Slippage)', fontsize=24)
     
     ax.set_yticks([0.5, 1.5])
-    ax.set_yticklabels(['Learned', 'Baseline'])  # Note: y-axis is inverted in matplotlib
-    ax.set_ylabel('MarketMaker (Portfolio Value)', fontsize=14)
+    ax.set_yticklabels(['Learned', 'Baseline'],fontsize=18,rotation='vertical')  # Note: y-axis is inverted in matplotlib
+    ax.set_ylabel('MarketMaker (Portfolio Value)', fontsize=24)
     
     # Invert y-axis to make bottom-left = BB
     ax.invert_yaxis()
     
     # Add title
-    ax.set_title(f'Agent {reward_label}: Baseline vs Learned', 
-                fontsize=16, pad=20)
+    ax.set_title(f'{reward_label}: Baseline vs Learned', 
+                fontsize=24, pad=20)
     
     # Add colorbar
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax, shrink=0.6)
-    cbar.set_label(f'{reward_label} (Range: -50 to 0)', rotation=270, labelpad=15)
+    cbar = plt.colorbar(sm, ax=ax, shrink=0.8)
+    cbar.set_label(f'{reward_label}', rotation=270, labelpad=15, fontsize=18)
     
     plt.tight_layout()
     
