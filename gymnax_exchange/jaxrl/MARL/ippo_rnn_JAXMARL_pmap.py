@@ -8,7 +8,7 @@ import pandas as pd
 import csv
 
 from docs.source import conf
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.9"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
 # os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
 # os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
@@ -365,12 +365,13 @@ def make_train(config):
 
         def speed_only_callback(metric):
             logging_dict = {
-                    # TODO: Log the quantities of interest. Keep it trivial for now.
-                    "env_step": (metric["update_steps"].sum()+1)
+                    "env_step": (metric["update_steps"][0]+1)
                     * config["NUM_ENVS"]
                     * config["NUM_STEPS"]}
+            print(metric["update_steps"],config["NUM_ENVS"],config["NUM_STEPS"])
+            print(logging_dict["env_step"])
             if config["WANDB_MODE"]!= "disabled":
-                wandb.log(logging_dict)
+                wandb.log(logging_dict) 
 
 
         def _update_step(update_runner_state,env_params,eval_env_params):
@@ -819,7 +820,7 @@ def make_train(config):
             # Run the update step:
             # if i>2 and i<4:
             #     jax.profiler.start_trace("/tmp/profile-data")
-            (runner_state,updates),metrics=compiled_update_step((runner_state,updates),env_params,eval_env_params)
+            (runner_state,updates),metrics=pmapped_update_step((runner_state,updates),env_params,eval_env_params)
             speed_only_callback(metrics)
 
             # if i>2 and i<4:
