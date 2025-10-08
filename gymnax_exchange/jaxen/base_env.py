@@ -145,7 +145,7 @@ class BaseLOBEnv(environment.Environment):
         super().__init__()
         self.window_selector = cfg.window_selector
         self.ep_type = cfg.ep_type # fixed_steps, fixed_time
-        self.episode_time = cfg.episode_time # counted by seconds, 1800s=0.5h
+        self.episode_time = cfg.episode_time # counted by seconds, 1800s=0.5h or steps
         self.n_data_msg_per_step = cfg.n_data_msg_per_step
         self.day_start = cfg.day_start  # 09:30
         self.day_end = cfg.day_end  # 16:00
@@ -229,6 +229,12 @@ class BaseLOBEnv(environment.Environment):
             jnp.array(self.cfg.window_selector, dtype=jnp.int32))
         #jax.debug.print("idx_data_window: {}", idx_data_window)
         first_state = index_tree(params.init_states_array, idx_data_window)
+        # def debug_callback(first_state,idx_data_window):
+        #     if idx_data_window == 427:  # Debugging for specific window index
+        #         print("Debugging reset for window index:", idx_data_window)
+        #         print("Resetting environment to initial state for window index:", first_state.window_index)
+        #         print("First state details:", first_state)
+        # jax.debug.callback(debug_callback, first_state, idx_data_window)
         return 0,first_state
     
     def _internal_terminal_debug(self, state: LoadedEnvState, params: LoadedEnvParams,time : chex.Array) -> bool:

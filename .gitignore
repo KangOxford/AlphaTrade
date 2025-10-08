@@ -57,6 +57,7 @@ report*
 .nv/ */
 
 
+eval_results/**
 
 .cache/
 .cache/**
@@ -105,3 +106,5 @@ saved_npz/
 .netrc
 /checkpoints/**
 .gitconfig
+
+test.py

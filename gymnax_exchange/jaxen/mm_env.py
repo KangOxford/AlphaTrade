@@ -1481,13 +1481,13 @@ class MarketMakingAgent():
         times = jnp.resize(world_state.time + self.cfg.time_delay_obs_act, (2, 2))
 
 
-        #jax.debug.print("types shape: {}", types.shape)
-        #jax.debug.print("sides shape: {}", sides.shape)
-        #jax.debug.print("quants shape: {}", quants.shape)
-        #jax.debug.print("prices shape: {}", prices.shape)
-        #jax.debug.print("order_ids shape: {}", order_ids.shape)
-        #jax.debug.print("trader_ids shape: {}", trader_ids.shape)
-        #jax.debug.print("times shape: {}", times.shape)
+        # jax.debug.print("types shape: {}", types.shape)
+        # jax.debug.print("sides shape: {}", sides.shape)
+        # jax.debug.print("quants shape: {}", quants.shape)
+        # jax.debug.print("prices shape: {}", prices.shape)
+        # jax.debug.print("order_ids shape: {}", order_ids.shape)
+        # jax.debug.print("trader_ids shape: {}", trader_ids.shape)
+        # jax.debug.print("times shape: {}", times.shape)
     
 
 
@@ -2193,11 +2193,11 @@ class MarketMakingAgent():
         
 
         #===================== 03) Set reward based on config file==================#
-        if self.cfg.reward_space == "portfolio_value":
+        if self.cfg.reward_space == "portfolio_value": #Cash balance + value of portfolio at midprice (or BB/BA)
             reward = reward_portfolio_value
         elif self.cfg.reward_space == "portfolio_value_scaled":
             reward = reward_portfolio_value/100
-        elif self.cfg.reward_space == "pnl":
+        elif self.cfg.reward_space == "pnl": #Cash balance, useless as a reward function. Will just sell to -inf. 
             reward = PnL
         elif self.cfg.reward_space == "buy_sell_pnl":
             reward = buyPnL + sellPnL
@@ -2335,27 +2335,27 @@ class MarketMakingAgent():
         info = {
             "reward":extras["reward"],
             "reward_portfolio_value":extras["reward_portfolio_value"],
-            "reward_complex":extras["reward_complex"],
+            # "reward_complex":extras["reward_complex"],
             "reward_spooner":extras[ "reward_spooner"],
-            "reward_spooner_damped":extras["reward_spooner_damped"],
-            "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
-            "reward_delta_netWorth":extras["reward_delta_netWorth"],
+            # "reward_spooner_damped":extras["reward_spooner_damped"],
+            # "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
+            # "reward_delta_netWorth":extras["reward_delta_netWorth"],
             "total_PnL": agent_state.total_PnL,                           
             "done": done,
             "inventory": agent_state.inventory,
-            "market_share":extras["market_share"],
+            # "market_share":extras["market_share"],
             "buyPnL":extras["buyPnL"],
-            "scaledInventoryPnL":extras["scaledInventoryPnL"],
-            "netWorth":extras["netWorth"],
+            # "scaledInventoryPnL":extras["scaledInventoryPnL"],
+            # "netWorth":extras["netWorth"],
             "sellPnL":extras["sellPnL"],
-            "buyQuant":extras["buyQuant"],
-            "sellQuant":extras["sellQuant"],
+            # "buyQuant":extras["buyQuant"],
+            # "sellQuant":extras["sellQuant"],
             "inventoryValue":extras["inventoryValue"],
-            "other_exec_quants":extras["other_exec_quants"],
-            "Step_PnL":extras["PnL"],
-            "InventoryPnL":extras["InventoryPnL"],
-            "approx_realized_pnl":extras["approx_realized_pnl"],
-            "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
+            # "other_exec_quants":extras["other_exec_quants"],
+            # "Step_PnL":extras["PnL"],
+            # "InventoryPnL":extras["InventoryPnL"],
+            # "approx_realized_pnl":extras["approx_realized_pnl"],
+            # "approx_unrealized_pnl": extras["approx_unrealized_pnl"]
         }
 
 
