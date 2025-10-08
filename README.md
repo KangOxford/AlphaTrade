@@ -15,12 +15,12 @@ A JAX-based framework for multi-agent reinforcement learning for high-frequency 
 
 ### Docker Setup
 
+```bash
 # Set up data directory
 mkdir -p ~/data
 ```
 
 **Note**: Configure the Makefile for your specific environment (GPU device, data directory path, etc.)
-
 
 ```bash
 # Build and run with Docker
