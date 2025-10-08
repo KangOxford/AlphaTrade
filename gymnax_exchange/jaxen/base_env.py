@@ -58,6 +58,8 @@ from contextlib import nullcontext
 from email import message
 from random import sample
 from re import L
+
+from regex import B
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -68,6 +70,7 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
+from gymnax_exchange.jaxob.jorderbook import LobState,OrderBook
 from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
 #from gymnax_exchange.jaxlobster.gen_loader import GenLoader
 from gymnax_exchange.utils.utils import *
@@ -78,6 +81,9 @@ import os
 #Config File:
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 from gymnax_exchange.jaxen.StatesandParams import LoadedEnvParams, LoadedEnvState, WorldState
+
+
+from LOBS5.lob.inference_no_errcorr import generate
 
 
 
@@ -141,34 +147,22 @@ class BaseLOBEnv(environment.Environment):
     info(additional=""):
         Prints the person's name and age.
     """
-    def __init__(self,cfg:World_EnvironmentConfig, key):
+    def __init__(self,cfg:World_EnvironmentConfig, key,total_num_msgs_per_step:int=0):
         super().__init__()
-        self.window_selector = cfg.window_selector
-        self.ep_type = cfg.ep_type # fixed_steps, fixed_time
-        self.episode_time = cfg.episode_time # counted by seconds, 1800s=0.5h or steps
-        self.n_data_msg_per_step = cfg.n_data_msg_per_step
-        self.day_start = cfg.day_start  # 09:30
-        self.day_end = cfg.day_end  # 16:00
-        self.nOrdersPerSide=cfg.nOrdersPerSide #100
-        self.nTradesLogged=cfg.nTradesLogged
-        self.book_depth=cfg.book_depth
-        self.n_ticks_in_book = cfg.n_ticks_in_book 
-        self.customIDCounter=cfg.customIDCounter
-        self.tick_size=cfg.tick_size
-        self.start_resolution = cfg.start_resolution  # Use value from config
         self.cfg = cfg
+        self.total_num_msgs_per_step=total_num_msgs_per_step
 
         loader=LoadLOBSTER_resample(self.cfg.dataPath,
                                     self.cfg.alphatradePath,
-                                self.book_depth,
-                                self.ep_type,
-                                window_length=self.episode_time,
-                                n_data_msg_per_step=self.n_data_msg_per_step,
-                                window_resolution=self.start_resolution,
-                                day_start=self.day_start,
-                                day_end=self.day_end,
-                                stock=self.cfg.stock,
-                                time_period=self.cfg.timePeriod) 
+                                    self.cfg.book_depth,
+                                    self.cfg.ep_type,
+                                    window_length=self.cfg.episode_time,
+                                    n_data_msg_per_step=self.cfg.n_data_msg_per_step,
+                                    window_resolution=self.cfg.start_resolution,
+                                    day_start=self.cfg.day_start,
+                                    day_end=self.cfg.day_end,
+                                    stock=self.cfg.stock,
+                                    time_period=self.cfg.timePeriod) 
         msgs,starts,ends,books,max_messages_arr=loader.run_loading()
 
 
@@ -228,6 +222,7 @@ class BaseLOBEnv(environment.Environment):
             jax.random.randint(key, minval=0, maxval=self.n_windows, shape=()),  
             jnp.array(self.cfg.window_selector, dtype=jnp.int32))
         first_state = index_tree(params.init_states_array, idx_data_window)
+        
         # def debug_callback(first_state,idx_data_window):
         #     if idx_data_window == 427:  # Debugging for specific window index
         #         print("Debugging reset for window index:", idx_data_window)
@@ -281,17 +276,22 @@ class BaseLOBEnv(environment.Environment):
         bids_raw=job.init_orderside(self.cfg.nOrders)
         trades_init=(jnp.ones((self.cfg.nTrades,8))*-1).astype(jnp.int32)
         #Process the initial messages through the orderbook
-        ordersides=job.scan_through_entire_array(self.cfg,key,init_orders,(asks_raw,bids_raw,trades_init))
-        
- 
-        
+        ordersides,bidasks=job.scan_through_entire_array_save_bidask(self.cfg,key,init_orders,(asks_raw,bids_raw,trades_init),self.total_num_msgs_per_step)
+        best_bids,best_asks=bidasks
+
+        # Repeat best asks to match the shape we need
+        best_asks = jnp.repeat(best_asks[-1:,:], (self.total_num_msgs_per_step), axis=0)
+        best_bids = jnp.repeat(best_bids[-1:,:], (self.total_num_msgs_per_step), axis=0)
+
         return LoadedEnvState(ask_raw_orders=ordersides[0],
                         bid_raw_orders=ordersides[1],
                         trades=ordersides[2],
-                        init_time=jnp.array([(window_index*self.start_resolution) 
-                                                        %(self.day_end-self.day_start-self.episode_time+self.start_resolution)
-                                                        +self.day_start,0])
-                                    if self.ep_type=="fixed_time" else time,
+                        best_bids=best_bids,
+                        best_asks=best_asks,
+                        init_time=jnp.array([(window_index*self.cfg.start_resolution) 
+                                                        %(self.cfg.day_end-self.cfg.day_start-self.cfg.episode_time+self.cfg.start_resolution)
+                                                        +self.cfg.day_start,0])
+                                    if self.cfg.ep_type=="fixed_time" else time,
                         window_index=window_index,
                         max_steps_in_episode=max_steps_in_episode,
                         start_index=start_index,
@@ -329,7 +329,7 @@ class BaseLOBEnv(environment.Environment):
                                                 self.messages[starts[i]],
                                                 self.books[i],
                                                 self.max_messages_in_episode_arr[i]
-                                                    //self.n_data_msg_per_step+1,
+                                                    //self.cfg.n_data_msg_per_step+1,
                                                     i,
                                                     starts[i]) 
                         for i in range(self.n_windows)]
@@ -354,9 +354,9 @@ class BaseLOBEnv(environment.Environment):
             Returns:
                     Messages (Array): 2D array of messages for step 
         """
-        index_offset=start+self.n_data_msg_per_step*step_counter
+        index_offset=start+self.cfg.n_data_msg_per_step*step_counter
         
-        messages=jax.lax.dynamic_slice_in_dim(messageData,index_offset,self.n_data_msg_per_step,axis=0)
+        messages=jax.lax.dynamic_slice_in_dim(messageData,index_offset,self.cfg.n_data_msg_per_step,axis=0)
         #jax.debug.print("{}",messages)
         #jax.debug.print("End time: {}",end_time_s)
         #messages=messageData[index_offset:(index_offset+self.n_data_msg_per_step),:]
@@ -375,7 +375,7 @@ class BaseLOBEnv(environment.Environment):
             messages=jnp.concatenate((m_wout_time,messages[:,-2:]),axis=1,dtype=jnp.int32)
         return messages
     
-    def _get_generative_messages(self,previous_messages,n_messages):
+    def _get_generative_messages(self,messages_to_update_state,n_messages):
         """Draft Generative Loader:
         Inputs:
         
@@ -393,6 +393,61 @@ class BaseLOBEnv(environment.Environment):
         
 
         return messages
+    
+    def process_with_backround(self,state:LoadedEnvState,params:LoadedEnvParams,action_messages : chex.Array, key : chex.PRNGKey):
+        
+        match self.cfg.background_process:
+            case "historical_data":
+                data_messages = self._get_data_messages(
+                    params.message_data,
+                    state.start_index,
+                    state.step_counter,
+                    state.init_time[0] + self.cfg.episode_time
+                )
+                combined_msgs = jnp.concatenate([action_messages, data_messages], axis=0)
+
+
+                trades_reinit = (jnp.ones((self.cfg.nTradesLogged, 8)) * -1).astype(jnp.int32)
+                (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
+                    self.cfg,  
+                    key,  
+                    combined_msgs,
+                    (state.ask_raw_orders, state.bid_raw_orders, trades_reinit),
+                    self.total_num_msgs_per_step
+                )
+
+                new_bestasks = ffill_best_prices(new_bestasks, state.best_asks[-1, 0]) # TODO Do we need this?
+                new_bestbids = ffill_best_prices(new_bestbids, state.best_bids[-1, 0])
+
+                final_time = combined_msgs[-1, -2:]
+            case "lobs5":
+                #Process the last of the data messages from the previous step, and the action messages as context, then generate new messages.
+
+                #@partial(jax.jit, static_argnums=(0, 2, 3, 5, 6, 9))
+                generate(
+                        sim: OrderBook,  # static
+                        train_state: TrainState,
+                        model: nn.Module,  # static
+                        batchnorm: bool,  # static
+                        encoder: Dict[str, Tuple[jax.Array, jax.Array]],
+                        sample_top_n: int,  # static
+                        tick_size: int,  # static
+                        m_seq: jax.Array,
+                        b_seq: jax.Array,
+                        n_msg_todo: int,  # static
+                        sim_state: LobState,
+                        rng: jax.dtypes.prng_key,
+                        # if eval_msgs given, also returns loss of predictions
+                        # e.g. to calculate perplexity
+                        # m_seq_eval: Optional[jax.Array] = None,
+                    ) 
+                    #-> Tuple[jax.Array, jax.Array, jax.Array, jax.Array, jax.Array]:
+                raise NotImplementedError(f"Background process {self.cfg.background_process} not implemented yet.")
+
+            case  "lobs5v2" | "rwkv6" | "cont" | "mamba":
+                raise NotImplementedError(f"Background process {self.cfg.background_process} not implemented yet.")
+
+        return new_asks, new_bids, new_trades, new_bestasks, new_bestbids, final_time
     
     def _get_pass_price_quant(self, state):
             """Get price and quanitity n_ticks into books"""

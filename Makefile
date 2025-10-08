@@ -1,7 +1,7 @@
 NVCC_RESULT := $(shell which nvcc 2> NULL; rm NULL)
 NVCC_TEST := $(notdir $(NVCC_RESULT))
 ifeq ($(NVCC_TEST),nvcc)
-GPUS=--gpus '"device=5,7"'
+GPUS=--gpus '"device=0"'
 else
 GPUS=
 endif
@@ -16,8 +16,11 @@ DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data
 endif
+
+
+
 BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G 
-PORT_FLAGS= -p 8063:80 -p 8066:6006
+PORT_FLAGS= -p 8064:80 -p 8066:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS) $(PORT_FLAGS)
 BASIC_FLAGS=$(GPUS) $(BASE_FLAGS)
 

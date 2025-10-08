@@ -114,6 +114,35 @@ def hamilton_apportionment_permuted_jax(votes, seats, key):
     return init_seats
 
 
+def ffill_best_prices(prices_quants, last_valid_price):
+        def ffill(arr, inval=-1):
+            """ Forward fill array values `inval` with previous value """
+            def f(prev, x):
+                new = jnp.where(x != inval, x, prev)
+                return (new, new)
+            # initialising with inval in case first value is already invalid
+            _, out = jax.lax.scan(f, inval, arr)
+            return out
+
+        # if first new price is invalid (-1), copy over last price
+        prices_quants = prices_quants.at[0, 0:2].set(
+            jnp.where(
+                # jnp.repeat(prices_quants[0, 0] == -1, 2),
+                prices_quants[0, 0] == -1,
+                jnp.array([last_valid_price, 0]),
+                prices_quants[0, 0:2]
+            )
+        )
+        # set quantity to 0 if price is invalid (-1)
+        prices_quants = prices_quants.at[:, 1].set(
+            jnp.where(prices_quants[:, 0] == -1, 0, prices_quants[:, 1])
+        )
+        # forward fill new prices if some are invalid (-1)
+        prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
+        # jax.debug.print("prices_quants\n {}", prices_quants)
+        return prices_quants
+
+
 def create_init_book(cfg:job.JAXLOB_Configuration,
                      order_capacity=10,
                      trade_capacity=10,

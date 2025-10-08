@@ -1,7 +1,9 @@
+from re import L
 import jax.numpy as jnp
 from flax import struct
 from typing import Any
 import chex
+from gymnax_exchange.jaxob.jorderbook import LobState
 
 
 
@@ -13,9 +15,9 @@ import chex
 
 @struct.dataclass
 class LoadedEnvState:
-    ask_raw_orders: chex.Array
-    bid_raw_orders: chex.Array
-    trades: chex.Array
+    order_book_state: LobState
+    best_bids: chex.Array #Best prices & quants for every step processed. E.g. if processing N msgs, contains data for state after each msg
+    best_asks: chex.Array
     init_time: chex.Array
     window_index:int
     max_steps_in_episode: int
@@ -27,8 +29,6 @@ class LoadedEnvState:
 @struct.dataclass
 class WorldState(LoadedEnvState):
     # But everything here that is not loaded from the base config but shared by all agents
-    best_bids: jnp.ndarray
-    best_asks: jnp.ndarray
     time: chex.Array
     order_id_counter: int
     mid_price:float
@@ -40,7 +40,6 @@ class WorldState(LoadedEnvState):
 class MultiAgentState():
     # Sub–state for market maker and execution agent.
     world_state: WorldState
-
     agent_states: list[Any]
 
 

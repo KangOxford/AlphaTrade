@@ -56,7 +56,6 @@ class MARLEnv(MultiAgentEnv):
         super().__init__(num_agents=self.num_agents)
 
        # Pass config to base class which does all of the work related to jaxlob.
-        self.base_env = BaseLOBEnv(cfg=self.multi_agent_config.world_config, key=key)
 
 
         # Split the key for each sub-environments:
@@ -92,6 +91,11 @@ class MARLEnv(MultiAgentEnv):
 
         self.num_msgs_per_step = int(num_msg_per_step)
         self.num_action_msgs_per_step_by_all_agents = int(num_action_msg_per_step_by_all_agents)
+
+        self.base_env = BaseLOBEnv(cfg=self.multi_agent_config.world_config,
+                                    key=key,
+                                    total_num_msgs_per_step=self.num_msgs_per_step)
+
 
     @property
     def default_params(self) -> MultiAgentParams:
@@ -142,20 +146,14 @@ class MARLEnv(MultiAgentEnv):
 
         # Get the Load State
         _,load_state = self.base_env.reset_env(key=world_key, params=params.loaded_params)
+        
 
-        # Reset all variables in the world state that are not on the Load State
-        # For bet bids and ask repeat the inital best bids and ask num of messages times
-        best_ask, best_bid = job.get_best_bid_and_ask_inclQuants(self.multi_agent_config.world_config, askside=load_state.ask_raw_orders, bidside=load_state.bid_raw_orders)
-        bestbids = jnp.tile(best_bid[None, :], (self.num_msgs_per_step, 1))
-        bestasks = jnp.tile(best_ask[None, :], (self.num_msgs_per_step, 1))#
-        mid_price = jnp.float32((best_bid[0] + best_ask[0]) / 2)
+        mid_price = jnp.float32((load_state.best_bids[0,0] + load_state.best_asks[0,0]) / 2)
         # print(f"mid_price: {mid_price}")  
 
         # Create the world state
         world_state = WorldState(
             **dataclasses.asdict(load_state),  # copy all fields from the loaded state
-            best_bids=bestbids,
-            best_asks=bestasks,
             # step_counter=0,
             time=load_state.init_time,
             order_id_counter=self.multi_agent_config.world_config.order_id_counter_start_when_resetting,
@@ -230,12 +228,15 @@ class MARLEnv(MultiAgentEnv):
         # -------------------------------------------------------
         # (B) Build External Data Messages (common to all agents)
         # -------------------------------------------------------
-        data_messages = self.base_env._get_data_messages(
-            params.loaded_params.message_data,
-            state.world_state.start_index,
-            state.world_state.step_counter,
-            state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time
-        )
+
+
+        """Removed from MARL class and put into process_env specific to the historical data case"""
+        # data_messages = self.base_env._get_data_messages(
+        #     params.loaded_params.message_data,
+        #     state.world_state.start_index,
+        #     state.world_state.step_counter,
+        #     state.world_state.init_time[0] + self.multi_agent_config.world_config.episode_time
+        # )
 
 
         # -------------------------------------------------------
@@ -302,7 +303,7 @@ class MARLEnv(MultiAgentEnv):
 
 
         # Combine action and cancel messages
-        combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs, data_messages], axis=0)
+        combined_msgs = jnp.concatenate([all_cancel_msgs, all_action_msgs], axis=0)
 
 
         #jax.debug.print("actions: {}", actions)
@@ -311,8 +312,6 @@ class MARLEnv(MultiAgentEnv):
         #jax.debug.print("combined msgs: {}", combined_msgs)
         #jax.debug.print(f"all action msgs: {all_action_msgs}")
         
-
-
 
 
         #jax.debug.print("best ask prices: {}", state.world_state.best_asks[-1])
@@ -329,20 +328,21 @@ class MARLEnv(MultiAgentEnv):
         # (D) Process combined messages through the order book
         # -------------------------------------------------------
 
+        new_asks, new_bids, new_trades, new_bestasks, new_bestbids, final_time = self.base_env.process_with_backround(
+            state.world_state,
+            params.loaded_params,
+            combined_msgs,
+            key
+        )
+
+
         #print("-------------------------------- ")
         #print("start processing combined messages")
         #print("--------------------------------")
 
         #print("hash of self: ", hash(self))
 
-        trades_reinit = (jnp.ones((self.multi_agent_config.world_config.nTradesLogged, 8)) * -1).astype(jnp.int32)
-        (new_asks, new_bids, new_trades), (new_bestasks, new_bestbids) = job.scan_through_entire_array_save_bidask(
-            self.multi_agent_config.world_config,  
-            key,  
-            combined_msgs,
-            (state.world_state.ask_raw_orders, state.world_state.bid_raw_orders, trades_reinit),
-             self.num_msgs_per_step
-        )
+        """Removed from MARL class and put into process_env specific to the historical data case"""
 
         #print("--------------------------------")
         #print("end processing combined messages")
@@ -350,8 +350,7 @@ class MARLEnv(MultiAgentEnv):
 
 
         # Forward-fill best prices if necessary:
-        new_bestasks = self._ffill_best_prices(new_bestasks, state.world_state.best_asks[-1, 0]) # TODO Do we need this?
-        new_bestbids = self._ffill_best_prices(new_bestbids, state.world_state.best_bids[-1, 0])
+        
 
 
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
@@ -364,7 +363,6 @@ class MARLEnv(MultiAgentEnv):
 
 
         #TODO: Could use some constants for indexing here, rather than magic numbers
-        final_time = combined_msgs[-1, -2:]
         # def debug_callback_time(world_state, final_time,combined_msgs):
         #     print("Window Index: ", world_state.window_index)
         #     if world_state.window_index == 427:
@@ -629,49 +627,6 @@ class MARLEnv(MultiAgentEnv):
 
             
         return agent_obs_list, new_multi_state, agent_reward_list, dones, info
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def _ffill_best_prices(self, prices_quants, last_valid_price):
-            def ffill(arr, inval=-1):
-                """ Forward fill array values `inval` with previous value """
-                def f(prev, x):
-                    new = jnp.where(x != inval, x, prev)
-                    return (new, new)
-                # initialising with inval in case first value is already invalid
-                _, out = jax.lax.scan(f, inval, arr)
-                return out
-
-            # if first new price is invalid (-1), copy over last price
-            prices_quants = prices_quants.at[0, 0:2].set(
-                jnp.where(
-                    # jnp.repeat(prices_quants[0, 0] == -1, 2),
-                    prices_quants[0, 0] == -1,
-                    jnp.array([last_valid_price, 0]),
-                    prices_quants[0, 0:2]
-                )
-            )
-            # set quantity to 0 if price is invalid (-1)
-            prices_quants = prices_quants.at[:, 1].set(
-                jnp.where(prices_quants[:, 0] == -1, 0, prices_quants[:, 1])
-            )
-            # forward fill new prices if some are invalid (-1)
-            prices_quants = prices_quants.at[:, 0].set(ffill(prices_quants[:, 0]))
-            # jax.debug.print("prices_quants\n {}", prices_quants)
-            return prices_quants
-
-
-
 
 
     # Overrriding the parent function because we want to vmap over different agents of the same type

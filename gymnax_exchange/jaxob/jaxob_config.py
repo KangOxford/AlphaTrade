@@ -24,7 +24,7 @@ class JAXLOB_Configuration:
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2024" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2017Jan_oneweek" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)
@@ -155,6 +155,7 @@ class Execution_EnvironmentConfig():
 class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
     window_selector = -1 # -1 means random window
+    background_process="historical_data" # "historical_data" or "lobs5" or "lobs5v2" or "rwkv6" or "cont" or "mamba" NOTE: Not all implemeneted. 
     ep_type :str = "fixed_steps" # fixed_steps, fixed_time
     episode_time: int = 64 # counted by seconds, 1800s=0.5h or steps
     day_start = 34200  # 09:30
