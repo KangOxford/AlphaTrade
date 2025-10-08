@@ -1,6 +1,6 @@
 # JAXMARL-HFT: GPU-Accelerated Multi-Agent Reinforcement Learning for High-Frequency Trading
 
-A JAX-based framework for multi-agent reinforcement learning in high-frequency trading environments, featuring GPU-accelerated order book simulation and market making algorithms.
+A JAX-based framework for multi-agent reinforcement learning for high-frequency trading
 
 ## Key Features
 
@@ -13,17 +13,14 @@ A JAX-based framework for multi-agent reinforcement learning in high-frequency t
 
 ## Quick Start
 
-### Installation
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
+### Docker Setup
 
 # Set up data directory
 mkdir -p ~/data
 ```
 
-### Docker Setup
+**Note**: Configure the Makefile for your specific environment (GPU device, data directory path, etc.)
+
 
 ```bash
 # Build and run with Docker
@@ -38,28 +35,22 @@ make run
 python3 gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py
 ```
 
-## Performance
-
-JAXMARL-HFT achieves significant speed improvements over existing frameworks:
-
-- **Environment Rollouts**: Up to 351,119 steps/second (vs 4,896 for CPU-MARL)
-- **RL Training**: 5x-240x speedup depending on agent count
-- **Memory Efficiency**: Full year of AMZN data in 4GB GPU memory
-- **Multi-GPU Support**: 50x speedup with 8 GPUs vs single GPU
-
 ## Agent Types
 
 ### Market Making Agents
-- **Action Spaces**: Spread-Skew, Fixed Quantity, Avellaneda-Stoikov
-- **Reward Functions**: Spooner, Buy-Sell PnL with configurable inventory penalties
-- **Observation Spaces**: Flexible feature sets from simple statistics to complex LOB states
+- **Purpose**: Provide liquidity by posting bid/ask orders
+- **Action Spaces**: Multiple discrete action spaces (spread_skew, fixed_quants, AvSt, directional_trading, simple)
+- **Reward Functions**: Various PnL-based rewards with configurable inventory penalties
+- **Observation Spaces**: Engineered features, message-based, or basic LOB statistics
 
 ### Execution Agents  
-- **Action Spaces**: Discrete quantity selection at reference prices
-- **Task Types**: Large order execution with minimal market impact
-- **Reward Functions**: Slippage-based with end-of-episode penalties
+- **Purpose**: Execute large orders with minimal market impact
+- **Action Spaces**: Discrete quantity selection at reference prices (fixed_quants, fixed_prices, complex variants)
+- **Task Types**: Random, buy, or sell execution tasks
+- **Reward Functions**: Slippage-based with configurable end-of-episode penalties
 
 ### Directional Trading
+- **Purpose**: Simple directional trading strategy
 - **Action Spaces**: Bid/ask at best prices or no action
 - **Strategy**: Reuses market making infrastructure with specialized actions
 
@@ -67,11 +58,10 @@ JAXMARL-HFT achieves significant speed improvements over existing frameworks:
 
 ```
 gymnax_exchange/
-├── jaxen/           # Environment implementations
+├── jaxen/            # Environment implementations
 │   ├── marl_env.py  # Multi-agent RL environment
-│   ├── mm_env.py    # Market making environment  
-│   ├── exec_env.py  # Execution environment
-│   └── Speed_test.py # Performance benchmarking
+│   ├── mm_env.py    # Market making (and directional trading) environment  
+│   └── exec_env.py  # Execution environment
 ├── jaxrl/           # Reinforcement learning algorithms
 │   └── MARL/        # IPPO implementation
 ├── jaxob/           # Order book implementation
