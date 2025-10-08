@@ -20,7 +20,7 @@ class JAXLOB_Configuration:
     simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val=cst.EMPTY_SLOT
     debug_mode:bool=False
-    start_resolution: int = 640  # Episodes from data start every n seconds.
+    start_resolution: int = 50  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
@@ -108,7 +108,7 @@ class Execution_EnvironmentConfig():
     observation_space: str = "engineered"  # options: "engineered", "basic", "simplest_case"
     reward_space: str = "normal"  # options: "normal", "finish_fast", "simplest_case"
     #end_fn:Literal["force_market_order","unwind_FT"]="unwind_FT"
-    task_size:int= 100
+    task_size:int= 500
     n_actions:int=5 # will be set automatically in the post init function
     fixed_quant_value:int=10
     num_messages_by_agent:int=8 # will be set automatically in the post init function
@@ -156,7 +156,7 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 1
     window_selector = -1 # -1 means random window
     ep_type :str = "fixed_steps" # fixed_steps, fixed_time
-    episode_time: int = 32 # counted by seconds, 1800s=0.5h or steps
+    episode_time: int = 50 # counted by seconds, 1800s=0.5h or steps
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
     nOrdersPerSide=100 #100

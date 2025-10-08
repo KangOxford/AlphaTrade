@@ -30,7 +30,7 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "fixed_steps_2024"
+"PROJECT": "test2"
 "WANDB_MODE" : "online"
 
 # High-Level Params

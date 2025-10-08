@@ -140,7 +140,6 @@ def make_train(config):
     init_key = jax.random.PRNGKey(config["SEED"])
     config_dict={"MarketMaking": MarketMaking_EnvironmentConfig,"Execution": Execution_EnvironmentConfig}
     print("init_key: ", init_key)
-    ###############CLAUDE##############
     # Create a MultiAgentConfig object with parameters from the config
     agent_configs = {}
     if "AGENT_CONFIGS" in config:
@@ -792,19 +791,21 @@ def make_train(config):
         orbax_checkpointer = oxcp.PyTreeCheckpointer()
         options = oxcp.CheckpointManagerOptions(max_to_keep=2, create=True,keep_period=config["NUM_UPDATES"]//2)
         checkpoint_manager = oxcp.CheckpointManager(
-             f'/home/myuser/data/checkpoints/MARLCheckpoints/{config["PROJECT"]}/{(run.name if run.name else run.id) if run else "GENERIC_RUN"}', orbax_checkpointer, options
+             f'/home/myuser/checkpoints/MARLCheckpoints/{config["PROJECT"]}/{(run.name if run.name else run.id) if run else "GENERIC_RUN"}', orbax_checkpointer, options
                 )
 
         updates=0
         for i in range(config["NUM_UPDATES"]):
             print(f"Update step {i+1}/{config['NUM_UPDATES']}")
             # Run the update step:
-            #if i>2 and i<4:
-                #jax.profiler.start_trace("/tmp/profile-data")
+            if config["world_config"]["debug_mode"] == True:
+                if i>2 and i<4:
+                    jax.profiler.start_trace("/tmp/profile-data")
             (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params,eval_env_params,None)
-            if i>2 and i<4:
-                jax.block_until_ready((runner_state,updates,metrics))
-                jax.profiler.stop_trace()
+            if config["world_config"]["debug_mode"] == True:
+                if i>2 and i<4:
+                    jax.block_until_ready((runner_state,updates,metrics))
+                    jax.profiler.stop_trace()
             print(f"Update step {updates} completed with metrics {metrics['avg_reward']}")
             ckpt = {
                 'model': runner_state[0],  # train_states
@@ -839,7 +840,6 @@ def main(config):
     env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
-
 
     print(config)
 
