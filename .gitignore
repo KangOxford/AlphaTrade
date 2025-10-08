@@ -103,3 +103,5 @@ saved_npz/**
 saved_npz/
 
 test.py
+
+data/**
