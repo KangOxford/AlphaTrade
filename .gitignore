@@ -103,3 +103,4 @@ outputs/**
 saved_npz/**
 saved_npz/
 .netrc
+/checkpoints/**
