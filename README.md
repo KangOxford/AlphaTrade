@@ -70,7 +70,18 @@ gymnax_exchange/
 
 ## Configuration
 
-Edit configuration files in `gymnax_exchange/jaxrl/MARL/config/` to customize:
+The framework uses a comprehensive configuration system with dataclasses for different components:
+
+### Core Configuration Classes
+
+- **`MultiAgentConfig`**: Main configuration combining world and agent settings
+- **`World_EnvironmentConfig`**: Global environment parameters (data paths, episode settings, market hours)
+- **`MarketMaking_EnvironmentConfig`**: Market making (and directional trading) agent configuration (action spaces, reward functions, observation spaces)
+- **`Execution_EnvironmentConfig`**: Execution agent configuration (task types, action spaces, reward parameters)
+
+### Training Configuration
+
+Edit YAML files in `gymnax_exchange/jaxrl/MARL/config/` to customize:
 - Number of parallel environments (default: 4096)
 - Training parameters (steps, learning rates, etc.)
 - Agent configurations (action spaces, reward functions)
