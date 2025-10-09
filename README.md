@@ -41,18 +41,16 @@ python3 gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py
 - **Purpose**: Provide liquidity by posting bid/ask orders
 - **Action Spaces**: Multiple discrete action spaces (spread_skew, fixed_quants, AvSt, directional_trading, simple)
 - **Reward Functions**: Various PnL-based rewards with configurable inventory penalties
-- **Observation Spaces**: Engineered features, message-based, or basic LOB statistics
 
 ### Execution Agents  
 - **Purpose**: Execute large orders with minimal market impact
 - **Action Spaces**: Discrete quantity selection at reference prices (fixed_quants, fixed_prices, complex variants)
-- **Task Types**: Random, buy, or sell execution tasks
 - **Reward Functions**: Slippage-based with configurable end-of-episode penalties
 
 ### Directional Trading
 - **Purpose**: Simple directional trading strategy
 - **Action Spaces**: Bid/ask at best prices or no action
-- **Strategy**: Reuses market making infrastructure with specialized actions
+- **Reward Function**: Portfolio value
 
 ## Repository Structure
 
