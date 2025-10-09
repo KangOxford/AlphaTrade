@@ -24,7 +24,7 @@ class JAXLOB_Configuration:
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2024" # Needs to be the appropriate directory name. "2017Jan_oneday", "2024"
+    timePeriod: str = "2017Jan_oneday" # Needs to be the appropriate directory name. "2017Jan_oneday", "2024"
 
 
 @dataclass(frozen=True)

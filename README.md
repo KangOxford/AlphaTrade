@@ -1,6 +1,6 @@
 # JAXMARL-HFT: GPU-Accelerated Multi-Agent Reinforcement Learning for High-Frequency Trading
 
-A JAX-based framework for multi-agent reinforcement learning for high-frequency trading
+A JAX-based framework for multi-agent reinforcement learning for high-frequency trading.
 
 ## Key Features
 

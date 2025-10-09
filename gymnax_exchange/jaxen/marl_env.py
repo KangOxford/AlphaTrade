@@ -1023,7 +1023,7 @@ if __name__ == "__main__":
                 print(f"  {p:2d}th percentile: {value:8.2f}")
             print()
 
-            print_extreme_environments = True
+            print_extreme_environments = False
             if print_extreme_environments:
 
                 for i in range(len(traj_rew)):

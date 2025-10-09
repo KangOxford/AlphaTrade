@@ -27,12 +27,12 @@ RUN apt-get update && \
     graphviz \
     libcupti-dev
 # Copy requirements.txt and verify its contents
-COPY --chown=${MYUSER}:${MYUSER} requirements_post_segfault.txt /home/${MYUSER}/AlphaTrade/
-RUN ls -l && cat requirements_post_segfault.txt
+COPY --chown=${MYUSER}:${MYUSER} requirements.txt /home/${MYUSER}/AlphaTrade/
+RUN ls -l && cat requirements.txt
 
 #jaxmarl from source if needed, all the requirements
 # RUN pip install -e .[algs,dev]
-RUN pip install --no-cache-dir -r requirements_post_segfault.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 
 RUN wget https://go.dev/dl/go1.24.5.linux-amd64.tar.gz
@@ -65,7 +65,3 @@ ENV WANDB_API_KEY=""
 ENV WANDB_ENTITY=""
 RUN git config --global --add safe.directory /home/${MYUSER}
 
-
-# Probably unnecessary to configure git user, but uncomment if needed
-# RUN git config --global user.email "reuben@robots.ox.ac.uk" && \
-#     git config --global user.name "reuben"
