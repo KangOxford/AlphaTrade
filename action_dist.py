@@ -49,20 +49,20 @@ def create_bar_chart(data, action_cols, output_file='action_distribution_plot.pn
         for bar in bars:
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                   f'{height:.1f}%', ha='center', va='bottom', fontsize=12)
+                   f'{height:.1f}%', ha='center', va='bottom', fontsize=16)
     
     # Customize the plot
-    ax.set_xlabel('Actions', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Percentage (%)', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Actions', fontsize=18, fontweight='bold')
+    ax.set_ylabel('Percentage (%)', fontsize=18, fontweight='bold')
     ax.set_title('Action Distribution by Type (Averaged Across Three Seeds)', 
                 fontsize=18, fontweight='bold')
     
     # Set x-axis labels
     ax.set_xticks(r + bar_width * (n_types - 1) / 2)
-    ax.set_xticklabels(action_cols, fontsize=12)
+    ax.set_xticklabels(action_cols, fontsize=16)
     
     # Add legend
-    ax.legend(title='Types', loc='upper right', fontsize=14)
+    ax.legend(title='Types', loc='upper right', fontsize=18, title_fontsize=18)
     
     # Add grid for better readability
     ax.grid(True, alpha=0.3, linestyle='--')

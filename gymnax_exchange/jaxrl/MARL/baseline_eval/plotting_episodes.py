@@ -34,7 +34,7 @@ def main():
         parser = argparse.ArgumentParser(description="Plot episode features from trajectory data")
         parser.add_argument("--directory", "-d", type=str, default="trajectories", 
                             help="Directory containing trajectory pickle files")
-        parser.add_argument("--combo", "-c", type=str, nargs='+', default=["BB"], 
+        parser.add_argument("--combo", "-c", type=str, nargs='+', default=["BB,LL"], 
                     help="Combo description(s) to filter pickle files (can provide multiple)")
         parser.add_argument("--save", type=str, default="intra-episode-figs", 
                     help="Save Directory for plots (can provide multiple)")
@@ -90,10 +90,10 @@ def plot_same_axis(env_indices, features,combos,input_dir="", output_dir="intra-
                         if len(values.shape) <= 2:  # Only plot simple scalar features
                             env_values = values[:, env_actual] if len(values.shape) > 1 else values
                             info_axes[env_idx].plot(steps, env_values, color=cmap(c_indx), label=f"Execution Agent - {c}")
-                            info_axes[env_idx].set_title(f"Trajectory plot for {key} measure")
-                            info_axes[env_idx].set_xlabel("Steps")
-                            info_axes[env_idx].set_ylabel(key)
-                            info_axes[env_idx].legend()
+                            info_axes[env_idx].set_title(f"Trajectory plot for {key} measure",fontsize=18)
+                            info_axes[env_idx].set_xlabel("Steps",fontsize=16)
+                            info_axes[env_idx].set_ylabel(key,fontsize=16)
+                            info_axes[env_idx].legend(fontsize=18,title_fontsize=18)
                             info_axes[env_idx].grid(True)
                         else:
                             print(f"Skipping plotting for {key} as it has more than 2 dimensions. {values.shape}")

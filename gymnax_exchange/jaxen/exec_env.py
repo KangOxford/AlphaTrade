@@ -943,7 +943,8 @@ class ExecutionAgent():
     def _getActionMsgs_fixedQuant_1msg(self, action: jax.Array, world_state: WorldState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
         """Action function for the fixed Quant Action space
         Pick for a ladder of quant execution options
-        Always send 4 messages
+        Always send 1 message.
+        NOTE: This should be the default way of implementing if only a single PL can be chosen. Other versions were lazy re-use of old code. 
         0 = No trade
         1=      # FT
         2=     # M
@@ -1787,7 +1788,7 @@ class ExecutionAgent():
             lambda trades, b, c, d: trades,  # If not, return the existing trades
             trades, doom_price, side_sign*jnp.abs(quant_left), time  # Inv +ve means incoming is sell so standing buy.
         )
-        #Return traded amounts
+        #Return traded amounts - Just for logging 
         doom_quant = ep_is_over * quant_left
 
         #jax.debug.print("trades exec env: {}", trades)
