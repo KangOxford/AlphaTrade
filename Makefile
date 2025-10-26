@@ -31,7 +31,7 @@ ID = $(shell id -u)
 
 # make file commands
 build:
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile --build-arg USE_CUDA=$(USE_CUDA) --build-arg MYUSER=$(MYUSER) --build-arg UID=$(ID) --tag $(IMAGE) --progress=plain ${PWD}/. 
+	DOCKER_BUILDKIT=1 docker build -f dockerfileold --build-arg USE_CUDA=$(USE_CUDA) --build-arg MYUSER=$(MYUSER) --build-arg UID=$(ID) --tag $(IMAGE) --progress=plain ${PWD}/. 
 	
 
 run:
