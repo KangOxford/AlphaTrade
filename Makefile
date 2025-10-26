@@ -16,7 +16,8 @@ DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data
 endif
-BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data --shm-size 20G 
+SCRATCH_DIR=~/scratch_LOB
+BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data -v $(SCRATCH_DIR):/home/$(MYUSER)/scratch --shm-size 20G
 PORT_FLAGS= -p 8061:80 -p 8066:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS) $(PORT_FLAGS)
 BASIC_FLAGS=$(GPUS) $(BASE_FLAGS)
