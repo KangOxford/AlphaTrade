@@ -168,8 +168,8 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     trader_id_range_start=-100 # -1 is reserved for the placeholder in the messages object
     placeholder_order_id = -9
     last_step_seconds = 5
-    artificial_trader_id_end_episode = -666666 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
-    artificial_order_id_end_episode = -666666 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
+    artificial_trader_id_end_episode = -199 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
+    artificial_order_id_end_episode = -199 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
     debug_mode:bool=False
     any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
     order_id_counter_start_when_resetting:int=-200
