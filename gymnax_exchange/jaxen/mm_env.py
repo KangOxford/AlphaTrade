@@ -155,17 +155,7 @@ class MarketMakingAgent():
         self.cfg=cfg
         self.world_config = world_config
 
-        ##Choose observation space based on config.
-        if self.cfg.observation_space == "engineered":
-            self.observation_fn = self._get_obs_engineered
-        elif self.cfg.observation_space == "messages":
-            self.observation_fn = self._get_obs_msg
-        elif self.cfg.observation_space == "messages_new_tokenizer":
-            self.observation_fn = self._get_obs_msg_new_tokenizer
-        elif self.cfg.observation_space == "basic":
-            self.observation_fn = self._get_obs_basic
-        else:
-            raise ValueError("Invalid observation_space specified.")
+
         
         ##Choose get action message function based on config
         if self.cfg.action_space == "fixed_quants":
@@ -2388,25 +2378,26 @@ class MarketMakingAgent():
         Wrapper function to call the appropriate observation function.
         """
         if self.cfg.observation_space == "engineered":
-            return self.observation_fn(world_state=world_state, 
+            return self._get_obs_engineered(world_state=world_state, 
                                        agent_state=agent_state, 
                                        normalize=normalize,
                                        flatten=flatten)
         elif self.cfg.observation_space == "messages":
-            return self.observation_fn(total_messages=total_messages) 
+            return self._get_obs_msg(total_msgs=total_messages) 
         elif self.cfg.observation_space == "messages_new_tokenizer":
-            return self.observation_fn(world_state=world_state,  
+            return self._get_obs_msg_new_tokenizer(world_state=world_state,  
                                        total_msgs=total_messages, 
                                        old_time=old_time, 
                                        old_mid_price=old_mid_price, 
                                        lob_state_before=lob_state_before) 
         elif self.cfg.observation_space == "basic":
-            return self.observation_fn(world_state=world_state, 
+            return self._get_obs_basic(world_state=world_state, 
                                        agent_state=agent_state,
                                        normalize=normalize,
                                        flatten=flatten)
         else:
             raise ValueError("Invalid observation_space specified.")
+
         
 
 

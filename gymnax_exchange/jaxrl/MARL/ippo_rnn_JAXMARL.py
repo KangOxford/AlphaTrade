@@ -9,6 +9,7 @@ import csv
 import wandb.sdk
 
 from docs.source import conf
+from gymnax_exchange.jaxob.config_io import load_config_from_file, save_config_to_file
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
 # os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
@@ -43,6 +44,7 @@ import functools
 import matplotlib.pyplot as plt
 
 import sys
+import datetime
 
 class ScannedRNN(nn.Module):
     @functools.partial(
@@ -163,7 +165,6 @@ def make_train(config):
     )
     print(ma_config)
 
-    print("MultiAgentInventoryPenalty",ma_config.dict_of_agents_configs["MarketMaking"].inv_penalty)
 
     # For evaluation, create a separate config with evaluation-specific parameters
     eval_ma_config = None
@@ -824,10 +825,23 @@ def make_train(config):
     return train
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
+@hydra.main(version_base=None, config_path="/home/myuser/config/rl_configs", config_name="ippo_rnn_JAXMARL_singleplayer")
 def main(config):
-    print("MultiAgentConfig", MultiAgentConfig().world_config)
-    env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+    try:
+        if config["ENV_CONFIG"] is not None:
+            print(f"loading the env config from file {config['ENV_CONFIG']}")
+            env_config=load_config_from_file(config["ENV_CONFIG"])
+        else:
+            print("using default MultiAgentConfig as defined in jaxob_config.py file.")
+            env_config=MultiAgentConfig()
+            save_config_to_file(env_config,f"~/config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    except Exception as e:
+        print(f"Error loading env config: {e}")
+        print("using default MultiAgentConfig as defined in jaxob_config.py file.")
+        env_config=MultiAgentConfig()
+        save_config_to_file(env_config,f"~/config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    print("MultiAgentConfig world configs", env_config.world_config)
+    env_config=OmegaConf.structured(env_config)
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
 
@@ -836,8 +850,6 @@ def main(config):
 
     def sweep_fun():
         print(f"WANDB CONFIG PRIOR {wandb.config}")
-
-
         run=wandb.init(
             entity=config["ENTITY"], # type: ignore
             project=config["PROJECT"], # type: ignore
@@ -922,8 +934,6 @@ def main(config):
         jax.local_devices()  # This can help trigger cleanup of device buffers
         run.finish()
 
-    # NOTE: Sweep Parameters will override the config file, but cannot be used to override any environment params currently. 
-    # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
     sweep_parameters = {
         # "LR": {"values": [config["LR"]]},
         # "NUM_STEPS": {"values": [32,config["NUM_STEPS"], 512]},
@@ -941,18 +951,18 @@ def main(config):
        
         
         "AGENT_CONFIGS" : {"parameters": {
-                        "MarketMaking" : {"parameters":
-                                        {"inv_penalty": {"values":['quadratic']}, # "none" "linear "quadratic"
-                                        "skew_multiplier": {"values":[10]},
-                                        "action_space": {"values":["fixed_quants"]}, #"spread_skew",,"fixed_quants"simple
-                                        "reward_space" : {"values":["spooner","buy_sell_pnl"]}, # "spooner"buy_sell_pnl
-                                        "reference_price_portfolio_value":{"values":["best_bid_ask"]}, #best_bid_ask "mid"
-                        }},
-                        "Execution" : {"parameters": {"reward_lambda": {"values":[0.0]},
-                                                      "fixed_quant_value": {"values":[10]}, #20 on fixed quants
-                                                      "action_space": {"values":["fixed_quants_complex"]}, #fixed_quants,fixed_quants_complex
-                                                      "task_size": {"values":[600]},
-                                                      "doom_price_penalty": {"values":[0.1]},
+                        # "MarketMaking" : {"parameters":
+                        #                 {"inv_penalty": {"values":['none']}, # "none" "linear "quadratic"
+                        #                 "skew_multiplier": {"values":[10]},
+                        #                 "action_space": {"values":["fixed_quants"]}, #"spread_skew",,"fixed_quants"simple
+                        #                 "reward_space" : {"values":["spooner","buy_sell_pnl"]}, # "spooner"buy_sell_pnl
+                        #                 "reference_price_portfolio_value":{"values":["best_bid_ask"]}, #best_bid_ask "mid"
+                        # }},
+                        "Execution" : {"parameters": {"reward_lambda": {"values":[0.0,0.3,0.7,1.0]},
+                                                    #   "fixed_quant_value": {"values":[10]}, #20 on fixed quants
+                                                    #   "action_space": {"values":["fixed_quants_complex"]}, #fixed_quants,fixed_quants_complex
+                                                    #   "task_size": {"values":[600]},
+                                                      "doom_price_penalty": {"values":[0.1,0.00001]},
                         }},
         }}
     }
@@ -970,24 +980,6 @@ def main(config):
 
     sys.exit(0)
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
-def seperate_main(config):
-    print("MultiAgentConfig", MultiAgentConfig().world_config)
-    env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
-    final_config=OmegaConf.merge(config,env_config)
-    config = OmegaConf.to_container(final_config)
-
-    # jax.profiler.start_trace("/tmp/profile-data")
-
-    
-    rng = jax.random.PRNGKey(0)
-
-    train_fun = make_train(config)
-    # print("+++++++++++ Training turned off whilst debugging wandb ++++++++++++")
-    out = train_fun(rng)
-    # out=jax.block_until_ready(out)  # Ensure the computation is complete before proceeding
-    # (dummy * dummy).block_until_ready()
-    # jax.profiler.stop_trace()
 
 
 if __name__ == "__main__":

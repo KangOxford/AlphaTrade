@@ -17,9 +17,9 @@ class JAXLOB_Configuration:
     seed: int =cst.SEED
     nTrades : int=cst.NTRADE_CAP
     nOrders : int =cst.NORDER_CAP
-    simulator_mode=cst.SimulatorMode.GENERAL_EXCHANGE.value
-    empty_slot_val=cst.EMPTY_SLOT
-    debug_mode:bool=False
+    simulator_mode: int = cst.SimulatorMode.GENERAL_EXCHANGE.value
+    empty_slot_val: int = cst.EMPTY_SLOT
+    debug_mode: bool = False
     start_resolution: int = 64  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
@@ -39,16 +39,16 @@ class MarketMaking_EnvironmentConfig():
     # Values for spread skew action space
     spread_multiplier: float = 3.0 #50.0
     skew_multiplier: float = 5.0 #100.0
-    n_ticks_in_book : int = 1
-    num_messages_by_agent:int=env_cst.num_messages_by_agent
-    num_action_messages_by_agent=2 # will be set automcatically down below
-    fixed_quant_value:int=env_cst.fixed_quant_value
-    n_actions: int = env_cst.n_actions # Only used for fixed_prices
-    debug_mode:bool=False
-    time_delay_obs_act:int=0
-    normalize:bool=True
-    short_name:str="MM" # For agent naming e.g. in the obs dict
-    seconds_before_episode_end:int=5
+    n_ticks_in_book: int = 1
+    num_messages_by_agent: int = env_cst.num_messages_by_agent
+    num_action_messages_by_agent: int = 2  # will be set automcatically down below
+    fixed_quant_value: int = env_cst.fixed_quant_value
+    n_actions: int = env_cst.n_actions  # Only used for fixed_prices
+    debug_mode: bool = False
+    time_delay_obs_act: int = 0
+    normalize: bool = True
+    short_name: str = "MM"  # For agent naming e.g. in the obs dict
+    seconds_before_episode_end: int = 5
     # Fixed action settings
     fixed_action_setting: bool = False
     fixed_action: int = 0
@@ -154,28 +154,25 @@ class Execution_EnvironmentConfig():
 @dataclass(frozen=True)
 class World_EnvironmentConfig(JAXLOB_Configuration):
     n_data_msg_per_step: int = 100
-    window_selector = -1 # -1 means random window
+    window_selector: int = -1 # -1 means random window
     ep_type :str = "fixed_steps" # fixed_steps, fixed_time
     episode_time: int = 64 # counted by seconds, 1800s=0.5h or steps
-    day_start = 34200  # 09:30
-    day_end = 57600  # 16:00
-    nOrdersPerSide=100 #100
-    nTradesLogged=100
-    book_depth=10
-    n_ticks_in_book = 10 # Depth of PP actions
-    customIDCounter=0
-    tick_size=100
-    trader_id_range_start=-100 # -1 is reserved for the placeholder in the messages object
-    placeholder_order_id = -9
-    last_step_seconds = 5
-    artificial_trader_id_end_episode = -199 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
-    artificial_order_id_end_episode = -199 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
-    debug_mode:bool=False
-    any_message_obs_space:bool=False # TODO: set this automatically in a post init function based on the obs spaces of each agent type
-    order_id_counter_start_when_resetting:int=-200
-    shuffle_action_messages:bool=True
-    use_pickles_for_init:bool= True
-    save_raw_observations:bool=False
+    day_start: int = 34200  # 09:30
+    day_end: int = 57600  # 16:00
+    book_depth: int = 10
+    tick_size: int = 100
+    trader_id_range_start: int = -100 # -1 is reserved for the placeholder in the messages object
+    placeholder_order_id: int = -198
+    last_step_seconds: int = 5
+    artificial_trader_id_end_episode: int = -199 # Artificial trader id for the trade that is artifically added at the end of the episode (this is not really used)
+    artificial_order_id_end_episode: int = -199 # Artificial order id for the trade that is artifically added at the end of the episode (this is not really used)
+    any_message_obs_space: bool = False # Returns orderbook L2 state for use in tokenization
+    order_id_counter_start_when_resetting: int = -200
+    shuffle_action_messages: bool = True
+    use_pickles_for_init: bool = True
+    save_raw_observations: bool = False
+
+
 
 
 @dataclass(frozen=True)
@@ -195,12 +192,17 @@ class MultiAgentConfig():
     number_of_agents_per_type: list = field(default_factory=lambda: [1,1]) # This is only the default value, we change it in the yaml RL file
 
 
-    # list_of_agents_configs = [
-    # list_of_agents_configs: List =field(default_factory=lambda :[Execution_EnvironmentConfig()])
-    #     MarketMaking_EnvironmentConfig(),
-    #     #Execution_EnvironmentConfig(),
-    #     #MarketMaking_EnvironmentConfig(),
-    # ]
-    # number_of_agents_per_type = [2]
+    def __post_init__(self):
+        # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
+        # Number of messages includes action messages and cancel messages!
+        for agent_type, config in self.dict_of_agents_configs.items():
+            if "message" in config.observation_space:
+                object.__setattr__(self.world_config, 'any_message_obs_space', True)
 
-
+if __name__ == "__main__":
+    mac = MultiAgentConfig(
+        dict_of_agents_configs={"MarketMaking":MarketMaking_EnvironmentConfig(
+                                    observation_space="engineered")
+                                }
+                            )
+    print(mac)

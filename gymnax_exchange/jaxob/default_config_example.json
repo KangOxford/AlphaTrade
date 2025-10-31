@@ -1,0 +1,50 @@
+{
+  "world_config": {
+    "maxint": 2147483647,
+    "init_id": -2,
+    "cancel_mode": 1,
+    "seed": 42,
+    "nTrades": 100,
+    "nOrders": 100,
+    "debug_mode": false,
+    "start_resolution": 64,
+    "alphatradePath": "/home/myuser",
+    "dataPath": "/home/myuser/data",
+    "stock": "AMZN",
+    "timePeriod": "2024",
+    "n_data_msg_per_step": 100,
+    "ep_type": "fixed_steps",
+    "episode_time": 64,
+    "any_message_obs_space": false,
+    "order_id_counter_start_when_resetting": -200,
+    "shuffle_action_messages": true,
+    "use_pickles_for_init": true,
+    "save_raw_observations": false
+  },
+  "dict_of_agents_configs": {
+    "Execution": {
+      "n_ticks_in_book": 1,
+      "task": "random",
+      "action_type": "pure",
+      "action_space": "fixed_quants_complex",
+      "observation_space": "engineered",
+      "reward_space": "normal",
+      "task_size": 600,
+      "n_actions": 13,
+      "fixed_quant_value": 10,
+      "num_messages_by_agent": 8,
+      "num_action_messages_by_agent": 4,
+      "reward_lambda": 0.0,
+      "time_delay_obs_act": 0,
+      "debug_mode": false,
+      "normalize": true,
+      "short_name": "EXE",
+      "seconds_before_episode_end": 5,
+      "doom_price_penalty": 0.1,
+      "larger_far_touch_quant": false
+    }
+  },
+  "number_of_agents_per_type": [
+    1
+  ]
+}

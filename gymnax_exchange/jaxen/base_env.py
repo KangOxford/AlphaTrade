@@ -68,7 +68,7 @@ import chex
 from flax import struct
 import itertools
 from gymnax_exchange.jaxob import JaxOrderBookArrays as job
-from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample
+from gymnax_exchange.jaxlobster.lobster_loader import LoadLOBSTER_resample,LoadLOBSTER
 #from gymnax_exchange.jaxlobster.gen_loader import GenLoader
 from gymnax_exchange.utils.utils import *
 import pickle
@@ -149,11 +149,7 @@ class BaseLOBEnv(environment.Environment):
         self.n_data_msg_per_step = cfg.n_data_msg_per_step
         self.day_start = cfg.day_start  # 09:30
         self.day_end = cfg.day_end  # 16:00
-        self.nOrdersPerSide=cfg.nOrdersPerSide #100
-        self.nTradesLogged=cfg.nTradesLogged
         self.book_depth=cfg.book_depth
-        self.n_ticks_in_book = cfg.n_ticks_in_book 
-        self.customIDCounter=cfg.customIDCounter
         self.tick_size=cfg.tick_size
         self.start_resolution = cfg.start_resolution  # Use value from config
         self.cfg = cfg
@@ -169,7 +165,7 @@ class BaseLOBEnv(environment.Environment):
                                 day_end=self.day_end,
                                 stock=self.cfg.stock,
                                 time_period=self.cfg.timePeriod) 
-        msgs,starts,ends,books,max_messages_arr=loader.run_loading()
+        msgs,starts,ends,books,max_messages_arr=loader.run_loading(self._get_filename_suffix())
 
 
         self.max_messages_in_episode_arr = max_messages_arr
@@ -299,30 +295,25 @@ class BaseLOBEnv(environment.Environment):
 )
 
     def _init_states(self,key,alphatradePath,starts):
-        print("START:  pre-reset in the initialization")
+        print(f"{self.__class__.__name__} _init_states:  pre-reset in the initialization")
         os.makedirs(alphatradePath + '/pre_reset_states/', exist_ok=True)
         pkl_file_name = (alphatradePath + '/pre_reset_states/'
-                         + 'ResetState_window_resolution_' + str(self.cfg.start_resolution)
-                         + '_eptype_"' + str(self.cfg.ep_type)
-                         + '"_depth_' + str(self.cfg.book_depth)
-                         + "_stock_" + str(self.cfg.stock)
-                         + "_windowidx_"+str(self.cfg.window_selector)
-                         + "_nMsgPerStep_"+str(self.cfg.n_data_msg_per_step)
-                         + "_episode_time_"+str(self.cfg.episode_time)
-                         + "_TimePeriod_"+str(self.cfg.timePeriod)
+                         + 'ResetStates_' 
+                         + str(self.__class__.__name__) + '_'
+                         + self._get_filename_suffix()
                          + '.pkl')
-        print("pre-reset will be saved to ", pkl_file_name)
+
+        print(f"{self.__class__.__name__} _init_states: pre-reset will be saved to or loaded from \n\t{pkl_file_name}")
         try:
             if self.cfg.use_pickles_for_init:
                 with open(pkl_file_name, 'rb') as f:
                     self.init_states_array = pickle.load(f)
-                    print("LOADING STATES FROM PKL...")
+                    print(f"{self.__class__.__name__} _init_states: initial states have been loaded successfully")
             else:
                 raise ValueError("Throw error so re-computes")
         except:
-            print("COMPUTING INIT STATES...")
-            #for i in range(self.n_windows):
-                #print("message starts",self.messages[starts[i]])
+            print(f"{self.__class__.__name__} _init_states: computing initial states afresh from orderbook data")
+
             get_state_jitted= jax.jit(self._get_state_from_data)
 
             states = [get_state_jitted(key,
@@ -334,10 +325,11 @@ class BaseLOBEnv(environment.Environment):
                                                     starts[i]) 
                         for i in range(self.n_windows)]
             self.init_states_array=tree_stack(states)
-            print("SAVING STATES TO PKL...")
+            
             with open(pkl_file_name, 'wb') as f:
                 pickle.dump(self.init_states_array, f)
-        print("DONE: pre-reset in the initialization")
+            print(f"{self.__class__.__name__} _init_states: saved initial states successfully")
+        print(f"{self.__class__.__name__} _init_states: All initial reset states are ready.")
 
     def _get_obs(self, state: LoadedEnvState, params:LoadedEnvParams) -> chex.Array:
         """Return dummy observation."""
@@ -401,7 +393,21 @@ class BaseLOBEnv(environment.Environment):
             quant_bid_passive_2 = job.get_volume_at_price(state.bid_raw_orders, bid_passive_2)
             quant_ask_passive_2 = job.get_volume_at_price(state.ask_raw_orders, ask_passive_2)
             return bid_passive_2,quant_bid_passive_2,ask_passive_2,quant_ask_passive_2
-        
+
+    def _get_filename_suffix(self):
+        filename_params = [
+            str(self.cfg.stock),
+            str(self.cfg.timePeriod),
+            str(self.cfg.book_depth),
+            str(self.cfg.ep_type),
+            str(self.cfg.episode_time),
+            str(self.cfg.start_resolution),
+            str(self.n_data_msg_per_step),
+            str(self.day_start),
+            str(self.day_end),
+        ]
+        filename_params_str= "_".join(filename_params)
+        return filename_params_str
 
 
     @property

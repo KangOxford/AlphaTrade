@@ -78,53 +78,136 @@ class LoadLOBSTER():
         Additionally returns initial state data for each window, and 
         the lengths (horizons) of each window. 
     """
+
     def __init__(self,
-                 alphatradepath,
+                 datapath,
+                 atpath,
                  n_Levels=10,
                  type_="fixed_time",
                  window_length=1800,
-                 n_msg_per_step=100):
-        self.atpath=alphatradepath
-        self.messagePath = alphatradepath+"/data/Flow_"+str(n_Levels)+"/"
-        self.orderbookPath = alphatradepath+"/data/Book_"+str(n_Levels)+"/"
+                 window_resolution=60,
+                 n_data_msg_per_step=100, #TODO rename this to n_data_msg_per_step?
+                 day_start=34200,  
+                 day_end=57600,
+                 stock="AMZN",
+                 time_period="2017Jan_oneday"):
+        # Convert stock and time_period to lists if they contain comma-separated values
+        self.stock=stock
+        self.time_period=time_period
+        if isinstance(stock, str) and ',' in stock:
+            stock = [s.strip() for s in stock.split(',')]
+        elif isinstance(stock, str):
+            stock = [stock]
+            
+        if isinstance(time_period, str) and ',' in time_period:
+            time_period = [tp.strip() for tp in time_period.split(',')]
+        elif isinstance(time_period, str):
+            time_period = [time_period]
+
+        self.stocks = stock
+        self.time_periods = time_period
+        # Create list of datapaths for all combinations of stocks and time periods
+        self.datapaths = []
+        for stock in self.stocks:
+            for period in self.time_periods:
+                datapath_combo = datapath + f"/rawLOBSTER/{stock}/{period}/"
+                self.datapaths.append(datapath_combo)
+        
+        # Keep the first datapath for backward compatibility
+        self.datapath = self.datapaths[0] if self.datapaths else datapath + f"/rawLOBSTER/{self.stocks[0]}/{self.time_periods[0]}/"
         self.window_type=type_
         self.window_length=window_length
-        self.n_data_msg_per_step=n_msg_per_step
+        self.window_resolution=window_resolution
+        self.n_data_msg_per_step=n_data_msg_per_step 
+        self.index_offest=0
+        self.day_start=day_start
+        self.day_end=day_end
+        self.n_Levels=n_Levels
+        self.alphatrade_path=atpath
 
 
-    def run_loading(self):
+        print(f"{self.__class__.__name__} __init__: The datapaths considered are",self.datapaths)
+        # Collect all message and book files from all datapaths
+        self.message_files = []
+        self.book_files = []
+        
+        for datapath in self.datapaths:
+            message_files_for_path = sorted([f for f in glob(datapath + '*message*.csv') if os.path.getsize(f) > 0])
+            book_files_for_path = sorted([f for f in glob(datapath + '*orderbook*.csv') if os.path.getsize(f) > 0])
+            
+            self.message_files.extend(message_files_for_path)
+            self.book_files.extend(book_files_for_path)
+        
+        # Sort all files after combining
+        self.message_files = sorted(self.message_files)
+        self.book_files = sorted(self.book_files)
+        #self.message_files = sorted([f for f in glob(self.datapath + '*message*.csv') if os.path.getsize(f) > 0])
+        #self.book_files = sorted([f for f in glob(self.datapath + '*orderbook*.csv') if os.path.getsize(f) > 0])
+
+        print(f"{self.__class__.__name__} __init__: Found {len(self.message_files)} message files")
+        print(f"{self.__class__.__name__} __init__: Found {len(self.book_files)} book files")
+
+
+    def run_loading(self, filename_suffix="NONE_GIVEN"):
         """Returns jax.numpy arrays with messages sliced into fixed-size
         windows. Dimensions: (Window, Step, Message, Features)
         
             Parameters:
-                NA   
+                filename_suffix (str): Suffix for caching filename
             Returns:
                 loaded_msg_windows (Array): messages sliced into fixed-
                                             size windows.
                                             Dimensions: 
                                             (Window, Step, Message, Features)
         """
-        message_days, orderbook_days = self._load_files()
-        pairs = [self._pre_process_msg_ob(msg,ob) 
-                 for msg,ob 
-                 in zip(message_days,orderbook_days)]
-        message_days, orderbook_days = zip(*pairs)
-        slicedCubes_withOB_list = [self._slice_day_no_overlap(msg_day,ob_day) 
-                                   for msg_day,ob_day 
-                                   in zip(message_days,orderbook_days)]
-        cubes_withOB = list(itertools.chain \
-                            .from_iterable(slicedCubes_withOB_list))
-        max_steps_in_windows_arr = np.array([m.shape[0] 
-                                              for m,o 
-                                              in cubes_withOB],np.int32)
-        cubes_withOB=self._pad_window_cubes(cubes_withOB)
-        loaded_msg_windows,loaded_book_windows=map(np.array,
-                                                    zip(*cubes_withOB))
-        n_windows=len(loaded_book_windows)
+        save_path = self._get_save_filename(filename_suffix)
+
+        if os.path.exists(save_path):
+            print(f"{self.__class__.__name__} run_loading: loading cached arrays from {save_path}")
+            data = np.load(save_path, allow_pickle=True)
+            loaded_msg_windows = data['loaded_msg_windows']
+            loaded_book_windows = data['loaded_book_windows']
+            max_steps_in_windows_arr = data['max_steps_in_windows_arr']
+            n_windows = data['n_windows']
+        else:
+            message_days, orderbook_days = self._load_files()
+            pairs = [self._pre_process_msg_ob(msg,ob) 
+                     for msg,ob 
+                     in zip(message_days,orderbook_days)]
+            message_days, orderbook_days = zip(*pairs)
+            slicedCubes_withOB_list = [self._slice_day_no_overlap(msg_day,ob_day) 
+                                       for msg_day,ob_day 
+                                       in zip(message_days,orderbook_days)]
+            cubes_withOB = list(itertools.chain \
+                                .from_iterable(slicedCubes_withOB_list))
+            max_steps_in_windows_arr = np.array([m.shape[0] 
+                                                  for m,o 
+                                                  in cubes_withOB],np.int32)
+            cubes_withOB=self._pad_window_cubes(cubes_withOB)
+            loaded_msg_windows,loaded_book_windows=map(np.array,
+                                                        zip(*cubes_withOB))
+            n_windows=len(loaded_book_windows)
+
+            print(f"{self.__class__.__name__} run_loading: saving arrays to {save_path}")
+            np.savez_compressed(
+                save_path,
+                loaded_msg_windows=loaded_msg_windows,
+                loaded_book_windows=loaded_book_windows,
+                max_steps_in_windows_arr=max_steps_in_windows_arr,
+                n_windows=n_windows
+            )
+
         return (loaded_msg_windows,
                 loaded_book_windows,
                 max_steps_in_windows_arr,
                 n_windows)
+
+    def _get_save_filename(self, string_suffix="NONE_GIVEN"):
+        """Generate cache filename for the processed data."""
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.join(self.alphatrade_path, "saved_npz"), exist_ok=True)
+        fname = f"saved_npz/loaded_lobster_{str(self.__class__.__name__)}_{string_suffix}.npz"
+        return os.path.join(self.alphatrade_path, fname)
 
     def _pad_window_cubes(self,cubes_withOB):
         #Get length of longest window
@@ -155,13 +238,136 @@ class LoadLOBSTER():
 
     def _load_files(self):
         """Loads the csvs as pandas arrays. Files are seperated by days
-        Could potentially be optimised to work around pandas, very slow.         
+        Optimized with parallel loading for improved performance.         
         """
-        readFromPath = lambda data_path: sorted([f for f in listdir(data_path) if isfile(join(data_path, f))])
-        messageFiles, orderbookFiles = readFromPath(self.messagePath), readFromPath(self.orderbookPath)
-        dtype = {0: float,1: int, 2: int, 3: int, 4: int, 5: int}
-        messageCSVs = [pd.read_csv(self.messagePath + file, usecols=range(6), dtype=dtype, header=None) for file in messageFiles if file[-3:] == "csv"]
-        orderbookCSVs = [pd.read_csv(self.orderbookPath + file, header=None) for file in orderbookFiles if file[-3:] == "csv"]
+        import concurrent.futures
+        import multiprocessing as mp
+        import time
+        from threading import Semaphore
+        
+        dtypes = {0: float, 1: int, 2: int, 3: int, 4: int, 5: int}
+        print(f"{self.__class__.__name__} _load_files: Processing {len(self.message_files)} message files")
+        
+        # Adaptive worker count based on file size and system resources
+        total_files = len(self.message_files)
+        
+        # Start with fewer workers and scale based on system performance
+        base_workers = min(mp.cpu_count() // 4, 8)  # Conservative start
+        n_workers = min(base_workers, total_files, 16)  # Cap at 16 to avoid thrashing
+        
+        print(f"Using {n_workers} workers for parallel loading ({total_files} files)")
+        
+        # Semaphore to limit concurrent file operations (prevent disk thrashing)
+        file_semaphore = Semaphore(n_workers * 2)  # Allow some buffering
+
+        def read_pair(files):
+            message_file, book_file = files
+            if message_file[-3:] == "csv" and book_file[-3:] == "csv":
+                with file_semaphore:  # Limit concurrent disk access
+                    try:
+                        start_time = time.time()
+                        
+                        # Read files more efficiently with chunking for large files
+                        df_message = pd.read_csv(
+                            message_file, 
+                            usecols=range(6), 
+                            header=None, 
+                            engine='c',
+                            low_memory=True,  # Better memory management
+                            na_filter=False,  # Skip NA detection for speed
+                            skip_blank_lines=True
+                        )
+                        
+                        df_book = pd.read_csv(
+                            book_file, 
+                            header=None, 
+                            engine='c',
+                            low_memory=True,
+                            na_filter=False,
+                            skip_blank_lines=True
+                        )
+                        
+                        read_time = time.time() - start_time
+                        
+                        if not df_message.empty and not df_book.empty:
+                            file_size_mb = (os.path.getsize(message_file) + os.path.getsize(book_file)) / 1024 / 1024
+                            throughput = file_size_mb / read_time if read_time > 0 else 0
+                            
+                            print(f"✓ {os.path.basename(message_file)} "
+                                  f"({file_size_mb:.1f}MB, {throughput:.1f}MB/s) "
+                                  f"loaded in {read_time:.2f}s")
+                            
+                            return (df_message, df_book)
+                        else:
+                            if df_message.empty:
+                                print(f"⚠ Empty message file: {os.path.basename(message_file)}")
+                            if df_book.empty:
+                                print(f"⚠ Empty orderbook file: {os.path.basename(book_file)}")
+                    
+                    except pd.errors.EmptyDataError:
+                        print(f"⚠ Truly empty file: {os.path.basename(message_file)}")
+                    except Exception as e:
+                        print(f"✗ Error processing {os.path.basename(message_file)}: {e}")
+            return None
+
+        pairs = list(zip(self.message_files, self.book_files))
+        messageCSVs = []
+        orderbookCSVs = []
+
+        # Process files with better resource management
+        start_total = time.time()
+        completed_files = 0
+        
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=n_workers,
+            thread_name_prefix="FileLoader"
+        ) as executor:
+            # Submit tasks in batches to avoid memory buildup
+            batch_size = max(1, total_files // 4)  # Process in 4 batches
+            
+            for batch_start in range(0, total_files, batch_size):
+                batch_end = min(batch_start + batch_size, total_files)
+                batch_pairs = pairs[batch_start:batch_end]
+                batch_number = batch_start // batch_size + 1
+                total_batches = (total_files - 1) // batch_size + 1
+                
+                print(f"\n📦 Processing batch {batch_number}/{total_batches} "
+                      f"({len(batch_pairs)} files)...")
+                
+                # Submit batch and process results as they complete
+                future_to_pair = {
+                    executor.submit(read_pair, pair): pair 
+                    for pair in batch_pairs
+                }
+                
+                batch_start_time = time.time()
+                
+                for future in concurrent.futures.as_completed(future_to_pair):
+                    try:
+                        result = future.result()
+                        if result is not None:
+                            df_message, df_book = result
+                            messageCSVs.append(df_message)
+                            orderbookCSVs.append(df_book)
+                            completed_files += 1
+                    except Exception as exc:
+                        pair = future_to_pair[future]
+                        print(f'✗ Batch task {pair} failed: {exc}')
+                
+                batch_time = time.time() - batch_start_time
+                avg_time_per_file = batch_time / len(batch_pairs) if batch_pairs else 0
+                print(f"   Batch {batch_number} completed in {batch_time:.2f}s "
+                      f"(avg: {avg_time_per_file:.2f}s/file)")
+
+        total_time = time.time() - start_total
+        avg_time_per_file = total_time / completed_files if completed_files > 0 else 0
+        
+        print(f"\n🎉 Parallel loading completed!")
+        print(f"   Total time: {total_time:.2f}s")
+        print(f"   Files processed: {completed_files}/{total_files}")
+        print(f"   Average time per file: {avg_time_per_file:.2f}s")
+        print(f"   Effective throughput: {completed_files / total_time:.2f} files/s")
+        
         return messageCSVs, orderbookCSVs
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):
@@ -170,23 +376,40 @@ class LoadLOBSTER():
         transforms executions into limit orders and delete into cancel
         orders, and adds the traderID field. 
         """
-        #split the time into two integer fields.
-        message_day[6] = message_day[0].apply(lambda x: int(x))
-        message_day[7] = ((message_day[0] - message_day[6]) * int(1e9)).astype(int)
+        # Optimize pandas operations by avoiding unnecessary copies
+        # and using vectorized operations where possible
+        
+        # Split the time into two integer fields (vectorized)
+        time_int = message_day[0].astype(np.int64)  # More efficient than apply
+        message_day[6] = time_int
+        message_day[7] = ((message_day[0] - time_int) * 1_000_000_000).astype(np.int64)
+        
+        # Filter messages outside of trading hours (before day_start and after day_end)
+        time_mask = (message_day[6] >= self.day_start) & (message_day[6] <= self.day_end)
+        dropped_count = (~time_mask).sum()
+        if dropped_count > 0:
+            print(f"Dropped {dropped_count} messages outside trading hours ({self.day_start}-{self.day_end}s)")
+        
+        message_day = message_day[time_mask]
+        
         message_day.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
-        #Drop all message_days of type 5,6,7 (Hidden orders, Auction, Trading Halt)
-        message_day = message_day[message_day.type.isin([1,2,3,4])]
+        
+        # Filter message types more efficiently
+        type_mask = message_day['type'].isin([1,2,3,4])
+        message_day = message_day[type_mask].copy()  # Explicit copy to avoid warnings
         valid_index = message_day.index.to_numpy()
-        message_day.reset_index(inplace=True,drop=True)
+        message_day.reset_index(inplace=True, drop=True)
+
         # Turn executions into limit orders on the opposite book side
         message_day.loc[message_day['type'] == 4, 'direction'] *= -1
         message_day.loc[message_day['type'] == 4, 'type'] = 1
-        #Turn delete into cancel orders
+        # Turn delete into cancel orders
         message_day.loc[message_day['type'] == 3, 'type'] = 2
-        #Add trader_id field (copy of order_id)
+        # Add trader_id field (copy of order_id)
         warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
         message_day['trader_id'] = message_day['order_id']
-        orderbook_day.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+        orderbook_day = orderbook_day.iloc[valid_index].copy()
+        orderbook_day.reset_index(inplace=True, drop=True)
         return message_day,orderbook_day
     
     def _daily_slice_indeces(self,type,start, end, interval):
@@ -336,7 +559,30 @@ class LoadLOBSTER_resample():
                  day_end=57600,
                  stock="AMZN",
                  time_period="2017Jan_oneday"):
-        self.datapath=datapath+f"/rawLOBSTER/{stock}/{time_period}/"
+        # Convert stock and time_period to lists if they contain comma-separated values
+        self.stock=stock
+        self.time_period=time_period
+        if isinstance(stock, str) and ',' in stock:
+            stock = [s.strip() for s in stock.split(',')]
+        elif isinstance(stock, str):
+            stock = [stock]
+            
+        if isinstance(time_period, str) and ',' in time_period:
+            time_period = [tp.strip() for tp in time_period.split(',')]
+        elif isinstance(time_period, str):
+            time_period = [time_period]
+
+        self.stocks = stock
+        self.time_periods = time_period
+        # Create list of datapaths for all combinations of stocks and time periods
+        self.datapaths = []
+        for stock in self.stocks:
+            for period in self.time_periods:
+                datapath_combo = datapath + f"/rawLOBSTER/{stock}/{period}/"
+                self.datapaths.append(datapath_combo)
+        
+        # Keep the first datapath for backward compatibility
+        self.datapath = self.datapaths[0] if self.datapaths else datapath + f"/rawLOBSTER/{self.stocks[0]}/{self.time_periods[0]}/"
         self.window_type=type_
         self.window_length=window_length
         self.window_resolution=window_resolution
@@ -344,26 +590,34 @@ class LoadLOBSTER_resample():
         self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
-        self.stock=stock
-        self.time_period=time_period
         self.n_Levels=n_Levels
         self.alphatrade_path=atpath
 
 
-        print("self.datapath",self.datapath)
-        self.message_files = sorted(glob(self.datapath + '*message*.csv'))
-        self.book_files = sorted(glob(self.datapath + '*orderbook*.csv'))
+        print(f"{self.__class__.__name__} __init__: The datapaths considered are",self.datapaths)
+        # Collect all message and book files from all datapaths
+        self.message_files = []
+        self.book_files = []
+        
+        for datapath in self.datapaths:
+            message_files_for_path = sorted([f for f in glob(datapath + '*message*.csv') if os.path.getsize(f) > 0])
+            book_files_for_path = sorted([f for f in glob(datapath + '*orderbook*.csv') if os.path.getsize(f) > 0])
+            
+            self.message_files.extend(message_files_for_path)
+            self.book_files.extend(book_files_for_path)
+        
+        # Sort all files after combining
+        self.message_files = sorted(self.message_files)
+        self.book_files = sorted(self.book_files)
         #self.message_files = sorted([f for f in glob(self.datapath + '*message*.csv') if os.path.getsize(f) > 0])
         #self.book_files = sorted([f for f in glob(self.datapath + '*orderbook*.csv') if os.path.getsize(f) > 0])
 
-        print('found', len(self.message_files), 'message files')
-        print('found', len(self.book_files), 'book files')
-   
-        
+        print(f"{self.__class__.__name__} __init__: Found {len(self.message_files)} message files")
+        print(f"{self.__class__.__name__} __init__: Found {len(self.book_files)} book files")
 
 
 
-    def run_loading(self):
+    def run_loading(self,filename_suffix="NONE_GIVEN"):
         """Returns jax.numpy array with all messages aligned in series. 
         
             Parameters:
@@ -376,10 +630,10 @@ class LoadLOBSTER_resample():
         """
         # jax.profiler.start_trace("/tmp/profile-data")
 
-        save_path = self._get_save_filename()
+        save_path = self._get_save_filename(filename_suffix)
 
         if os.path.exists(save_path):
-            print(f"Loading cached arrays from {save_path}")
+            print(f"{self.__class__.__name__} run_loading: loading cached arrays from {save_path}")
             data = np.load(save_path, allow_pickle=True)
             msgs = data['msgs']
             starts = data['starts']
@@ -408,7 +662,7 @@ class LoadLOBSTER_resample():
                                                             max_msgs_in_windows_arr)
             
 
-            print(f"Saving arrays to {save_path}")
+            print(f"{self.__class__.__name__} run_loading: saving arrays to {save_path}")
             np.savez_compressed(
                 save_path,
                 msgs=msgs,
@@ -420,25 +674,10 @@ class LoadLOBSTER_resample():
 
         return msgs,starts,ends,obs,max_msgs_in_windows_arr
     
-    def _get_save_filename(self):
-        # Create a unique filename based on config parameters
-        params = [
-            str(self.stock),
-            str(self.time_period),
-            str(self.n_Levels),
-            str(self.window_type),
-            str(self.window_length),
-            str(self.window_resolution),
-            str(self.n_data_msg_per_step),
-            str(self.day_start),
-            str(self.day_end),
-        ]
-        base = "_".join(params)
-        # Use a hash to avoid overly long filenames
-        # hash_str = hashlib.md5(base.encode()).hexdigest()
+    def _get_save_filename(self,string_suffix="NONE_GIVEN"):
         # Create directory if it doesn't exist
         os.makedirs(os.path.join(self.alphatrade_path, "saved_npz"), exist_ok=True)
-        fname = f"saved_npz/lobster_{base}.npz"
+        fname = f"saved_npz/loaded_lobster_{str(self.__class__.__name__)}_{string_suffix}.npz"
         return os.path.join(self.alphatrade_path, fname)
 
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
@@ -475,7 +714,9 @@ class LoadLOBSTER_resample():
         import hashlib
         
         dtypes = {0: float, 1: int, 2: int, 3: int, 4: int, 5: int}
-        print("self.message_files",self.message_files)
+        print(f"{self.__class__.__name__} _load_files: self.message_files:")
+        for file in self.message_files:
+            print(f"\t{file}")
         
         # Adaptive worker count based on file size and system resources
         total_files = len(self.message_files)
@@ -501,7 +742,6 @@ class LoadLOBSTER_resample():
                         df_message = pd.read_csv(
                             message_file, 
                             usecols=range(6), 
-                            dtype=dtypes, 
                             header=None, 
                             engine='c',
                             low_memory=True,  # Changed to True for better memory management
@@ -657,28 +897,28 @@ class LoadLOBSTER_resample():
         orderbook_day.iloc[valid_index,:].reset_index(inplace=True, drop=True)
         return message_day,orderbook_day
         
-        # Vectorized transformations (faster than loc operations)
-        execution_mask = message_day['type'] == 4
-        delete_mask = message_day['type'] == 3
+        # # Vectorized transformations (faster than loc operations)
+        # execution_mask = message_day['type'] == 4
+        # delete_mask = message_day['type'] == 3
         
-        # Turn executions into limit orders on the opposite book side
-        message_day.loc[execution_mask, 'direction'] *= -1
-        message_day.loc[execution_mask, 'type'] = 1
+        # # Turn executions into limit orders on the opposite book side
+        # message_day.loc[execution_mask, 'direction'] *= -1
+        # message_day.loc[execution_mask, 'type'] = 1
         
-        # Turn delete into cancel orders
-        message_day.loc[delete_mask, 'type'] = 2
+        # # Turn delete into cancel orders
+        # message_day.loc[delete_mask, 'type'] = 2
         
-        # Add trader_id field (copy of order_id) - faster assignment
-        message_day['trader_id'] = message_day['order_id'].values  # Use .values for speed
+        # # Add trader_id field (copy of order_id) - faster assignment
+        # message_day['trader_id'] = message_day['order_id'].values  # Use .values for speed
         
-        # Filter orderbook efficiently
-        orderbook_day = orderbook_day.iloc[valid_index].copy()
-        orderbook_day.reset_index(inplace=True, drop=True)
+        # # Filter orderbook efficiently
+        # orderbook_day = orderbook_day.iloc[valid_index].copy()
+        # orderbook_day.reset_index(inplace=True, drop=True)
         
-        # Suppress pandas warnings
-        warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
+        # # Suppress pandas warnings
+        # warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
         
-        return message_day, orderbook_day
+        # return message_day, orderbook_day
 
     
     def _daily_slice_indeces(self,type,start, end, interval):

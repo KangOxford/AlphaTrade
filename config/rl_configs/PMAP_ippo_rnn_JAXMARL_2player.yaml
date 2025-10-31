@@ -23,10 +23,7 @@
 "NUM_AGENTS_PER_TYPE": [10,10]
 "SEED": 2
 "N_DEVICES": 8
-# "ENV_KWARGS": 
-#     "LIST_OF_AGENTS_CONFIGS: []
-#     "NUM_AGENTS_PER_TYPE": True
-# #   "attack_mode": "closest"
+"ENV_CONFIG": null
 "ANNEAL_LR": [True,True]
 
 # WandB Params

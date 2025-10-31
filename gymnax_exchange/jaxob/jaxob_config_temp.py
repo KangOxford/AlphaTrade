@@ -154,8 +154,6 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     episode_time: int = 50 # counted by seconds, 1800s=0.5h
     day_start = 34200  # 09:30
     day_end = 57600  # 16:00
-    nOrdersPerSide=100 #100
-    nTradesLogged=100
     book_depth=10
     n_ticks_in_book = 10 # Depth of PP actions
     customIDCounter=0

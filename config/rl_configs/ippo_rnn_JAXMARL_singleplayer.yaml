@@ -1,0 +1,42 @@
+# Those hparams which are in a list 
+# apply differently to each ntwrk
+# Should match with NUM_AGENTS_PER_TYPE
+
+"LR": [0.0004]
+"NUM_ENVS": 4096 #128
+"NUM_STEPS": 128
+"NUM_STEPS_EVAL" : 64
+"GRU_HIDDEN_DIM": 128
+"FC_DIM_SIZE": 128
+"TOTAL_TIMESTEPS": 10e7
+"UPDATE_EPOCHS": 4
+"NUM_MINIBATCHES": 16
+"GAMMA": [0.999]
+"GAE_LAMBDA": [0.99]
+"CLIP_EPS": 0.2
+"SCALE_CLIP_EPS": [False]
+"ENT_COEF": [0.001]
+"VF_COEF": [1e-11]
+"MAX_GRAD_NORM": [0.5]
+"ACTIVATION": ["relu"]
+"ENV_NAME": "JAXMARL-SingleExec-v0"
+"NUM_AGENTS_PER_TYPE": [1]
+"SEED": 2
+"N_DEVICES": 1
+"ENV_CONFIG": "config/env_configs/exec_discrete_steps.json"
+
+"ANNEAL_LR": [True]
+
+# WandB Params
+"ENTITY": "oxford-lob"
+"PROJECT": "Thesis_FixedQuantExec" #"v4_2Player_reference_price_ablation" #"DEBUG"
+"WANDB_MODE" : "online"
+
+# High-Level Params
+"CALC_EVAL" : True
+"EvalTimePeriod" : "2024_Dec"
+"Calculate Baseline" : False
+"Timing" : False
+
+
+
