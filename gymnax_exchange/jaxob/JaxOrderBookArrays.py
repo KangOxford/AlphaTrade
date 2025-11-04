@@ -978,7 +978,7 @@ def get_order_by_id(
     idx = jnp.where(side_array[..., 2] == order_id,
                     size=1,
                     fill_value=-1,)
-    # return vector of -1 if not found
+    # return vector of NEGATIVE_RETURN_ID if not found
     return jax.lax.cond(idx == -1,
                         lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i][0],
@@ -1005,7 +1005,7 @@ def get_order_by_id_and_price(
                      (side_array[..., 0] == price)),
                     size=1,
                     fill_value=-1,)
-    # return vector of -1 if not found
+    # return vector of NEGATIVE_RETURN_ID if not found
     return jax.lax.cond(idx == -1,
                         lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i][0],
@@ -1035,7 +1035,7 @@ def get_order_by_time(
                      (side_array[..., 5] == time_ns)),
                     size=1,
                     fill_value=-1,)[0][0]
-    # return vector of -1 if not found
+    # return vector of NEGATIVE_RETURN_ID if not found
     return jax.lax.cond(idx == -1,
                         lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i],
@@ -1079,7 +1079,7 @@ def get_order_by_time_and_price(
                  find_by_time__fallback,
                     lambda i: i,
                     idx)
-    # return vector of -1 if not found
+    # return vector of NEGATIVE_RETURN_ID if not found
     return jax.lax.cond(idx == -1,
                         lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i],
