@@ -1138,7 +1138,7 @@ def get_L2_state(asks, bids, n_levels,cfg:JAXLOB_Configuration):
         fill_value=-1
     )
     # replace max 32 bit int with -1 after sorting
-    # ask_prices = jnp.where(ask_prices == cfg.maxint, -1, ask_prices)
+    ask_prices = jnp.where(ask_prices == -1, cfg.maxint, ask_prices)
     bid_prices = jnp.where(bid_prices == -1, -cfg.maxint, bid_prices)
 
 
