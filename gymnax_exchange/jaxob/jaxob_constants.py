@@ -7,6 +7,7 @@ class MaxInt(Enum):
 
 # Actual constants, will never change.
 INITID=-2
+NEGATIVE_RETURN_ID=-99
 DUMMYID=-888888
 EMPTY_SLOT=-1
 

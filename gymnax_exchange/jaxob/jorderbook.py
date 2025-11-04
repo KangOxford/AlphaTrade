@@ -238,6 +238,7 @@ class OrderBook():
             side: int,
             time_s: int,
             time_ns: int,
+            price : Optional[int] = None,
         ) -> jax.Array:
         ''' '''
         side_array = jax.lax.cond(
@@ -246,7 +247,10 @@ class OrderBook():
             lambda a, b: a,
             state.asks, state.bids
         )
-        return job.get_order_by_time(side_array, time_s, time_ns)
+        if price is not None:
+            return job.get_order_by_time_and_price(side_array, time_s, time_ns, price)
+        else:
+            return job.get_order_by_time(side_array, time_s, time_ns)
 
         
     @jax.jit

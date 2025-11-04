@@ -935,8 +935,8 @@ def init_msgs_from_l2(cfg : JAXLOB_Configuration,
         .at[:, 0].set(1) \
         .at[0:orderbookLevels*4:2, 1].set(-1) \
         .at[1:orderbookLevels*4:2, 1].set(1) \
-        .at[:, 4].set(cfg.init_id) \
-        .at[:, 5].set(cfg.init_id - jnp.arange(0, orderbookLevels*2)) \
+        .at[:, 4].set(cfg.init_id - jnp.arange(0, orderbookLevels*2)) \
+        .at[:, 5].set(cfg.init_id) \
         .at[:, 6].set(time[0]) \
         .at[:, 7].set(time[1])
     return initOB_msgs
@@ -980,7 +980,7 @@ def get_order_by_id(
                     fill_value=-1,)
     # return vector of -1 if not found
     return jax.lax.cond(idx == -1,
-                        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i][0],
                         idx)
 
@@ -1007,7 +1007,7 @@ def get_order_by_id_and_price(
                     fill_value=-1,)
     # return vector of -1 if not found
     return jax.lax.cond(idx == -1,
-                        lambda i: -1 * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i][0],
                         idx)
 
@@ -1037,7 +1037,51 @@ def get_order_by_time(
                     fill_value=-1,)[0][0]
     # return vector of -1 if not found
     return jax.lax.cond(idx == -1,
-                        lambda i: -2 * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: side_array[i],
+                        idx)
+
+@jax.jit
+def get_order_by_time_and_price(
+        side_array: jax.Array,
+        time_s: int,
+        time_ns: int,
+        price:int) -> jax.Array:
+    """Returns all order fields for the first order matching the given
+       time. CAVE: if the same time is used
+       multiple times at the same price level, will only return the 
+       first (i.e. first to be placed in book).
+        Parameters:
+                side_array (Array): Bid or ask orders in the book
+                time_s (int): Timestamp (s) of order to lookup
+                time_ns (int): Timestamp (ns) of order to lookup
+        Returns:
+                order (Array): Particular order as it is in the book.
+                                 Returns an empty array (-1 dummy 
+                                 values) if not found.
+    """
+    jax.debug.print("Searching for order at time {}.{} and price {}",time_s,time_ns,price)
+    jax.debug.print("Orderbook side array: {}",side_array)
+
+    # NOTE: jnp.where without x, y returns a tuple
+    idx = jnp.where(((side_array[..., 4] == time_s) &
+                     (side_array[..., 5] == time_ns) &
+                     (side_array[..., 0] == price)),
+                    size=1,
+                    fill_value=-1,)[0][0]
+
+    def find_by_time__fallback(idx):
+        return jnp.where(((side_array[..., 4] == time_s) &
+                     (side_array[..., 5] == time_ns)),
+                    size=1,
+                    fill_value=-1,)[0][0]
+    idx=jax.lax.cond(idx == -1,
+                 find_by_time__fallback,
+                    lambda i: i,
+                    idx)
+    # return vector of -1 if not found
+    return jax.lax.cond(idx == -1,
+                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
                         lambda i: side_array[i],
                         idx)
 
@@ -1094,7 +1138,9 @@ def get_L2_state(asks, bids, n_levels,cfg:JAXLOB_Configuration):
         fill_value=-1
     )
     # replace max 32 bit int with -1 after sorting
-    ask_prices = jnp.where(ask_prices == cfg.maxint, -1, ask_prices)
+    # ask_prices = jnp.where(ask_prices == cfg.maxint, -1, ask_prices)
+    bid_prices = jnp.where(bid_prices == -1, -cfg.maxint, bid_prices)
+
 
     bids = jnp.stack((bid_prices, jax.vmap(get_volume_at_price,(None,0),0)(bids, bid_prices)))
     asks = jnp.stack((ask_prices, jax.vmap(get_volume_at_price,(None,0),0)(asks, ask_prices)))
