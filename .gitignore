@@ -106,3 +106,4 @@ test.py
 
 data/*
 scratch/*
+lob_bench/*
