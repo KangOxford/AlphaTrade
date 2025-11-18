@@ -230,7 +230,7 @@ class MARLEnv(MultiAgentEnv):
         # -------------------------------------------------------
         # (B) Build External Data Messages (common to all agents)
         # -------------------------------------------------------
-        data_messages = self.base_env._get_data_messages(
+        data_messages = self.base_env.get_data_messages(
             params.loaded_params.message_data,
             state.world_state.start_index,
             state.world_state.step_counter,
@@ -252,10 +252,10 @@ class MARLEnv(MultiAgentEnv):
             agent_state = state.agent_states[agent_type_index]
             agent_params = params.agent_params[agent_type_index]
             agent_actions = actions[agent_type_index]
-            vmapped_function = vmap(self.instance_list[agent_type_index]._get_messages, in_axes=(0,None,0,0), out_axes = (0,0))
+            get_messages_vmap = vmap(self.instance_list[agent_type_index].get_messages, in_axes=(0,None,0,0), out_axes = (0,0))
             if self.multi_agent_config.number_of_agents_per_type[agent_type_index]==1:
                 agent_actions=jnp.expand_dims(agent_actions,axis=0)
-            action_msgs, cancel_msgs = vmapped_function(agent_actions, state.world_state, agent_state, agent_params)
+            action_msgs, cancel_msgs = get_messages_vmap(agent_actions, state.world_state, agent_state, agent_params)
             all_action_msgs_list.append(action_msgs)
             all_cancel_msgs_list.append(cancel_msgs)
 
@@ -365,6 +365,9 @@ class MARLEnv(MultiAgentEnv):
 
         #TODO: Could use some constants for indexing here, rather than magic numbers
         final_time = combined_msgs[-1, -2:]
+        #Flag which indicates this is the last step of the episode based on 'time'
+        ep_done_time = self._episode_done_time(final_time, state.world_state)
+        
         # def debug_callback_time(world_state, final_time,combined_msgs):
         #     print("Window Index: ", world_state.window_index)
         #     if world_state.window_index == 427:
@@ -403,8 +406,8 @@ class MARLEnv(MultiAgentEnv):
             # print("agent_type_index: ", agent_type_index)
             agent_state = state.agent_states[agent_type_index]
             agent_params = params.agent_params[agent_type_index]
-            vmapped_function = vmap(self.instance_list[agent_type_index]._get_reward, in_axes=(None,0,0,None,None,None,None), out_axes = (0,0))
-            reward, extras = vmapped_function(state.world_state, agent_state, agent_params, new_trades, new_bestasks, new_bestbids, final_time)
+            get_reward_vmap = vmap(self.instance_list[agent_type_index].get_reward, in_axes=(None,0,0,None,None,None,None), out_axes = (0,0))
+            reward, extras = get_reward_vmap(state.world_state, agent_state, agent_params, new_trades, new_bestasks, new_bestbids, ep_done_time)
             agent_reward_list.append(reward)
             agent_extras_list.append(extras)
 
@@ -508,13 +511,13 @@ class MARLEnv(MultiAgentEnv):
         # print("dones: ", new_agent_dones_list)
 
         # Flatten all done flags into a single array
-        if len(new_agent_dones_list) > 0:
+        if len(self.instance_list) > 0:
             all_dones_flat = jnp.concatenate(new_agent_dones_list)
-            overall_done = jnp.all(all_dones_flat) # Done if all agents are done
-
+            overall_done = ep_done_time and jnp.all(all_dones_flat) # Done if all agents are done
+            #Likely to throw an error due to bool =/= 
         else:
             all_dones_flat = jnp.array([])
-            overall_done = (new_world_state.time-new_world_state.init_time)[0]>=self.multi_agent_config.world_config.episode_time
+            overall_done = ep_done_time
 
 
         # __all__ is True only if every agent is done
@@ -636,8 +639,13 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-
-
+    def _episode_done_time(self,time, state: WorldState) -> jax.Array | bool:
+        if self.multi_agent_config.world_config.ep_type == 'fixed_time':
+            remainingTime = self.multi_agent_config.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
+            ep_done_time = remainingTime <= 0   # 5 seconds
+        else:
+            ep_done_time = self.multi_agent_config.world_config.episode_time - state.step_counter - 1 <= 1
+        return ep_done_time
 
 
 

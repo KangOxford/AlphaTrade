@@ -191,7 +191,7 @@ class BaseLOBEnv(environment.Environment):
         self, key: chex.PRNGKey, state: LoadedEnvState, action: Dict, params: LoadedEnvParams
     ) -> Tuple[chex.Array, LoadedEnvState, float, bool, dict]:
         #Obtain the messages for the step from the message data
-        data_messages=self._get_data_messages(params.message_data,
+        data_messages=self.get_data_messages(params.message_data,
                                               state.start_index,
                                               state.step_counter,
                                               state.init_time[0]+self.cfg.episode_time)
@@ -335,7 +335,7 @@ class BaseLOBEnv(environment.Environment):
         """Return dummy observation."""
         return 0
     
-    def _get_data_messages(self,messageData,start,step_counter,end_time_s):
+    def get_data_messages(self,messageData,start,step_counter,end_time_s):
         """Returns an array of messages for a given step. 
             Parameters:
                     messageData (Array): 2D array of all msgs with
