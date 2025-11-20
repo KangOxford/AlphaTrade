@@ -1535,13 +1535,6 @@ class ExecutionAgent():
         penalty = self.cfg.doom_price_penalty
 
 
-        #Doom price is some multiple of best bid(<1)/ask(>1)
-        doom_price = jax.lax.cond(
-            agent_state.is_sell_task,
-            lambda: (((bestbids[-1,0]) * (1-penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-            lambda: (((bestasks[-1,0]) * (1+penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-        )
-
         #jax.debug.print("doom_price: {}", doom_price)
 
         def add_fictional_trade(trades, price, quant):
@@ -1552,16 +1545,35 @@ class ExecutionAgent():
                       self.world_config.artificial_trader_id_end_episode, agent_params.trader_id)
             trades = job.add_trade(trades, mid_trade)
             return trades
-        
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+
         #Get side to place trade. +ve quant means we (aggresive) sold.
         side_sign=(agent_state.is_sell_task*2-1) # 1 if sell, -1 if buy
-        
+                ##Get the price to unwind at based on the config
+        if self.cfg.reference_price == "mid":
+            reference_price = jax.lax.cond(
+                agent_state.is_sell_task,
+                lambda: ((averageMidprice * (1-penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+                lambda: ((averageMidprice * (1+penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+                )
+        elif self.cfg.reference_price == "far_touch":
+            reference_price=jax.lax.cond(
+            agent_state.is_sell_task,
+            lambda: (((bestbids[-1,0]) * (1-penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (((bestasks[-1,0]) * (1+penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            )
+        elif self.cfg.reference_price == "near_touch":
+            # Even if we value our at the near touch price, we still want to unwind at the far touch price to be realistic
+            raise ValueError("Near touch is dumb for excevutuion env unwind, use best bid/ask instead.")
+        else:
+            raise ValueError("Invalid reference price type.")
+
         # Add artificial trade to trades object if episode is over and we still have remaining quantity
         trades : jax.Array = jax.lax.cond(
             ep_done_time & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
             add_fictional_trade,  # Place a midprice trade
             lambda trades, b, c: trades,  # If not, return the existing trades
-            trades, doom_price, side_sign*jnp.abs(quant_left)  # Inv +ve means incoming is sell so standing buy.
+            trades, reference_price, side_sign*jnp.abs(quant_left)  # Inv +ve means incoming is sell so standing buy.
         )
         #Return traded amounts - Just for logging 
         doom_quant = ep_done_time * quant_left
@@ -1666,6 +1678,7 @@ class ExecutionAgent():
         "vwap_rm": vwap_rm,
         "advantage": advantage,
         "drift": drift,
+        "slippage": slippage,
         "doom_quant": doom_quant,
         "quant_left": quant_left,
         "trade_duration": trade_duration,
@@ -1709,7 +1722,7 @@ class ExecutionAgent():
     def update_state_and_get_done_and_info(self, world_state:WorldState, agent_state_old: ExecEnvState, extras) -> Tuple[ExecEnvState, Dict]:
         # Get new state
         new_quant_executed = agent_state_old.quant_executed + extras["agentQuant"]
-        new_total_revenue = agent_state_old.total_revenue + extras["revenue"]
+        new_total_revenue = agent_state_old.total_revenue + extras["qp_agent"]
         new_drift_return = agent_state_old.drift_return + extras["drift"]
         new_advantage_return = agent_state_old.advantage_return + extras["advantage"]
         new_slippage_rm = extras["slippage_rm"]
@@ -1741,6 +1754,7 @@ class ExecutionAgent():
         drift = extras["drift"]
         advantage= extras["advantage"]
         doom_quant = extras["doom_quant"]
+        slippage=extras["slippage"]
 
         info = {
             # "total_revenue": agent_state.total_revenue,
@@ -1749,7 +1763,7 @@ class ExecutionAgent():
             "quant_left": new_quant_left,
             # "average_price": average_price,
             "done": done,
-            "revenue_direction_normalised": extras["reward_lam1"],  # pure revenue is not informative if direction is random (-> flip and normalise)
+            "revenue_direction_normalised": slippage,  # pure revenue is not informative if direction is random (-> flip and normalise)
             # "slippage_rm": agent_state.slippage_rm,
             # "price_adv_rm": agent_state.price_adv_rm,
             # "price_drift_rm": agent_state.price_drift_rm,
