@@ -57,14 +57,19 @@ class MarketMaking_EnvironmentConfig():
 
     #       Reward
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
-    reference_price: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
+    volume_traded_bonus: str = "none"  # options: "none", "linear"
+    reference_price: str = "mid"  # options: "mid_avg", "mid", "far_touch", "near_touch"
+    unwind_price: str = "mid"  # options: "mid_avg","mid", "far_touch"
     inv_penalty_lambda: float = 1.0
     inv_penalty_quadratic_factor: float = 50.0 #Represents N for penalty = 1/N * (inv ** 2) if quadratic penalty is used
+    inv_penalty_threshold : float = 10.0 #Threshold for threshold based inventory penalty
     multiplier_type: str = "tick" # options:  "tick" #DO NOT USE "spread" it is WRONG. 
-    #       Weights for complex reward function:
-    inventoryPnL_lambda: float = 0.5
+    reward_scaling_quo: float = 1.0
+    inventoryPnL_eta: float = 0.6
+
+    #       Weights for complex reward function (skip):
     unrealizedPnL_lambda: float = 0.1
-    asymmetrically_dampened_lambda: float = 0.8
+    # asymmetrically_dampened_lambda: float = 0.8
     # AvSt specific reward params
     avst_k_parameter: float = 0.4
     avst_var_parameter: float = 1e-8
@@ -123,7 +128,8 @@ class Execution_EnvironmentConfig():
     fixed_quant_value:int=10
     reward_lambda:float= 0.0
     reward_scaling_quo: float = 1.0
-    doom_price_penalty: float = 0.1
+    doom_price_penalty: float = 0.01
+    reference_price: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
 
     #Not functional.. yet
     time_delay_obs_act:int=0
