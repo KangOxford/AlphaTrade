@@ -833,7 +833,7 @@ class ExecutionAgent():
 
 
         #jax.debug.print("action_msgs exec: {}", action_msgs)
-        return action_msgs 
+        return action_msgs,{}
 
 
 
@@ -931,7 +931,7 @@ class ExecutionAgent():
         #---form messages---#
         action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
-        return action_msgs         
+        return action_msgs,{}
 
 
     def _getActionMsgs_simpleCase(self, action: jax.Array, world_state: WorldState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
@@ -997,7 +997,7 @@ class ExecutionAgent():
         #---form messages---#
         action_msgs = jnp.stack([types, sides, quants, price_levels, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
-        return action_msgs
+        return action_msgs,{}
 
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: WorldState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
@@ -1112,7 +1112,7 @@ class ExecutionAgent():
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         # jax.debug.print('action_msgs\n {}', action_mgs)
-        return action_msgs
+        return action_msgs,{}
         # ============================== Get Action_msgs ==============================
 
 
@@ -1132,7 +1132,7 @@ class ExecutionAgent():
             raise NotImplementedError("TWAP not implemented for fixed time episodes, need to have some notion of delta_time per step.")
         elif self.world_config.ep_type == 'fixed_steps':
             # Calculate remaining steps as a percentage
-            steps_left=world_state.max_steps_in_episode - world_state.step_counter-1
+            steps_left=world_state.max_steps_in_episode - world_state.step_counter-2
             quant_left = agent_state.task_to_execute - agent_state.quant_executed
             quant_this_step= jnp.ceil(quant_left / steps_left).astype(jnp.int32)  # quant to execute this step
         # Get the quants based on the action
@@ -1211,7 +1211,7 @@ class ExecutionAgent():
         # jax.debug.print("action_msgs exec twap: \n  {}", action_msgs)
 
         #jax.debug.print("action_msgs exec: {}", action_msgs)
-        return action_msgs 
+        return action_msgs , {}
 
 
 
@@ -1225,7 +1225,7 @@ class ExecutionAgent():
         """Get the action and cancel messages for the execution agent."""
 
         # 1. Get action messages
-        action_msgs = self.action_fn(
+        action_msgs,extras = self.action_fn(
             action,
             world_state,
             agent_state,
@@ -1259,7 +1259,7 @@ class ExecutionAgent():
         #jax.debug.print("cancel messages order exec: {}", cancel_msgs)
 
         # 6. Return
-        return action_msgs, cancel_msgs
+        return action_msgs, cancel_msgs,extras
 
 
 

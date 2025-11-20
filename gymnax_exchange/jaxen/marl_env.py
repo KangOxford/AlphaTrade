@@ -246,7 +246,7 @@ class MARLEnv(MultiAgentEnv):
         all_cancel_msgs_list = [] # One element for each agent type
 
         #jax.debug.print("action: {}", actions)
-
+        agent_act_extras_list = []
 
         for agent_type_index in range(len(self.instance_list)):
             agent_state = state.agent_states[agent_type_index]
@@ -255,9 +255,10 @@ class MARLEnv(MultiAgentEnv):
             get_messages_vmap = vmap(self.instance_list[agent_type_index].get_messages, in_axes=(0,None,0,0), out_axes = (0,0))
             if self.multi_agent_config.number_of_agents_per_type[agent_type_index]==1:
                 agent_actions=jnp.expand_dims(agent_actions,axis=0)
-            action_msgs, cancel_msgs = get_messages_vmap(agent_actions, state.world_state, agent_state, agent_params)
+            action_msgs, cancel_msgs, extras = get_messages_vmap(agent_actions, state.world_state, agent_state, agent_params)
             all_action_msgs_list.append(action_msgs)
             all_cancel_msgs_list.append(cancel_msgs)
+            agent_act_extras_list.append(extras)
 
         #jax.debug.print("all action msgs: {}", all_action_msgs_list)
        # print(f"all cancel msgs: {all_cancel_msgs_list}")
@@ -400,7 +401,7 @@ class MARLEnv(MultiAgentEnv):
         #jax.debug.print("trades: {}", new_trades)
 
         agent_reward_list = []
-        agent_extras_list = []
+        agent_rew_extras_list = []
 
         for agent_type_index in range(len(self.instance_list)):
             # print("agent_type_index: ", agent_type_index)
@@ -409,7 +410,7 @@ class MARLEnv(MultiAgentEnv):
             get_reward_vmap = vmap(self.instance_list[agent_type_index].get_reward, in_axes=(None,0,0,None,None,None,None), out_axes = (0,0))
             reward, extras = get_reward_vmap(state.world_state, agent_state, agent_params, new_trades, new_bestasks, new_bestbids, ep_done_time)
             agent_reward_list.append(reward)
-            agent_extras_list.append(extras)
+            agent_rew_extras_list.append(extras)
 
         # print("agent_reward_list: ", agent_reward_list)
 
@@ -473,7 +474,7 @@ class MARLEnv(MultiAgentEnv):
         for agent_type_index in range(len(self.instance_list)):
             # print("agent_type_index: ", agent_type_index)
             agent_state = state.agent_states[agent_type_index]
-            extras = agent_extras_list[agent_type_index]
+            extras = agent_rew_extras_list[agent_type_index]
             vmapped_function = vmap(self.instance_list[agent_type_index].update_state_and_get_done_and_info, in_axes=(None,0,0), out_axes = (0,0,0))
             states, dones, infos = vmapped_function(new_world_state, agent_state, extras)
             new_agent_states_list.append(states)
@@ -513,7 +514,7 @@ class MARLEnv(MultiAgentEnv):
         # Flatten all done flags into a single array
         if len(self.instance_list) > 0:
             all_dones_flat = jnp.concatenate(new_agent_dones_list)
-            overall_done = ep_done_time and jnp.all(all_dones_flat) # Done if all agents are done
+            overall_done = jnp.any(jnp.asarray([ep_done_time, jnp.all(all_dones_flat)])) # Done if all agents are done
             #Likely to throw an error due to bool =/= 
         else:
             all_dones_flat = jnp.array([])
@@ -639,12 +640,12 @@ class MARLEnv(MultiAgentEnv):
 
 
 
-    def _episode_done_time(self,time, state: WorldState) -> jax.Array | bool:
+    def _episode_done_time(self,time, state: WorldState) -> bool:
         if self.multi_agent_config.world_config.ep_type == 'fixed_time':
-            remainingTime = self.multi_agent_config.world_config.episode_time - jnp.array((time - state.init_time)[0], dtype=jnp.int32)
-            ep_done_time = remainingTime <= 0   # 5 seconds
+            remainingTime = self.multi_agent_config.world_config.episode_time - jnp.asarray((time - state.init_time)[0], dtype=jnp.int32)
+            ep_done_time = (remainingTime <= 0)  # 5 seconds
         else:
-            ep_done_time = self.multi_agent_config.world_config.episode_time - state.step_counter - 1 <= 1
+            ep_done_time = ((self.multi_agent_config.world_config.episode_time - state.step_counter - 1) <= 1)
         return ep_done_time
 
 

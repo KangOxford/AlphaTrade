@@ -44,7 +44,7 @@
 "AGENT_CONFIGS" : {"MarketMaking" :{"inv_penalty": "quadratic",
                                     "skew_multiplier": 10,
                                     "action_space":"fixed_quants", #"spread_skew",,"fixed_quants"simple
-                                    "reward_space" : "spooner", # "spooner"buy_sell_pnl
+                                    "reward_function" : "spooner", # "spooner"buy_sell_pnl
                                   },
                   "Execution" : {"reward_lambda": 0.0,
                                 "fixed_quant_value": 10, #20 on fixed quants

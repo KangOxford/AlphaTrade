@@ -1039,7 +1039,7 @@ class MarketMakingAgent():
 
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
-        return action_msgs
+        return action_msgs,{}
 
 
 
@@ -1163,7 +1163,7 @@ class MarketMakingAgent():
 
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
-        return action_msgs
+        return action_msgs,{}
 
 
 
@@ -1243,7 +1243,10 @@ class MarketMakingAgent():
         #jax.debug.print("spread:{}",spread)
         #jax.debug.print("mid price :{}",mid_price)
         #jax.debug.print("msg:{}",action_msgs)
-        return action_msgs
+        return action_msgs,{"posted_spread":spread,
+                            "reservation_price":res_price,
+                            "bid_price":bid_price,
+                            "ask_price":ask_price}
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: WorldState, agent_params: MMEnvParams):
         '''Shape the action quantities in to messages sent the order book at the 
@@ -1346,7 +1349,7 @@ class MarketMakingAgent():
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         #jax.debug.print('action_msgs\n {}', action_msgs)
-        return action_msgs
+        return action_msgs,{}
         # ============================== Get Action_msgs ==============================
 
     def _getActionMsgs_spread_skew(self, action: jax.Array, world_state: WorldState, agent_params: MMEnvParams):
@@ -1488,7 +1491,7 @@ class MarketMakingAgent():
         #jax.debug.print("Final Bid Price: {}, Final Ask Price: {}", bid_price, ask_price)
         #jax.debug.print("Final Messages:\n{}", action_msgs)
         
-        return action_msgs
+        return action_msgs,{}
 
 
 
@@ -1547,14 +1550,14 @@ class MarketMakingAgent():
         
         # Debug print final messages
         #jax.debug.print("Final Action Messages:\n{}", action_msgs)
-        return action_msgs
+        return action_msgs,{}
 
 
 
     def get_messages(self, action: jax.Array, world_state: WorldState, agent_state:MMEnvState, agent_params: MMEnvParams):
         '''Get the action and cancel messages'''
     
-        action_msgs = self.action_fn(action,
+        action_msgs,extras = self.action_fn(action,
                                     world_state,
                                     agent_state,
                                     agent_params)
@@ -1587,7 +1590,7 @@ class MarketMakingAgent():
         #jax.debug.print("action messages order mm: {}", action_msgs)
         #jax.debug.print("cancel messages order mm: {}", cancel_msgs)
 
-        return action_msgs, cancel_msgs
+        return action_msgs, cancel_msgs,extras
 
 
 
