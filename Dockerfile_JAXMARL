@@ -27,12 +27,12 @@ RUN apt-get update && \
     graphviz \
     libcupti-dev
 # Copy requirements.txt and verify its contents
-COPY --chown=${MYUSER}:${MYUSER} requirements2.txt /home/${MYUSER}/AlphaTrade/
-RUN ls -l && cat requirements2.txt
+COPY --chown=${MYUSER}:${MYUSER} requirements.txt /home/${MYUSER}/AlphaTrade/
+RUN ls -l && cat requirements.txt
 
 #jaxmarl from source if needed, all the requirements
 # RUN pip install -e .[algs,dev]
-RUN pip install -r requirements2.txt
+RUN pip install -r requirements.txt
 
 
 RUN wget https://go.dev/dl/go1.24.5.linux-amd64.tar.gz

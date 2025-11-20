@@ -1,7 +1,7 @@
 NVCC_RESULT := $(shell which nvcc 2> NULL; rm NULL)
 NVCC_TEST := $(notdir $(NVCC_RESULT))
 ifeq ($(NVCC_TEST),nvcc)
-GPUS=--gpus '"device="'
+GPUS=--gpus '"device=0"'
 else
 GPUS=
 endif
@@ -14,7 +14,7 @@ SERVER_NAME = $(shell hostname)
 ifeq ($(SERVER_NAME),flair-node-12)
 DATADIR=/homes/80/sascha/data
 else
-DATADIR=~/data
+DATADIR=~/data_local/data
 endif
 SCRATCH_DIR=~/scratch_LOB
 BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data -v $(SCRATCH_DIR):/home/$(MYUSER)/scratch --shm-size 20G
@@ -43,6 +43,12 @@ test:
 
 ppo:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py"
+
+baseline:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py"
+
+plot_trajectories:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py"
 
 workflow-test:
 	# without -it flag
