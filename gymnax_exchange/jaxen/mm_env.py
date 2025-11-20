@@ -1202,8 +1202,8 @@ class MarketMakingAgent():
         spread = (gamma*variance*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.world_config.tick_size
         spread=jnp.clip(spread,self.world_config.tick_size,self.world_config.maxint)#make sure spread is at least a tick
 
-        bid_price= res_price-spread
-        ask_price= res_price+spread
+        bid_price= res_price-spread/2
+        ask_price= res_price+spread/2
 
         # Ensure valid price bound 
         bid_price = jnp.clip(bid_price, 0, self.world_config.maxint) 
