@@ -1909,13 +1909,14 @@ class MarketMakingAgent():
 
 
 
-    def _extract_agent_trade_stats(self, trades, agent_params, state):
+    def _extract_agent_trade_stats(self, trades :jax.Array, trader_id : jax.typing.ArrayLike) -> Tuple[jax.Array, jax.Array, jax.Array, jax.Array]:
         # Find trades by agent vs by others
         executed = jnp.where((trades[:, 0] >= 0)[:, jnp.newaxis], trades, 0)
 
         # print(f"agent_params.trader_id: {agent_params.trader_id}")
         
-        mask2 = (agent_params.trader_id == executed[:, 6]) | (agent_params.trader_id == executed[:, 7]) #Mask to find trader ID
+        mask2 = ((trader_id == executed[:, job.cst.TradesFeat.PASS_TID.value]) |
+                    (trader_id == executed[:, job.cst.TradesFeat.AGRS_TID.value])) #Mask to find trader ID
         agentTrades = jnp.where(mask2[:, jnp.newaxis], executed, 0)
         otherTrades = jnp.where(mask2[:, jnp.newaxis], 0, executed)
     
@@ -1923,23 +1924,13 @@ class MarketMakingAgent():
         #Find agent Buys and Agent sells from agent Trades:
         #The below mask puts passive buys or aggresive buys into "agent buys".
         #Logic: Q>0, TIDs=BUY; Q<0 TIDa= BUY
-        mask_buy = (((agentTrades[:, 1] >= 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] < 0)  & (agent_params.trader_id == agentTrades[:, 7])))
-        mask_sell = (((agentTrades[:, 1] < 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] >= 0)  & (agent_params.trader_id == agentTrades[:, 7])))
+        mask_buy = (((agentTrades[:, 1] >= 0) & (trader_id == agentTrades[:, job.cst.TradesFeat.PASS_TID.value])) |
+                    ((agentTrades[:, 1] < 0)  & (trader_id == agentTrades[:, job.cst.TradesFeat.AGRS_TID.value])))
+        mask_sell = (((agentTrades[:, 1] < 0) & (trader_id == agentTrades[:, job.cst.TradesFeat.PASS_TID.value])) |
+                     ((agentTrades[:, 1] >= 0)  & (trader_id == agentTrades[:, job.cst.TradesFeat.AGRS_TID.value])))
         agent_buys=jnp.where(mask_buy[:, jnp.newaxis], agentTrades, 0)
         agent_sells=jnp.where(mask_sell[:, jnp.newaxis], agentTrades, 0)
-
-        #Find amount bought and sold in the step
-        buyQuant=jnp.abs(agent_buys[:, 1]).sum()
-        sellQuant=jnp.abs(agent_sells[:, 1]).sum()
-
-        #Find total traded volume
-        TradedVolume=buyQuant+sellQuant
-
-        #Calculate the change in inventory & the new inventory
-        inventory_delta = buyQuant - sellQuant
-        new_inventory=state.inventory+inventory_delta
-
-        return agentTrades, otherTrades, agent_buys, agent_sells, buyQuant, sellQuant, TradedVolume, inventory_delta, new_inventory
+        return agentTrades, otherTrades, agent_buys, agent_sells
 
 
 
@@ -1947,10 +1938,10 @@ class MarketMakingAgent():
                     world_state: WorldState, 
                     agent_state: MMEnvState, 
                     agent_params: MMEnvParams, 
-                    trades: chex.Array, 
-                    bestasks: chex.Array, 
-                    bestbids: chex.Array, 
-                    ep_done_time: bool) -> jnp.int32:
+                    trades: jax.Array,
+                    bestasks: jax.Array,
+                    bestbids: jax.Array,
+                    ep_done_time: bool) -> Tuple[jax.Array,dict]:
         '''Return the reward. There are a few options for reward funciton and assocaited hyper parameters:
         '''
         # ====================01 get reward stats ==========================================#
@@ -1962,65 +1953,60 @@ class MarketMakingAgent():
         # Get reward stats before unwind
         #########################################################
 
-        agentTrades_before_unwind, otherTrades_before_unwind, agent_buys_before_unwind, agent_sells_before_unwind, buyQuant_before_unwind, sellQuant_before_unwind, TradedVolume_before_unwind, inventory_delta_before_unwind, new_inventory_before_unwind = \
-                self._extract_agent_trade_stats(trades, agent_params, agent_state)
+        _, _, agent_buys_before_unwind, agent_sells_before_unwind = \
+                self._extract_agent_trade_stats(trades, agent_params.trader_id)
+        
+        #Find amount bought and sold in the step
+        buyQuant=jnp.abs(agent_buys_before_unwind[:, job.cst.TradesFeat.Q.value]).sum()
+        sellQuant=jnp.abs(agent_sells_before_unwind[:, job.cst.TradesFeat.Q.value]).sum()
 
+        new_inventory_before_final_trade=agent_state.inventory+buyQuant - sellQuant
 
+        #These values may be used throughout, they do not change even in the event of a fictional trade
+        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+        last_mid_price = (world_state.best_bids[-1,0] + world_state.best_asks[-1,0]) / 2
 
         #########################################################################################
         # Add artificial trade if episode is done
         # Important: this artificial trade is not saved, its just used to calculate the reward
         #########################################################################################
 
-
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
-        last_mid_price = (world_state.best_bids[-1,0] + world_state.best_asks[-1,0]) / 2
-
-        #jax.debug.print("new_inventory_before_unwind: {}", new_inventory_before_unwind)
-
-        is_sell_task = jnp.where(new_inventory_before_unwind > 0, 1, 0)
-        FT_price = jax.lax.cond(
-            is_sell_task,
-            lambda: ((bestbids[-1, 0]) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-            lambda: (( bestasks[-1, 0])// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-        )
-
-        def place_refprice_trade(trades, price, quant, time):
+        def add_fictional_trade(trades, price, quant):
             '''Place a doom trade at a trade at specified price to close out our mm agent at the end of the episode.'''
             trade = job.create_trade(
-                price, quant, self.world_config.artificial_order_id_end_episode,  self.world_config.placeholder_order_id, *time, self.world_config.artificial_trader_id_end_episode, agent_params.trader_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
+                price, quant, self.world_config.artificial_order_id_end_episode,  self.world_config.placeholder_order_id, 0,0, self.world_config.artificial_trader_id_end_episode, agent_params.trader_id) #-66666 is an artifical OID for the artifical person we "traded with" to close our position
             trades = job.add_trade(trades, trade)
             return trades
 
+
         ##Get the price to unwind at based on the config
-        if self.cfg.reference_price_portfolio_value == "mid":
-            reference_price = averageMidprice
-            if self.cfg.based_on_mid_price_of_action:
-                reference_price = last_mid_price
-        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
-            reference_price=FT_price
-        elif self.cfg.reference_price_portfolio_value == "near_touch":
-            # Even if we value our at the near touch price, we still want to unwind at the far touch price to be realistic
-            reference_price=FT_price
+        if self.cfg.unwind_price == "mid_avg":
+            unwind_price = averageMidprice
+        elif self.cfg.unwind_price == "mid":
+            unwind_price = last_mid_price
+        elif self.cfg.unwind_price == "far_touch":
+            unwind_price = jax.lax.cond(new_inventory_before_final_trade > 0,
+                    lambda: bestbids[-1][0],
+                    lambda: bestasks[-1][0])
         else:
-            raise ValueError("Invalid reference price type.")
+            raise ValueError("Invalid unwind price type.")
         
         trades = jax.lax.cond(
-            ep_is_over & (jnp.abs(new_inventory_before_unwind) > 0),  # Check if episode is over and we still have remaining quantity
-            place_refprice_trade,  # Place a midprice trade
-            lambda trades, b, c, d: trades,  # If not, return the existing trades
-            trades, reference_price, jnp.sign(new_inventory_before_unwind) * jnp.abs(new_inventory_before_unwind), time  # Inv +ve means incoming is sell so standing buy.
+            ep_done_time & (jnp.abs(new_inventory_before_final_trade) > 0),  # Check if episode is over and we still have remaining quantity
+            add_fictional_trade,  # Place a midprice trade
+            lambda trades, b, c: trades,  # If not, return the existing trades
+            trades, unwind_price, jnp.sign(new_inventory_before_final_trade) * jnp.abs(new_inventory_before_final_trade) # Inv +ve means incoming is sell so standing buy.
         )
 
         #jax.debug.print("trades mm env: {}", trades)
 
 
         #########################################################
-        # Get reward stats after unwind
+        # Get trades after fictional trade
         #########################################################
 
-        agentTrades, otherTrades, agent_buys, agent_sells, buyQuant, sellQuant, TradedVolume, inventory_delta, new_inventory = \
-                self._extract_agent_trade_stats(trades, agent_params, agent_state)
+        _, otherTrades, agent_buys, agent_sells = \
+                self._extract_agent_trade_stats(trades, agent_params.trader_id)
 
 
 
@@ -2031,177 +2017,144 @@ class MarketMakingAgent():
 
         #Find the new obsvered mid price at the end of the step.
         #non normalized=> going on state
-        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) / 2# * self.world_config.tick_size) * self.world_config.tick_size
+        mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) / 2
 
         #Real Revenue calcs: (actual cash flow+actual value of portfolio)
-        income=(agent_sells[:, 0]* jnp.abs(agent_sells[:, 1])).sum()
-        outgoing=(agent_buys[:, 0] * jnp.abs(agent_buys[:, 1])).sum() 
+        income=(agent_sells[:, job.cst.TradesFeat.P.value] * 
+                jnp.abs(agent_sells[:, job.cst.TradesFeat.Q.value])).sum()
+        outgoing=(agent_buys[:, job.cst.TradesFeat.P.value] * 
+                  jnp.abs(agent_buys[:, job.cst.TradesFeat.Q.value])).sum() 
 
-        #PnL,== cash balance== normalised by tick size
-        PnL=(income-outgoing)/self.world_config.tick_size
+        buyQuant=jnp.abs(agent_buys[:, job.cst.TradesFeat.Q.value]).sum()
+        sellQuant=jnp.abs(agent_sells[:, job.cst.TradesFeat.Q.value]).sum()
+
+        new_inventory=agent_state.inventory+buyQuant - sellQuant
+
+
+        #PnL,== cash balance change
+        PnL=(income-outgoing)
 
         # Compute a reference price based on the config
-        if self.cfg.reference_price_portfolio_value == "mid":
-            reference_price = mid_price_end/self.world_config.tick_size
-        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
+        if self.cfg.reference_price == "mid_avg":
+            ref_buy = averageMidprice
+            ref_sell = averageMidprice
+            reference_price = averageMidprice
+        elif self.cfg.reference_price == "mid":
+            ref_buy = last_mid_price
+            ref_sell = last_mid_price
+            reference_price = last_mid_price
+        elif self.cfg.reference_price == "far_touch":
             # For a long position, use the best bid; for a short, the best ask.
+            ref_buy = bestasks[-1][0]
+            ref_sell = bestbids[-1][0]
             reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestbids[-1][0]/self.world_config.tick_size,
-                                        lambda: bestasks[-1][0]/self.world_config.tick_size)
-        elif self.cfg.reference_price_portfolio_value == "near_touch":
+                                        lambda: ref_buy,
+                                        lambda: ref_sell)
+        elif self.cfg.reference_price == "near_touch":
             # For a long position, use the best ask; for a short, the best bid.
+            ref_buy = bestbids[-1][0]
+            ref_sell = bestasks[-1][0]
             reference_price = jax.lax.cond(new_inventory > 0,
-                                        lambda: bestasks[-1][0]/self.world_config.tick_size,
-                                        lambda: bestbids[-1][0]/self.world_config.tick_size)
+                                        lambda: ref_buy,
+                                        lambda: ref_sell)
         else:
             raise ValueError("Invalid reference price type.")
 
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = agent_state.cash_balance + PnL
-        inventoryValue=new_inventory*(reference_price)
-        netWorth=new_cash_balance+inventoryValue  
+        inventoryValue=new_inventory*(reference_price) #Mark to market inventory value
+        netWorth=new_cash_balance+inventoryValue
 
         #calculate a fraction of total market activity attributable to us.
-        other_exec_quants = jnp.abs(otherTrades[:, 1]).sum()
+        other_exec_quants = jnp.abs(otherTrades[:, job.cst.TradesFeat.Q.value]).sum()
+        TradedVolume = buyQuant + sellQuant
         market_share = TradedVolume / (TradedVolume + other_exec_quants)
 
         #=========02 Get rewards============================##
 
         #------------A) spooner Rewards-------------------------#       
-        #Inventory PnL: 
-        InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)/self.world_config.tick_size 
-    
-        #Market Making PNL:     
-        averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
+        #Inventory PnL: The value obtained due to the midprice changing and us holding inventory
+        InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)
 
-
-        #jax.debug.print("averageMidprice: {}", averageMidprice)
-
-
-        buyPnL = ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
-        sellPnL = ((agent_sells[:, 0] - averageMidprice) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
-
-
-
-
-        first_mid_price = (bestbids[0,0] + bestasks[0,0]) / 2
-        last_mid_price = (world_state.best_bids[-1,0] + world_state.best_asks[-1,0]) / 2
-
-
-        #jax.debug.print("bestbids: {}", bestbids[:,0])
-        #jax.debug.print("bestasks: {}", bestasks[:,0])
-        #jax.debug.print("first_mid_price: {}", first_mid_price)
-        #jax.debug.print("averageMidprice: {}", averageMidprice)
-        #jax.debug.print("last_mid_price: {}", last_mid_price)
-
-        if self.cfg.based_on_mid_price_of_action:
-            buyPnL = ((last_mid_price - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
-            sellPnL = ((agent_sells[:, 0] - last_mid_price) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
-
-            #jax.debug.print("buyPnL: {}", buyPnL)
-            #jax.debug.print("sellPnL: {}", sellPnL)
-
-
-
-        #jax.debug.print("buyPnL: {}", buyPnL)
-        #jax.debug.print("sellPnL: {}", sellPnL)
-
-        #jax.debug.print("averageMidprice: {}", averageMidprice)
-        #jax.debug.print("buyPnL: {}", buyPnL)
-        #jax.debug.print("sellPnL: {}", sellPnL)
-        #jax.debug.print("agent_buys[:, 0]: {}", agent_buys[:, 0])
-        #jax.debug.print("agent_sells[:, 0]: {}", agent_sells[:, 0])
-        #jax.debug.print("jnp.abs(agent_buys[:, 1]): {}", jnp.abs(agent_buys[:, 1]))
-        #jax.debug.print("(averageMidprice - agent_buys[:, 0]): {}", (averageMidprice - agent_buys[:, 0]))
-        #jax.debug.print("(agent_sells[:, 0] - averageMidprice): {}", (agent_sells[:, 0] - averageMidprice))
-        #jax.debug.print("((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum(): {}", ((averageMidprice - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum())
-
-
-
-        ##aggresive
-        aggresive_buyPnL = ((bestasks[-1][0] - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum() /self.world_config.tick_size
-        aggresive_sellPnL = ((agent_sells[:, 0] - bestbids[-1][0]) * jnp.abs(agent_sells[:, 1])).sum() /self.world_config.tick_size
-
-
+        buyPnL = ((ref_buy - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum()
+        sellPnL = ((agent_sells[:, 0] - ref_sell) * jnp.abs(agent_sells[:, 1])).sum()
+        
 
         #A1)Spooner paper reward
-        reward_spooner = aggresive_buyPnL + aggresive_sellPnL + InventoryPnL - jnp.maximum(0,InventoryPnL)
+        reward_spooner = buyPnL + sellPnL + InventoryPnL 
 
         #A2)spooner_damped
-        reward_spooner_damped = aggresive_buyPnL + aggresive_sellPnL + InventoryPnL - (1-self.cfg.inventoryPnL_lambda)*jnp.maximum(0,InventoryPnL)
+        reward_spooner_damped = buyPnL + sellPnL + InventoryPnL - (self.cfg.inventoryPnL_eta*InventoryPnL)
+
+        #A2.5 Spooner Asym Dampened
+        reward_spooner_asym_damped = buyPnL + sellPnL + InventoryPnL - jnp.maximum(0,(self.cfg.inventoryPnL_eta*InventoryPnL))
 
         #A3) Spooner Scaled
         scaledInventoryPnL=InventoryPnL//(jnp.abs(agent_state.inventory)+1)
-        reward_spooner_scaled=aggresive_buyPnL + aggresive_sellPnL+ self.cfg.inventoryPnL_lambda*(InventoryPnL - (1-self.cfg.asymmetrically_dampened_lambda)*jnp.maximum(0,InventoryPnL) )
+        reward_spooner_scaled=buyPnL + sellPnL+ self.cfg.inventoryPnL_eta*(InventoryPnL - (1-self.cfg.inventoryPnL_eta)*jnp.maximum(0,InventoryPnL) )
+        
         #----------------------B) Complex reward---------------------------------------------#
-        inventoryPnL_lambda = self.cfg.inventoryPnL_lambda
+        inventory_change= buyQuant - sellQuant
+        inventoryPnL_eta = self.cfg.inventoryPnL_eta
         unrealizedPnL_lambda = self.cfg.unrealizedPnL_lambda
-        asymmetrically_dampened_lambda = self.cfg.asymmetrically_dampened_lambda
+        asymmetrically_dampened_lambda = self.cfg.inventoryPnL_eta
         avg_buy_price = jnp.where(buyQuant > 0, (agent_buys[:, 0]/ buyQuant * jnp.abs(agent_buys[:, 1])).sum(), 0)  
         avg_sell_price = jnp.where(sellQuant > 0, (agent_sells[:, 0]/ sellQuant * jnp.abs(agent_sells[:, 1])).sum(), 0)
-        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) /self.world_config.tick_size
+        approx_realized_pnl = jnp.minimum(buyQuant, sellQuant) * (avg_sell_price - avg_buy_price) 
         approx_unrealized_pnl = jnp.where( 
-            inventory_delta > 0,
-            inventory_delta * (averageMidprice - avg_buy_price)/self.world_config.tick_size,  # Excess buys
-            jnp.abs(inventory_delta) * (avg_sell_price - averageMidprice)/self.world_config.tick_size  # Excess sells
+            inventory_change > 0,
+            inventory_change * (averageMidprice - avg_buy_price),  # Excess buys
+            jnp.abs(inventory_change) * (avg_sell_price - averageMidprice)  # Excess sells
         )
   
-        reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_lambda * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
+        reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_eta * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
     
-        #--------------------C) Portfolilo Value--------------#
+        #--------------------C) Portfolio Value--------------#
         reward_portfolio_value=new_inventory*(reference_price)+new_cash_balance
 
-        #-----------------d) delta Portfolio Value--------#
+        #----------------- D) Delta Portfolio Value--------#
         #Get old ref price
-        if self.cfg.reference_price_portfolio_value == "mid":
-            old_reference_price = world_state.mid_price/self.world_config.tick_size
-        elif self.cfg.reference_price_portfolio_value == "best_bid_ask":
+        if self.cfg.reference_price in ("mid","mid_avg"):
+            old_reference_price = world_state.mid_price
+        elif self.cfg.reference_price == "far_touch":
             # For a long position, use the best bid; for a short, the best ask. (this is realistic)
             old_reference_price = jax.lax.cond(agent_state.inventory > 0,
-                                        lambda: world_state.best_bids[-1][0]/self.world_config.tick_size,
-                                        lambda: world_state.best_asks[-1][0]/self.world_config.tick_size)
-        elif self.cfg.reference_price_portfolio_value == "near_touch":
+                                        lambda: world_state.best_asks[-1][0],
+                                        lambda: world_state.best_bids[-1][0])
+        elif self.cfg.reference_price == "near_touch":
             # For a long position, use the best ask; for a short, the best bid. (this is not realistic, but might be useful for training)
             old_reference_price = jax.lax.cond(agent_state.inventory > 0,
-                                        lambda: world_state.best_asks[-1][0]/self.world_config.tick_size,
-                                        lambda: world_state.best_bids[-1][0]/self.world_config.tick_size)
+                                        lambda: world_state.best_bids[-1][0],
+                                        lambda: world_state.best_asks[-1][0])
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth
         old_netWorth=old_reference_price*agent_state.inventory+agent_state.cash_balance
         delta_netWorth=netWorth-old_netWorth
-        reward_delta_netWorth=delta_netWorth
         
 
         #===================== 03) Set reward based on config file==================#
         if self.cfg.reward_function == "portfolio_value": #Cash balance + value of portfolio at midprice (or BB/BA)
             reward = reward_portfolio_value
-        elif self.cfg.reward_function == "portfolio_value_scaled":
-            reward = reward_portfolio_value/100
-        elif self.cfg.reward_function == "pnl": #Cash balance, useless as a reward function. Will just sell to -inf. 
-            reward = PnL
         elif self.cfg.reward_function == "buy_sell_pnl":
-            reward = buyPnL + sellPnL
-            #jax.debug.print("buyPnL: {}", buyPnL)
-            #jax.debug.print("sellPnL: {}", sellPnL)
-            #jax.debug.print("reward without penalty: {}", reward)
+            reward = (buyPnL + sellPnL)
         elif self.cfg.reward_function == "complex":
+            #Skip
             reward =reward_complex
         elif self.cfg.reward_function == "zero_inv":
+            #Skip, debugging only
             reward = -jnp.abs(new_inventory)
         elif self.cfg.reward_function=="spooner":
             reward=reward_spooner
         elif self.cfg.reward_function=="spooner_damped":
             reward=reward_spooner_damped
+        elif self.cfg.reward_function=="spooner_asym_damped":
+            reward=reward_spooner_asym_damped
         elif self.cfg.reward_function=="spooner_scaled":
-            reward=reward_spooner_scaled/10
-        elif self.cfg.reward_function=="delta_netWorth":
-            reward=reward_delta_netWorth
-
-        elif self.cfg.reward_function=="weight_pnl_inventory_pnl":
-            ##Im going to use "inventoryPnL_lambda", this is already on config, and will be easy to change.
-            weighted_inventory_pnl=self.cfg.inventoryPnL_lambda*InventoryPnL #INV pnl defined as: InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)/self.world_config.tick_size 
-            reward=buyPnL+sellPnL+weighted_inventory_pnl
+            #Skip
+            reward=reward_spooner_scaled
+        elif self.cfg.reward_function=="delta_portfolio_value":
+            reward=delta_netWorth
         else:
             raise ValueError("Invalid reward_space specified.")
         
@@ -2216,27 +2169,24 @@ class MarketMakingAgent():
             #jax.debug.print("new_inventory: {}", new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "exp4":
-            inv_pen = (-1) * (jnp.exp(new_inventory) ** 4)
+            inv_pen = (-1) * (jnp.exp(new_inventory*4))
             #jax.debug.print("new_inventory: {}", new_inventory)
             #jax.debug.print("inv_pen: {}", inv_pen)
         elif self.cfg.inv_penalty == "threshold":
-            #inv_pen = (-1.0) * (jnp.abs(new_inventory) ** 2)
             inv_pen = jax.lax.cond(
-                jnp.abs(new_inventory) > 50,
-                lambda: (-1.0) * (new_inventory ** 2),
+                jnp.abs(new_inventory) > self.cfg.inv_penalty_threshold,
+                lambda: (-1.0) * ((new_inventory ** 2)/self.cfg.inv_penalty_quadratic_factor),
                 lambda: 0.0
-            )    
-            #jax.debug.print("new_inventory: {}", new_inventory)
-            #jax.debug.print("inv_pen: {}", inv_pen)[]
-            #jax.debug.print("reward before: {}", reward)
+            )
         else:
             raise ValueError("Invalid inventory penalty specified.")
         reward = reward + self.cfg.inv_penalty_lambda * inv_pen
 
         if self.cfg.clip_reward:
             reward = jnp.clip(reward, -10000, 10000)
-
         
+        if self.cfg.volume_traded_bonus == "market_share":
+            reward = reward + jnp.abs(reward) * market_share
 
         if self.cfg.exclude_extreme_spreads==True:
             #jax.debug.print("reward before: {}", reward)
@@ -2254,23 +2204,15 @@ class MarketMakingAgent():
                 lambda: reward
             )
             #jax.debug.print("reward: {}", reward)
-
-
-
-
-
-        # ----------04) normalize the reward ----------#
         
-        #jax.debug.print("overall reward: {}", reward)
 
-        return reward, {
-            "reward":reward,
+        return reward/self.cfg.reward_scaling_quo, {
             "reward_portfolio_value":reward_portfolio_value,
             "reward_complex":reward_complex,
             "reward_spooner":reward_spooner,
             "reward_spooner_damped":reward_spooner_damped,
             "reward_spooner_scaled":reward_spooner_scaled,
-            "reward_delta_netWorth":reward_delta_netWorth,
+            "reward_delta_portfolio_value":delta_netWorth,
             "market_share": market_share,
             "inventoryValue":inventoryValue,
             "buyPnL":buyPnL,
@@ -2280,7 +2222,6 @@ class MarketMakingAgent():
             "netWorth":netWorth,
             "end_inventory":new_inventory,
             "mid_price":mid_price_end,
-            "agentQuant":inventory_delta,
             "buyQuant":buyQuant,
             "sellQuant":sellQuant,
             "approx_realized_pnl":approx_realized_pnl,
@@ -2320,7 +2261,7 @@ class MarketMakingAgent():
             "total_PnL": agent_state.total_PnL,                           
             "done": done,
             "inventory": agent_state.inventory,
-            # "market_share":extras["market_share"],
+            "market_share":extras["market_share"],
             "buyPnL":extras["buyPnL"],
             # "scaledInventoryPnL":extras["scaledInventoryPnL"],
             # "netWorth":extras["netWorth"],
