@@ -2562,7 +2562,6 @@ class MarketMakingAgent():
                 "time_remaining": self.world_config.episode_time - time_elapsed,
                 "mid_price":world_state.mid_price,
                 "step_counter": world_state.step_counter,
-
                 # Set Agent specific stuff
                 "total_PnL" : agent_state.total_PnL,
                 "cash_balance" : agent_state.cash_balance,
@@ -2583,7 +2582,6 @@ class MarketMakingAgent():
                 "time_remaining": 0,
                 "mid_price":0,
                 "step_counter": 0,
-
                 # Set Agent specific stuff
                 "total_PnL" : 0,
                 "cash_balance" : 0,
@@ -2616,7 +2614,6 @@ class MarketMakingAgent():
                 "q_ask": world_state.best_asks[-1][1],
                 "mid_price":world_state.mid_price,
                 "step_counter": world_state.step_counter,
-
                 # Set Agent specific stuff
                 "total_PnL" : agent_state.total_PnL,
                 "cash_balance" : agent_state.cash_balance,

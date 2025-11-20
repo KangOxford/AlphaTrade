@@ -17,9 +17,9 @@ class LoadedEnvState:
     bid_raw_orders: chex.Array
     trades: chex.Array
     init_time: chex.Array
-    window_index:int
-    max_steps_in_episode: int
-    start_index: int # This should be here because its the same for all agents, but it changes for all agents when resetting (this is why its not in Params)
+    window_index:int # i in [0, n_starts]
+    max_steps_in_episode: int 
+    start_index: int # s_i actual start pos in msg data
     step_counter: int
     
 
@@ -31,6 +31,7 @@ class WorldState(LoadedEnvState):
     best_asks: jnp.ndarray
     time: chex.Array
     order_id_counter: int
+    #Skip in writeup, redundant and should be removed. 
     mid_price:float
     delta_time: float
 
@@ -40,7 +41,6 @@ class WorldState(LoadedEnvState):
 class MultiAgentState():
     # Sub–state for market maker and execution agent.
     world_state: WorldState
-
     agent_states: list[Any]
 
 
@@ -57,15 +57,17 @@ class ExecEnvState():
     init_price: int
     task_to_execute: int
     quant_executed: int
-    # rewards
+    is_sell_task: int
+    # rewards total over ep.
     total_revenue: float
     drift_return: float
     advantage_return: float
+    # Rolling means for reward components
     slippage_rm: float
     price_adv_rm: float
     price_drift_rm: float
     vwap_rm: float
-    is_sell_task: int
+    #Skip, not sure what the purpose is
     trade_duration: float
 
 

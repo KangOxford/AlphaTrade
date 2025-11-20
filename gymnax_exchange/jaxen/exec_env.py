@@ -1664,7 +1664,9 @@ class ExecutionAgent():
 
         # Add other extras
 
-        trade_duration_step = (jnp.abs(agentTrades[:, job.cst.TradesFeat.Q.value]) / agent_state.task_to_execute * (agentTrades[:, job.cst.TradesFeat.SEC.value] - world_state.init_time[0])).sum()
+        trade_duration_step = (jnp.abs(agentTrades[:, job.cst.TradesFeat.Q.value]) / 
+                               agent_state.task_to_execute * 
+                               (agentTrades[:, job.cst.TradesFeat.SEC.value] - world_state.init_time[0])).sum()
         trade_duration = agent_state.trade_duration + trade_duration_step
         quant_left = agent_state.task_to_execute - agent_state.quant_executed - agentQuant
 
@@ -1894,7 +1896,7 @@ class ExecutionAgent():
                 # "episode_time": state.time - state.init_time,
                 "time_remaining": self.world_config.episode_time - time_elapsed,
                 "init_price": agent_state.init_price,
-                "current_task_size": agent_state.task_to_execute,
+                "task_size": agent_state.task_to_execute,
                 "executed_quant": agent_state.quant_executed,
                 "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
                 "step_counter": world_state.step_counter,
@@ -1922,7 +1924,7 @@ class ExecutionAgent():
                 # "episode_time": jnp.array([0, 0]),
                 "time_remaining": 0,
                 "init_price": 0, #p_mean,
-                "current_task_size": 0,
+                "task_size": 0,
                 "executed_quant": 0,
                 "remaining_quant": 0,
                 "step_counter": 0,
@@ -1941,7 +1943,7 @@ class ExecutionAgent():
                 # "episode_time": jnp.array([1e3, 1e9]),
                 "time_remaining": self.world_config.episode_time, # 10 minutes = 600 seconds
                 "init_price": 1e7, #p_std,
-                "current_task_size": self.cfg.task_size,
+                "task_size": self.cfg.task_size,
                 "executed_quant": self.cfg.task_size,
                 "remaining_quant": self.cfg.task_size,
                 "step_counter": 30,  # TODO: find way to make this dependent on episode length
@@ -1958,7 +1960,7 @@ class ExecutionAgent():
                 #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
                 # "q_before2": None, # how much quantity lies above this price level
                 "init_price": agent_state.init_price,
-                "current_task_size": agent_state.task_to_execute,
+                "task_size": agent_state.task_to_execute,
                 "executed_quant": agent_state.quant_executed,
                 "remaining_quant": agent_state.task_to_execute - agent_state.quant_executed,
                 "step_counter": world_state.step_counter,
@@ -1982,7 +1984,7 @@ class ExecutionAgent():
                 "q_pass": 0,
                 #"q_pass2": 0,
                 "init_price": 0, #p_mean,
-                "current_task_size": 0,
+                "task_size": 0,
                 "executed_quant": 0,
                 "remaining_quant": 0,
                 "step_counter": 0,
@@ -1997,7 +1999,7 @@ class ExecutionAgent():
                 "q_pass": 100,
             #"q_pass2": 100,
                 "init_price": 1e7, #p_std,
-                "current_task_size": self.cfg.task_size,
+                "task_size": self.cfg.task_size,
                 "executed_quant": self.cfg.task_size,
                 "remaining_quant": self.cfg.task_size,
                 "step_counter": 30,  # TODO: find way to make this dependent on episode length
