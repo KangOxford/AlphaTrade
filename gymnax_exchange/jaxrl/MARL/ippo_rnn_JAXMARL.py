@@ -14,7 +14,11 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "true"
 # os.environ["JAX_CHECK_TRACER_LEAKS"] = "true"
 # os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
+import logging
 
+# Suppress Orbax logging
+logging.getLogger('orbax').setLevel(logging.ERROR)
+logging.getLogger('absl').setLevel(logging.ERROR)
 
 import time
 import jax # type: ignorepip 
@@ -33,6 +37,7 @@ import orbax.checkpoint as oxcp
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import gc
+from dataclasses import replace,fields
 
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
@@ -375,48 +380,75 @@ def batchify(x: jnp.ndarray, num_actors):
 def unbatchify(x: jnp.ndarray,num_envs, num_agents):
     return  x.reshape((num_envs, num_agents, -1))
 
+def create_agent_configs(config):
+    """
+    Create agent configs with three layers of precedence (lowest to highest):
+    1. Default attributes from the EnvironmentConfig classes
+    2. Values from the JSON config
+    3. Sweep parameters from AGENT_CONFIGS
+    
+    Args:
+        config: The full config dict containing both JSON config and sweep parameters
+        config_dict: Dict mapping agent type names to their config classes
+                    e.g., {"MarketMaking": MarketMaking_EnvironmentConfig, ...}
+    
+    Returns:
+        Dict of agent configs keyed by agent type name
+    """
+    agent_configs = {}
+    if "AGENT_CONFIGS" in config:
+        for agent_type, agent_cfg in config["AGENT_CONFIGS"].items():
+            # Start with defaults from the config class
+            agent_config_class = CONFIG_OBJECT_DICT[agent_type]
+            
+            # First apply config values (from JSON) to override defaults
+            config_overrides = {}
+            field_names = {f.name for f in fields(agent_config_class)}
+            for key, value in config["dict_of_agents_configs"].items():
+                if  isinstance(value, dict) and key == agent_type:
+                    for key, value in value.items():
+                        if key in field_names:
+                            config_overrides[key] = value
+            
+            # Then apply sweep parameters which take highest precedence
+            sweep_overrides = {k.lower(): v for k, v in agent_cfg.items()}
+            
+            # Merge: sweep_overrides will override config_overrides
+            all_overrides = {**config_overrides, **sweep_overrides}
+            
+            # Create the agent config with all overrides
+            agent_configs[agent_type] = agent_config_class(**all_overrides)
+    
+    return agent_configs
+
 
 def make_train(config):
     # scenario = map_name_to_scenario(config["MAP_NAME"])
     init_key = jax.random.PRNGKey(config["SEED"])
-    config_dict={"MarketMaking": MarketMaking_EnvironmentConfig,"Execution": Execution_EnvironmentConfig}
-    print("init_key: ", init_key)
-    ###############CLAUDE##############
     # Create a MultiAgentConfig object with parameters from the config
-    agent_configs = {}
-    if "AGENT_CONFIGS" in config:
-        agent_configs = {
-            agent_type: config_dict[agent_type](**{k.lower(): v for k, v in agent_cfg.items()})
-            for agent_type, agent_cfg in config["AGENT_CONFIGS"].items()
-        }
-    print("agent_configs:", agent_configs)
+    print ("Overriding the Agent config objects with the variable from the sweep parameters.")
+    agent_configs = create_agent_configs(config)
     
-
-
     ma_config = MultiAgentConfig(
         number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
         dict_of_agents_configs=agent_configs,
         world_config=World_EnvironmentConfig(
             seed=config["SEED"],
+            timePeriod=config["TimePeriod"],
             # Only override parameters that exist in both config and World_EnvironmentConfig
             **{k.lower(): v for k, v in config.items() 
                if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
         )
     )
-    print(ma_config)
+    print("The training environment config, after copying of sweep parameters is \n\t ",
+          ma_config)
 
 
     # For evaluation, create a separate config with evaluation-specific parameters
     eval_ma_config = None
     if config["CALC_EVAL"]:
         # Reuse agent_configs from above if it exists
-        eval_agent_configs = {}
-        if "AGENT_CONFIGS" in config:
-            eval_agent_configs = {
-                agent_type: config_dict[agent_type](**{k.lower(): v for k, v in agent_cfg.items()})
-                for agent_type, agent_cfg in config["AGENT_CONFIGS"].items()
-            }
-            
+        eval_agent_configs = create_agent_configs(config)
         eval_ma_config = MultiAgentConfig(
             number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
             dict_of_agents_configs=eval_agent_configs,
@@ -463,8 +495,6 @@ def make_train(config):
 
     def train(rng, run: wandb.sdk.wandb_run.Run = None):
         # INIT NETWORK
-
-
         # For a given agent type (instance) we need the following inputs:
         # Action space, obs space, 
 
@@ -1017,17 +1047,20 @@ def make_train(config):
 
         jitted_update_step = jax.jit(_update_step)
         
+
+        checkpoint_dir=f'/home/myuser/data/checkpoints/MARLCheckpoints/{config["PROJECT"]}/{(run.name if run.name else run.id) if run else "GENERIC_RUN"}'
         orbax_checkpointer = oxcp.PyTreeCheckpointer()
         options = oxcp.CheckpointManagerOptions(max_to_keep=2, create=True,keep_period=config["NUM_UPDATES"]//2)
         checkpoint_manager = oxcp.CheckpointManager(
-             f'/home/myuser/data/checkpoints/MARLCheckpoints/{config["PROJECT"]}/{(run.name if run.name else run.id) if run else "GENERIC_RUN"}', orbax_checkpointer, options
+             checkpoint_dir, orbax_checkpointer, options
                 )
+        print("Saving checkpoints to directory: \n \t",checkpoint_dir)
 
 
         
         updates=0
         for i in range(config["NUM_UPDATES"]):
-            print(f"Update step {i+1}/{config['NUM_UPDATES']}")
+            print(f"Starting Update step {i+1}/{config['NUM_UPDATES']}")
             # Run the update step:
             #if i>2 and i<4:
                 #jax.profiler.start_trace("/tmp/profile-data")
@@ -1035,7 +1068,7 @@ def make_train(config):
             # if i>2 and i<4:
             #     jax.block_until_ready((runner_state,updates,metrics))
             #     jax.profiler.stop_trace()
-            print(f"Update step {updates} completed with metrics {metrics['avg_reward']}")
+            print(f"Update step {updates} completed")
             if config["CALC_EVAL"]:
                 ckpt = {
                     'model': runner_state[0],  # train_states
@@ -1053,7 +1086,7 @@ def make_train(config):
                         'train_rewards': metrics["avg_reward"],
                         }
                 }
-            print(f"Saving checkpoint {updates} with metrics {metrics['avg_reward']}")
+            print(f"Saving checkpoint {updates}")
             save_args = orbax_utils.save_args_from_target(ckpt)
             checkpoint_manager.save(updates, ckpt, save_kwargs={"save_args": save_args})
             del metrics
@@ -1072,31 +1105,45 @@ def make_train(config):
     return train
 
 
-@hydra.main(version_base=None, config_path="/home/myuser/config/rl_configs", config_name="ippo_rnn_JAXMARL_singleplayer")
+@hydra.main(version_base=None, config_path="/home/myuser/config/rl_configs", config_name="ippo_rnn_JAXMARL_exec")
 def main(config):
     try:
         if config["ENV_CONFIG"] is not None:
-            print(f"loading the env config from file {config['ENV_CONFIG']}")
+            print(f"Loading the env config from file \n\t{config['ENV_CONFIG']} ")
             env_config=load_config_from_file(config["ENV_CONFIG"])
+            print("********* DEBUG ********** \n Loaded env_config: ", env_config)
         else:
-            print("using default MultiAgentConfig as defined in jaxob_config.py file.")
+            print("Using default MultiAgentConfig as defined in jaxob_config.py file.")
             env_config=MultiAgentConfig()
-            save_config_to_file(env_config,f"~/config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     except Exception as e:
         print(f"Error loading env config: {e}")
-        print("using default MultiAgentConfig as defined in jaxob_config.py file.")
+        print("Reverting to default MultiAgentConfig as defined in jaxob_config.py file.")
         env_config=MultiAgentConfig()
-        save_config_to_file(env_config,f"~/config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    print("MultiAgentConfig world configs", env_config.world_config)
+        save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    print("Note: The sweep parameters in yaml will override these settings.")
     env_config=OmegaConf.structured(env_config)
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
 
 
-    print(config)
+    # Ensure sweep_parameters is also properly converted
+    sweep_parameters = config.get("SWEEP_PARAMETERS", {})
+    if sweep_parameters is None:
+        sweep_parameters = {}
+    # Double-check it's a proper dict (in case of nested OmegaConf objects)
+    if hasattr(sweep_parameters, '__dict__') and not isinstance(sweep_parameters, dict):
+        sweep_parameters = OmegaConf.to_container(sweep_parameters, resolve=True)
+
+    sweep_config={
+        "method": "grid",
+        "parameters": sweep_parameters,
+    }
+
+
 
     def sweep_fun():
-        print(f"WANDB CONFIG PRIOR {wandb.config}")
+        # print(f"WANDB CONFIG PRIOR {wandb.config}")
         run=wandb.init(
             entity=config["ENTITY"], # type: ignore
             project=config["PROJECT"], # type: ignore
@@ -1104,19 +1151,14 @@ def main(config):
             config=config, # type: ignore
             mode=config["WANDB_MODE"], # type: ignore
             allow_val_change=True,
+            config_exclude_keys=["SEED"],
         )
 
-        
-        # params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-        
-        
-        # print(f"WANDB CONFIG {wandb.config}")
+    
         # +++++ Single GPU +++++
-        
-
         rng = jax.random.PRNGKey(wandb.config["SEED"])
 
-        print("wandb.config", wandb.config)
+        print("Final check: the wandb.config object used in this run is \n \t", wandb.config)
 
         if config["Timing"]:
             start_time = time.time()
@@ -1144,14 +1186,17 @@ def main(config):
             print(f"Num envs: {num_envs}")
 
             # Save to CSV
-            results = {
-                "total_steps": [total_steps],
-                "elapsed_seconds": [elapsed],
-                "steps_per_second": [total_steps / elapsed],
-                "agents_per_type": [str(agents_per_type)],
-                "num_data_msgs": [num_data_msgs],
-                "num_envs": [num_envs],
-            }
+            # Log timing metrics to wandb
+            wandb.log({
+                "timing/total_steps": total_steps,
+                "timing/elapsed_seconds": elapsed,
+                "timing/steps_per_second": total_steps / elapsed,
+                "timing/agents_per_type": str(agents_per_type),
+                "timing/num_data_msgs": num_data_msgs,
+                "timing/num_envs": num_envs,
+            })
+            # -------------OBSOLETE TIMING SAVE - kept for reference --------------
+
             # df = pd.DataFrame(results)
             # csv_path = "timing_results.csv"
             # # Append if file exists, else write header
@@ -1162,7 +1207,7 @@ def main(config):
             #     with open(csv_path, "a", newline="") as f:
             #         df.to_csv(f, index=False, header=False)
 
-        
+        # -------------OBSOLETE PARAMETER SAVE/LOAD CODE - kept for reference --------------
         # # Save the params to a file using flax.serialization.to_bytes
         # with open(params_file_name, 'wb') as f:
         #     f.write(flax.serialization.to_bytes(params))
@@ -1180,48 +1225,8 @@ def main(config):
         jax.clear_caches()
         jax.local_devices()  # This can help trigger cleanup of device buffers
         run.finish()
-
-    sweep_parameters = {
-        # "LR": {"values": [config["LR"]]},
-        # "NUM_STEPS": {"values": [32,config["NUM_STEPS"], 512]},
-        #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
-        # "LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
-        #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
-        # "UPDATE_EPOCHS": {"values": [config["UPDATE_EPOCHS"], 8]},
-        #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
-        #"VF_COEF": {"values": [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]},
-        #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
-       # "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]},
-        "SEED": {"values": [config["SEED"],34]},
-       #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
-       #"NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 32, 8]},
-       
-        
-        "AGENT_CONFIGS" : {"parameters": {
-                        # "MarketMaking" : {"parameters":
-                        #                 {"inv_penalty": {"values":['none']}, # "none" "linear "quadratic"
-                        #                 "skew_multiplier": {"values":[10]},
-                        #                 "action_space": {"values":["fixed_quants"]}, #"spread_skew",,"fixed_quants"simple
-                        #                 "reward_space" : {"values":["spooner","buy_sell_pnl"]}, # "spooner"buy_sell_pnl
-                        #                 "reference_price_portfolio_value":{"values":["best_bid_ask"]}, #best_bid_ask "mid"
-                        # }},
-                        "Execution" : {"parameters": {"reward_lambda": {"values":[0.0,0.3,0.7,1.0]},
-                                                    #   "fixed_quant_value": {"values":[10]}, #20 on fixed quants
-                                                    #   "action_space": {"values":["fixed_quants_complex"]}, #fixed_quants,fixed_quants_complex
-                                                    #   "task_size": {"values":[600]},
-                                                      "doom_price_penalty": {"values":[0.1,0.00001]},
-                        }},
-        }}
-    }
-
-
-    sweep_config={
-        "method": "grid",
-        "parameters": sweep_parameters,
-    }
-    print(sweep_config)
     sweep_id = wandb.sweep(sweep=sweep_config, project=config["PROJECT"],entity=config["ENTITY"])
-    print(sweep_id)
+    print("The sweep ID is: ",sweep_id)
     wandb.agent(sweep_id, function=sweep_fun, count=500,)
 
 
