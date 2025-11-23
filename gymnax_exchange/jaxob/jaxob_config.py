@@ -128,7 +128,7 @@ class Execution_EnvironmentConfig():
     fixed_quant_value:int=10
     reward_lambda:float= 0.0
     reward_scaling_quo: float = 1.0
-    doom_price_penalty: float = 0.01
+    doom_price_penalty: int = 5
     reference_price: str = "mid"  # options: "mid", "best_bid_ask", "near_touch"
 
     #Not functional.. yet
@@ -217,6 +217,9 @@ class MultiAgentConfig():
             if "message" in config.observation_space:
                 object.__setattr__(self.world_config, 'any_message_obs_space', True)
 
+
+CONFIG_OBJECT_DICT = {"MarketMaking": MarketMaking_EnvironmentConfig,
+                      "Execution": Execution_EnvironmentConfig}
 if __name__ == "__main__":
     mac = MultiAgentConfig(
         dict_of_agents_configs={"MarketMaking":MarketMaking_EnvironmentConfig(

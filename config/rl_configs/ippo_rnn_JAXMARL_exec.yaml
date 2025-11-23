@@ -1,0 +1,99 @@
+# Those hparams which are in a list 
+# apply differently to each ntwrk
+# Should match with NUM_AGENTS_PER_TYPE
+
+"LR": [0.00004]
+"NUM_ENVS": 256 #4096 #128
+"NUM_STEPS": 128
+"NUM_STEPS_EVAL" : 64
+"GRU_HIDDEN_DIM": 128
+"FC_DIM_SIZE": 128
+"TOTAL_TIMESTEPS": 10e7
+"UPDATE_EPOCHS": 4
+"NUM_MINIBATCHES": 16
+"GAMMA": [0.999]
+"GAE_LAMBDA": [0.99]
+"CLIP_EPS": 0.2
+"SCALE_CLIP_EPS": [False]
+"ENT_COEF": [0.001]
+"VF_COEF": [1e-9]
+"MAX_GRAD_NORM": [0.5]
+"ACTIVATION": ["relu"]
+"ENV_NAME": "JAXMARL-SingleExec-v0"
+"NUM_AGENTS_PER_TYPE": [1]
+"SEED": 2
+"N_DEVICES": 1
+"ENV_CONFIG": "config/env_configs/exec_debug.json"
+"ANNEAL_LR": [True]
+
+# WandB Params
+"ENTITY": "oxford-lob"
+"PROJECT": "DEBUG" #"v4_2Player_reference_price_ablation" #"DEBUG"
+"WANDB_MODE" : "online"
+
+SWEEP_PARAMETERS:
+        # LR:
+        #   values: [config["LR"]]
+        # NUM_STEPS:
+        #   values: [32,config["NUM_STEPS"], 512]
+        # GAMMA:
+        #   values: [config["GAMMA"], [0.99,0.99]]
+        # LR:
+        #   values: [config["LR"], [0.004,0.004], [0.00004,0.00004]]
+        # ENT_COEF:
+        #   values: [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]
+        # UPDATE_EPOCHS:
+        #   values: [config["UPDATE_EPOCHS"], 8]
+        # CLIP_EPS:
+        #   values: [config["CLIP_EPS"], 0.3, 0.1]
+        # VF_COEF:
+        #   values: [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]
+        # FC_DIM_SIZE:
+        #   values: [config["FC_DIM_SIZE"], 256]
+        # NUM_AGENTS_PER_TYPE:
+        #   values: [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]
+        SEED:
+          values: [42,34]
+        # NUM_ENVS:
+        #   values: [config["NUM_ENVS"]]
+        # NUM_STEPS:
+        #   values: [config["NUM_STEPS"], 128, 32, 8]
+        AGENT_CONFIGS:
+          parameters:
+            # MarketMaking:
+            #   parameters:
+            #     inv_penalty:
+            #       values: ['none']  # "none" "linear "quadratic"
+            #     skew_multiplier:
+            #       values: [10]
+            #     action_space:
+            #       values: ["fixed_quants"]  #"spread_skew",,"fixed_quants"simple
+            #     reward_space:
+            #       values: ["spooner","buy_sell_pnl"]  # "spooner"buy_sell_pnl
+            #     reference_price_portfolio_value:
+            #       values: ["best_bid_ask"]  #best_bid_ask "mid"
+            Execution:
+              parameters:
+                reward_lambda:
+                  values: [0.0,0.2,0.8,1] #,0.2,0.8,1.0]
+                doom_price_penalty:
+                  values: [1,3,7,10]
+                fixed_quant_value:
+                  values: [5,10,20]
+                # action_space:
+                #   values: ["fixed_quants_complex"]  #fixed_quants,fixed_quants_complex
+                # task_size:
+                #   values: [600]
+
+
+
+
+# High-Level Params
+"CALC_EVAL" : True
+"TimePeriod" : "2024_Dec"
+"EvalTimePeriod" : "2024_Dec"
+"Calculate Baseline" : False
+"Timing" : False
+
+
+
