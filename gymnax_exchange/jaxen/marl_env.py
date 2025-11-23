@@ -252,7 +252,7 @@ class MARLEnv(MultiAgentEnv):
             agent_state = state.agent_states[agent_type_index]
             agent_params = params.agent_params[agent_type_index]
             agent_actions = actions[agent_type_index]
-            get_messages_vmap = vmap(self.instance_list[agent_type_index].get_messages, in_axes=(0,None,0,0), out_axes = (0,0))
+            get_messages_vmap = vmap(self.instance_list[agent_type_index].get_messages, in_axes=(0,None,0,0), out_axes = (0,0,0))
             if self.multi_agent_config.number_of_agents_per_type[agent_type_index]==1:
                 agent_actions=jnp.expand_dims(agent_actions,axis=0)
             action_msgs, cancel_msgs, extras = get_messages_vmap(agent_actions, state.world_state, agent_state, agent_params)

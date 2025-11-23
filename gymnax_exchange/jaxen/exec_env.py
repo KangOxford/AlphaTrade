@@ -690,7 +690,7 @@ class ExecutionAgent():
         order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
         times = jnp.resize(
             world_state.time + self.cfg.time_delay_obs_act,
-            (self.cfg.num_action_messages_by_agent, are2)#4 trades, 2 times
+            (self.cfg.num_action_messages_by_agent, 2)#4 trades, 2 times
         )
         #------Check quants dont exceed inv----#
         quant_left=agent_state.task_to_execute-agent_state.quant_executed
@@ -843,14 +843,14 @@ class ExecutionAgent():
         2=     # M
         3=    # NT
         4=    # PP
-        5=    # FT*2 quant
-        6=    # M*2 quant
-        7=    # NT*2 quant
-        8=    # PP*2 quant
-        9=    # FT*5 quant
-        10=   # M*5 quant
-        11=   # NT*5 quant
-        12=   # PP*5 quant
+        5=    # FT 2*quant
+        6=    # M 2*quant
+        7=    # NT 2*quant
+        8=    # PP 2*quant
+        9=    # FT 5*quant
+        10=   # M 5*quant
+        11=   # NT 5*quant
+        12=   # PP 5*quant
 
         
        """
@@ -1219,7 +1219,7 @@ class ExecutionAgent():
         world_state: MultiAgentState,
         agent_state: ExecEnvState,
         agent_params: ExecEnvParams,
-    ) -> Tuple[jax.Array, jax.Array]:
+    ) -> Tuple[jax.Array, jax.Array,Dict]:
         """Get the action and cancel messages for the execution agent."""
 
         # 1. Get action messages
