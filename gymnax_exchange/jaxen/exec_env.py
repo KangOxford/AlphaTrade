@@ -94,8 +94,6 @@ import numpy as np
 import jax.numpy as jnp
 from jax import lax, flatten_util
 # ----------------------------------------------
-import gymnax
-from gymnax.environments import environment, spaces
 # sys.path.append('/Users/sasrey/AlphaTrade')
 # sys.path.append('/homes/80/kang/AlphaTrade')
 sys.path.append(os.path.abspath('/home/duser/AlphaTrade'))
@@ -125,7 +123,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax import lax, flatten_util
-from gymnax.environments import environment, spaces
 from typing import Tuple, Optional, Dict
 import chex
 from flax import struct
@@ -136,7 +133,7 @@ import dataclasses
 from gymnax_exchange.jaxob.jaxob_config import Execution_EnvironmentConfig,World_EnvironmentConfig
 from gymnax_exchange.jaxen.StatesandParams import ExecEnvState, ExecEnvParams, MultiAgentState, WorldState
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
-
+from gymnax_exchange.jaxen.from_JAXMARL import spaces
 
 #from gymnax_exchange.jaxen.from_JAXMARL import spaces
 import jax.tree_util as jtu
@@ -1532,7 +1529,7 @@ class ExecutionAgent():
         #jax.debug.print(f"bestask 0: {bestasks[-1,0]}")
         # print(bestasks[-10,0])
 
-        penalty = self.cfg.doom_price_penalty
+        penalty = self.cfg.doom_price_penalty * self.world_config.tick_size
 
 
         #jax.debug.print("doom_price: {}", doom_price)
@@ -1553,14 +1550,14 @@ class ExecutionAgent():
         if self.cfg.reference_price == "mid":
             reference_price = jax.lax.cond(
                 agent_state.is_sell_task,
-                lambda: ((averageMidprice * (1-penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-                lambda: ((averageMidprice * (1+penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+                lambda: ((averageMidprice - penalty)// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+                lambda: ((averageMidprice + penalty)// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
                 )
         elif self.cfg.reference_price == "far_touch":
             reference_price=jax.lax.cond(
             agent_state.is_sell_task,
-            lambda: (((bestbids[-1,0]) * (1-penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
-            lambda: (((bestasks[-1,0]) * (1+penalty))// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (((bestbids[-1,0]) - penalty)// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
+            lambda: (((bestasks[-1,0]) + penalty)// self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32),
             )
         elif self.cfg.reference_price == "near_touch":
             # Even if we value our at the near touch price, we still want to unwind at the far touch price to be realistic
@@ -2103,13 +2100,13 @@ class ExecutionAgent():
         return obs
 
     def action_space(
-        self) -> spaces.Box:
+        self) -> spaces.Discrete | spaces.MultiDiscrete:
         """ Action space of the environment. """
         if self.cfg.action_space=="fixed_prices":
             if self.cfg.action_type == 'delta':
-                return spaces.Box(-100, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+                return spaces.MultiDiscrete([self.cfg.fixed_quant_value]*self.cfg.n_actions)
             elif self.cfg.action_type == 'pure':
-                return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
+                return spaces.MultiDiscrete([self.cfg.fixed_quant_value]*self.cfg.n_actions)
             else:
                 raise ValueError("Invalid action_type specified.")
         elif self.cfg.action_space=="fixed_quants":
