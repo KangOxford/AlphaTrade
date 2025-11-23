@@ -999,7 +999,7 @@ class ExecutionAgent():
     
     def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: WorldState, agent_state: ExecEnvState, agent_params: ExecEnvParams):
         """get messages for action space where input is quantity at each price level"""
-        
+        action = jnp.atleast_1d(action)
 
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
             def combine_mid_nt(quants, prices):
@@ -1055,6 +1055,7 @@ class ExecutionAgent():
             NT = best_ask
             PP = best_ask + self.world_config.tick_size*self.cfg.n_ticks_in_book
             MKT = 0
+            
             if action.shape[0] == 4:
                 return FT, M, NT, PP, MKT
             elif action.shape[0] == 3:
@@ -1080,7 +1081,7 @@ class ExecutionAgent():
         # --------------- 02 info for deciding prices ---------------
         best_ask = jnp.int32((world_state.best_asks[-10:].mean(axis=0)[0] // self.world_config.tick_size) * self.world_config.tick_size)
         best_bid = jnp.int32((world_state.best_bids[-10:].mean(axis=0)[0] // self.world_config.tick_size) * self.world_config.tick_size)
-        jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
+        # jax.debug.print('best_ask: {}, best_bid: {}', best_ask, best_bid)
 
         price_levels = jax.lax.cond(
             agent_state.is_sell_task,
@@ -1088,7 +1089,7 @@ class ExecutionAgent():
             buy_task_prices,
             best_ask, best_bid
         )
-        jax.debug.print('price_levels\n {}', price_levels)
+        # jax.debug.print('price_levels\n {}', price_levels)
         # --------------- 02 info for deciding prices ---------------
 
         # --------------- 03 Limit/Market Order (prices/qtys) ---------------

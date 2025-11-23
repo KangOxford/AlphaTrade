@@ -72,7 +72,129 @@ class ScannedRNN(nn.Module):
         # Use a dummy key since the default state init fn is just zeros.
         cell = nn.GRUCell(features=hidden_size)
         return cell.initialize_carry(jax.random.PRNGKey(0), (batch_size, hidden_size))
+    
+class MultiActionOutputIndependant(nn.Module):
+    action_dims: Sequence[int]
+    config: Dict
 
+    @nn.compact
+    def __call__(self, x):
+        # Create multiple output heads
+        if isinstance(self.action_dims, (list, tuple)):
+            # Multi-output case: create separate heads for each output
+            action_logits_list = []
+            for dim in self.action_dims:
+                logits = nn.Dense(
+                    dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+                )(x)
+                action_logits_list.append(logits)
+
+            pi = MultiCategorical(action_logits_list)
+        else:
+            raise ValueError("action_dims must be a list or tuple for MultiActionOutputIndependant.")
+
+        return pi
+
+class MultiActionOutputAutoregressive(nn.Module):
+    action_dims: Sequence[int]
+    config: Dict
+    embed_dim: int = 32
+
+    def get_logits_for_action(self, x, action_idx, prev_actions):
+        """
+        Compute logits for action_idx conditioned on prev_actions.
+        
+        Args:
+            x: actor features (batch, feature_dim)
+            action_idx: which action we're computing logits for (0, 1, 2, ...)
+            prev_actions: list of previously sampled actions [action_0, action_1, ...]
+        """
+        if action_idx == 0:
+            # First action: no conditioning
+            logits = nn.Dense(
+                self.action_dims[0], 
+                kernel_init=orthogonal(0.01), 
+                bias_init=constant(0.0),
+                name=f'action_{action_idx}_head'
+            )(x)
+            return logits
+        
+        # Subsequent actions: condition on previous actions
+        embeddings = []
+        for i, prev_action in enumerate(prev_actions):
+            # Embed each previous action
+            embed = nn.Embed(
+                num_embeddings=self.action_dims[i],
+                features=self.embed_dim,
+                name=f'action_{i}_embed'
+            )(prev_action)
+            embeddings.append(embed)
+        
+        # Concatenate features with all previous action embeddings
+        combined = jnp.concatenate([x] + embeddings, axis=-1)
+        
+        # Process through hidden layer
+        hidden = nn.Dense(
+            self.config["GRU_HIDDEN_DIM"] // 2,
+            kernel_init=orthogonal(2),
+            bias_init=constant(0.0),
+            name=f'action_{action_idx}_hidden'
+        )(combined)
+        hidden = nn.relu(hidden)
+        
+        # Output logits
+        logits = nn.Dense(
+            self.action_dims[action_idx],
+            kernel_init=orthogonal(0.01),
+            bias_init=constant(0.0),
+            name=f'action_{action_idx}_head'
+        )(hidden)
+        
+        return logits
+
+    @nn.compact
+    def __call__(self, x, given_actions=None):
+        """
+        Compute autoregressive action distribution.
+        
+        Args:
+            x: actor features from the network
+            given_actions: Optional. If provided (during training), use these for conditioning.
+                          Shape: (..., num_actions). Otherwise sample autoregressively.
+        
+        Returns:
+            AutoregressiveMultiCategorical distribution object
+        """
+        if not isinstance(self.action_dims, (list, tuple)):
+            raise ValueError("action_dims must be a list or tuple for MultiActionOutputAutoregressive.")
+        
+        # Return a distribution that can sample autoregressively or compute log_prob
+        return AutoregressiveMultiCategorical(
+            actor_features=x,
+            action_dims=self.action_dims,
+            logits_fn=self.get_logits_for_action,
+            given_actions=given_actions
+        )
+
+class SingleActionOutput(nn.Module):
+    action_dim: int
+    config: Dict
+
+    @nn.compact
+    def __call__(self, x):
+        # Create multiple output heads
+        if isinstance(self.action_dim, int):
+            actor_mean = nn.Dense(
+                self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0) # type: ignore
+            )(x)
+            # Avail actions are not used in the current implementation, but can be added if needed.
+            # unavail_actions = 1 - avail_actions
+            action_logits = actor_mean # - (unavail_actions * 1e10)
+            pi = distrax.Categorical(logits=action_logits)
+        else:
+            raise ValueError("action_dims must be a list or tuple for MultiActionOutputIndependant.")
+
+        return pi
 
 class ActorCriticRNN(nn.Module):
     action_dim: Sequence[int]
@@ -91,19 +213,6 @@ class ActorCriticRNN(nn.Module):
         rnn_in = (embedding, dones)
 
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
-        actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
-            embedding
-        )
-
-        actor_mean = nn.relu(actor_mean)
-
-        actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0) # type: ignore
-        )(actor_mean)
-        # Avail actions are not used in the current implementation, but can be added if needed.
-        # unavail_actions = 1 - avail_actions
-        action_logits = actor_mean # - (unavail_actions * 1e10)
-        pi = distrax.Categorical(logits=action_logits)
 
         critic = nn.Dense(self.config["FC_DIM_SIZE"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
@@ -112,9 +221,140 @@ class ActorCriticRNN(nn.Module):
         critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
             critic
         )
+        actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
+            embedding
+        )
+
+        actor_mean = nn.relu(actor_mean)
+
+        # Option 1: Single action output (current behavior)
+        if isinstance(self.action_dim, int):
+            pi = SingleActionOutput(action_dim=self.action_dim, config=self.config)(actor_mean)
+
+        # Option 2: Multiple independent actions
+        elif isinstance(self.action_dim, (list, tuple)):
+            pi = MultiActionOutputIndependant(action_dims=self.action_dim, config=self.config)(actor_mean)
+
+        # Option 3: Multiple autoregressive actions
+        elif isinstance(self.action_dim, (list, tuple)) and self.config.get("AUTOREGRESSIVE", True):
+            pi = MultiActionOutputAutoregressive(
+                action_dims=self.action_dim,  # e.g., [10, 10, 5]
+                config=self.config
+            )(actor_mean)
+        else:
+            raise ValueError("action_dims must be int or list/tuple for ActorCriticRNN.")
 
         return hidden, pi, jnp.squeeze(critic, axis=-1)
 
+
+class MultiCategorical():
+    """Wrapper for multiple independent categorical distributions.
+    NOTE: The correct thing would be to let it inherit from distrax.Distribution but
+    this requires additional thought to implement all abstract methods, many of which are not 
+    needed for this use case. """
+    
+    def __init__(self, logits_list):
+        self.categoricals = [distrax.Categorical(logits=logits) for logits in logits_list]
+
+    
+    def sample(self, seed):
+        keys = jax.random.split(seed, len(self.categoricals))
+        samples = [cat.sample(seed=key) for cat, key in zip(self.categoricals, keys)]
+        return jnp.stack(samples, axis=-1)  # Shape: (..., num_outputs)
+    
+    def log_prob(self, actions):
+        # actions should have shape (..., num_outputs)
+        log_probs = [cat.log_prob(actions[...,i]) for i, cat in enumerate(self.categoricals)]
+        return jnp.sum(jnp.stack(log_probs, axis=-1), axis=-1)  # Sum log probs for independence
+    
+    def entropy(self):
+        entropies = [cat.entropy() for cat in self.categoricals]
+        return jnp.sum(jnp.stack(entropies, axis=-1), axis=-1)  # Sum entropies for independence
+
+
+class AutoregressiveMultiCategorical():
+    """
+    Wrapper for multiple categorical distributions where later actions 
+    are conditioned on previously sampled actions.
+    
+    During sampling: samples actions sequentially, feeding each into the next.
+    During training: computes conditional log probabilities using given actions.
+    """
+    
+    def __init__(self, actor_features, action_dims, logits_fn, given_actions=None):
+        """
+        Args:
+            actor_features: base features from the network (batch, feature_dim)
+            action_dims: list of action space sizes, e.g., [10, 10, 5]
+            logits_fn: function(x, action_idx, prev_actions) -> logits
+            given_actions: optional actions to condition on (for training)
+                          Shape: (..., num_actions)
+        """
+        self.actor_features = actor_features
+        self.action_dims = action_dims
+        self.logits_fn = logits_fn
+        self.given_actions = given_actions
+    
+    def sample(self, seed):
+        """Sample actions autoregressively."""
+        keys = jax.random.split(seed, len(self.action_dims))
+        samples = []
+        
+        for i, key in enumerate(keys):
+            # Get logits conditioned on previously sampled actions
+            logits = self.logits_fn(self.actor_features, i, samples)
+            action = distrax.Categorical(logits=logits).sample(seed=key)
+            samples.append(action)
+        
+        return jnp.stack(samples, axis=-1)  # Shape: (..., num_actions)
+    
+    def log_prob(self, actions):
+        """
+        Compute log probability of action sequence.
+        Uses chain rule: log p(a1,a2,a3) = log p(a1) + log p(a2|a1) + log p(a3|a1,a2)
+        
+        Args:
+            actions: action sequence, shape (..., num_actions)
+        """
+        log_probs = []
+        
+        for i in range(len(self.action_dims)):
+            # Get previous actions for conditioning
+            prev_actions = [actions[..., j] for j in range(i)]
+            
+            # Get conditional logits
+            logits = self.logits_fn(self.actor_features, i, prev_actions)
+            
+            # Compute log prob of this action given previous ones
+            log_p = distrax.Categorical(logits=logits).log_prob(actions[..., i])
+            log_probs.append(log_p)
+        
+        # Sum log probabilities (chain rule)
+        return jnp.sum(jnp.stack(log_probs, axis=-1), axis=-1)
+    
+    def entropy(self):
+        """
+        Compute entropy of the autoregressive distribution.
+        For autoregressive models: H = sum of conditional entropies
+        """
+        entropies = []
+        
+        # For entropy, we need to marginalize over previous actions
+        # Simplified: compute entropy of each conditional separately
+        # (This is an approximation - true entropy requires marginalization)
+        for i in range(len(self.action_dims)):
+            if self.given_actions is not None and i > 0:
+                # Use given actions for conditioning
+                prev_actions = [self.given_actions[..., j] for j in range(i)]
+            else:
+                # For first action or when no given actions, use empty list
+                prev_actions = []
+            
+            logits = self.logits_fn(self.actor_features, i, prev_actions)
+            entropy = distrax.Categorical(logits=logits).entropy()
+            entropies.append(entropy)
+        
+        return jnp.sum(jnp.stack(entropies, axis=-1), axis=-1)
 
 class Transition(NamedTuple):
     global_done: jnp.ndarray
@@ -677,12 +917,19 @@ def make_train(config):
                     agent_name = agent_type_names[agent_index]
 
                     action_distribution = {}
-                    actions = np.array(tr.action).flatten()
-                    unique_actions, counts = np.unique(actions, return_counts=True)
-                    tot_counts=sum(counts)
-                    # Add each action count to the dictionary with a unique key
-                    for a, c in zip(unique_actions, counts):
-                        action_distribution[f"agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
+                    print("Action shape is ",tr.action.shape)
+                    actions = np.array(tr.action).reshape(-1, *tr.action.shape[2:])
+                    if actions.ndim>1:
+                        avg_quant=np.mean(actions,axis=0)
+                        for i,aq in enumerate(avg_quant):
+                            action_distribution[f"agent_{agent_name}/action_dim_{i}_mean_quant"] = aq
+                    else:
+                        unique_actions, counts = np.unique(actions, return_counts=True)
+                        tot_counts=sum(counts)
+                        # Add each action count to the dictionary with a unique key
+                        for a, c in zip(unique_actions, counts):
+                            action_distribution[f"agent_{agent_name}/action_{int(a)}"] = c/tot_counts*100
+                    
                     logging_dict = {
                         # TODO: Log the quantities of interest. Keep it trivial for now.
                         "env_step": (metric["update_steps"]+1)
