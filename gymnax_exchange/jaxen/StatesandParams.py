@@ -59,6 +59,7 @@ class ExecEnvState():
     quant_executed: int
     is_sell_task: int
     # rewards total over ep.
+    p_vwap : float
     total_revenue: float
     drift_return: float
     advantage_return: float

@@ -1676,6 +1676,7 @@ class ExecutionAgent():
         "slippage_rm": slippage_rm,
         "price_adv_rm": price_adv_rm,
         "price_drift_rm": price_drift_rm,
+        "p_vwap": P_vwap,
         "vwap_rm": vwap_rm,
         "advantage": advantage,
         "drift": drift,
@@ -1737,6 +1738,7 @@ class ExecutionAgent():
         # Note: we use replace because init_price, task_to_execute, is_sell_task do not change
         agent_state = agent_state_old.replace(
             quant_executed = new_quant_executed,
+            p_vwap= extras["p_vwap"],
             total_revenue = new_total_revenue,
             drift_return = new_drift_return,
             advantage_return = new_advantage_return,
@@ -1768,7 +1770,7 @@ class ExecutionAgent():
             # "slippage_rm": agent_state.slippage_rm,
             # "price_adv_rm": agent_state.price_adv_rm,
             # "price_drift_rm": agent_state.price_drift_rm,
-            # "vwap_rm": agent_state.vwap_rm,
+            "vwap_rm": agent_state.vwap_rm,
             #"advantage_reward": agent_state.advantage_return,
             #"drift_reward": agent_state.drift_return,
             "drift" : drift,
