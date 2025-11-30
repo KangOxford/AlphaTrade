@@ -608,7 +608,7 @@ def make_train(config):
                 transitions=[]
                 for i,train_state in enumerate(train_states):
                     done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]).squeeze()
-                    obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i])
+                    obs_batch = batchify(last_obs[i],config["NUM_ACTORS_PERTYPE"][i])
                     action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i])
                     value = values[i]
                     log_prob = log_probs[i]
