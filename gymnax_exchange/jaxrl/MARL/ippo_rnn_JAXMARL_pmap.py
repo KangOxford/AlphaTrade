@@ -158,11 +158,13 @@ def make_train(config):
         dict_of_agents_configs=agent_configs,
         world_config=World_EnvironmentConfig(
             seed=config["SEED"],
+            timePeriod=config["TimePeriod"],
             # Only override parameters that exist in both config and World_EnvironmentConfig
-            **{k.lower(): v for k, v in config.items() 
-               if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
-        )
-    )
+            **{k: v for k, v in config["world_config"].items() 
+            if hasattr(World_EnvironmentConfig(), k) and k not in ["seed",
+                                                                    "timePeriod",
+                                                                    ]}
+        ))
     print(ma_config)
 
     print("MultiAgentInventoryPenalty",ma_config.dict_of_agents_configs["MarketMaking"].inv_penalty)
@@ -181,17 +183,18 @@ def make_train(config):
             for agent_type, agent_cfg in config_dict.items()
         }
         
-    eval_ma_config = MultiAgentConfig(
+    ma_config = MultiAgentConfig(
         number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
         dict_of_agents_configs=eval_agent_configs,
         world_config=World_EnvironmentConfig(
             seed=config["SEED"],
             timePeriod=config["EvalTimePeriod"],
             # Only override parameters that exist in both config and World_EnvironmentConfig
-            **{k.lower(): v for k, v in config.items() 
-                if hasattr(World_EnvironmentConfig(), k.lower()) and k not in ["SEED", "EvalTimePeriod"]}
-        )
-    )
+            **{k: v for k, v in config["world_config"].items() 
+            if hasattr(World_EnvironmentConfig(), k) and k not in ["seed",
+                                                                    "timePeriod",
+                                                                    ]}
+        ))
    
 
 
@@ -704,7 +707,7 @@ def make_train(config):
 
                     for i,train_state in enumerate(train_states):
                         done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"]).squeeze()
-                        obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
+                        obs_batch = batchify(last_obs[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
                         action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i]//config["N_DEVICES"])
                         value = values[i]
                         log_prob = log_probs[i]

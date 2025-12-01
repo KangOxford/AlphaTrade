@@ -436,10 +436,11 @@ def make_train(config):
             seed=config["SEED"],
             timePeriod=config["TimePeriod"],
             # Only override parameters that exist in both config and World_EnvironmentConfig
-            **{k.lower(): v for k, v in config.items() 
-               if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
-        )
-    )
+            **{k: v for k, v in config["world_config"].items() 
+            if hasattr(World_EnvironmentConfig(), k) and k not in ["seed",
+                                                                    "timePeriod",
+                                                                ]}
+        ))
     print("The training environment config, after copying of sweep parameters is \n\t ",
           ma_config)
 
@@ -450,16 +451,17 @@ def make_train(config):
         # Reuse agent_configs from above if it exists
         eval_agent_configs = create_agent_configs(config)
         eval_ma_config = MultiAgentConfig(
-            number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
-            dict_of_agents_configs=eval_agent_configs,
-            world_config=World_EnvironmentConfig(
-                seed=config["SEED"],
-                timePeriod=config["EvalTimePeriod"],
-                # Only override parameters that exist in both config and World_EnvironmentConfig
-                **{k.lower(): v for k, v in config.items() 
-                   if hasattr(World_EnvironmentConfig(), k.lower()) and k not in ["SEED", "EvalTimePeriod"]}
-            )
-        )
+                    number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"],
+                    dict_of_agents_configs=eval_agent_configs,
+                    world_config=World_EnvironmentConfig(
+                        seed=config["SEED"],
+                        timePeriod=config["EvalTimePeriod"],
+                        # Only override parameters that exist in both config and World_EnvironmentConfig
+                        **{k: v for k, v in config["world_config"].items() 
+                        if hasattr(World_EnvironmentConfig(), k) and k not in ["seed",
+                                                                               "timePeriod",
+                                                                               ]}
+                    ))
    
 
     env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=ma_config)
@@ -601,6 +603,17 @@ def make_train(config):
                 obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0,None)
                 )(rng_step, env_state, actions,env_params)
+                def reward_callback(reward_max_idx,reward,trades,bids,asks,p_vwap):
+                    if reward[reward_max_idx] > 5:
+                        print("Reward exceeded threshold:", reward[reward_max_idx])
+                        # print("Observation:", obsv[reward_max_idx])
+                        print("Trades ", trades[reward_max_idx])
+                        print("Bids ", bids[reward_max_idx])
+                        print("Asks ", asks[reward_max_idx])
+                        print("P_vwap ", p_vwap[reward_max_idx])
+                        # print("Info:", info_ag[reward_max_idx], info_world[reward_max_idx])
+                    return reward
+                # jax.debug.callback(reward_callback, jnp.argmax(jnp.abs(reward[0])), reward[0], env_state.world_state.trades, env_state.world_state.bid_raw_orders, env_state.world_state.ask_raw_orders,env_state.agent_states[0].p_vwap)
 
                 # info = jax.tree.map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
                 
@@ -640,28 +653,28 @@ def make_train(config):
             train_states, env_state, last_obs, last_dones, hstates_new, rng = runner_state
 
             def _calculate_gae(gamma,gae_lambda,traj_batch, last_val):
-                    def _get_advantages(gae_and_next_value, transition):
-                        gae, next_value = gae_and_next_value
-                        done, value, reward = (
-                            transition.global_done,
-                            transition.value,
-                            transition.reward,
-                        )
-                        delta = reward + gamma * next_value * (1 - done) - value
-                        gae = (
-                            delta
-                            + gamma * gae_lambda * (1 - done) * gae
-                        )
-                        return (gae, value), gae
-
-                    _, advantages = jax.lax.scan(
-                        _get_advantages,
-                        (jnp.zeros_like(last_val), last_val),
-                        traj_batch,
-                        reverse=True,
-                        unroll=16,
+                def _get_advantages(gae_and_next_value, transition):
+                    gae, next_value = gae_and_next_value
+                    done, value, reward = (
+                        transition.global_done,
+                        transition.value,
+                        transition.reward,
                     )
-                    return advantages, advantages + traj_batch.value
+                    delta = reward + gamma * next_value * (1 - done) - value
+                    gae = (
+                        delta
+                        + gamma * gae_lambda * (1 - done) * gae
+                    )
+                    return (gae, value), gae
+
+                _, advantages = jax.lax.scan(
+                    _get_advantages,
+                    (jnp.zeros_like(last_val), last_val),
+                    traj_batch,
+                    reverse=True,
+                    unroll=16,
+                )
+                return advantages, advantages + traj_batch.value
 
             advantages=[]
             targets=[]
@@ -697,7 +710,6 @@ def make_train(config):
                                 (traj_batch.obs, traj_batch.done),
                             )
                             log_prob = pi.log_prob(traj_batch.action)
-
                             # CALCULATE VALUE LOSS
                             value_pred_clipped = traj_batch.value + (
                                 value - traj_batch.value
@@ -710,6 +722,9 @@ def make_train(config):
 
                             # CALCULATE ACTOR LOSS
                             logratio = log_prob - traj_batch.log_prob
+                            # jax.debug.print("Log ratio for epoch max,min: {}", (jnp.max(logratio), jnp.min(logratio)))
+                            # jax.debug.print("Log prob replay : {}, {}", log_prob.shape, log_prob[:3,:3])
+                            # jax.debug.print("Log prob traj : {}, {}", traj_batch.log_prob.shape,traj_batch.log_prob[:3,:3])
                             ratio = jnp.exp(logratio)
                             gae = (gae - gae.mean()) / (gae.std() + 1e-8)
                             loss_actor1 = ratio * gae
@@ -742,6 +757,7 @@ def make_train(config):
                         )
                         train_state = train_state.apply_gradients(grads=grads)
                         return train_state, total_loss
+                    
                     (
                         train_state,
                         init_hstate,
@@ -763,7 +779,6 @@ def make_train(config):
                         targets.squeeze(),
                     )
                     permutation = jax.random.permutation(_rng, config["NUM_ACTORS_PERTYPE"][i])
-
                     shuffled_batch = jax.tree.map(
                         lambda x: jnp.take(x, permutation, axis=1), batch
                     )
@@ -818,7 +833,14 @@ def make_train(config):
             metrics['world'] = [traj_batch.info['world'] for i, traj_batch in enumerate(traj_batch)]
             metrics["loss"]=[]
             for i,loss_info in enumerate(loss_infos):
+                # jax.debug.print("Ratio dimensions for 1st agent: {}", loss_info[1][3].shape)
+                #Ratio dimensions are (epochs, num_minibatches, n_steps, num_envs)
                 ratio_0 = loss_info[1][3].at[0,0].get().mean()
+                ratio_other_epochs=loss_info[1][3].at[1:,:].get().mean()
+                ratio_other_batches=loss_info[1][3].at[0,1:].get().mean()
+                # jax.debug.print("Ratio first epoch, first minibatch: {}", ratio_0)
+                # jax.debug.print("Ratio other epochs mean: {}", ratio_other_epochs)
+                # jax.debug.print("Ratio other batches mean: {}", ratio_other_batches)
                 loss_info = jax.tree.map(lambda x: x.mean(), loss_info)
                 metrics["loss"].append({
                     "total_loss": loss_info[0],
@@ -827,6 +849,8 @@ def make_train(config):
                     "entropy": loss_info[1][2],
                     "ratio": loss_info[1][3],
                     "ratio_0": ratio_0,
+                    "ratio_other_epochs": ratio_other_epochs,
+                    "ratio_other_batches": ratio_other_batches,
                     "approx_kl": loss_info[1][4],
                     "clip_frac": loss_info[1][5],
                     "weighted_entropy_loss": loss_info[1][2] * config["ENT_COEF"][i],
@@ -880,7 +904,7 @@ def make_train(config):
 
                     for i, train_state in enumerate(train_states):
                         done_batch['agents'][i] = batchify(done["agents"][i],config["NUM_ACTORS_PERTYPE"][i]).squeeze()
-                        obs_batch = batchify(obsv[i],config["NUM_ACTORS_PERTYPE"][i])
+                        obs_batch = batchify(last_obs[i],config["NUM_ACTORS_PERTYPE"][i])
                         action_batch = batchify(actions[i],config["NUM_ACTORS_PERTYPE"][i])
                         value = values[i]
                         log_prob = log_probs[i]
