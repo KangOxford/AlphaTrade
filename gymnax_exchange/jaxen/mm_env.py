@@ -2017,6 +2017,18 @@ class MarketMakingAgent():
 
 
 
+
+        def large_reward_callback(reward, abs_reward, trades, window_index, inventory_pnl, buy_pnl, sell_pnl, delta_mid, inventory):
+            if abs_reward > 100000:
+                print(f"Large reward: {reward}")
+                print(f"Trades: {trades}")
+                print(f"Window index: {window_index}")
+                print(f"Inventory PnL: {inventory_pnl}")
+                print(f"Buy PnL: {buy_pnl}")
+                print(f"Sell PnL: {sell_pnl}")
+                print(f"Delta Mid: {delta_mid}")
+                print(f"Inventory: {inventory}")
+
         #########################################################
         # Get reward
         #########################################################
@@ -2211,19 +2223,92 @@ class MarketMakingAgent():
                 lambda: reward
             )
             #jax.debug.print("reward: {}", reward)
+        # jax.debug.callback(large_reward_callback,reward,
+        #                                     jnp.abs(reward),
+        #                                     trades,
+        #                                     world_state.window_index,
+        #                                     InventoryPnL,
+        #                                     buyPnL,
+        #                                     sellPnL,
+        #                                     mid_price_end - world_state.mid_price,
+        #                                     agent_state.inventory)
+        def large_pv_callback(reward, abs_reward, ep_done_time, window_index, netWorth,
+                        delta_netWorth,
+                        new_inventory,
+                        new_cash_balance,
+                        buyQuant,
+                        sellQuant,
+                        PnL,
+                        reference_price,
+                        old_reference_price,
+                        delta_ref_price,
+                        delta_mid_price,
+                        mid_price_end,
+                        mid_price,trades,agent_buys,agent_sells):
+            if window_index==1084:
+                print(f"PV: {reward}")
+                print(f"Abs PV: {abs_reward}")
+                print(f"Episode done: {ep_done_time}")
+                print(f"Window index: {window_index}")
+                print(f"Net Worth: {netWorth}")
+                print(f"Delta Net Worth: {delta_netWorth}")
+                print(f"Inventory: {new_inventory}")
+                print(f"Cash Balance: {new_cash_balance}")
+                print(f"Buy Quantity: {buyQuant}")
+                print(f"Sell Quantity: {sellQuant}")
+                print(f"PnL: {PnL}")
+                print(f"Reference Price: {reference_price}")
+                print(f"Old Reference Price: {old_reference_price}")
+                print(f"Delta Reference Price: {delta_ref_price}")
+                print(f"Delta Mid Price: {delta_mid_price}")
+                print(f"Mid Price End: {mid_price_end}")
+                print(f"Mid Price: {mid_price}")
+                print(f"Trades: {trades}")
+                print(f"Agent Buys: {agent_buys}")
+                print(f"Agent Sells: {agent_sells}")
+
         
 
+        # jax.debug.callback(large_pv_callback,
+        #                 reward_portfolio_value,
+        #                 jnp.abs(reward_portfolio_value),
+        #                 ep_done_time,
+        #                 world_state.window_index,
+        #                 netWorth,
+        #                 delta_netWorth,
+        #                 new_inventory,
+        #                 new_cash_balance,
+        #                 buyQuant,
+        #                 sellQuant,
+        #                 PnL,
+        #                 reference_price,
+        #                 old_reference_price,
+        #                 reference_price - old_reference_price,
+        #                 mid_price_end - world_state.mid_price,
+        #                 mid_price_end,
+        #                 world_state.mid_price,
+        #                 trades,
+        #                 agent_buys,
+        #                 agent_sells)
+            
+            
         return reward/self.cfg.reward_scaling_quo, {
+            "reward":reward,
             "reward_portfolio_value":reward_portfolio_value,
+            "end_of_ep_pv":reward_portfolio_value*ep_done_time,
             "reward_complex":reward_complex,
             "reward_spooner":reward_spooner,
             "reward_spooner_damped":reward_spooner_damped,
+            "reward_spooner_asym_damped":reward_spooner_asym_damped,
             "reward_spooner_scaled":reward_spooner_scaled,
             "reward_delta_portfolio_value":delta_netWorth,
+            "forced_unwind":forced_unwind,
             "market_share": market_share,
             "inventoryValue":inventoryValue,
+            "delta_mid_price": mid_price_end - world_state.mid_price,
             "buyPnL":buyPnL,
             "sellPnL":sellPnL,
+            "invPnL":InventoryPnL,
             "PnL": PnL, 
             "cash_balance" : new_cash_balance,
             "netWorth":netWorth,
@@ -2262,14 +2347,18 @@ class MarketMakingAgent():
             "reward_portfolio_value":extras["reward_portfolio_value"],
             # "reward_complex":extras["reward_complex"],
             "reward_spooner":extras[ "reward_spooner"],
-            # "reward_spooner_damped":extras["reward_spooner_damped"],
-            # "reward_spooner_scaled":extras[ "reward_spooner_scaled"],
-            # "reward_delta_netWorth":extras["reward_delta_netWorth"],
+            "end_of_ep_pv":extras["end_of_ep_pv"],
+            "reward_spooner_damped":extras["reward_spooner_damped"],
+            "reward_spooner_asym_damped":extras[ "reward_spooner_asym_damped"],
+            "reward_delta_pv":extras["reward_delta_portfolio_value"],
             "total_PnL": agent_state.total_PnL,                           
             "done": done,
             "inventory": agent_state.inventory,
+            "delta_mid_price":extras["delta_mid_price"],
             "market_share":extras["market_share"],
             "buyPnL":extras["buyPnL"],
+            "forced_unwind":extras["forced_unwind"],
+            "invPnL":extras["invPnL"],
             # "scaledInventoryPnL":extras["scaledInventoryPnL"],
             # "netWorth":extras["netWorth"],
             "sellPnL":extras["sellPnL"],
