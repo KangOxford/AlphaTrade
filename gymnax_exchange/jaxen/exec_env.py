@@ -1375,7 +1375,7 @@ class ExecutionAgent():
         side_sign=(state.is_sell_task*2-1) # 1 if sell, -1 if buy
         
         trades = jax.lax.cond(
-            ep_is_over & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
+            ep_is_over & (quant_left> 0),  # Check if episode is over and we still have remaining quantity
             place_midprice_trade,  # Place a midprice trade
             lambda trades, b, c, d: trades,  # If not, return the existing trades
             trades, doom_price, side_sign*jnp.abs(quant_left), new_time  # Inv +ve means incoming is sell so standing buy.
