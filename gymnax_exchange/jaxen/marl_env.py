@@ -514,7 +514,7 @@ class MARLEnv(MultiAgentEnv):
         # Flatten all done flags into a single array
         if len(self.instance_list) > 0:
             all_dones_flat = jnp.concatenate(new_agent_dones_list)
-            overall_done = jnp.any(jnp.asarray([ep_done_time, jnp.all(all_dones_flat)])) # Done if all agents are done
+            overall_done = ep_done_time #jnp.any(jnp.asarray([ep_done_time, jnp.all(all_dones_flat)])) # Done if all agents are done
             #Likely to throw an error due to bool =/= 
         else:
             all_dones_flat = jnp.array([])
@@ -562,6 +562,7 @@ class MARLEnv(MultiAgentEnv):
             "average_best_bid":average_best_bid,
             "delta_time":new_world_state.delta_time,
             "current_step":new_world_state.step_counter,
+            "ep_done_time":ep_done_time,
         }
 
 
