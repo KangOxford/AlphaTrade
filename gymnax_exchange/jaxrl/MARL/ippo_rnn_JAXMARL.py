@@ -411,7 +411,7 @@ def create_agent_configs(config):
                             config_overrides[key] = value
             
             # Then apply sweep parameters which take highest precedence
-            sweep_overrides = {k.lower(): v for k, v in agent_cfg.items()}
+            sweep_overrides = {k: v for k, v in agent_cfg.items()}
             
             # Merge: sweep_overrides will override config_overrides
             all_overrides = {**config_overrides, **sweep_overrides}
