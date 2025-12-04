@@ -1577,7 +1577,7 @@ class ExecutionAgent():
 
         # Add artificial trade to trades object if episode is over and we still have remaining quantity
         trades : jax.Array = jax.lax.cond(
-            ep_done_time & (jnp.abs(quant_left) > 0),  # Check if episode is over and we still have remaining quantity
+            ep_done_time & (quant_left > 0),  # Check if episode is over and we still have remaining quantity
             add_fictional_trade,  # Place a midprice trade
             lambda trades, b, c: trades,  # If not, return the existing trades
             trades, reference_price, side_sign*jnp.abs(quant_left)  # Inv +ve means incoming is sell so standing buy.
