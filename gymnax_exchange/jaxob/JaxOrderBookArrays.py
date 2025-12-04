@@ -845,6 +845,19 @@ def get_volume_at_price(orderside, price):
     """
     return jnp.sum(jnp.where(orderside[:,0]==price,orderside[:,1],0))
 
+@jax.jit
+def get_volume(orderside):
+    """Returns the total quantity in the book at a given price for the
+    bid or ask side. 
+        Parameters:
+                orderside (Array): All bid or ask orders in book.
+                price (int): Price level of interest. 
+
+        Returns:
+                quantity: Total volume for the given price level
+    """
+    return jnp.sum(jnp.where(orderside[:,cst.OrderSideFeat.P.value]!=cst.EMPTY_SLOT,orderside[:,cst.OrderSideFeat.Q.value],0))
+
 @partial(jax.jit,static_argnums=0)
 def get_best_ask(cfg:JAXLOB_Configuration,asks):
     """Returns the best (lowest) ask price. If there is no ask, return -1. 
