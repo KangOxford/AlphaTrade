@@ -1990,13 +1990,20 @@ class MarketMakingAgent():
                     lambda: bestasks[-1][0])
         else:
             raise ValueError("Invalid unwind price type.")
-        
+        penalty=self.cfg.unwind_price_penalty * self.world_config.tick_size
+        penalty=jax.lax.cond(
+            new_inventory_before_final_trade >0,
+            lambda: penalty,
+            lambda: -penalty
+        )
+
         trades = jax.lax.cond(
             ep_done_time & (jnp.abs(new_inventory_before_final_trade) > 0),  # Check if episode is over and we still have remaining quantity
             add_fictional_trade,  # Place a midprice trade
             lambda trades, b, c: trades,  # If not, return the existing trades
-            trades, unwind_price, jnp.sign(new_inventory_before_final_trade) * jnp.abs(new_inventory_before_final_trade) # Inv +ve means incoming is sell so standing buy.
+            trades, unwind_price-penalty, jnp.sign(new_inventory_before_final_trade) * jnp.abs(new_inventory_before_final_trade) # Inv +ve means incoming is sell so standing buy.
         )
+        forced_unwind=new_inventory_before_final_trade * ep_done_time
 
         #jax.debug.print("trades mm env: {}", trades)
 

@@ -56,6 +56,7 @@ class MarketMaking_EnvironmentConfig():
     fixed_quant_value: int = 10
 
     #       Reward
+    unwind_price_penalty: int = 5  # Penalty (in ticks) added to the unwind price at episode end
     inv_penalty: str = "none"  # options: "none", "linear", "quadratic", "threshold"
     volume_traded_bonus: str = "none"  # options: "none", "linear"
     reference_price: str = "mid"  # options: "mid_avg", "mid", "far_touch", "near_touch"
