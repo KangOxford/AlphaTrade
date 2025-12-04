@@ -1964,7 +1964,8 @@ class MarketMakingAgent():
 
         #These values may be used throughout, they do not change even in the event of a fictional trade
         averageMidprice = ((bestbids[:, 0] + bestasks[:, 0]) / 2).mean() #should be a float
-        last_mid_price = (world_state.best_bids[-1,0] + world_state.best_asks[-1,0]) / 2
+        last_mid_price = (bestbids[-1,0] + bestasks[-1,0]) / 2
+
 
         #########################################################################################
         # Add artificial trade if episode is done
