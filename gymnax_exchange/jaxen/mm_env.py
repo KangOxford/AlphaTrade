@@ -2040,9 +2040,9 @@ class MarketMakingAgent():
         mid_price_end = (bestbids[-1][0] + bestasks[-1][0]) / 2
 
         #Real Revenue calcs: (actual cash flow+actual value of portfolio)
-        income=(agent_sells[:, job.cst.TradesFeat.P.value] * 
+        income=(agent_sells[:, job.cst.TradesFeat.P.value].astype(jnp.float32)/self.world_config.tick_size * 
                 jnp.abs(agent_sells[:, job.cst.TradesFeat.Q.value])).sum()
-        outgoing=(agent_buys[:, job.cst.TradesFeat.P.value] * 
+        outgoing=(agent_buys[:, job.cst.TradesFeat.P.value].astype(jnp.float32)/self.world_config.tick_size * 
                   jnp.abs(agent_buys[:, job.cst.TradesFeat.Q.value])).sum() 
 
         buyQuant=jnp.abs(agent_buys[:, job.cst.TradesFeat.Q.value]).sum()
@@ -2051,8 +2051,7 @@ class MarketMakingAgent():
         new_inventory=agent_state.inventory+buyQuant - sellQuant
 
 
-        #PnL,== cash balance change
-        PnL=(income-outgoing)
+        
 
         # Compute a reference price based on the config
         if self.cfg.reference_price == "mid_avg":
@@ -2080,9 +2079,11 @@ class MarketMakingAgent():
         else:
             raise ValueError("Invalid reference price type.")
 
+        #PnL,== cash balance change
+        PnL=(income-outgoing)
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = agent_state.cash_balance + PnL
-        inventoryValue=new_inventory*(reference_price) #Mark to market inventory value
+        inventoryValue=new_inventory*(reference_price)/self.world_config.tick_size#Mark to market inventory value
         netWorth=new_cash_balance+inventoryValue
 
         #calculate a fraction of total market activity attributable to us.
@@ -2094,10 +2095,10 @@ class MarketMakingAgent():
 
         #------------A) spooner Rewards-------------------------#       
         #Inventory PnL: The value obtained due to the midprice changing and us holding inventory
-        InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)
+        InventoryPnL= agent_state.inventory*(mid_price_end-world_state.mid_price)/self.world_config.tick_size
 
-        buyPnL = ((ref_buy - agent_buys[:, 0]) * jnp.abs(agent_buys[:, 1])).sum()
-        sellPnL = ((agent_sells[:, 0] - ref_sell) * jnp.abs(agent_sells[:, 1])).sum()
+        buyPnL = (((ref_buy - agent_buys[:, 0])/self.world_config.tick_size * jnp.abs(agent_buys[:, 1])).sum())
+        sellPnL = (((agent_sells[:, 0] - ref_sell)/self.world_config.tick_size * jnp.abs(agent_sells[:, 1])).sum())
         
 
         #A1)Spooner paper reward
@@ -2130,7 +2131,7 @@ class MarketMakingAgent():
         reward_complex = approx_realized_pnl + unrealizedPnL_lambda * approx_unrealized_pnl +  inventoryPnL_eta * jnp.minimum(InventoryPnL,InventoryPnL*asymmetrically_dampened_lambda) #Last term adds negative inventory PnL without dampening
     
         #--------------------C) Portfolio Value--------------#
-        reward_portfolio_value=new_inventory*(reference_price)+new_cash_balance
+        reward_portfolio_value=new_inventory*(reference_price/self.world_config.tick_size)+new_cash_balance
 
         #----------------- D) Delta Portfolio Value--------#
         #Get old ref price
@@ -2149,7 +2150,7 @@ class MarketMakingAgent():
         else:
             raise ValueError("Invalid reference price type.")
         #old net worth
-        old_netWorth=old_reference_price*agent_state.inventory+agent_state.cash_balance
+        old_netWorth=old_reference_price/self.world_config.tick_size*agent_state.inventory+agent_state.cash_balance
         delta_netWorth=netWorth-old_netWorth
         
 
