@@ -1005,7 +1005,7 @@ class MarketMakingAgent():
 
        
         tick_offset = self.cfg.n_ticks_offset * self.world_config.tick_size  # Total price offset per direction
-        
+        half_spread = jnp.maximum((best_ask - best_bid) / 2, self.world_config.tick_size/2)
 
 
         # Get parameters for current action
@@ -1015,8 +1015,8 @@ class MarketMakingAgent():
         ask_quant = ask_quants[action]*self.cfg.fixed_quant_value
         
         # Calculate prices with bounds checking
-        bid_price = best_bid - bid_offset * tick_offset
-        ask_price = best_ask + ask_offset * tick_offset
+        bid_price = best_bid - bid_offset  * half_spread
+        ask_price = best_ask + ask_offset  * half_spread
 
         #jax.debug.print("bid_price before:{}",bid_price)
         #jax.debug.print("ask_price before:{}",ask_price)
