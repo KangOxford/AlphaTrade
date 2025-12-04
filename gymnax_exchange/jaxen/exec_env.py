@@ -1612,7 +1612,7 @@ class ExecutionAgent():
         # vwap = vwapFunc(otherTrades) # average_price of all other trades
         P_vwap = jax.lax.cond(
             otherQuant == 0,
-            lambda: agent_state.p_vwap, #If no trades, use the previous vwap. Rolling is too slow to adapt #agent_state.vwap_rm,
+            lambda: averageMidprice// self.world_config.tick_size, #agent_state.p_vwap, #If no trades, use the previous vwap. Rolling is too slow to adapt #agent_state.vwap_rm,
             lambda: (otherTrades[:, job.cst.TradesFeat.P.value] // 
                      self.world_config.tick_size * 
                      jnp.abs(otherTrades[:, job.cst.TradesFeat.Q.value])).sum() / otherQuant
