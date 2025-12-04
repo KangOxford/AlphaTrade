@@ -1002,6 +1002,14 @@ class ExecutionAgent():
         """get messages for action space where input is quantity at each price level"""
         action = jnp.atleast_1d(action)
 
+        action = jax.lax.cond(
+            jnp.sum(action) > (agent_state.task_to_execute - agent_state.quant_executed),
+            lambda action: (action / jnp.sum(action) * (agent_state.task_to_execute - agent_state.quant_executed)).astype(jnp.int32),
+            lambda action: action.astype(jnp.int32),
+            action
+        )
+
+
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
             def combine_mid_nt(quants, prices):
                 quants = quants \
@@ -1873,7 +1881,13 @@ class ExecutionAgent():
             lambda: (world_state.best_bids[-1], world_state.best_asks[-1]),
             lambda: (world_state.best_asks[-1], world_state.best_bids[-1]),
         )
-
+        bid_vol_tot= job.get_volume(world_state.bid_raw_orders)
+        ask_vol_tot= job.get_volume(world_state.ask_raw_orders)
+        vol_aggr,vol_pass = jax.lax.cond( # Quote includes price and quantity
+            agent_state.is_sell_task,
+            lambda: (bid_vol_tot,ask_vol_tot),
+            lambda: (ask_vol_tot,bid_vol_tot),
+        )
         # print("agent_state:", agent_state.is_sell_task)
         # print(f"quite aggr: {quote_aggr}, quote pass: {quote_pass}")
 
@@ -1885,11 +1899,11 @@ class ExecutionAgent():
         if self.world_config.ep_type == "fixed_time":
             obs = {
                 "is_sell_task": agent_state.is_sell_task,
-                "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
-                "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
+                "p_aggr": quote_aggr[0], #* sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
+                "p_pass": quote_pass[0], #* sign_switch,  # switch sign for buy task
                 "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
-                "q_aggr": quote_aggr[1],
-                "q_pass": quote_pass[1],
+                "q_aggr": vol_aggr,
+                "q_pass": vol_pass,
                 #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
                 # "q_before2": None, # how much quantity lies above this price level
                 "time": time,
@@ -1914,8 +1928,8 @@ class ExecutionAgent():
             p_std = 1e6
             means = {
                 "is_sell_task": 0,
-                "p_aggr": agent_state.init_price * sign_switch, #p_mean,
-                "p_pass": agent_state.init_price * sign_switch, #p_mean,
+                "p_aggr": agent_state.init_price, #* sign_switch, #p_mean,
+                "p_pass": agent_state.init_price, #* sign_switch, #p_mean,
                 "spread": 0,
                 "q_aggr": 0,
                 "q_pass": 0,
@@ -1936,8 +1950,8 @@ class ExecutionAgent():
                 "p_aggr": 1e5, #p_std,
                 "p_pass": 1e5, #p_std,
                 "spread": 1e4,
-                "q_aggr": 100,
-                "q_pass": 100,
+                "q_aggr": 1000,
+                "q_pass": 1000,
             #"q_pass2": 100,
                 "time": 1e5,
                 "delta_time": 10,
@@ -1953,11 +1967,11 @@ class ExecutionAgent():
         elif self.world_config.ep_type == "fixed_steps": # leave away time related stuff
             obs = {
                 "is_sell_task": agent_state.is_sell_task,
-                "p_aggr": quote_aggr[0] * sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
-                "p_pass": quote_pass[0] * sign_switch,  # switch sign for buy task
+                "p_aggr": quote_aggr[0], #* sign_switch,  # switch sign for buy task TODO why do we have a sign switch here?
+                "p_pass": quote_pass[0], #* sign_switch,  # switch sign for buy task
                 "spread": jnp.abs(quote_aggr[0] - quote_pass[0]),
-                "q_aggr": quote_aggr[1],
-                "q_pass": quote_pass[1],
+                "q_aggr": vol_aggr,
+                "q_pass": vol_pass,
                 #"q_pass2": state.quant_passive_2, # TODO add price here, calculate it correctly
                 # "q_before2": None, # how much quantity lies above this price level
                 "init_price": agent_state.init_price,
@@ -1978,8 +1992,8 @@ class ExecutionAgent():
             p_std = 1e6
             means = {
                 "is_sell_task": 0,
-                "p_aggr": agent_state.init_price * sign_switch, #p_mean,
-                "p_pass": agent_state.init_price * sign_switch, #p_mean,
+                "p_aggr": agent_state.init_price, #* sign_switch, #p_mean,
+                "p_pass": agent_state.init_price, #* sign_switch, #p_mean,
                 "spread": 0,
                 "q_aggr": 0,
                 "q_pass": 0,
@@ -1996,8 +2010,8 @@ class ExecutionAgent():
                 "p_aggr": 1e5, #p_std,
                 "p_pass": 1e5, #p_std,
                 "spread": 1e4,
-                "q_aggr": 100,
-                "q_pass": 100,
+                "q_aggr": 1000,
+                "q_pass": 1000,
             #"q_pass2": 100,
                 "init_price": 1e7, #p_std,
                 "task_size": self.cfg.task_size,
