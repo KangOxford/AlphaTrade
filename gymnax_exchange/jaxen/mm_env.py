@@ -991,8 +991,8 @@ class MarketMakingAgent():
        # jax.debug.print("old best bid: {}", best_bid)
         if self.cfg.sell_buy_all_option==False:
             # Define mappings for each action: [0-7]
-            bid_offsets = jnp.array([10, 2, 4, 1, 0, 2, 5, 1], dtype=jnp.float32)
-            ask_offsets = jnp.array([10, 2, 4, 1, 2, 0, 1, 5], dtype=jnp.float32)
+            bid_offsets = jnp.array([5, 2, 4, 1, 0, 2, 5, 1], dtype=jnp.float32)
+            ask_offsets = jnp.array([5, 2, 4, 1, 2, 0, 1, 5], dtype=jnp.float32)
             bid_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)
             ask_quants = jnp.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=jnp.int32)##config quant....
         elif self.cfg.sell_buy_all_option==True:
@@ -1059,7 +1059,7 @@ class MarketMakingAgent():
 
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
-        return action_msgs,{}
+        return action_msgs,{"posted_bid_price":bid_price,"posted_ask_price":ask_price}
 
 
 
@@ -1067,6 +1067,7 @@ class MarketMakingAgent():
     def _getActionMsgs_simple(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
+        #There
         best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
 
@@ -2381,6 +2382,8 @@ class MarketMakingAgent():
             "buyPnL":extras["buyPnL"],
             "forced_unwind":extras["forced_unwind"],
             "invPnL":extras["invPnL"],
+            "posted_bid_price":extras["posted_bid_price"],
+            "posted_ask_price":extras["posted_ask_price"],
             # "scaledInventoryPnL":extras["scaledInventoryPnL"],
             # "netWorth":extras["netWorth"],
             "sellPnL":extras["sellPnL"],
