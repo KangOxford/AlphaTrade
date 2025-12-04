@@ -964,9 +964,29 @@ class MarketMakingAgent():
     def _getActionMsgs_fixedQuant(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
-        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        #These values may be my own orders... I clearly don't want to base myself off them. Get from world state directly.
+        ask_mask=(world_state.ask_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        bid_mask=(world_state.bid_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        
+        masked_asks=jnp.where(ask_mask[:, jnp.newaxis], world_state.ask_raw_orders, -1)
+        masked_bids=jnp.where(bid_mask[:, jnp.newaxis], world_state.bid_raw_orders, -1)
+    
+        best_ask, best_bid = job.get_best_bid_and_ask(self.world_config,masked_asks,masked_bids)
+        best_ask = jnp.where(best_ask == -1, world_state.best_asks[-1,0], best_ask)
+        best_bid = jnp.where(best_bid == -1, world_state.best_bids[-1,0], best_bid)
+        best_ask = jnp.int32((best_ask // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((best_bid // self.world_config.tick_size) * self.world_config.tick_size)
 
+        # best_ask_old = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        # best_bid_old = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        def bid_ask_callback(delta, best_ask, best_bid,old_ask,old_bid,bids_raw,asks_raw,bids_masked,asks_masked):
+            if delta!=0:
+                print("The best bid and ask are changing! from {}-{} to {}-{}".format(old_bid,old_ask,best_bid,best_ask))
+                print("Raw bids: {}".format(bids_raw))
+                print("Masked bids: {}".format(bids_masked))
+                print("Raw asks: {}".format(asks_raw))
+                print("Masked asks: {}".format(asks_masked))
+        # jax.debug.callback(bid_ask_callback,jnp.abs(best_ask-best_ask_old)+jnp.abs(best_bid-best_bid_old), best_ask, best_bid, best_ask_old, best_bid_old, world_state.bid_raw_orders, world_state.ask_raw_orders, masked_bids, masked_asks)
         #jax.debug.print("old best ask: {}", best_ask)
        # jax.debug.print("old best bid: {}", best_bid)
         if self.cfg.sell_buy_all_option==False:
