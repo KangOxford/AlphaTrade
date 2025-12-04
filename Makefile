@@ -1,7 +1,7 @@
 NVCC_RESULT := $(shell which nvcc 2> NULL; rm NULL)
 NVCC_TEST := $(notdir $(NVCC_RESULT))
 ifeq ($(NVCC_TEST),nvcc)
-GPUS=--gpus '"device=0"'
+GPUS=--gpus '"device="'
 else
 GPUS=
 endif
@@ -43,9 +43,14 @@ test:
 
 ppo:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py"
-
+ppo_long:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_exec_longrun'"
+ppo_mm:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_mm'"
 baseline:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py"
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py --config-name='baseline_mm_config'"
+baseline_only:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_only_JAXMARL.py --config-name='baseline_mm_config'"
 
 plot_trajectories:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py"

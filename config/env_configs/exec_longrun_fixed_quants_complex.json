@@ -40,7 +40,7 @@
       "short_name": "EXE",
       "action_type": "pure",
       "task": "random",
-      "action_space": "twap",
+      "action_space": "fixed_quants_complex",
       "observation_space": "engineered",
       "reward_function": "normal",
       "task_size": 600,

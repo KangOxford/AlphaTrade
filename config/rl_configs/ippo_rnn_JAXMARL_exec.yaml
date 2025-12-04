@@ -2,44 +2,46 @@
 # apply differently to each ntwrk
 # Should match with NUM_AGENTS_PER_TYPE
 
-"LR": [0.00004]
-"NUM_ENVS": 4096 #128
-"NUM_STEPS": 128
-"NUM_STEPS_EVAL" : 64
+"LR": [0.001]  # HP (v2_Exec_FixedQuantsComplex_Ablations) shows 0.001 better than 0.0005 and 0.0015 (But only marginally) 
+"NUM_ENVS": 4096 #2048 #2048 #128
+"NUM_STEPS": 126
+"NUM_STEPS_EVAL" : 63
 "GRU_HIDDEN_DIM": 128
 "FC_DIM_SIZE": 128
-"TOTAL_TIMESTEPS": 10e7
-"UPDATE_EPOCHS": 4
-"NUM_MINIBATCHES": 16
-"GAMMA": [0.999]
-"GAE_LAMBDA": [0.99]
+"TOTAL_TIMESTEPS": 2e7
+"UPDATE_EPOCHS": 8
+"NUM_MINIBATCHES": 8
+"GAMMA": [0.99] # HP (v2_Exec_FixedQuantsComplex_Ablations) shows 0.99 better than 0.999
+"GAE_LAMBDA": [0.9999]
 "CLIP_EPS": 0.2
 "SCALE_CLIP_EPS": [False]
 "ENT_COEF": [0.001]
-"VF_COEF": [1e-9]
+"VF_COEF": [5e-5]
 "MAX_GRAD_NORM": [0.5]
 "ACTIVATION": ["relu"]
 "ENV_NAME": "JAXMARL-SingleExec-v0"
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2
 "N_DEVICES": 1
-"ENV_CONFIG": "config/env_configs/exec_debug.json"
-"ANNEAL_LR": [True]
+"ENV_CONFIG": "config/env_configs/exec_debug_fixed_quants_complex.json"
+"ANNEAL_LR": [False]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "Exec_FixedPrice_Ablations" #"v4_2Player_reference_price_ablation" #"DEBUG"
+"PROJECT": "v3_Exec_FixedQuantsComplex_Ablations" #"v4_2Player_reference_price_ablation" #"DEBUG"
 "WANDB_MODE" : "online"
 
 SWEEP_PARAMETERS:
-        # LR:
-        #   values: [config["LR"]]
+        LR:
+          values: [[0.001],[0.0001]]
         # NUM_STEPS:
         #   values: [32,config["NUM_STEPS"], 512]
-        # GAMMA:
-        #   values: [config["GAMMA"], [0.99,0.99]]
-        # LR:
-        #   values: [config["LR"], [0.004,0.004], [0.00004,0.00004]]
+        GAE_LAMBDA:
+          values: [ [0.999],[0.9999]] #Should smooth value func
+        GAMMA:
+          values: [ [0.99],[0.999]] #Discoutn factor
+        NUM_MINIBATCHES:
+          values: [8,16] # Bigger batches, potentially less noisy updates
         # ENT_COEF:
         #   values: [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]
         # UPDATE_EPOCHS:
@@ -53,7 +55,7 @@ SWEEP_PARAMETERS:
         # NUM_AGENTS_PER_TYPE:
         #   values: [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]
         SEED:
-          values: [42,34]
+          values: [42,37]
         # NUM_ENVS:
         #   values: [config["NUM_ENVS"]]
         # NUM_STEPS:
@@ -75,15 +77,15 @@ SWEEP_PARAMETERS:
             Execution:
               parameters:
                 reward_lambda:
-                  values: [0.0,0.3,1] #,0.2,0.8,1.0]
+                  values: [0.0,0.3] #,0.2,0.8,1.0]
                 doom_price_penalty:
-                  values: [1,3,7,10]
-                fixed_quant_value:
-                  values: [5,10,20]
-                n_actions:
-                  values: [2,4,3]  #fixed_quants,fixed_quants_complex
-                # task_size:
-                #   values: [600]
+                  values: [5,10]
+                # fixed_quant_value:
+                #   values: [10]
+                # n_actions:
+                #   values: [2,4,3]  #fixed_quants,fixed_quants_complex
+                # reward_scaling_quo:
+                #   values: [100.0]
 
 
 
