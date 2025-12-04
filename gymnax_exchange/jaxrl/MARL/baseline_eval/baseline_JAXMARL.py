@@ -38,10 +38,12 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import gc
 
+from dataclasses import replace,fields
 #from jaxmarl.wrappers.baselines import SMAXLogWrapper
 #from jaxmarl.environments.smax import map_name_to_scenario, HeuristicEnemySMAX
 from gymnax_exchange.jaxen.marl_env import MARLEnv
-from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig,MarketMaking_EnvironmentConfig
+from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig,Execution_EnvironmentConfig, World_EnvironmentConfig,MarketMaking_EnvironmentConfig,CONFIG_OBJECT_DICT
+from gymnax_exchange.jaxob.config_io import load_config_from_file, save_config_to_file
 
 import wandb
 
@@ -80,7 +82,129 @@ class ScannedRNN(nn.Module):
         # Use a dummy key since the default state init fn is just zeros.
         cell = nn.GRUCell(features=hidden_size)
         return cell.initialize_carry(jax.random.PRNGKey(0), (batch_size, hidden_size))
+    
+class MultiActionOutputIndependant(nn.Module):
+    action_dims: Sequence[int]
+    config: Dict
 
+    @nn.compact
+    def __call__(self, x):
+        # Create multiple output heads
+        if isinstance(self.action_dims, (list, tuple)):
+            # Multi-output case: create separate heads for each output
+            action_logits_list = []
+            for dim in self.action_dims:
+                logits = nn.Dense(
+                    dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
+                )(x)
+                action_logits_list.append(logits)
+
+            pi = MultiCategorical(action_logits_list)
+        else:
+            raise ValueError("action_dims must be a list or tuple for MultiActionOutputIndependant.")
+
+        return pi
+
+class MultiActionOutputAutoregressive(nn.Module):
+    action_dims: Sequence[int]
+    config: Dict
+    embed_dim: int = 32
+
+    def get_logits_for_action(self, x, action_idx, prev_actions):
+        """
+        Compute logits for action_idx conditioned on prev_actions.
+        
+        Args:
+            x: actor features (batch, feature_dim)
+            action_idx: which action we're computing logits for (0, 1, 2, ...)
+            prev_actions: list of previously sampled actions [action_0, action_1, ...]
+        """
+        if action_idx == 0:
+            # First action: no conditioning
+            logits = nn.Dense(
+                self.action_dims[0], 
+                kernel_init=orthogonal(0.01), 
+                bias_init=constant(0.0),
+                name=f'action_{action_idx}_head'
+            )(x)
+            return logits
+        
+        # Subsequent actions: condition on previous actions
+        embeddings = []
+        for i, prev_action in enumerate(prev_actions):
+            # Embed each previous action
+            embed = nn.Embed(
+                num_embeddings=self.action_dims[i],
+                features=self.embed_dim,
+                name=f'action_{i}_embed'
+            )(prev_action)
+            embeddings.append(embed)
+        
+        # Concatenate features with all previous action embeddings
+        combined = jnp.concatenate([x] + embeddings, axis=-1)
+        
+        # Process through hidden layer
+        hidden = nn.Dense(
+            self.config["GRU_HIDDEN_DIM"] // 2,
+            kernel_init=orthogonal(2),
+            bias_init=constant(0.0),
+            name=f'action_{action_idx}_hidden'
+        )(combined)
+        hidden = nn.relu(hidden)
+        
+        # Output logits
+        logits = nn.Dense(
+            self.action_dims[action_idx],
+            kernel_init=orthogonal(0.01),
+            bias_init=constant(0.0),
+            name=f'action_{action_idx}_head'
+        )(hidden)
+        
+        return logits
+
+    @nn.compact
+    def __call__(self, x, given_actions=None):
+        """
+        Compute autoregressive action distribution.
+        
+        Args:
+            x: actor features from the network
+            given_actions: Optional. If provided (during training), use these for conditioning.
+                          Shape: (..., num_actions). Otherwise sample autoregressively.
+        
+        Returns:
+            AutoregressiveMultiCategorical distribution object
+        """
+        if not isinstance(self.action_dims, (list, tuple)):
+            raise ValueError("action_dims must be a list or tuple for MultiActionOutputAutoregressive.")
+        
+        # Return a distribution that can sample autoregressively or compute log_prob
+        return AutoregressiveMultiCategorical(
+            actor_features=x,
+            action_dims=self.action_dims,
+            logits_fn=self.get_logits_for_action,
+            given_actions=given_actions
+        )
+
+class SingleActionOutput(nn.Module):
+    action_dim: int
+    config: Dict
+
+    @nn.compact
+    def __call__(self, x):
+        # Create multiple output heads
+        if isinstance(self.action_dim, int):
+            actor_mean = nn.Dense(
+                self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0) # type: ignore
+            )(x)
+            # Avail actions are not used in the current implementation, but can be added if needed.
+            # unavail_actions = 1 - avail_actions
+            action_logits = actor_mean # - (unavail_actions * 1e10)
+            pi = distrax.Categorical(logits=action_logits)
+        else:
+            raise ValueError("action_dims must be a list or tuple for MultiActionOutputIndependant.")
+
+        return pi
 
 class ActorCriticRNN(nn.Module):
     action_dim: Sequence[int]
@@ -99,19 +223,6 @@ class ActorCriticRNN(nn.Module):
         rnn_in = (embedding, dones)
 
         hidden, embedding = ScannedRNN()(hidden, rnn_in)
-        actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
-            embedding
-        )
-
-        actor_mean = nn.relu(actor_mean)
-
-        actor_mean = nn.Dense(
-            self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0) # type: ignore
-        )(actor_mean)
-        # Avail actions are not used in the current implementation, but can be added if needed.
-        # unavail_actions = 1 - avail_actions
-        action_logits = actor_mean # - (unavail_actions * 1e10)
-        pi = distrax.Categorical(logits=action_logits)
 
         critic = nn.Dense(self.config["FC_DIM_SIZE"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
             embedding
@@ -120,8 +231,140 @@ class ActorCriticRNN(nn.Module):
         critic = nn.Dense(1, kernel_init=orthogonal(1.0), bias_init=constant(0.0))(
             critic
         )
+        actor_mean = nn.Dense(self.config["GRU_HIDDEN_DIM"], kernel_init=orthogonal(2), bias_init=constant(0.0))(
+            embedding
+        )
+
+        actor_mean = nn.relu(actor_mean)
+
+        # Option 1: Single action output (current behavior)
+        if isinstance(self.action_dim, int):
+            pi = SingleActionOutput(action_dim=self.action_dim, config=self.config)(actor_mean)
+
+        # Option 2: Multiple independent actions
+        elif isinstance(self.action_dim, (list, tuple)):
+            pi = MultiActionOutputIndependant(action_dims=self.action_dim, config=self.config)(actor_mean)
+
+        # Option 3: Multiple autoregressive actions
+        elif isinstance(self.action_dim, (list, tuple)) and self.config.get("AUTOREGRESSIVE", True):
+            pi = MultiActionOutputAutoregressive(
+                action_dims=self.action_dim,  # e.g., [10, 10, 5]
+                config=self.config
+            )(actor_mean)
+        else:
+            raise ValueError("action_dims must be int or list/tuple for ActorCriticRNN.")
 
         return hidden, pi, jnp.squeeze(critic, axis=-1)
+
+
+class MultiCategorical():
+    """Wrapper for multiple independent categorical distributions.
+    NOTE: The correct thing would be to let it inherit from distrax.Distribution but
+    this requires additional thought to implement all abstract methods, many of which are not 
+    needed for this use case. """
+    
+    def __init__(self, logits_list):
+        self.categoricals = [distrax.Categorical(logits=logits) for logits in logits_list]
+
+    
+    def sample(self, seed):
+        keys = jax.random.split(seed, len(self.categoricals))
+        samples = [cat.sample(seed=key) for cat, key in zip(self.categoricals, keys)]
+        return jnp.stack(samples, axis=-1)  # Shape: (..., num_outputs)
+    
+    def log_prob(self, actions):
+        # actions should have shape (..., num_outputs)
+        log_probs = [cat.log_prob(actions[...,i]) for i, cat in enumerate(self.categoricals)]
+        return jnp.sum(jnp.stack(log_probs, axis=-1), axis=-1)  # Sum log probs for independence
+    
+    def entropy(self):
+        entropies = [cat.entropy() for cat in self.categoricals]
+        return jnp.sum(jnp.stack(entropies, axis=-1), axis=-1)  # Sum entropies for independence
+
+
+class AutoregressiveMultiCategorical():
+    """
+    Wrapper for multiple categorical distributions where later actions 
+    are conditioned on previously sampled actions.
+    
+    During sampling: samples actions sequentially, feeding each into the next.
+    During training: computes conditional log probabilities using given actions.
+    """
+    
+    def __init__(self, actor_features, action_dims, logits_fn, given_actions=None):
+        """
+        Args:
+            actor_features: base features from the network (batch, feature_dim)
+            action_dims: list of action space sizes, e.g., [10, 10, 5]
+            logits_fn: function(x, action_idx, prev_actions) -> logits
+            given_actions: optional actions to condition on (for training)
+                          Shape: (..., num_actions)
+        """
+        self.actor_features = actor_features
+        self.action_dims = action_dims
+        self.logits_fn = logits_fn
+        self.given_actions = given_actions
+    
+    def sample(self, seed):
+        """Sample actions autoregressively."""
+        keys = jax.random.split(seed, len(self.action_dims))
+        samples = []
+        
+        for i, key in enumerate(keys):
+            # Get logits conditioned on previously sampled actions
+            logits = self.logits_fn(self.actor_features, i, samples)
+            action = distrax.Categorical(logits=logits).sample(seed=key)
+            samples.append(action)
+        
+        return jnp.stack(samples, axis=-1)  # Shape: (..., num_actions)
+    
+    def log_prob(self, actions):
+        """
+        Compute log probability of action sequence.
+        Uses chain rule: log p(a1,a2,a3) = log p(a1) + log p(a2|a1) + log p(a3|a1,a2)
+        
+        Args:
+            actions: action sequence, shape (..., num_actions)
+        """
+        log_probs = []
+        
+        for i in range(len(self.action_dims)):
+            # Get previous actions for conditioning
+            prev_actions = [actions[..., j] for j in range(i)]
+            
+            # Get conditional logits
+            logits = self.logits_fn(self.actor_features, i, prev_actions)
+            
+            # Compute log prob of this action given previous ones
+            log_p = distrax.Categorical(logits=logits).log_prob(actions[..., i])
+            log_probs.append(log_p)
+        
+        # Sum log probabilities (chain rule)
+        return jnp.sum(jnp.stack(log_probs, axis=-1), axis=-1)
+    
+    def entropy(self):
+        """
+        Compute entropy of the autoregressive distribution.
+        For autoregressive models: H = sum of conditional entropies
+        """
+        entropies = []
+        
+        # For entropy, we need to marginalize over previous actions
+        # Simplified: compute entropy of each conditional separately
+        # (This is an approximation - true entropy requires marginalization)
+        for i in range(len(self.action_dims)):
+            if self.given_actions is not None and i > 0:
+                # Use given actions for conditioning
+                prev_actions = [self.given_actions[..., j] for j in range(i)]
+            else:
+                # For first action or when no given actions, use empty list
+                prev_actions = []
+            
+            logits = self.logits_fn(self.actor_features, i, prev_actions)
+            entropy = distrax.Categorical(logits=logits).entropy()
+            entropies.append(entropy)
+        
+        return jnp.sum(jnp.stack(entropies, axis=-1), axis=-1)
 
 
 class RandomPolicy(nn.Module):
@@ -177,8 +420,47 @@ def batchify(x: jnp.ndarray, num_actors):
 def unbatchify(x: jnp.ndarray,num_envs, num_agents):
     return  x.reshape((num_envs, num_agents, -1))
 
-
-config_dict={"MarketMaking": MarketMaking_EnvironmentConfig,"Execution": Execution_EnvironmentConfig}
+def create_agent_configs(config,override_str:str = "BASELINE_CONFIGS") -> Dict[str, Any]:
+    """
+    Create agent configs with three layers of precedence (lowest to highest):
+    1. Default attributes from the EnvironmentConfig classes
+    2. Values from the JSON config
+    3. Sweep parameters from BASELINE_CONFIGS
+    
+    Args:
+        config: The full config dict containing both JSON config and sweep parameters
+        config_dict: Dict mapping agent type names to their config classes
+                    e.g., {"MarketMaking": MarketMaking_EnvironmentConfig, ...}
+    
+    Returns:
+        Dict of agent configs keyed by agent type name
+    """
+    agent_configs = {}
+    if override_str in config:
+        for agent_type, agent_cfg in config[override_str].items():
+            # Start with defaults from the config class
+            agent_config_class = CONFIG_OBJECT_DICT[agent_type]
+            
+            # First apply config values (from JSON) to override defaults
+            config_overrides = {}
+            field_names = {f.name for f in fields(agent_config_class)}
+            for key, value in config["dict_of_agents_configs"].items():
+                if  isinstance(value, dict) and key == agent_type:
+                    for key, value in value.items():
+                        if key in field_names:
+                            config_overrides[key] = value
+            
+            # Then apply sweep parameters which take highest precedence
+            sweep_overrides = {k.lower(): v for k, v in agent_cfg.items()}
+            
+            # Merge: sweep_overrides will override config_overrides
+            all_overrides = {**config_overrides, **sweep_overrides}
+            
+            # Create the agent config with all overrides
+            agent_configs[agent_type] = agent_config_class(**all_overrides)
+    
+    
+    return agent_configs
 
 
 def make_sim(config):
@@ -273,8 +555,8 @@ def make_sim(config):
                 'model': train_states,  # train_states
                 # 'config': {} ,
                 'metrics': {
-                    'train_rewards': [np.nan,np.nan],
-                    'eval_rewards': [np.nan,np.nan],
+                    'train_rewards': [np.nan],
+                    'eval_rewards': [np.nan],
                     }
             }
             orbax_checkpointer = oxcp.PyTreeCheckpointer()
@@ -667,55 +949,7 @@ def make_sim(config):
         print("Running evaluations with all possible policy combinations...")
         eval_results = eval_policies(rng, config)
 
-        # # Define which combination is the main training combination - this will be used for callbacks
-        # train_states = runner_state[0]  # Get current train states
-
-        # rng, _rng = jax.random.split(rng)
-        # runner_state = (
-        #     train_states,
-        #     env_state,
-        #     obsv,
-        #     init_dones_agents, # last_done
-        #     hstates,  # initial hidden states for RNN
-        #     _rng,
-        # )
-        # updates=0
-        # for i in range(1):
-        #     print(f"Update step {i+1}/{100}")
-        #     # Run the update step:
-        #     if i>2 and i<4:
-        #         jax.profiler.start_trace("/tmp/profile-data")
-        #     (runner_state,updates),metrics=jitted_update_step((runner_state,updates),env_params)
-        #     if i>2 and i<4:
-        #         jax.block_until_ready((runner_state,updates,metrics))
-        #         jax.profiler.stop_trace()
-
-            # env_params.loaded_params.message_data
-            # window_index=metrics["traj_batch"][0].info['world']['window_index'][0,0]
-            # print(f"Window index: {window_index}")
-            # s=env.base_env.start_indeces[window_index]
-            # e=env.base_env.end_indeces[window_index]
-            # print("Start and end indices for window:", s, e)
-            # print(env_params.loaded_params.message_data[s:e].shape)
-            # print(env_params.loaded_params.message_data[s:s+10])
-            # print(env_params.loaded_params.message_data[e-10:e])
-            # theoretical_end_time = env_params.loaded_params.message_data[s, -2] + env.multi_agent_config.world_config.episode_time
-            # print("Datamessages outside",env.base_env._get_data_messages(
-            #                                     env_params.loaded_params.message_data,
-            #                                     s,
-            #                                     0,
-            #                                     theoretical_end_time
-            # ))
-            # callback(metrics)
-            # del metrics
-            # gc.collect()
-        
-
-
-        # runner_state, metrics = jax.lax.scan(
-        #     _update_step, (runner_state, 0), None, config["NUM_UPDATES"]
-        # )
-        
+    
         
         return {"results": eval_results}
 
@@ -726,16 +960,17 @@ def get_ma_config(config, policy_choice, combo_desc):
     print(policy_choice)
     for i, use_learned in enumerate(policy_choice):
         agent_type = list(config["AGENT_CONFIGS"].keys())[i]
-        
         # Start with common agent config
-        agent_config = config["AGENT_CONFIGS"][agent_type].copy()
         
         if use_learned == 0:  # Use baseline policy - apply baseline overrides
-            # Update with baseline-specific overrides
-            agent_config.update(config["BASELINE_CONFIGS"][agent_type])
+            override_str="BASELINE_CONFIGS"
+        elif use_learned == 1:  # Use learned policy - apply learned overrides
+            override_str="AGENT_CONFIGS"
+        else:
+            raise ValueError(f"In get_ma_config: \n\t Invalid policy choice {use_learned} for agent type {agent_type}")
         
         # Convert all keys to lowercase for the environment config
-        agent_configs[agent_type] = config_dict[agent_type](**{k.lower(): v for k, v in agent_config.items()})
+        agent_configs=create_agent_configs(config,override_str=override_str)
 
     # Print agent configs with decorative formatting to make it stand out
     print("\n" + "="*80)
@@ -757,149 +992,34 @@ def get_ma_config(config, policy_choice, combo_desc):
             seed=config["SEED"],
             timePeriod=config["EvalTimePeriod"],
             save_raw_observations=True,
-
             # Only override parameters that exist in both config and World_EnvironmentConfig
-            **{k.lower(): v for k, v in config.items() 
-            if hasattr(World_EnvironmentConfig(), k.lower()) and k != "SEED"}
-        )
-    )
+            **{k: v for k, v in config["world_config"].items() 
+            if hasattr(World_EnvironmentConfig(), k) and k not in ["seed",
+                                                                    "timePeriod",
+                                                                    "save_raw_observations"]}
+        ))
     print("MultiAgentConfig for Learned Agents \n","%"*50,ma_config)
     return ma_config
 
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_JAXMARL_2player")
-def main(config):
-    print("MultiAgentConfig", MultiAgentConfig().world_config)
-    env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
-    final_config=OmegaConf.merge(config,env_config)
-    config = OmegaConf.to_container(final_config)
-
-
-    print(config)
-
-    def sweep_fun():
-        print(f"WANDB CONFIG PRIOR {wandb.config}")
-
-
-        run=wandb.init(
-            entity=config["ENTITY"], # type: ignore
-            project=config["PROJECT"], # type: ignore
-            tags=["IPPO", "RNN"], # type: ignore
-            config=config, # type: ignore
-            mode=config["WANDB_MODE"], # type: ignore
-            allow_val_change=True,
-        )
-        # params_file_name = f'params_file_{wandb.run.name}_{datetime.datetime.now().strftime("%m-%d_%H-%M")}'
-        
-        
-        # print(f"WANDB CONFIG {wandb.config}")
-        # +++++ Single GPU +++++
-        
-
-        rng = jax.random.PRNGKey(wand.config["SEED"])
-
-        print("wandb.config", wandb.config)
-
-        if config["Timing"]:
-            start_time = time.time()
-
-
-        train_fun = make_train(config)
-        out = train_fun(rng)
-        # train_state = out['runner_state'][0] # runner_state.train_state
-        # params = train_state.params
-
-        if config["Timing"]:
-            end_time = time.time()
-            elapsed = end_time - start_time
-            total_steps = config["TOTAL_TIMESTEPS"]
-            agents_per_type = config["NUM_AGENTS_PER_TYPE"]
-            num_data_msgs = config.get("n_data_msg_per_step", None)
-            num_envs = config["NUM_ENVS"]
-
-            # Print results
-            print(f"Total steps: {total_steps}")
-            print(f"Elapsed time: {elapsed} seconds")
-            print(f"Steps per second: {total_steps / elapsed}")
-            print(f"Agents per type: {agents_per_type}")
-            print(f"Num data messages: {num_data_msgs}")
-            print(f"Num envs: {num_envs}")
-
-            # Save to CSV
-            results = {
-                "total_steps": [total_steps],
-                "elapsed_seconds": [elapsed],
-                "steps_per_second": [total_steps / elapsed],
-                "agents_per_type": [str(agents_per_type)],
-                "num_data_msgs": [num_data_msgs],
-                "num_envs": [num_envs],
-            }
-            # df = pd.DataFrame(results)
-            # csv_path = "timing_results.csv"
-            # # Append if file exists, else write header
-            # try:
-            #     with open(csv_path, "x", newline="") as f:
-            #         df.to_csv(f, index=False)
-            # except FileExistsError:
-            #     with open(csv_path, "a", newline="") as f:
-            #         df.to_csv(f, index=False, header=False)
-
-        
-        # # Save the params to a file using flax.serialization.to_bytes
-        # with open(params_file_name, 'wb') as f:
-        #     f.write(flax.serialization.to_bytes(params))
-        #     print(f"params saved")
-
-        # Load the params from the file using flax.serialization.from_bytes
-        # with open(params_file_name, 'rb') as f:
-        #     restored_params = flax.serialization.from_bytes(flax.core.frozen_dict.FrozenDict, f.read())
-        #     print(f"params restored")
-
-        run.finish()
-
-    # NOTE: Sweep Parameters will override the config file, but cannot be used to override any environment params currently. 
-    # This latter option will require some careful thought on how best to implement - due to to variable number of agent types.
-    sweep_parameters = {
-        # "LR": {"values": [config["LR"]]},
-        "NUM_STEPS": {"values": [config["NUM_STEPS"], 512,32,]}
-        #"GAMMA": {"values": [config["GAMMA"], [0.99,0.99]]},
-        #"LR": {"values": [config["LR"], [0.004,0.004], [0.00004,0.00004]]},
-        #"ENT_COEF": {"values": [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]},
-        #"NUM_STEPS": {"values": [config["NUM_STEPS"], 2048 ,512]},
-        #"CLIP_EPS": {"values": [config["CLIP_EPS"], 0.3, 0.1]},
-        #"VF_COEF": {"values": [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]},
-        #"FC_DIM_SIZE": {"values": [config["FC_DIM_SIZE"], 256]},
-       # "NUM_AGENTS_PER_TYPE": {"values": [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]},
-       #"SEED": {"values": [2,3,4,5,6,7,8,9,10]},
-       #"NUM_ENVS": {"values": [config["NUM_ENVS"]]},
-       #"NUM_STEPS": {"values": [config["NUM_STEPS"], 128, 32, 8]},
-       
-        
-        # "env_params" : {"parameters": {
-        #                 "world_params" : {"parameters":
-        #                                 {"n_data_msg_per_step": {"values":[50,150]},
-        #                                 }
-        #                                 },
-        #                 }},
-    }
-
-    sweep_config={
-        "method": "grid",
-        "parameters": sweep_parameters,
-    }
-    print(sweep_config)
-    sweep_id = wandb.sweep(sweep=sweep_config, project=config["PROJECT"],entity=config["ENTITY"])
-    print(sweep_id)
-    wandb.agent(sweep_id, function=sweep_fun, count=500)
-
-
-    sys.exit(0)
-
-@hydra.main(version_base=None, config_path="config", config_name="base_config")
+@hydra.main(version_base=None, config_path="config", config_name="baseline_exec_config.yaml")
 def seperate_main(config):
-    print("MultiAgentConfig", MultiAgentConfig().world_config)
-    env_config=OmegaConf.structured(MultiAgentConfig(number_of_agents_per_type=config["NUM_AGENTS_PER_TYPE"]))
+    try:
+        if config["ENV_CONFIG"] is not None:
+            print(f"Loading the env config from file \n\t{config['ENV_CONFIG']} ")
+            env_config=load_config_from_file(config["ENV_CONFIG"])
+            print("********* DEBUG ********** \n Loaded env_config: ", env_config)
+        else:
+            print("Using default MultiAgentConfig as defined in jaxob_config.py file.")
+            env_config=MultiAgentConfig()
+            save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    except Exception as e:
+        print(f"Error loading env config: {e}")
+        print("Reverting to default MultiAgentConfig as defined in jaxob_config.py file.")
+        env_config=MultiAgentConfig()
+        save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    env_config=OmegaConf.structured(env_config)    
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
 

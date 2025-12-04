@@ -43,24 +43,24 @@ def main():
     args = parse_args()
     """Load trajectory batch from latest pickle file and generate plots."""
 
-    plot_same_axis([2],["quant_left"],args.combo,input_dir=args.directory, output_dir=args.save+f"/single_plots")
+    # plot_same_axis([2],["quant_left"],args.combo,input_dir=args.directory, output_dir=args.save+f"/single_plots")
 
-    # for combo in args.combo:
-    #     try:
-    #         # Find and load the latest pickle file for each combo
-    #         latest_file = get_latest_pickle_file(directory=args.directory, combo_desc=combo)
-    #         print(f"Loading trajectory data from: {latest_file}")
+    for combo in args.combo:
+        try:
+            # Find and load the latest pickle file for each combo
+            latest_file = get_latest_pickle_file(directory=args.directory, combo_desc=combo)
+            print(f"Loading trajectory data from: {latest_file}")
             
-    #         with open(latest_file, "rb") as f:
-    #             traj_batch = pickle.load(f)
-    #         print(f"Loaded trajectory batch with {len(traj_batch)} agents.")
-    #         # Plot episode features
-    #         # plot_episode_features(traj_batch, output_dir=args.save+f"/{combo}",)
-    #         # plot_specific(traj_batch,[0],["quant_left"], output_dir=args.save+f"/{combo}")
-    #         print(f"Plotting complete. Check the 'intra-episode-figs' directory for output.")
+            with open(latest_file, "rb") as f:
+                traj_batch = pickle.load(f)
+            print(f"Loaded trajectory batch with {len(traj_batch)} agents.")
+            # Plot episode features
+            plot_episode_features(traj_batch, output_dir=args.save+f"/{combo}",)
+            # plot_specific(traj_batch,[0],["quant_left"], output_dir=args.save+f"/{combo}")
+            print(f"Plotting complete. Check the 'intra-episode-figs' directory for output.")
             
-    #     except Exception as e:
-    #         print(f"Error processing combo '{combo}': {e}")
+        except Exception as e:
+            print(f"Error processing combo '{combo}': {e}")
 
 def plot_same_axis(env_indices, features,combos,input_dir="", output_dir="intra-episode-figs", feature_names=None, obs_features=None):
     num_agent_types = 2
