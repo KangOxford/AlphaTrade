@@ -1617,6 +1617,25 @@ class ExecutionAgent():
                      self.world_config.tick_size * 
                      jnp.abs(otherTrades[:, job.cst.TradesFeat.Q.value])).sum() / otherQuant
         )
+        def debug_final_callback(ep_done_time,P_vwap,win_idx,p_exec,trades,bestasks,bestbids,prev_vwap,vwap_rm):
+            if win_idx>3550 and win_idx<3600:
+                print(f"P_vwap: {P_vwap} Prev vwap: {prev_vwap}, ROlling mean : {vwap_rm}")
+            
+            if ep_done_time and win_idx>3550 and win_idx<3600:
+                print(f"Final P_vwap exec: {P_vwap} for window idx {win_idx} ")
+                print(f"Final average exec price: {p_exec} ")
+                print(f"Final mid price is : {(bestbids[-1,0]+bestasks[-1,0])//2} best ask: {bestasks[-1,0]} best bid: {bestbids[-1,0]} ")
+                print(f"Final penalty ticks: {self.cfg.doom_price_penalty} ")
+                print(f"Final trades:\n {trades} ")
+        def large_reward_callback(reward,abs_reward,trades,P_vwap,window_index,QP_agent,agentQuant):
+            if abs_reward>10000:
+                print(f"P_vwap: {P_vwap}")
+                print(f"Large reward: {reward}")
+                print(f"QP_agent: {QP_agent}")
+                print(f"agentQuant: {agentQuant}")
+                print(f"Trades: {trades}")
+                print(f"Window index: {window_index}")
+
 
         # USE BELOW for P_VWAP based on ALL trades
         # P_vwap = jax.lax.cond(
@@ -1639,6 +1658,9 @@ class ExecutionAgent():
         # ---------- used for advantage and drift ----------
         # switch sign for buy task
         advantage = direction_switch * (QP_agent - P_vwap * agentQuant) # advantage_vwap
+        # jax.debug.callback(debug_final_callback,ep_done_time,P_vwap,
+        #                    world_state.window_index,QP_agent/ (agentQuant + 1e-9),trades,bestasks,bestbids,agent_state.p_vwap,agent_state.vwap_rm)
+
         drift = direction_switch * agentQuant * (P_vwap - agent_state.init_price//self.world_config.tick_size)
 
         price_advantage = advantage / (agentQuant + 1e-9)  # avoid div by zero, only applies if adv=0
@@ -1693,6 +1715,9 @@ class ExecutionAgent():
         "quant_left": quant_left,
         "trade_duration": trade_duration,
         }
+
+        # jax.debug.callback(large_reward_callback,reward,jnp.abs(reward),trades,P_vwap,world_state.window_index,QP_agent,agentQuant)
+
         reward_scaled = reward / self.cfg.reward_scaling_quo
 
 
