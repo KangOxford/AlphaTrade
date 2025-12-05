@@ -484,12 +484,13 @@ def make_sim(config):
                 
                 for i in range(n_agent_types):
                     print(f"   (Agent type {i}): avg_reward = {eval_metrics['avg_reward'][i]:.4f}")
-                    for main_metric in ["reward_portfolio_value","revenue_direction_normalised"]:
+                    for main_metric in ["reward_portfolio_value","revenue_direction_normalised","end_of_ep_pv"]:
                         if main_metric in eval_metrics["traj_batch"][i].info['agent'].keys():
-                            print(f"     (Agent type {i}): PNL = {eval_metrics['traj_batch'][i].info['agent'][main_metric].mean()}")
-                            if main_metric == "reward_portfolio_value":
-                                print(f"     (Agent type {i}): Dimensions = {eval_metrics['traj_batch'][i].info['agent'][main_metric].shape}")
-                                print(f"     (Agent type {i}): PNL std = {eval_metrics['traj_batch'][i].info['agent'][main_metric][63::64,:].mean()}")
+                            print(f"     (Agent type {i}): {main_metric} = {eval_metrics['traj_batch'][i].info['agent'][main_metric].mean()}")
+                            print(f"     (Agent type {i}): Dimensions = {eval_metrics['traj_batch'][i].info['agent'][main_metric].std()}")
+                            # if main_metric == "reward_portfolio_value":
+                            #     print(f"     (Agent type {i}): Dimensions = {eval_metrics['traj_batch'][i].info['agent'][main_metric].shape}")
+                            #     print(f"     (Agent type {i}): PNL END = {eval_metrics['traj_batch'][i].info['agent'][main_metric][63::64,:].mean()}")
                 # callback(eval_metrics)
                 del eval_metrics
                 gc.collect()
