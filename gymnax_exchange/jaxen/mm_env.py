@@ -1005,8 +1005,8 @@ class MarketMakingAgent():
 
        
         tick_offset = self.cfg.n_ticks_offset * self.world_config.tick_size  # Total price offset per direction
-        half_spread = jnp.maximum((best_ask - best_bid) / 2, self.world_config.tick_size/2)
-
+        half_spread_prev = jnp.maximum((best_ask - best_bid) / 2, self.world_config.tick_size/2)
+        half_spread= (half_spread_prev//self.world_config.tick_size+1) * self.world_config.tick_size
 
         # Get parameters for current action
         bid_offset = bid_offsets[action]
@@ -1025,7 +1025,14 @@ class MarketMakingAgent():
         bid_price = bid_price.astype(jnp.int32)
         ask_price = jnp.maximum(bid_price + self.world_config.tick_size, ask_price) // self.world_config.tick_size * self.world_config.tick_size
         ask_price = ask_price.astype(jnp.int32)
+        def print_posting_distance(best_bid, best_ask, bid_price, ask_price, window_idx,step,half_spread,prev_half_spread):
+            if 1080 <= window_idx <= 1090:
+                print(f"Window {window_idx}: Posted bid from best bid: {best_bid - bid_price},step {step}, half_spread {half_spread}, prev_half_spread {prev_half_spread}")
+                print(f"Window {window_idx}: Posted ask from best ask: {ask_price - best_ask},step {step}, half_spread {half_spread}, prev_half_spread {prev_half_spread}")
         
+        # jax.debug.callback(print_posting_distance, best_bid, best_ask, bid_price, ask_price, world_state.window_index,world_state.step_counter,half_spread,half_spread_prev)
+
+    
         #jax.debug.print("bid_price after:{}",bid_price)
         #jax.debug.print("ask_price after:{}",ask_price)
         
@@ -2384,6 +2391,8 @@ class MarketMakingAgent():
             "invPnL":extras["invPnL"],
             "posted_bid_price":extras["posted_bid_price"],
             "posted_ask_price":extras["posted_ask_price"],
+            "bid_distance_from_best":extras["bid_distance_from_best"],
+            "ask_distance_from_best":extras["ask_distance_from_best"],
             # "scaledInventoryPnL":extras["scaledInventoryPnL"],
             # "netWorth":extras["netWorth"],
             "sellPnL":extras["sellPnL"],
