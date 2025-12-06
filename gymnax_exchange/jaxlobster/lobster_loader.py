@@ -830,6 +830,8 @@ class LoadLOBSTER_resample():
                         result = future.result()
                         if result is not None:
                             message_day, index_s, index_e, init_OBs = result
+                            # print(f"First ten messages are {message_day.head(10)}")
+                            # print(f"Initial orderbook state is {init_OBs}")
                             messageDays.append(message_day)
                             startIndeces.append(index_s)
                             endIndeces.append(index_e)
@@ -877,13 +879,17 @@ class LoadLOBSTER_resample():
             print(f"Dropped {dropped_count} messages outside trading hours ({self.day_start}-{self.day_end}s)")
         
         message_day = message_day[time_mask]
+        # orderbook_day = orderbook_day[time_mask]
         
         message_day.columns = ['time','type','order_id','qty','price','direction','time_s','time_ns']
         
         # Filter message types more efficiently
         type_mask = message_day['type'].isin([1,2,3,4])
         message_day = message_day[type_mask].copy()  # Explicit copy to avoid warnings
+        # print(f"Message before index: {message_day.head(10)}")
+
         valid_index = message_day.index.to_numpy()
+        # print(f"Valid indices top: {valid_index[:10]}")
         message_day.reset_index(inplace=True, drop=True)
 
         # Turn executions into limit orders on the opposite book side
@@ -894,7 +900,13 @@ class LoadLOBSTER_resample():
         #Add trader_id field (copy of order_id)
         warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
         message_day['trader_id'] = message_day['order_id']
-        orderbook_day.iloc[valid_index,:].reset_index(inplace=True, drop=True)
+        # print(f"Orderbook before indexing {orderbook_day.head(10)}.")
+
+        orderbook_day=orderbook_day.iloc[valid_index,:].reset_index(drop=True)
+        # print(f"After pre-processing, {message_day.head(10)} \n Orderbook is {orderbook_day.head(10)}.")
+
+        assert message_day.shape[0]==orderbook_day.shape[0],'Orderbook and message dataframe mismatch after pre-processing'
+        # print(f"After filtering, {message_day.shape[0]} messages remain.")
         return message_day,orderbook_day
         
         # # Vectorized transformations (faster than loc operations)
