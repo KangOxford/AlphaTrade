@@ -539,7 +539,9 @@ def main(config):
     rng = jax.random.PRNGKey(0)
 
     run_fn = make_sim(config)
+    start=time.time()
     out = run_fn(rng)
+    print("Total time taken (s): ", time.time()-start)
 
 
 
