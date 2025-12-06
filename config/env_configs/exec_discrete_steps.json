@@ -7,6 +7,7 @@
     "nTrades": 100,
     "nOrders": 100,
     "debug_mode": false,
+    "check_book_fill": true,
     "start_resolution": 64,
     "alphatradePath": "/home/myuser",
     "dataPath": "/home/myuser/data",

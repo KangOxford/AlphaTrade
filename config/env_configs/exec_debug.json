@@ -9,6 +9,7 @@
     "simulator_mode": 0,
     "empty_slot_val": -1,
     "debug_mode": false,
+    "check_book_fill": true,
     "start_resolution": 64,
     "alphatradePath": "/home/myuser",
     "dataPath": "/home/myuser/data",

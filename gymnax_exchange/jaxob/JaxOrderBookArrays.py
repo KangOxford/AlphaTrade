@@ -387,6 +387,22 @@ def bid_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                                          msg["traderid"],
                                          msg['side'])
     msg["quantity"]=matchtuple[1] #Remaining quantity
+
+    if cfg.check_book_fill:
+        full_book_flag= jnp.where(jnp.all(bidside[:,cst.OrderSideFeat.P.value]>=0), True, False)
+        worst_price=jnp.min(bidside[:,cst.OrderSideFeat.P.value]) #Don't need the fancy stuff for the -1 (EMPTY) case because the book is full. Otherwise, just replace a -1 with an empty. 
+        remove=jnp.where((bidside[:,cst.OrderSideFeat.P.value]==worst_price).reshape(bidside.shape[0],1),(jnp.ones(bidside.shape)*-1).astype(jnp.int32),bidside)
+        bidside=jnp.where(full_book_flag,
+                    remove,
+                    bidside)
+        def actually_full_callback(full_book_flag,bidside,remove):
+            if full_book_flag:
+                print("WARNING: Full bid book before adding new order. Removing worst bid to make space." \
+                "\n \t Consider increasing book size to avoid this.")
+                # print("Removed best price (lowest) book: ", remove)
+                # print("Resulting ask book: ", askside)
+        # jax.debug.callback(actually_full_callback,full_book_flag,bidside,remove)
+
     bids=add_order(bidside,msg)
     return matchtuple[0],bids,matchtuple[3]
 @partial(jax.jit,static_argnums=0)
@@ -449,6 +465,24 @@ def ask_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                                          msg["traderid"],
                                          msg['side'])
     msg["quantity"]=matchtuple[1] #Remaining quantity
+    if cfg.check_book_fill:
+        full_book_flag= jnp.where(jnp.all(askside[:,cst.OrderSideFeat.P.value]>=0), True, False)
+        worst_price=jnp.max(askside[:,cst.OrderSideFeat.P.value])
+        remove=jnp.where((askside[:,cst.OrderSideFeat.P.value]==worst_price).reshape(askside.shape[0],1),(jnp.ones(askside.shape)*-1).astype(jnp.int32),askside)
+        askside=jnp.where(full_book_flag,
+                    remove,
+                    askside)
+        def actually_full_callback(full_book_flag,askside,remove):
+            if full_book_flag:
+                print("WARNING: Full ask book before adding new order. Removing worst ask to make space." \
+                "\n \t Consider increasing book size to avoid this.")
+                # print("Removed best price (lowest) book: ", remove)
+                # print("Resulting ask book: ", askside)
+        # jax.debug.callback(actually_full_callback,full_book_flag,askside,remove)
+        
+        
+
+    
     asks=add_order(askside,msg)
     return asks,matchtuple[0],matchtuple[3]
 

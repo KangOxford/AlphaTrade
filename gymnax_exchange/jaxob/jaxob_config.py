@@ -20,6 +20,7 @@ class JAXLOB_Configuration:
     simulator_mode: int = cst.SimulatorMode.GENERAL_EXCHANGE.value
     empty_slot_val: int = cst.EMPTY_SLOT
     debug_mode: bool = False
+    check_book_fill: bool = True #No major impact on performance, necessary as full book happens quite often.
     start_resolution: int = 64  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
