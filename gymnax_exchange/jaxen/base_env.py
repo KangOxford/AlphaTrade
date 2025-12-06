@@ -318,12 +318,12 @@ class BaseLOBEnv(environment.Environment):
             get_state_jitted= jax.jit(self._get_state_from_data)
 
             states = [get_state_jitted(key,
-                                                self.messages[starts[i]],
-                                                self.books[i],
-                                                self.max_messages_in_episode_arr[i]
-                                                    //self.n_data_msg_per_step+1,
-                                                    i,
-                                                    starts[i]) 
+                                        self.messages[starts[i]],
+                                        self.books[i],
+                                        self.max_messages_in_episode_arr[i]
+                                            //self.n_data_msg_per_step+1,
+                                            i,
+                                            starts[i]) 
                         for i in range(self.n_windows)]
             self.init_states_array=tree_stack(states)
             

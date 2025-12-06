@@ -135,13 +135,22 @@ class MARLEnv(MultiAgentEnv):
         keys = jax.random.split(key, num_agent_types + 1)
         agent_keys = keys[:-1]
         world_key = keys[-1]
+        
 
+        # jax.debug.print("{}",3567)
         ###########################
         #Reset the World State
         ###########################
 
         # Get the Load State
         _,load_state = self.base_env.reset_env(key=world_key, params=params.loaded_params)
+
+        def debug_loaded_mismatch(load_state,params):
+            # Check that the loaded state matches the expected config
+            if load_state.window_index == 3567:
+                print(load_state.ask_raw_orders[:,:20])
+                print(load_state.bid_raw_orders[:,:20])
+
 
         # Reset all variables in the world state that are not on the Load State
         # For bet bids and ask repeat the inital best bids and ask num of messages times
@@ -354,9 +363,9 @@ class MARLEnv(MultiAgentEnv):
         new_bestasks = self._ffill_best_prices(new_bestasks, state.world_state.best_asks[-1, 0]) # TODO Do we need this?
         new_bestbids = self._ffill_best_prices(new_bestbids, state.world_state.best_bids[-1, 0])
 
-        def large_swing_callback(delta_mid, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids):
-            if window_index > 1080 and window_index < 1090 and (delta_mid > 600 or (step>36 and step <42)): # only print for a specific window range to avoid too much output
-                print(f"Large mid-price swing detected: {delta_mid} at window index {window_index} step {step}")
+        def print_everything_callback(window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids,full ):
+            if window_index > 2050 and window_index < 2100 and step >4000 and full: # only print for a specific window range to avoid too much output
+                print(f"DEBUG: at window index {window_index} step {step}")
                 print("combined messages: ", combined_msgs)
                 print("trades: ", trades)
                 print("old raw asks: ", old_raw_asks)
@@ -374,7 +383,8 @@ class MARLEnv(MultiAgentEnv):
                 print("old raw bids: ", old_raw_bids)
                 print("new raw bids: ", new_raw_bids)
         # delta_mid = jnp.abs( (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price)
-        # jax.debug.callback(negative_spread_callback, new_bestasks[-1,0]-new_bestbids[-1,0], state.world_state.window_index, combined_msgs, new_trades, state.world_state.step_counter, new_asks, new_bids, state.world_state.ask_raw_orders, state.world_state.bid_raw_orders)
+        # full_book_flag= jnp.where(jnp.all(new_asks[:,0]>=0) | jnp.all(new_bids[:,0]>=0), True, False)
+        # jax.debug.callback(print_everything_callback, state.world_state.window_index, combined_msgs, new_trades, state.world_state.step_counter, new_asks, new_bids, state.world_state.ask_raw_orders, state.world_state.bid_raw_orders, full_book_flag)
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
         #jax.debug.print("best asks after ffill: {}", new_bestasks[-1])
         #jax.debug.print("best bids after ffill: {}", new_bestbids[-1])
