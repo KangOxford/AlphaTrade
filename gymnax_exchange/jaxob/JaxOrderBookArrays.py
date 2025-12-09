@@ -1036,6 +1036,32 @@ def get_order_by_id(
                         lambda i: side_array[i][0],
                         idx)
 
+
+@jax.jit
+def get_order_by_tid(
+        side_array: jax.Array,
+        trade_id: int,
+    ) -> jax.Array:
+    """Returns all order fields for the first order matching the given
+       order_id. CAVE: if the same ID is used multiple times, will only
+       return the first (e.g. for cfg.init_id).
+        Parameters:
+                side_array (Array): Bid or ask orders in the book
+                order_id (int): ID of order of interest
+        Returns:
+                order (Array): Particular order as it is in the book.
+                                 Returns an empty array (-1 dummy 
+                                 values) if not found.
+    """
+    idx = jnp.where(side_array[..., cst.OrderSideFeat.TID.value] == trade_id,
+                    size=1,
+                    fill_value=-1,)
+    # return vector of NEGATIVE_RETURN_ID if not found
+    return jax.lax.cond(idx == -1,
+                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
+                        lambda i: side_array[i][0],
+                        idx)
+
 @jax.jit
 def get_order_by_id_and_price(
         side_array: jax.Array,
