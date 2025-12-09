@@ -15,6 +15,7 @@ class JAXLOB_Configuration:
     init_id :int = cst.INITID
     book_depth: int = 10
     cancel_mode: int= cst.CancelMode.INCLUDE_INITS.value
+    type_4_interpretation: int = cst.Type4Interpretation.IOC.value
     seed: int =cst.SEED
     nTrades : int=cst.NTRADE_CAP
     nOrders : int =cst.NORDER_CAP

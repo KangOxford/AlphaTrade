@@ -11,6 +11,7 @@ NEGATIVE_RETURN_ID=-99
 DUMMYID=-888888
 EMPTY_SLOT=-1
 
+
 ORDERBOOK_FEAT=6
 TRADE_FEAT=8
 NS_PER_SEC=1e9
@@ -65,6 +66,12 @@ class CancelMode(Enum):
     INCLUDE_INITS=1 #Cancel only init orders if ID does not match
     CANCEL_UNIFORM=2  #Pick a random order at the right price level to cancel 
     CANCEL_UNIFORM_AND_LARGE=3 # Unused for now
+
+class Type4Interpretation(Enum):
+    IOC=0 #Treat like a limit order that removes liquidity only. Unmatched quantiy IS NOT added to the book.
+    LIM=1 #Treat like a limit order that removes and adds liquidity. Unmatched quantiy IS added to the book.
+    MKT=2  #Treat like a limit order with extreme price (maxint for buys, 0 for sells) that removes liquidity only. Unmatched quantity IS NOT added to the book.
+    #NOTE: MKT is catastrophic for speed: every order ends up being calculated as if it were a MO under vmap. 
 
 SEED= 42 # the meaning of life. 
 

@@ -907,32 +907,36 @@ class LoadLOBSTER_resample():
         message_day = message_day[type_mask].copy()  # Explicit copy to avoid warnings
         # print(f"Message before index: {message_day.head(10)}")
 
-        valid_index = message_day.index.to_numpy()
+        merged_message_day=merge_market_orders(message_day,)
+
+        valid_index = merged_message_day.index.to_numpy()
         # print(f"Valid indices top: {valid_index[:10]}")
-        message_day.reset_index(inplace=True, drop=True)
+        merged_message_day.reset_index(inplace=True, drop=True)
 
         # Turn executions into limit orders on the opposite book side
-        message_day.loc[message_day['type'] == 4, 'direction'] *= -1
-        message_day.loc[message_day['type'] == 4, 'type'] = 1
+        # message_day.loc[message_day['type'] == 4, 'direction'] *= -1
+        # message_day.loc[message_day['type'] == 4, 'type'] = 1
         #Turn delete into cancel orders
-        message_day.loc[message_day['type'] == 3, 'type'] = 2
+        merged_message_day.loc[merged_message_day['type'] == 3, 'type'] = 2
         #Add trader_id field (copy of order_id)
         warnings.filterwarnings('ignore', category=SettingWithCopyWarning)
-        message_day['trader_id'] = message_day['order_id']
+        merged_message_day['trader_id'] = merged_message_day['order_id']
         # print(f"Orderbook before indexing {orderbook_day.head(10)}.")
 
         orderbook_day=orderbook_day.iloc[valid_index,:].reset_index(drop=True)
         # print(f"After pre-processing, {message_day.head(10)} \n Orderbook is {orderbook_day.head(10)}.")
-
-        assert message_day.shape[0]==orderbook_day.shape[0],'Orderbook and message dataframe mismatch after pre-processing'
+        #Shift such that the orderbook at time t corresponds to the state before processning message at time t.
+        orderbook_day=orderbook_day.iloc[:-1,:].reset_index(drop=True)
+        merged_message_day=merged_message_day.iloc[1:,:].reset_index(drop=True)
+        assert merged_message_day.shape[0]==orderbook_day.shape[0],'Orderbook and message dataframe mismatch after pre-processing'
         # print(f"After filtering, {message_day.shape[0]} messages remain.")
-        return message_day,orderbook_day
+        return merged_message_day,orderbook_day
         
         # # Vectorized transformations (faster than loc operations)
         # execution_mask = message_day['type'] == 4
         # delete_mask = message_day['type'] == 3
         
-        # # Turn executions into limit orders on the opposite book side
+        # # Turn executions into limit orders on th§e opposite book side
         # message_day.loc[execution_mask, 'direction'] *= -1
         # message_day.loc[execution_mask, 'type'] = 1
         
@@ -1053,6 +1057,67 @@ class LoadLOBSTER_resample():
                    'trader_id','order_id','time_s','time_ns']
         message_day=message_day[columns].to_numpy()
         return message_day,index_s,index_e,init_OBs
+
+def merge_market_orders(message_day: pd.DataFrame):
+    """Merge all execution orders (type 4) with exactly the same timestamp (seconds and ns)
+    into a single execution order (also type 4) whereby the quantity is the sum of all merged orders.
+    The order ID can be the last order ID of the merged orders. 
+    The price needs to be the highest price for buy orders (direction -1) and the lowest price
+    for sell orders (direction 1).
+    
+    This function returns a new DataFrame with merged execution orders.
+    
+    Parameters:
+        message_day (pd.DataFrame): DataFrame containing message data.
+        
+    Returns:
+        pd.DataFrame: New DataFrame with merged execution orders.
+    """
+    # Filter execution orders
+    exec_mask = message_day['type'] == 4
+    if not exec_mask.any():
+        return message_day.copy()
+    
+    # Create a copy to avoid modifying the original
+    result_df = message_day.copy()
+    
+    # Group by timestamp (time_s and time_ns) and direction
+    exec_orders = result_df[exec_mask]
+    grouped = exec_orders.groupby(['time_s', 'time_ns', 'direction'])
+    
+    # Track indices to drop
+    indices_to_drop = []
+    
+    # Process each group
+    for name, group in grouped:
+        if len(group) > 1:
+            # Get indices of this group
+            group_indices = group.index.tolist()
+            
+            # Keep the last index, drop the rest
+            last_idx = group_indices[-1]
+            indices_to_drop.extend(group_indices[:-1])
+            
+            # Calculate aggregated values
+            direction = name[2]  # direction is the third element in the groupby key
+            total_qty = group['qty'].sum()
+            
+            # Price logic: max for buy (-1: Sell side got executed), min for sell (1: Buy side got executed)
+            if direction == -1:
+                agg_price = group['price'].max()
+            else:
+                agg_price = group['price'].min()
+            
+            # Update the last row with aggregated values
+            result_df.loc[last_idx, 'qty'] = total_qty
+            result_df.loc[last_idx, 'price'] = agg_price # Should already be the case, but just checking. 
+            # order_id is already the last one, no need to update
+    
+    # Drop all the merged rows (keeping only the last one from each group)
+    if indices_to_drop:
+        result_df = result_df.drop(indices_to_drop)
+    
+    return result_df
     
 
 
@@ -1060,20 +1125,33 @@ class LoadLOBSTER_resample():
 if __name__ == "__main__":
     #Load data from 50 Levels, fixing each episode to 150 steps
     #containing 100 messages each. 
-    loader=LoadLOBSTER_resample("/AlphaTrade/training_oneDay",10,"fixed_time",window_length=1800,n_data_msg_per_step=100,window_resolution=60)
-    msgs,starts,ends,obs,max_msgs=loader.run_loading()
-    print(msgs.shape)
-    print(starts.shape)
-    print(ends.shape)
-    print(obs.shape)
-    print(max_msgs)
+    # loader=LoadLOBSTER_resample("/AlphaTrade/training_oneDay",10,"fixed_time",window_length=1800,n_data_msg_per_step=100,window_resolution=60)
 
-    print(starts[720:722])
+    loader=LoadLOBSTER_resample(os.path.expanduser("~")+"/data",
+                                os.path.expanduser("~"),
+                                10,
+                                "fixed_steps",
+                                window_length=10000,
+                                n_data_msg_per_step=1,
+                                window_resolution=10000,
+                                day_start=34200,
+                                day_end=57600,
+                                stock="AMZN",
+                                time_period="2017Jan_oneday") 
+    msgs,starts,ends,books,max_messages_arr=loader.run_loading("TEST")
 
-    print(msgs[starts[720:722]])
+    # print(msgs.shape)
+    # print(starts.shape)
+    # print(ends.shape)
+    # print(obs.shape)
+    # print(max_msgs)
+
+    # print(starts[720:722])
+
+    # print(msgs[starts[720:722]])
 
 
-    print(msgs[-100:])
+    # print(msgs[-100:])
 
 
     """

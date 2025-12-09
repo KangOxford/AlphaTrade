@@ -388,6 +388,8 @@ def bid_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                                          msg["time_ns"],
                                          msg["traderid"],
                                          msg['side'])
+    if cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
+        msg["price"]=cfg.maxint
     msg["quantity"]=matchtuple[1] #Remaining quantity
 
     if cfg.check_book_fill:
@@ -406,6 +408,15 @@ def bid_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
         # jax.debug.callback(actually_full_callback,full_book_flag,bidside,remove)
 
     bids=add_order(bidside,msg)
+
+    if cfg.type_4_interpretation == cst.Type4Interpretation.LIM.value:
+        # Add any remainder to book.
+        pass
+    elif cfg.type_4_interpretation == cst.Type4Interpretation.IOC.value or cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
+        #Do not add to book if remainder is type 4
+        #Still add to book if message is type 1 in data. 
+        bids=jnp.where(msg["type"]==4,bidside,bids)
+
     return matchtuple[0],bids,matchtuple[3]
 @partial(jax.jit,static_argnums=0)
 def bid_cancel(cfg:JAXLOB_Configuration,key,msg,askside,bidside,trades):
@@ -457,6 +468,8 @@ def ask_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                 bidside (Array): Same as parameter, after processing
                 trades (Array): Same as parameter, after processing
     """
+    if cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
+        msg["price"]=0
     matchtuple=_match_against_bid_orders(cfg,
                                          bidside,
                                          msg["quantity"],
@@ -483,11 +496,16 @@ def ask_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                 # print("Resulting ask book: ", askside)
         # jax.debug.callback(actually_full_callback,full_book_flag,askside,remove)
         
-        
-
-    
     asks=add_order(askside,msg)
-    return asks,matchtuple[0],matchtuple[3]
+
+    if cfg.type_4_interpretation == cst.Type4Interpretation.LIM.value:
+        pass
+    elif cfg.type_4_interpretation == cst.Type4Interpretation.IOC.value or cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
+        #Do not add to book if remainder is type 4
+        #Still add to book if message is type 1 in data. 
+        asks=jnp.where(msg["type"]==4,askside,asks)
+
+    return asks,matchtuple[0],matchtuple[3] 
 
 @partial(jax.jit,static_argnums=0)
 def ask_cancel(cfg:JAXLOB_Configuration,key:chex.PRNGKey,msg,askside,bidside,trades):
@@ -554,7 +572,7 @@ def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
     """
     (key,data)=it_data
     askside,bidside,trades=book_state
-    msg={'side':data[1],
+    msg={'side':jnp.where(data[0]==4,-data[1],data[1]), #Flip side for type 4 orders
          'type':data[0],
          'price':data[3],
          'quantity':data[2],
@@ -562,16 +580,17 @@ def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
          'traderid':data[5],
          'time':data[6],
          'time_ns':data[7]}
+    
     s = msg["side"]
     t = msg["type"]
 
     if config.simulator_mode == cst.SimulatorMode.GENERAL_EXCHANGE.value:
         #Means the match orders (4) will be treated as limit orders of opposite side
         # and delete orders (3) will just be treated as cancel orders.
-        index = ((((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0 
-                + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1
-                + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 
-                + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
+        index = ( (((s == -1) & ((t == 1) | (t == 4)))) * 0 
+                + (((s ==  1) & ((t == 1) | (t == 4)))) * 1
+                + (((s == -1) & ((t == 2) | (t == 3)))) * 2 
+                + (((s ==  1) & ((t == 2) | (t == 3)))) * 3
                 +((s==0)&(t==0))*4)
 
         ask, bid, trade = jax.lax.switch(index,
@@ -587,8 +606,8 @@ def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
                 + (((s ==  1) & (t == 1)) ) * 1
                 + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2 
                 + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
-                + ((s ==  1) & (t == 4)) * 4
-                + ((s ==  -1) & (t == 4)) * 5)
+                + ((s ==  -1) & (t == 4)) * 4
+                + ((s ==  1) & (t == 4)) * 5)
         # 1: add lim (cfg turns off matching) 2/3: cancel, 4:remove liq and match (limit to one order and only if price right)
         ask, bid, trade = jax.lax.switch(index,
                                 (partial(ask_lim,config), partial(bid_lim,config),
@@ -598,6 +617,7 @@ def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
                                 askside,
                                 bidside,
                                 trades)
+        raise NotImplementedError("Lobster interpreter mode not fully implemented yet.")
     else: 
         raise ValueError("The simulator mode does not match an expected value.")
     return (ask, bid, trade), 0
@@ -624,7 +644,7 @@ def cond_type_side_save_states(cfg:JAXLOB_Configuration,book_state,it_data):
     """
     (key,data)=it_data
     askside,bidside,trades=book_state
-    msg={'side':data[1],
+    msg={'side':jnp.where(data[0]==4,-data[1],data[1]), #Flip side for type 4 orders
          'type':data[0],
          'price':data[3],
          'quantity':data[2],
@@ -635,11 +655,11 @@ def cond_type_side_save_states(cfg:JAXLOB_Configuration,book_state,it_data):
 
     s = msg["side"]
     t = msg["type"]
-    index = ((((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0
-             + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 
-             + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
-             + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
-             +((s==0)&(t==0))*4)
+    index = ( (((s == -1) & ((t == 1) | (t == 4)))) * 0 
+            + (((s ==  1) & ((t == 1) | (t == 4)))) * 1
+            + (((s == -1) & ((t == 2) | (t == 3)))) * 2 
+            + (((s ==  1) & ((t == 2) | (t == 3)))) * 3
+            + ((s==0)&(t==0))*4)
     ask, bid, trade = jax.lax.switch(index,
                                      (partial(ask_lim,cfg), partial(bid_lim,cfg),
                                        partial(ask_cancel,cfg,key), partial(bid_cancel,cfg,key),doNothing),
@@ -672,7 +692,7 @@ def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
     """
     (key,data)=it_data
     askside,bidside,trades=book_state
-    msg={'side':data[1],
+    msg={'side':jnp.where(data[0]==4,-data[1],data[1]), #Flip side for type 4 orders
         'type':data[0],
         'price':data[3],
         'quantity':data[2],
@@ -683,11 +703,11 @@ def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
 
     s = msg["side"]
     t = msg["type"]
-    index = ((((s == -1) & (t == 1)) | ((s ==  1) & (t == 4))) * 0
-            + (((s ==  1) & (t == 1)) | ((s == -1) & (t == 4))) * 1 
-            + (((s == -1) & (t == 2)) | ((s == -1) & (t == 3))) * 2
-            + (((s ==  1) & (t == 2)) | ((s ==  1) & (t == 3))) * 3
-            +((s==0)&(t==0))*4)
+    index = ( (((s == -1) & ((t == 1) | (t == 4)))) * 0 
+            + (((s ==  1) & ((t == 1) | (t == 4)))) * 1
+            + (((s == -1) & ((t == 2) | (t == 3)))) * 2 
+            + (((s ==  1) & ((t == 2) | (t == 3)))) * 3
+            + ((s==0)&(t==0))*4)
     ask, bid, trade = jax.lax.switch(index,
                                     (jax.jit(partial(ask_lim,cfg)), jax.jit(partial(bid_lim,cfg)),
                                     jax.jit(partial(ask_cancel,cfg,key)), jax.jit(partial(bid_cancel,cfg,key)),doNothing),
