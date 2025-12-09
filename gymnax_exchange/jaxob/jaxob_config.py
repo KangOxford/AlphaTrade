@@ -13,6 +13,7 @@ from dataclasses import dataclass,field
 class JAXLOB_Configuration:
     maxint : int = cst.MaxInt._64_Bit_Signed.value
     init_id :int = cst.INITID
+    book_depth: int = 10
     cancel_mode: int= cst.CancelMode.INCLUDE_INITS.value
     seed: int =cst.SEED
     nTrades : int=cst.NTRADE_CAP
@@ -179,7 +180,6 @@ class World_EnvironmentConfig(JAXLOB_Configuration):
     episode_time: int = 64 # counted by seconds, 1800s=0.5h or steps
     day_start: int = 34200  # 09:30
     day_end: int = 57600  # 16:00
-    book_depth: int = 10
     tick_size: int = 100
     trader_id_range_start: int = -100 # -1 is reserved for the placeholder in the messages object
     placeholder_order_id: int = -198

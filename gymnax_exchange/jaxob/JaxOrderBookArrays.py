@@ -125,6 +125,7 @@ def get_init_id_match(cfg:JAXLOB_Configuration,key:chex.PRNGKey,orderside, msg):
     """
     init_id_match = ((orderside[:, 0] == msg['price']) 
                         & (orderside[:, 2] <= cfg.init_id)
+                        & (orderside[:, 2] >= cfg.init_id-(cfg.book_depth*2))
                         & (orderside[:,1]>=msg['quantity']))
     idx = jnp.where(init_id_match, size=1, fill_value=-1)[0][0]
     if cfg.cancel_mode==2 or cfg.cancel_mode==3:
@@ -1003,7 +1004,7 @@ def get_init_volume_at_price(side_array: jax.Array,
     """
     volume = jnp.sum(
         jnp.where(
-            (side_array[:, 0] == price) & (side_array[:, 2] <= cfg.init_id), 
+            (side_array[:, 0] == price) & (side_array[:, 2] <= cfg.init_id) & (side_array[:, 2] >= cfg.init_id-(cfg.book_depth*2)), 
             side_array[:, 1], 
             0))
     return volume
