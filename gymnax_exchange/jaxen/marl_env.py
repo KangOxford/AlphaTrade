@@ -357,7 +357,7 @@ class MARLEnv(MultiAgentEnv):
         #print("--------------------------------")
         #print("end processing combined messages")
         #print("--------------------------------")
-
+        abort_episode= jnp.where(jnp.any(new_bestasks[:,0]==-1) | jnp.any(new_bestbids[:,0]==-1), True, False)
 
         # Forward-fill best prices if necessary:
         new_bestasks = self._ffill_best_prices(new_bestasks, state.world_state.best_asks[-1, 0]) # TODO Do we need this?
@@ -373,7 +373,29 @@ class MARLEnv(MultiAgentEnv):
                 print("old raw bids: ", old_raw_bids)
                 print("new raw bids: ", new_raw_bids)
 
-        def negative_spread_callback(spread, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids):
+        def large_midprice_change_callback(abs_delta_mid,delta_mid, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids,abort):
+            if abs_delta_mid >1_000 or abort == True or window_index == 15053: # only print for a specific window range to avoid too much output
+                output_dir = "/home/myuser/debug_output"
+                os.makedirs(output_dir, exist_ok=True)
+                file_path = os.path.join(output_dir, f"large_midprice_change_window_{window_index}.txt")
+                # Open in append mode unless it's step 0
+                mode = "w" if step == 0 else "a"
+                with open(file_path, mode) as f:
+                    f.write(f"Large mid-price change detected: {abs_delta_mid} at window index {window_index} step {step}\n")
+                    f.write(f"Delta mid-price: {delta_mid}\n")
+                    f.write(f"Abort flag: {abort}\n")
+                    f.write(f"combined messages: {combined_msgs}\n")
+                    f.write(f"trades: {trades}\n")
+                    f.write(f"old raw asks: {old_raw_asks}\n")
+                    f.write(f"new raw asks: {new_raw_asks}\n")
+                    f.write(f"old raw bids: {old_raw_bids}\n")
+                    f.write(f"new raw bids: {new_raw_bids}\n")
+                    f.write("\n" + "="*80 + "\n\n")
+            if abs_delta_mid >100_000 or abort is True:
+                raise ValueError("Large mid-price change detected")
+        # jax.debug.callback(large_midprice_change_callback, jnp.abs( (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price), (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price, state.world_state.window_index, combined_msgs, new_trades, state.world_state.step_counter, new_asks, new_bids, state.world_state.ask_raw_orders, state.world_state.bid_raw_orders,abort_episode)
+
+        def large_spread_callback(spread, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids):
             if spread <0 : # only print for a specific window range to avoid too much output
                 print(f"Bad spread detected: {spread} at window index {window_index} step {step}")
                 print("combined messages: ", combined_msgs)
@@ -397,7 +419,7 @@ class MARLEnv(MultiAgentEnv):
         #TODO: Could use some constants for indexing here, rather than magic numbers
         final_time = combined_msgs[-1, -2:]
         #Flag which indicates this is the last step of the episode based on 'time'
-        ep_done_time = self._episode_done_time(final_time, state.world_state)
+        ep_done_time = self._episode_done_time(final_time, state.world_state) # | abort_episode
         
         # def debug_callback_time(world_state, final_time,combined_msgs):
         #     print("Window Index: ", world_state.window_index)
@@ -595,6 +617,7 @@ class MARLEnv(MultiAgentEnv):
             "delta_time":new_world_state.delta_time,
             "current_step":new_world_state.step_counter,
             "ep_done_time":ep_done_time,
+            "abort_episode":abort_episode,
             "spread": new_world_state.best_asks[-1,0] - new_world_state.best_bids[-1,0],
         }
 

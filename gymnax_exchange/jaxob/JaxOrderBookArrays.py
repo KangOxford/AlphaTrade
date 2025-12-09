@@ -369,6 +369,7 @@ def bid_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                     time (Int): Time of arrival (full seconds)
                     time_ns (Int): Time of arrival (remaining ns)
                     side (Int): The side of the incoming message: bid (S = 1) or ask (S = −1)
+                    type (Int): Type 1 = Limit, 4 = Exec, 2,3 = Cancel Shouldn't be here.                
                 askside (Array): All ask orders in book
                 bidside (Array): All bid orders in book
                 trades (Array): Running count of all occured trades
@@ -446,6 +447,7 @@ def ask_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                     time (Int): Time of arrival (full seconds)
                     time_ns (Int): Time of arrival (remaining ns)
                     side (Int): The side of the incoming message: bid (S = 1) or ask (S = −1)
+                    type (Int): Type 1 = Limit, 4 = Exec, 2,3 = Cancel Shouldn't be here. 
                 askside (Array): All ask orders in book
                 bidside (Array): All bid orders in book
                 trades (Array): Running count of all occured trades

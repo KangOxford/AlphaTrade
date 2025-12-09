@@ -647,14 +647,13 @@ class LoadLOBSTER_resample():
             # jax.profiler.stop_trace()
 
             # jax.profiler.start_trace("/tmp/profile-data")
-
-            
+            print("Shapes of first elements: ",msgs[0].shape, starts[0].shape, ends[0].shape, obs[0].shape,max_msgs_in_windows_arr[0].shape)
             #Concatenate the data from all the days.
             msgs=np.concatenate(msgs,0)
             starts=np.concatenate(starts,0)
             ends=np.concatenate(ends,0)
             obs=np.concatenate(obs,0)
-            max_msgs_in_windows_arr=ends - starts
+            print("Shapes after concat: ",msgs.shape, starts.shape, ends.shape, obs.shape,max_msgs_in_windows_arr.shape)
 
             if self.n_data_msg_per_step !=0:
                 (msgs,
@@ -731,8 +730,11 @@ class LoadLOBSTER_resample():
         # Semaphore to limit concurrent file operations (prevent disk thrashing)
         file_semaphore = Semaphore(n_workers * 2)  # Allow some buffering
 
-        def read_pair(files):
-            message_file, book_file = files
+            # Assert that message and book files correspond to the same data file
+            # Extract base filenames without path and extensions
+            msg_base = os.path.basename(message_file).replace('_message_', '_PLACEHOLDER_').replace('.csv', '')
+            book_base = os.path.basename(book_file).replace('_orderbook_', '_PLACEHOLDER_').replace('.csv', '')
+            assert msg_base == book_base, f"Message and orderbook file mismatch: {message_file} vs {book_file}"
             if message_file[-3:] == "csv" and book_file[-3:] == "csv":
                 with file_semaphore:  # Limit concurrent disk access
                     try:

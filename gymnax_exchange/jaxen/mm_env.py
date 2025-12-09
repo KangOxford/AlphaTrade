@@ -972,8 +972,9 @@ class MarketMakingAgent():
         masked_bids=jnp.where(bid_mask[:, jnp.newaxis], world_state.bid_raw_orders, -1)
     
         best_ask, best_bid = job.get_best_bid_and_ask(self.world_config,masked_asks,masked_bids)
-        best_ask = jnp.where(best_ask == -1, world_state.best_asks[-1,0], best_ask)
-        best_bid = jnp.where(best_bid == -1, world_state.best_bids[-1,0], best_bid)
+        #If the book is empty here, we get -1 back.
+
+        empty_book = jnp.where((best_ask == -1) | (best_bid == -1),True, False)
         best_ask = jnp.int32((best_ask // self.world_config.tick_size) * self.world_config.tick_size)
         best_bid = jnp.int32((best_bid // self.world_config.tick_size) * self.world_config.tick_size)
 
@@ -1066,7 +1067,7 @@ class MarketMakingAgent():
 
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
-        return action_msgs,{"posted_bid_price":bid_price,"posted_ask_price":ask_price,"bid_distance_from_best":best_bid - bid_price,"ask_distance_from_best":ask_price - best_ask}
+        return action_msgs,{"posted_bid_price":bid_price,"posted_ask_price":ask_price,"bid_distance_from_best":best_bid - bid_price,"ask_distance_from_best":ask_price - best_ask,"empty_book":empty_book}
 
 
 
@@ -1584,7 +1585,13 @@ class MarketMakingAgent():
 
     def get_messages(self, action: jax.Array, world_state: WorldState, agent_state:MMEnvState, agent_params: MMEnvParams):
         '''Get the action and cancel messages'''
-    
+        def doNothing_callback(action,action_msgs,cancel_msgs,empty_book):
+            if action==9 & empty_book==True:
+                print("Market Maker doing nothing this step")
+                print("Action messages sent: ",action_msgs)
+                print("Cancel messages sent: ",cancel_msgs)
+                print("Empty book: ",empty_book)
+        
         action_msgs,extras = self.action_fn(action,
                                     world_state,
                                     agent_state,
@@ -1617,7 +1624,7 @@ class MarketMakingAgent():
 
         #jax.debug.print("action messages order mm: {}", action_msgs)
         #jax.debug.print("cancel messages order mm: {}", cancel_msgs)
-
+        # jax.debug.callback(doNothing_callback,action,action_msgs,cancel_msgs,extras["empty_book"])
         return action_msgs, cancel_msgs,extras
 
 
@@ -1678,8 +1685,10 @@ class MarketMakingAgent():
         #Find agent Buys and Agent sells from agent Trades:
         #The below mask puts passive buys or aggresive buys into "agent buys".
         #Logic: Q>0, TIDs=BUY; Q<0 TIDa= BUY
-        mask_buy = (((agentTrades[:, 1] >= 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] < 0)  & (agent_params.trader_id == agentTrades[:, 7])))
-        mask_sell = (((agentTrades[:, 1] < 0) & (agent_params.trader_id == agentTrades[:, 6]))|((agentTrades[:, 1] >= 0)  & (agent_params.trader_id == agentTrades[:, 7])))
+        mask_buy = (((agentTrades[:, 1] >= 0) & (agent_params.trader_id == agentTrades[:, 6]))|
+                    ((agentTrades[:, 1] < 0)  & (agent_params.trader_id == agentTrades[:, 7])))
+        mask_sell = (((agentTrades[:, 1] < 0) & (agent_params.trader_id == agentTrades[:, 6]))|
+                     ((agentTrades[:, 1] >= 0)  & (agent_params.trader_id == agentTrades[:, 7])))
         agent_buys=jnp.where(mask_buy[:, jnp.newaxis], agentTrades, 0)
         agent_sells=jnp.where(mask_sell[:, jnp.newaxis], agentTrades, 0)
 
@@ -2048,7 +2057,7 @@ class MarketMakingAgent():
 
 
         def large_reward_callback(reward, abs_reward, trades, window_index, inventory_pnl, buy_pnl, sell_pnl, delta_mid, inventory):
-            if abs_reward > 100000:
+            if abs_reward > 100_000:
                 print(f"Large reward: {reward}")
                 print(f"Trades: {trades}")
                 print(f"Window index: {window_index}")
@@ -2274,10 +2283,14 @@ class MarketMakingAgent():
                         delta_ref_price,
                         delta_mid_price,
                         mid_price_end,
-                        mid_price,trades,agent_buys,agent_sells):
-            if window_index==1084:
+                        mid_price,trades,agent_buys,agent_sells,
+                        bidside,
+                        askside,
+                        bestbids,
+                        bestasks):
+            if abs_reward>100000:
                 print(f"PV: {reward}")
-                print(f"Abs PV: {abs_reward}")
+                print(f"Abs Reward: {abs_reward}")
                 print(f"Episode done: {ep_done_time}")
                 print(f"Window index: {window_index}")
                 print(f"Net Worth: {netWorth}")
@@ -2296,12 +2309,16 @@ class MarketMakingAgent():
                 print(f"Trades: {trades}")
                 print(f"Agent Buys: {agent_buys}")
                 print(f"Agent Sells: {agent_sells}")
+                print(f"Best Bids: {bestbids}")
+                print(f"Bid Side: {bidside}")
+                print(f"Best Asks: {bestasks}")
+                print(f"Ask Side: {askside}")
 
         
 
         # jax.debug.callback(large_pv_callback,
         #                 reward_portfolio_value,
-        #                 jnp.abs(reward_portfolio_value),
+        #                 jnp.abs(reward),
         #                 ep_done_time,
         #                 world_state.window_index,
         #                 netWorth,
@@ -2319,7 +2336,11 @@ class MarketMakingAgent():
         #                 world_state.mid_price,
         #                 trades,
         #                 agent_buys,
-        #                 agent_sells)
+        #                 agent_sells,
+        #                 world_state.ask_raw_orders,
+        #                 world_state.bid_raw_orders,
+        #                 bestbids,
+        #                 bestasks)
             
             
         return reward/self.cfg.reward_scaling_quo, {
