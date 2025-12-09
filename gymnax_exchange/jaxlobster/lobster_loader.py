@@ -119,7 +119,7 @@ class LoadLOBSTER():
         self.window_length=window_length
         self.window_resolution=window_resolution
         self.n_data_msg_per_step=n_data_msg_per_step 
-        self.index_offest=0
+        # self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
         self.n_Levels=n_Levels
@@ -587,7 +587,7 @@ class LoadLOBSTER_resample():
         self.window_length=window_length
         self.window_resolution=window_resolution
         self.n_data_msg_per_step=n_data_msg_per_step 
-        self.index_offest=0
+        # self.index_offest=0
         self.day_start=day_start
         self.day_end=day_end
         self.n_Levels=n_Levels
@@ -642,23 +642,38 @@ class LoadLOBSTER_resample():
             max_msgs_in_windows_arr = data['max_msgs_in_windows_arr']
         else:
 
-            msgs,starts,ends,obs = self._load_files()
-
+            results = self._load_files()
+            # Sort results by file_index (last element of tuple) to maintain file order
+            results.sort(key=lambda x: x[-1])
+            
             # jax.profiler.stop_trace()
 
             # jax.profiler.start_trace("/tmp/profile-data")
+            # Unpack results from list of tuples to tuple of lists
+            msgs, starts, ends, obs, max_msgs_in_windows_arr,file_index = map(list, zip(*results))
+            print("Lengths: ",len(msgs), len(starts), len(ends), len(obs))
+            # Assert that starts and ends have the same length
+            assert len(starts) == len(ends), f"starts and ends must have same length, got {len(starts)} and {len(ends)}"
+
+            # Adjust starts and ends by cumulative message offsets from previous files
+            cumulative_offset = 0
+            for i in range(len(starts)):
+                # Add the cumulative offset from all previous files
+                starts[i] = starts[i] + cumulative_offset
+                ends[i] = ends[i] + cumulative_offset
+                # Update cumulative offset for next iteration
+                # print(cumulative_offset)
+                cumulative_offset += msgs[i].shape[0]
             print("Shapes of first elements: ",msgs[0].shape, starts[0].shape, ends[0].shape, obs[0].shape,max_msgs_in_windows_arr[0].shape)
             #Concatenate the data from all the days.
             msgs=np.concatenate(msgs,0)
             starts=np.concatenate(starts,0)
             ends=np.concatenate(ends,0)
             obs=np.concatenate(obs,0)
+            max_msgs_in_windows_arr=np.concatenate(max_msgs_in_windows_arr,0)
             print("Shapes after concat: ",msgs.shape, starts.shape, ends.shape, obs.shape,max_msgs_in_windows_arr.shape)
 
-            if self.n_data_msg_per_step !=0:
-                (msgs,
-                max_msgs_in_windows_arr)=self._pad_last_ep(msgs,
-                                                            max_msgs_in_windows_arr)
+            
             
 
             print(f"{self.__class__.__name__} run_loading: saving arrays to {save_path}")
@@ -681,7 +696,7 @@ class LoadLOBSTER_resample():
 
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
         length_last_ep=max_msgs_in_windows_arr[-1]
-        new_length=(length_last_ep//self.n_data_msg_per_step+1)*self.n_data_msg_per_step
+        new_length=((length_last_ep+1)//self.n_data_msg_per_step)*self.n_data_msg_per_step
         pad=np.zeros((new_length-length_last_ep,messages.shape[1]),dtype=np.int32)
         last_time=np.array([messages[-1,-2:][0]+1,0])
         pad[:,-2:]=last_time
@@ -730,6 +745,8 @@ class LoadLOBSTER_resample():
         # Semaphore to limit concurrent file operations (prevent disk thrashing)
         file_semaphore = Semaphore(n_workers * 2)  # Allow some buffering
 
+        def read_pair(files_and_findex):
+            message_file, book_file, file_index = files_and_findex
             # Assert that message and book files correspond to the same data file
             # Extract base filenames without path and extensions
             msg_base = os.path.basename(message_file).replace('_message_', '_PLACEHOLDER_').replace('.csv', '')
@@ -769,7 +786,14 @@ class LoadLOBSTER_resample():
                             # Optimize pandas operations with copy=False where safe
                             msg, book = self._pre_process_msg_ob(df_message, df_book)
                             message_day, index_s, index_e, init_OBs = self._get_inits_day(msg, book)
-                            
+                            max_msgs_in_windows_arr = index_e-index_s
+                            if self.n_data_msg_per_step !=0:
+                                (message_day_out,
+                                max_msgs_in_windows_arr)=self._pad_last_ep(message_day,
+                                                                            max_msgs_in_windows_arr)
+                                # The below assertion is only useful if using fixed steps. The point of padding is when using time.
+                                # assert message_day_out.shape[0] == message_day.shape[0], f"Change in message shape: {message_day_out.shape[0]} vs {message_day.shape[0]}"
+                                message_day=message_day_out
                             process_time = time.time() - process_start
                             total_time = time.time() - start_time
                             
@@ -780,7 +804,7 @@ class LoadLOBSTER_resample():
                                   f"({file_size_mb:.1f}MB, {throughput:.1f}MB/s) "
                                   f"read:{read_time:.2f}s proc:{process_time:.2f}s total:{total_time:.2f}s")
                             
-                            return (message_day, index_s, index_e, init_OBs)
+                            return (message_day, index_s, index_e, init_OBs, max_msgs_in_windows_arr,file_index)
                         else:
                             if df_message.empty:
                                 print(f"⚠ Empty message file: {os.path.basename(message_file)}")
@@ -793,11 +817,8 @@ class LoadLOBSTER_resample():
                         print(f"✗ Error processing {os.path.basename(message_file)}: {e}")
             return None
 
-        pairs = list(zip(self.message_files, self.book_files))
-        messageDays = []
-        startIndeces = []
-        endIndeces = []
-        initOrderboks = []
+        pairs = list(zip(self.message_files, self.book_files, range(total_files)))
+        results = []
 
         # Process files with better resource management
         start_total = time.time()
@@ -831,13 +852,9 @@ class LoadLOBSTER_resample():
                     try:
                         result = future.result()
                         if result is not None:
-                            message_day, index_s, index_e, init_OBs = result
                             # print(f"First ten messages are {message_day.head(10)}")
                             # print(f"Initial orderbook state is {init_OBs}")
-                            messageDays.append(message_day)
-                            startIndeces.append(index_s)
-                            endIndeces.append(index_e)
-                            initOrderboks.append(init_OBs)
+                            results.append(result)
                             completed_files += 1
                     except Exception as exc:
                         pair = future_to_pair[future]
@@ -857,7 +874,7 @@ class LoadLOBSTER_resample():
         print(f"   Average time per file: {avg_time_per_file:.2f}s")
         print(f"   Effective throughput: {completed_files / total_time:.2f} files/s")
         
-        return messageDays, startIndeces, endIndeces, initOrderboks
+        return results
     
     def _pre_process_msg_ob(self,message_day,orderbook_day):
         """Adjust message_day data and orderbook_day data. 
@@ -1027,9 +1044,11 @@ class LoadLOBSTER_resample():
                     print(f"  Warning: Window {i} has no data!")
 
         init_OBs=np.array(orderbook_day.iloc[np.array(index_s),:])
-        index_s=np.array(index_s)+np.ones_like(np.array(index_s))*self.index_offest
-        index_e=np.array(index_e)+np.ones_like(np.array(index_e))*self.index_offest
-        self.index_offest=self.index_offest+message_day.shape[0]
+        # Cannot do this when loading files (read: days) in parallel, the offset is meaningless. 
+        # Instead return the indeces on a "per-day" basis, and adjust when combining days.
+        # index_s=np.array(index_s)+np.ones_like(np.array(index_s))*self.index_offest
+        # index_e=np.array(index_e)+np.ones_like(np.array(index_e))*self.index_offest
+        # self.index_offest=self.index_offest+message_day.shape[0]
         columns = ['type','direction','qty','price',
                    'trader_id','order_id','time_s','time_ns']
         message_day=message_day[columns].to_numpy()
