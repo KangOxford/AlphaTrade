@@ -963,6 +963,9 @@ class MarketMakingAgent():
     
     def _getActionMsgs_fixedQuant(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
+        if self.cfg.fixed_action_setting == True:
+            action = jnp.asarray([self.cfg.fixed_action])
+        
         # Use the most recent best_ask and best_bid values
         #These values may be my own orders... I clearly don't want to base myself off them. Get from world state directly.
         ask_mask=(world_state.ask_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
