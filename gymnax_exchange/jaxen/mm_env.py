@@ -978,8 +978,13 @@ class MarketMakingAgent():
         #If the book is empty here, we get -1 back.
 
         empty_book = jnp.where((best_ask == -1) | (best_bid == -1),True, False)
+        #We then replace with the last known bbid, bask, which in turn should have been forward filled, but is most likely our own order which will be v far from the last true market price. 
         best_ask = jnp.int32((best_ask // self.world_config.tick_size) * self.world_config.tick_size)
         best_bid = jnp.int32((best_bid // self.world_config.tick_size) * self.world_config.tick_size)
+        #The world state will have the mid-price propagated. Doing this just for the sake of logging to have reasonable averages. 
+        #If the book is empty, the quants are put to 0 anyway. 
+        best_bid = jnp.where(empty_book, world_state.best_bids[-1,0], best_bid)
+        best_ask = jnp.where(empty_book, world_state.best_asks[-1,0], best_ask)
 
         # best_ask_old = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
         # best_bid_old = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
@@ -1018,6 +1023,11 @@ class MarketMakingAgent():
         bid_quant = bid_quants[action]*self.cfg.fixed_quant_value
         ask_quant = ask_quants[action]*self.cfg.fixed_quant_value
         
+        #If the book is empty (aside from our own order), we exit the market by not posting anything.
+        bid_quant=jnp.where(empty_book, 0, bid_quant)
+        ask_quant=jnp.where(empty_book, 0, ask_quant)
+        
+
         # Calculate prices with bounds checking
         bid_price = best_bid - bid_offset  * half_spread
         ask_price = best_ask + ask_offset  * half_spread
@@ -1042,10 +1052,10 @@ class MarketMakingAgent():
         
         # --------------- Construct messages ---------------#
         # Message components (2 messages: bid then ask)
-        types = jnp.array([1, 1], dtype=jnp.int32)  # 1=limit order
-        sides = jnp.array([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
-        quants = jnp.array([bid_quant, ask_quant], dtype=jnp.int32)
-        prices = jnp.array([bid_price, ask_price], dtype=jnp.int32)
+        types = jnp.asarray([1, 1], dtype=jnp.int32)  # 1=limit order
+        sides = jnp.asarray([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
+        quants = jnp.asarray([bid_quant, ask_quant], dtype=jnp.int32)
+        prices = jnp.asarray([bid_price, ask_price], dtype=jnp.int32)
         trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
 
         quants = quants.flatten() # Flatten so they have the same shape
