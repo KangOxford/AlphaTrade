@@ -373,8 +373,8 @@ class MARLEnv(MultiAgentEnv):
                 print("old raw bids: ", old_raw_bids)
                 print("new raw bids: ", new_raw_bids)
 
-        def large_midprice_change_callback(abs_delta_mid,delta_mid, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids,abort):
-            if abs_delta_mid >1_000 or abort == True or window_index == 15053: # only print for a specific window range to avoid too much output
+        def major_debug(abs_delta_mid,delta_mid, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids,abort,reward_extras):
+            if window_index == 128: # only print for a specific window range to avoid too much output  abs_delta_mid >1_000 or abort == True 
                 output_dir = "/home/myuser/debug_output"
                 os.makedirs(output_dir, exist_ok=True)
                 file_path = os.path.join(output_dir, f"large_midprice_change_window_{window_index}.txt")
@@ -390,10 +390,10 @@ class MARLEnv(MultiAgentEnv):
                     f.write(f"new raw asks: {new_raw_asks}\n")
                     f.write(f"old raw bids: {old_raw_bids}\n")
                     f.write(f"new raw bids: {new_raw_bids}\n")
+                    f.write(f"reward extras: {reward_extras}\n")
                     f.write("\n" + "="*80 + "\n\n")
             if abs_delta_mid >100_000 or abort is True:
                 raise ValueError("Large mid-price change detected")
-        # jax.debug.callback(large_midprice_change_callback, jnp.abs( (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price), (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price, state.world_state.window_index, combined_msgs, new_trades, state.world_state.step_counter, new_asks, new_bids, state.world_state.ask_raw_orders, state.world_state.bid_raw_orders,abort_episode)
 
         def large_spread_callback(spread, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids):
             if spread <0 : # only print for a specific window range to avoid too much output
@@ -469,6 +469,18 @@ class MARLEnv(MultiAgentEnv):
 
 
 
+        # jax.debug.callback(major_debug, jnp.abs( (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price),
+        #                      (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price,
+        #                        state.world_state.window_index,
+        #                          combined_msgs,
+        #                            new_trades,
+        #                              state.world_state.step_counter,
+        #                                new_asks,
+        #                                  new_bids,
+        #                                    state.world_state.ask_raw_orders, 
+        #                                    state.world_state.bid_raw_orders,
+        #                                    abort_episode,
+        #                                    agent_rew_extras_list[0])
 
         # -------------------------------------------------------
         # (F) Update the world state

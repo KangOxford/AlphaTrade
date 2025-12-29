@@ -47,6 +47,8 @@ class MultiAgentState():
 
 @struct.dataclass
 class MMEnvState():
+    posted_distance_bid: int
+    posted_distance_ask: int
     inventory: int
     total_PnL: float
     cash_balance: float

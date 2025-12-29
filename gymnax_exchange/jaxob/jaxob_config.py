@@ -45,6 +45,7 @@ class MarketMaking_EnvironmentConfig():
     simple_nothing_action: bool = True # Whether or not the simple action space has a nothing action
     sell_buy_all_option: bool= False
     based_on_mid_price_of_action: bool = True
+    tenth_action: str = "MarketOrder"
 
     
     # Real Parameters
@@ -57,6 +58,8 @@ class MarketMaking_EnvironmentConfig():
     skew_multiplier: float = 5.0 #100.0
     n_ticks_offset: int = 1
     fixed_quant_value: int = 10
+    auto_liquidate_threshold: int = 10000 # If abs(inventory) exceeds this value, auto submit an IOC aggro order of alpha*Inventory to reduce inventory
+    auto_liquidate_alpha: float = 1.0 # Fraction of inventory to ag
 
     #       Reward
     unwind_price_penalty: int = 5  # Penalty (in ticks) added to the unwind price at episode end
@@ -92,7 +95,7 @@ class MarketMaking_EnvironmentConfig():
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!
         if self.action_space == "fixed_quants":
-            object.__setattr__(self, 'n_actions', 8)
+            object.__setattr__(self, 'n_actions', 10)
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "spread_skew":
