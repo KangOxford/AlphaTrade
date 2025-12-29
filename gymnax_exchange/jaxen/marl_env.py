@@ -698,12 +698,7 @@ class MARLEnv(MultiAgentEnv):
 
 
     def _episode_done_time(self,time, state: WorldState) -> bool:
-        if self.multi_agent_config.world_config.ep_type == 'fixed_time':
-            remainingTime = self.multi_agent_config.world_config.episode_time - jnp.asarray((time - state.init_time)[0], dtype=jnp.int32)
-            ep_done_time = (remainingTime <= 0)  # 5 seconds
-        else:
-            ep_done_time = ((self.multi_agent_config.world_config.episode_time - state.step_counter - 1) <= 1)
-        return ep_done_time
+        return  ((state.max_steps_in_episode - state.step_counter - 1 )<= 1)
 
 
 
