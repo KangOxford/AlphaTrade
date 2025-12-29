@@ -1,7 +1,7 @@
 NVCC_RESULT := $(shell which nvcc 2> NULL; rm NULL)
 NVCC_TEST := $(notdir $(NVCC_RESULT))
 ifeq ($(NVCC_TEST),nvcc)
-GPUS=--gpus '"device="'
+GPUS=--gpus '"device=0"'
 else
 GPUS=
 endif
@@ -18,7 +18,7 @@ DATADIR=~/data_local/data
 endif
 SCRATCH_DIR=~/scratch_LOB
 BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data -v $(SCRATCH_DIR):/home/$(MYUSER)/scratch --shm-size 20G
-PORT_FLAGS= -p 8061:80 -p 8066:6006
+PORT_FLAGS= -p 8074:80 -p 8075:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS) $(PORT_FLAGS)
 BASIC_FLAGS=$(GPUS) $(BASE_FLAGS)
 
@@ -53,8 +53,7 @@ baseline_only:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_only_JAXMARL.py --config-name='baseline_mm_config'"
 
 plot_trajectories:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py"
-
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py --combo=default --directory=trajectories"
 workflow-test:
 	# without -it flag
 	docker run --rm -v ${PWD}:/home/workdir --shm-size 20G $(IMAGE) /bin/bash -c "pytest ./tests/"
