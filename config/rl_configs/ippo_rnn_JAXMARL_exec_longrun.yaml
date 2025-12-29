@@ -23,12 +23,12 @@
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2 #Overriden in SWEEP
 "N_DEVICES": 1
-"ENV_CONFIG": "config/env_configs/exec_longrun_fixed_price.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json
+"ENV_CONFIG": "config/env_configs/exec_longrun_fixed_quants_complex.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json
 "ANNEAL_LR": [True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "Exec_FixedPrice_Long" #"Exec_FixedPrice_Long" #"DEBUG"Exec_FixedQuantsComplex_Long
+"PROJECT": "Exec_FixedQuantsComplex_Long" #"Exec_FixedPrice_Long" #"DEBUG"Exec_FixedQuantsComplex_Long
 "WANDB_MODE" : "online"
 
 SWEEP_PARAMETERS: 

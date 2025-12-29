@@ -6,8 +6,8 @@
 # "NUM_STEPS": 256 #128
 # "TINY_RUN": False
 
-"NUM_ENVS": 8
-"NUM_STEPS": 639
+"NUM_ENVS": 16
+"NUM_STEPS": 2000000
 "TINY_RUN": True
 
 
