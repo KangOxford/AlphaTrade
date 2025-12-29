@@ -7,7 +7,7 @@ import glob
 
 import matplotlib.pyplot as plt
 
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.1"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.9"
 
 
 from gymnax_exchange.jaxen.marl_env import MARLEnv

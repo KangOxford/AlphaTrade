@@ -697,6 +697,7 @@ class LoadLOBSTER_resample():
     def _pad_last_ep(self,messages,max_msgs_in_windows_arr):
         length_last_ep=max_msgs_in_windows_arr[-1]
         new_length=((length_last_ep+1)//self.n_data_msg_per_step)*self.n_data_msg_per_step
+        print((new_length-length_last_ep,messages.shape[1]))
         pad=np.zeros((new_length-length_last_ep,messages.shape[1]),dtype=np.int32)
         last_time=np.array([messages[-1,-2:][0]+1,0])
         pad[:,-2:]=last_time
@@ -786,14 +787,16 @@ class LoadLOBSTER_resample():
                             # Optimize pandas operations with copy=False where safe
                             msg, book = self._pre_process_msg_ob(df_message, df_book)
                             message_day, index_s, index_e, init_OBs = self._get_inits_day(msg, book)
+                            index_s=np.asarray(index_s)
+                            index_e=np.asarray(index_e)
                             max_msgs_in_windows_arr = index_e-index_s
-                            if self.n_data_msg_per_step !=0:
-                                (message_day_out,
-                                max_msgs_in_windows_arr)=self._pad_last_ep(message_day,
-                                                                            max_msgs_in_windows_arr)
-                                # The below assertion is only useful if using fixed steps. The point of padding is when using time.
-                                # assert message_day_out.shape[0] == message_day.shape[0], f"Change in message shape: {message_day_out.shape[0]} vs {message_day.shape[0]}"
-                                message_day=message_day_out
+                            # if self.n_data_msg_per_step !=0:
+                                # (message_day_out,
+                                # max_msgs_in_windows_arr)=self._pad_last_ep(message_day,
+                                #                                             max_msgs_in_windows_arr)
+                                # # The below assertion is only useful if using fixed steps. The point of padding is when using time.
+                                # # assert message_day_out.shape[0] == message_day.shape[0], f"Change in message shape: {message_day_out.shape[0]} vs {message_day.shape[0]}"
+                                # message_day=message_day_out
                             process_time = time.time() - process_start
                             total_time = time.time() - start_time
                             
@@ -1130,14 +1133,14 @@ if __name__ == "__main__":
     loader=LoadLOBSTER_resample(os.path.expanduser("~")+"/data",
                                 os.path.expanduser("~"),
                                 10,
-                                "fixed_steps",
-                                window_length=10000,
-                                n_data_msg_per_step=1,
-                                window_resolution=10000,
+                                "fixed_time",
+                                window_length=23399,
+                                n_data_msg_per_step=10,
+                                window_resolution=23399,
                                 day_start=34200,
                                 day_end=57600,
                                 stock="AMZN",
-                                time_period="2017Jan_oneday") 
+                                time_period="2017Jan") 
     msgs,starts,ends,books,max_messages_arr=loader.run_loading("TEST")
 
     # print(msgs.shape)
