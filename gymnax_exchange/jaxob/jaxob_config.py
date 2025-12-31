@@ -74,6 +74,8 @@ class MarketMaking_EnvironmentConfig():
     reward_scaling_quo: float = 1.0
     inventoryPnL_eta: float = 0.6
 
+    rebate_bps: float = 10.0  # rebate in bps applied to the trade value for limit order fills (only passive fills)
+
     #       Weights for complex reward function (skip):
     unrealizedPnL_lambda: float = 0.1
     # asymmetrically_dampened_lambda: float = 0.8

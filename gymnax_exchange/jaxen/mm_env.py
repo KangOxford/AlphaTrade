@@ -2010,7 +2010,15 @@ class MarketMakingAgent():
                      ((agentTrades[:, 1] >= 0)  & (trader_id == agentTrades[:, job.cst.TradesFeat.AGRS_TID.value])))
         agent_buys=jnp.where(mask_buy[:, jnp.newaxis], agentTrades, 0)
         agent_sells=jnp.where(mask_sell[:, jnp.newaxis], agentTrades, 0)
-        return agentTrades, otherTrades, agent_buys, agent_sells
+
+
+        #TODO: Not very optimised calculating these masks and arrays twice, good enough for now. 
+        #For the purpose of assigning rebates, differentiate between passive and aggressive trades
+        mask_buy_passive = ((agentTrades[:, 1] >= 0) & (trader_id == agentTrades[:, job.cst.TradesFeat.PASS_TID.value]))
+        mask_sell_passive = ((agentTrades[:, 1] < 0) & (trader_id == agentTrades[:, job.cst.TradesFeat.PASS_TID.value]))
+        agent_passive_buys=jnp.where(mask_buy_passive[:, jnp.newaxis], agentTrades, 0)
+        agent_passive_sells=jnp.where(mask_sell_passive[:, jnp.newaxis], agentTrades, 0)
+        return agentTrades, otherTrades, agent_buys, agent_sells, agent_passive_buys, agent_passive_sells
 
 
 
@@ -2033,7 +2041,7 @@ class MarketMakingAgent():
         # Get reward stats before unwind
         #########################################################
 
-        _, _, agent_buys_before_unwind, agent_sells_before_unwind = \
+        _, _, agent_buys_before_unwind, agent_sells_before_unwind,_,_ = \
                 self._extract_agent_trade_stats(trades, agent_params.trader_id)
         
         #Find amount bought and sold in the step
@@ -2093,7 +2101,7 @@ class MarketMakingAgent():
         # Get trades after fictional trade
         #########################################################
 
-        _, otherTrades, agent_buys, agent_sells = \
+        _, otherTrades, agent_buys, agent_sells, passive_buys, passive_sells = \
                 self._extract_agent_trade_stats(trades, agent_params.trader_id)
 
 
@@ -2130,7 +2138,13 @@ class MarketMakingAgent():
 
         new_inventory=agent_state.inventory+buyQuant - sellQuant
 
-
+        rebate_value = (
+            (passive_buys[:, job.cst.TradesFeat.P.value].astype(jnp.float32)/self.world_config.tick_size * 
+                jnp.abs(passive_buys[:, job.cst.TradesFeat.Q.value])).sum() + 
+            (passive_sells[:, job.cst.TradesFeat.P.value].astype(jnp.float32)/self.world_config.tick_size * 
+                jnp.abs(passive_sells[:, job.cst.TradesFeat.Q.value])).sum()
+        )
+        rebate_income = rebate_value * (self.cfg.rebate_bps / 10_000)
         
 
         # Compute a reference price based on the config
@@ -2160,7 +2174,7 @@ class MarketMakingAgent():
             raise ValueError("Invalid reference price type.")
 
         #PnL,== cash balance change
-        PnL=(income-outgoing)
+        PnL=(income-outgoing+rebate_income)
         # Keep track of overall cash balance (same as overall PnL)
         new_cash_balance = agent_state.cash_balance + PnL
         inventoryValue=new_inventory*(reference_price)/self.world_config.tick_size#Mark to market inventory value
@@ -2182,17 +2196,17 @@ class MarketMakingAgent():
         
 
         #A1)Spooner paper reward
-        reward_spooner = buyPnL + sellPnL + InventoryPnL 
+        reward_spooner = buyPnL + sellPnL +rebate_income+ InventoryPnL 
 
         #A2)spooner_damped
-        reward_spooner_damped = buyPnL + sellPnL + InventoryPnL - (self.cfg.inventoryPnL_eta*InventoryPnL)
+        reward_spooner_damped = buyPnL + sellPnL + rebate_income + InventoryPnL - (self.cfg.inventoryPnL_eta*InventoryPnL)
 
         #A2.5 Spooner Asym Dampened
-        reward_spooner_asym_damped = buyPnL + sellPnL + InventoryPnL - jnp.maximum(0,(self.cfg.inventoryPnL_eta*InventoryPnL))
+        reward_spooner_asym_damped = buyPnL + sellPnL + rebate_income + InventoryPnL - jnp.maximum(0,(self.cfg.inventoryPnL_eta*InventoryPnL))
 
         #A3) Spooner Scaled
         scaledInventoryPnL=InventoryPnL//(jnp.abs(agent_state.inventory)+1)
-        reward_spooner_scaled=buyPnL + sellPnL+ self.cfg.inventoryPnL_eta*(InventoryPnL - (1-self.cfg.inventoryPnL_eta)*jnp.maximum(0,InventoryPnL) )
+        reward_spooner_scaled=buyPnL + sellPnL + rebate_income + self.cfg.inventoryPnL_eta*(InventoryPnL - (1-self.cfg.inventoryPnL_eta)*jnp.maximum(0,InventoryPnL) )
         
         #----------------------B) Complex reward---------------------------------------------#
         inventory_change= buyQuant - sellQuant
