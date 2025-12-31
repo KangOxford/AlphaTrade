@@ -7,10 +7,10 @@ scikit-learn
 statsmodels
 
 # JAX (Updated versions that are compatible)
-jax[cuda12]==0.6.1
-jax-cuda12-pjrt==0.6.1
-jax-cuda12-plugin==0.6.1
-jaxlib==0.6.1
+# jax[cuda12]==0.6.1
+# jax-cuda12-pjrt==0.6.1
+# jax-cuda12-plugin==0.6.1
+# jaxlib==0.6.1
 jaxopt==0.8.5
 optax
 flax
@@ -19,9 +19,9 @@ dm-tree
 ml-dtypes
 
 # Deep Learning
-torch
-torchvision
-torchaudio
+# torch
+# torchvision
+# torchaudio
 tensorflow-probability
 
 # RL and Environment Libraries

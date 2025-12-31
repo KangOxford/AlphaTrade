@@ -32,6 +32,11 @@ RUN ls -l && cat requirements.txt
 
 #jaxmarl from source if needed, all the requirements
 # RUN pip install -e .[algs,dev]
+
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+RUN pip uninstall -y jax jaxlib jax-plugins jax-cuda12-pjrt jax-cuda12-plugin nvidia-cusparse nvidia-cusolver nvidia-cufft nvidia-nccl-cu12 
+RUN pip install -U "jax[cuda13]==0.7.2" "jaxlib[cuda13]==0.7.2" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
 RUN pip install -r requirements.txt
 
 
