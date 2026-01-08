@@ -1248,3 +1248,38 @@ def get_L2_state(asks, bids, n_levels,cfg:JAXLOB_Configuration):
     # combine asks and bids in joint representation
     l2_state = jnp.hstack((asks.T, bids.T)).flatten()
     return l2_state
+
+
+# =============================================================================
+# Pure version for shard_map compatibility (no internal JIT)
+# =============================================================================
+
+def get_L2_state_pure(asks, bids, n_levels, cfg: JAXLOB_Configuration):
+    """Pure version of get_L2_state without JIT for use inside shard_map.
+
+    This avoids device placement conflicts when called from within
+    a shard_map context that distributes computation across devices.
+    """
+    # unique sorts ascending --> negative values to get descending
+    bid_prices = -1 * jnp.unique(-1 * bids[:, 0], size=n_levels, fill_value=1)
+    # replace -1 with max 32 bit int in sorting asks before sorting
+    ask_prices = jnp.unique(
+        jnp.where(asks[:, 0] == -1, cfg.maxint, asks[:, 0]),
+        size=n_levels,
+        fill_value=-1
+    )
+    # replace max 32 bit int with -1 after sorting
+    ask_prices = jnp.where(ask_prices == cfg.maxint, -1, ask_prices)
+
+    # Use inline vmap instead of relying on jitted get_volume_at_price
+    def _get_volume_at_price(orderside, price):
+        return jnp.sum(jnp.where(orderside[:, 0] == price, orderside[:, 1], 0))
+
+    bids_result = jnp.stack((bid_prices, jax.vmap(_get_volume_at_price, (None, 0), 0)(bids, bid_prices)))
+    asks_result = jnp.stack((ask_prices, jax.vmap(_get_volume_at_price, (None, 0), 0)(asks, ask_prices)))
+    # set negative volumes to 0
+    bids_result = bids_result.at[1].set(jnp.where(bids_result[1] < 0, 0, bids_result[1]))
+    asks_result = asks_result.at[1].set(jnp.where(asks_result[1] < 0, 0, asks_result[1]))
+    # combine asks and bids in joint representation
+    l2_state = jnp.hstack((asks_result.T, bids_result.T)).flatten()
+    return l2_state

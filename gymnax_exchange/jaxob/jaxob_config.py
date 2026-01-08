@@ -27,7 +27,10 @@ class JAXLOB_Configuration:
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2024" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2024" # Needs to be the appropriate directory name.
+
+# Alias for backwards compatibility (ES Trainer imports 'Configuration')
+Configuration = JAXLOB_Configuration
 
 
 @dataclass(frozen=True)
