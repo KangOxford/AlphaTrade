@@ -28,7 +28,7 @@
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "v3_Exec_FixedQuantsComplex_Ablations" #"v4_2Player_reference_price_ablation" #"DEBUG"
+"PROJECT": "v4_Exec_FixedQuantsComplex_Ablations" #"v4_2Player_reference_price_ablation" #"DEBUG"
 "WANDB_MODE" : "online"
 
 SWEEP_PARAMETERS:
