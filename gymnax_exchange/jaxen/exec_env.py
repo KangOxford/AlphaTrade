@@ -1613,9 +1613,9 @@ class ExecutionAgent():
         P_vwap = jax.lax.cond(
             otherQuant == 0,
             lambda: averageMidprice// self.world_config.tick_size, #agent_state.p_vwap, #If no trades, use the previous vwap. Rolling is too slow to adapt #agent_state.vwap_rm,
-            lambda: (otherTrades[:, job.cst.TradesFeat.P.value] // 
-                     self.world_config.tick_size * 
-                     jnp.abs(otherTrades[:, job.cst.TradesFeat.Q.value])).sum() / otherQuant
+            lambda: ((otherTrades[:, job.cst.TradesFeat.P.value] // 
+                     self.world_config.tick_size)* 
+                     (jnp.abs(otherTrades[:, job.cst.TradesFeat.Q.value])/ otherQuant)).sum() 
         )
         def debug_final_callback(ep_done_time,P_vwap,win_idx,p_exec,trades,bestasks,bestbids,prev_vwap,vwap_rm):
             if win_idx>3550 and win_idx<3600:
@@ -1628,13 +1628,13 @@ class ExecutionAgent():
                 print(f"Final penalty ticks: {self.cfg.doom_price_penalty} ")
                 print(f"Final trades:\n {trades} ")
         def large_reward_callback(reward,abs_reward,trades,P_vwap,window_index,QP_agent,agentQuant):
-            if abs_reward>10000:
+            if abs_reward>1000:
+                print(f"Window index: {window_index}")
                 print(f"P_vwap: {P_vwap}")
                 print(f"Large reward: {reward}")
                 print(f"QP_agent: {QP_agent}")
                 print(f"agentQuant: {agentQuant}")
                 print(f"Trades: {trades}")
-                print(f"Window index: {window_index}")
 
 
         # USE BELOW for P_VWAP based on ALL trades
