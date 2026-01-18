@@ -852,10 +852,10 @@ if __name__ == "__main__":
     #print("obs", obs)
 
     # run a loop that samples random actions for each agent.
-    # jax.profiler.start_trace("tensorboard_logs")
+    # jax.profiler.start_trace("/tmp/jax_trace")
 
-    num_steps = 100
-    fixed_actions = False
+    num_steps = 10
+    fixed_actions = True
     rewards_list = []
 
     EXTREME_THRESHOLD = 1000 
@@ -864,84 +864,85 @@ if __name__ == "__main__":
 
     extreme_rewards = []
     num_episodes = 1
-
-    for episode in range(num_episodes):
-        # Reset the environment.
-        obs, state = env.reset(key_reset, env_params)
-
-
-        for i in range(1, num_steps+1):
-            print("=" * 40)
-            
-            print(f"Step {i}")
-            # if i > 3 and i < 5:    
-            #     jax.profiler.start_trace("tensorboard_logs")
+    single_env_test = False
+    if single_env_test:
+        for episode in range(num_episodes):
+            # Reset the environment.
+            obs, state = env.reset(key_reset, env_params)
 
 
-            key_step, _ = jax.random.split(key_step, 2)
+            for i in range(1, num_steps+1):
+                print("=" * 40)
+                
+                print(f"Step {i}")
+                if i > 3 and i < 5:    
+                    jax.profiler.start_trace("/tmp/jax_trace")
 
-            
-            # Get random actions from each agent's action space.
-            actions_per_type = []
-            key, *subkeys = jax.random.split(key_step, len(env.list_of_agents_configs) + 1)
-            subkeys = jnp.array(subkeys)
-            for i, (space, num_agents) in enumerate(zip(env.action_spaces, multi_agent_config.number_of_agents_per_type)):
-                # Split keys for this agent type
-                keys = jax.random.split(subkeys[i], num_agents)
-                # Sample actions for all agents of this type
-                actions = jax.vmap(space.sample)(keys)
-                actions_per_type.append(actions)
 
-            #print("actions_per_type:", actions_per_type)
+                key_step, _ = jax.random.split(key_step, 2)
 
-            if fixed_actions:
-                actions_per_type = [jnp.array([0]),jnp.array([1])]
-                #print("actions_per_type fixed: ", actions_per_type)
+                
+                # Get random actions from each agent's action space.
+                actions_per_type = []
+                key, *subkeys = jax.random.split(key_step, len(env.list_of_agents_configs) + 1)
+                subkeys = jnp.array(subkeys)
+                for i, (space, num_agents) in enumerate(zip(env.action_spaces, multi_agent_config.number_of_agents_per_type)):
+                    # Split keys for this agent type
+                    keys = jax.random.split(subkeys[i], num_agents)
+                    # Sample actions for all agents of this type
+                    actions = jax.vmap(space.sample)(keys)
+                    actions_per_type.append(actions)
 
-            print("actions_per_type: ", actions_per_type)
-            obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
+                #print("actions_per_type:", actions_per_type)
 
-            #DEBUG PRINTS
-            print("obs main function: ", obs)
-            print("\n Rewards: ", rewards)
-            if check_extreme:
-                for agent_type, reward in enumerate(rewards):
-                    if (abs(reward) > EXTREME_THRESHOLD).any():
-                        print(f"EXTREME REWARD! Agent {agent_type}: {reward}")
-                        found_extreme = True
-            
-            print(f"Actions: {actions_per_type}")
-            print("Step rewards:", rewards)
-            rewards_list.append(rewards)
-            #print("Step info:", info)
-            #print("Market Maker Raw Action:", action_mm.tolist())
-            #print("Execution Raw Action:", action_exe.tolist())
-            #print("Done:", done)
-            if done["__all__"]:
-                print("Episode finished!")
+                if fixed_actions:
+                    actions_per_type = [jnp.array([0]),jnp.array([1])]
+                    #print("actions_per_type fixed: ", actions_per_type)
 
-                break
-            if found_extreme and check_extreme:  # Add this condition
-                print(f"Found extreme reward in episode {episode + 1}! Stopping.")
-                break
-    # jax.profiler.stop_trace()
-    jax.block_until_ready(state)
-    # jax.profiler.stop_trace()
-    
+                # print("actions_per_type: ", actions_per_type)
+                obs, state, rewards, done, info = env.step(key=key_step, state=state, actions=actions_per_type, params=env_params)
 
-    for i in range(len(rewards_list[0])):  # Number of agent types
-        # Extract rewards for agent type i across all steps
-        agent_rewards = jnp.array([rewards[i] for rewards in rewards_list])
-        print(f"Agent type {i} average reward: ", jnp.mean(agent_rewards))
-    # Set number of environments to batch
-     
+                # DEBUG PRINTS
+                print("obs main function: ", obs)
+                print("\n Rewards: ", rewards)
+                if check_extreme:
+                    for agent_type, reward in enumerate(rewards):
+                        if (abs(reward) > EXTREME_THRESHOLD).any():
+                            print(f"EXTREME REWARD! Agent {agent_type}: {reward}")
+                            found_extreme = True
+                
+                print(f"Actions: {actions_per_type}")
+                print("Step rewards:", rewards)
+                rewards_list.append(rewards)
+                #print("Step info:", info)
+                #print("Market Maker Raw Action:", action_mm.tolist())
+                #print("Execution Raw Action:", action_exe.tolist())
+                #print("Done:", done)
+                if done["__all__"]:
+                    print("Episode finished!")
+
+                    break
+                if found_extreme and check_extreme:  # Add this condition
+                    print(f"Found extreme reward in episode {episode + 1}! Stopping.")
+                    break
+        jax.profiler.stop_trace()
+        jax.block_until_ready(state)
+        # jax.profiler.stop_trace()
+        
+
+        for i in range(len(rewards_list[0])):  # Number of agent types
+            # Extract rewards for agent type i across all steps
+            agent_rewards = jnp.array([rewards[i] for rewards in rewards_list])
+            print(f"Agent type {i} average reward: ", jnp.mean(agent_rewards))
+        # Set number of environments to batch
+        
 
 
 
     # ----------------------------------------------
     # New VMAP rollout script + timing statistics
     # ----------------------------------------------
-    enable_vmap = False
+    enable_vmap = True
     if enable_vmap:
 
         print("\n" + "="*60)
@@ -950,9 +951,9 @@ if __name__ == "__main__":
 
 
         NUM_ENVS   = 1000     # number of parallel environments
-        NUM_STEPS  = 2000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         # total steps per environment
+        NUM_STEPS  = 10                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         # total steps per environment
         MASTER_KEY = jax.random.PRNGKey(6)
-        fixed_actions = False
+        fixed_actions = True
 
         # -------------------------------------------------
         # 1) Initial reset of all envs (batched)
@@ -999,6 +1000,7 @@ if __name__ == "__main__":
         # -------------------------------------------------
         # 3) Scan across a fixed number of steps
         # -------------------------------------------------
+
         def scan_body(carry, _):
             state_batch, rng = carry
             rng, *step_keys = jax.random.split(rng, NUM_ENVS + 1)
@@ -1007,17 +1009,34 @@ if __name__ == "__main__":
             )
             return (state_batch, rng), (obs, rew, done, info)
 
-        rollout_start = time.time()
-        (final_state, _), (traj_obs, traj_rew, traj_done, traj_info) = jax.lax.scan(
-            scan_body,
-            (state, master_key),
-            None,
-            length=NUM_STEPS,
-        )
-        # ensure all work is finished
-        jax.block_until_ready(final_state)
-        rollout_time = time.time() - rollout_start
+        scan_body_jit=jax.jit(scan_body)
+            
 
+        def scanner(init_carry):
+            (state, master_key), (traj_obs, traj_rew, traj_done, traj_info) = jax.lax.scan(
+                scan_body_jit,
+                init_carry,
+                None,
+                length=NUM_STEPS,
+            )
+            return (state, master_key), (traj_obs, traj_rew, traj_done, traj_info)
+
+        scanner_jit = jax.jit(scanner)
+        _,_=scanner_jit((state, master_key)) 
+        jax.block_until_ready(state)
+
+
+
+        rollout_start = time.time()
+        jax.profiler.start_trace("jax_trace")
+        carry_out,yout=scanner_jit((state, master_key)) 
+
+        # ensure all work is finished
+        jax.block_until_ready(carry_out)
+        jax.profiler.stop_trace()
+        rollout_time = time.time() - rollout_start
+        final_state,_ = carry_out
+        traj_obs, traj_rew, traj_done, traj_info = yout
         # -------------------------------------------------
         # 4) Timing statistics
         # -------------------------------------------------
@@ -1095,7 +1114,7 @@ if __name__ == "__main__":
             print(f"  {p:2d}th percentile: {value:8.2f}")
         print()
 
-        print_extreme_environments = True
+        print_extreme_environments = False
         if print_extreme_environments:
 
             for i in range(len(traj_rew)):
