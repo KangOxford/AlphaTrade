@@ -18,7 +18,7 @@ import gymnax_exchange.utils.utils as utils
 
 class TestLimitOrderBookSimulator:
     def __init__(self):
-        self.cfg=job.Configuration()
+        self.cfg=job.JAXLOB_Configuration()
 
 
     def test_add_order_to_full_book(self):
@@ -46,7 +46,7 @@ class TestLimitOrderBookSimulator:
 class SpeedExperimentsCore:
     def __init__(self):
         self.simulator = None
-        self.cfg = job.Configuration()
+        self.cfg = job.JAXLOB_Configuration()
         self.key = jax.random.PRNGKey(self.cfg.seed)
 
     def run_speed_tests_and_plot(self, n_orders, book_capacities, n_samples=100,vmap=False,n_vmap=1000,suffix=""):

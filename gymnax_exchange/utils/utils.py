@@ -152,7 +152,7 @@ def create_rand_message(type='limit',
                         quant_range=[0,500],
                         prev_time=job.cst.STARTOFDAY,
                         times_range=[0,2],
-                        timens_range=[0,job.cst.NS_PER_SEC]):
+                        timens_range=[0,int(job.cst.NS_PER_SEC)]):
 
     type_options = ['limit', 'cancel', 'market']
     side_options = ['bid', 'ask']
@@ -244,7 +244,7 @@ def get_random_aggressive_order(book_side,
                                 side='bid',
                                 prev_time=job.cst.TEST_TIME,
                                 times_range=[0,2],
-                                timens_range=[0,job.cst.NS_PER_SEC]):
+                                timens_range=[0,int(job.cst.NS_PER_SEC)]):
         """
         Obtains a price that will guarantee to match, randomly selects a quantity to match which is between 0 and 2x the quantity of the order to match.
         """
