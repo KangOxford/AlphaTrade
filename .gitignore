@@ -108,3 +108,5 @@ data/*
 scratch/*
 lob_bench/*
 debug_output/*
+jax_trace/*
+.ipython/*
