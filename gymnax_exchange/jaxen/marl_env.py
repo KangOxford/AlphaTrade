@@ -37,6 +37,7 @@ from gymnax_exchange.jaxob.jaxob_config import MultiAgentConfig
 from gymnax_exchange.jaxob.jaxob_config import World_EnvironmentConfig
 
 import numpy as np
+import argparse
 np.set_printoptions(threshold=np.iinfo(np.int32).max, linewidth=200)
 
 
@@ -831,9 +832,14 @@ if __name__ == "__main__":
     # options = jax._src.profiler.ProfileOptions()
     # options.advanced_configuration = {"tpu_trace_mode" : "TRACE_COMPUTE_AND_SYNC"}
 
+    parser = argparse.ArgumentParser(description='MARL Environment Test')
+    parser.add_argument('--data_dir', type=str, default=os.path.expanduser("~")+"/data", help='Directory containing data files')
+    parser.add_argument('--stock', type=str, default=None, help='Stock symbol to use')
+    parser.add_argument('--timeperiod', type=str, default="SamplePeriod", help='Time period for the data')
+    parser.add_argument('--single_env_test', type=bool, default=False, help='Enable single environment test')
+    args = parser.parse_args()
 
-
-    multi_agent_config = MultiAgentConfig()
+    multi_agent_config = MultiAgentConfig(World_EnvironmentConfig(dataPath=args.data_dir, stock=args.stock, timePeriod=args.timeperiod))
     rng = jax.random.PRNGKey(49) # TODO i think this should be changed to the new key function in JAX .key()
     rng, key_reset, key_policy, key_step = jax.random.split(rng, 4)
 
@@ -864,8 +870,7 @@ if __name__ == "__main__":
 
     extreme_rewards = []
     num_episodes = 1
-    single_env_test = False
-    if single_env_test:
+    if args.single_env_test:
         for episode in range(num_episodes):
             # Reset the environment.
             obs, state = env.reset(key_reset, env_params)
