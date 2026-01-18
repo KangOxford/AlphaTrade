@@ -23,11 +23,11 @@ class JAXLOB_Configuration:
     empty_slot_val: int = cst.EMPTY_SLOT
     debug_mode: bool = False
     check_book_fill: bool = True #No major impact on performance, necessary as full book happens quite often.
-    start_resolution: int = 64  # Episodes from data start every n seconds.
+    start_resolution: int = 6400  # Episodes from data start every n seconds.
     alphatradePath: str = os.path.expanduser("~")
     dataPath: str = os.path.expanduser("~")+"/data"
     stock: str = "AMZN"
-    timePeriod: str = "2024" # Needs to be the appropriate directory name. 
+    timePeriod: str = "2024_Dec" # Needs to be the appropriate directory name. 
 
 
 @dataclass(frozen=True)
@@ -49,9 +49,9 @@ class MarketMaking_EnvironmentConfig():
 
     
     # Real Parameters
-    action_space: str = "spread_skew"    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
+    action_space: str = "bobRL"    # action_space options: "fixed_prices", "fixed_quants", "AvSt", "spread_skew", "directional_trading", "simple"
     observation_space: str = "engineered"    # observation_space options: "engineered", "messages", "messages_new_tokenizer", "basic"
-    reward_function: str = "buy_sell_pnl"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"    
+    reward_function: str = "spooner_asym_damped2"  # options: "zero_inv", "pnl", "buy_sell_pnl", "complex", "portfolio_value", "portfolio_value_scaled", "spooner", "spooner_damped", "spooner_scaled", "delta_netWorth","weight_pnl_inventory_pnl"    
     
     #       Values for action space
     spread_multiplier: float = 3.0 #50.0
@@ -73,6 +73,7 @@ class MarketMaking_EnvironmentConfig():
     multiplier_type: str = "tick" # options:  "tick" #DO NOT USE "spread" it is WRONG. 
     reward_scaling_quo: float = 1.0
     inventoryPnL_eta: float = 0.6
+    inventoryPnL_gamma: float = 0.5
 
     rebate_bps: float = 10.0  # rebate in bps applied to the trade value for limit order fills (only passive fills)
 
@@ -88,8 +89,8 @@ class MarketMaking_EnvironmentConfig():
     time_delay_obs_act: int = 0
 
     # Set Automatically in Post Init based on action space.
-    n_actions: int = 4
-    num_messages_by_agent: int = 8
+    n_actions: int = 10
+    num_messages_by_agent: int = 4
     num_action_messages_by_agent: int = 2
 
 
@@ -102,6 +103,14 @@ class MarketMaking_EnvironmentConfig():
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "spread_skew":
             object.__setattr__(self, 'n_actions', 6)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_action_messages_by_agent', 2)
+        elif self.action_space == "bobStrategy":
+            object.__setattr__(self, 'n_actions', 5)
+            object.__setattr__(self, 'num_messages_by_agent', 4)
+            object.__setattr__(self, 'num_action_messages_by_agent', 2)
+        elif self.action_space == "bobRL":
+            object.__setattr__(self, 'n_actions', 3)
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "directional_trading":
@@ -180,10 +189,10 @@ class Execution_EnvironmentConfig():
 
 @dataclass(frozen=True)
 class World_EnvironmentConfig(JAXLOB_Configuration):
-    n_data_msg_per_step: int = 100
+    n_data_msg_per_step: int = 1
     window_selector: int = -1 # -1 means random window
     ep_type :str = "fixed_steps" # fixed_steps, fixed_time
-    episode_time: int = 64 # counted by seconds, 1800s=0.5h or steps
+    episode_time: int = 6400 # counted by seconds, 1800s=0.5h or steps
     day_start: int = 34200  # 09:30
     day_end: int = 57600  # 16:00
     tick_size: int = 100

@@ -164,6 +164,10 @@ class MarketMakingAgent():
             self.action_fn = self._getActionMsgs_fixedPrice
         elif self.cfg.action_space == "AvSt":
             self.action_fn = self._getActionMsgs_AvSt
+        elif self.cfg.action_space == "bobStrategy":
+            self.action_fn = self._getActionMsgs_BobStrategy
+        elif self.cfg.action_space == "bobRL":
+            self.action_fn = self._getActionMsgs_BobRL
         elif self.cfg.action_space == "spread_skew":
             self.action_fn = self._getActionMsgs_spread_skew
         elif self.cfg.action_space == "directional_trading":
@@ -1233,7 +1237,7 @@ class MarketMakingAgent():
 
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
-        return action_msgs,{}
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":False,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
 
 
 
@@ -1313,12 +1317,178 @@ class MarketMakingAgent():
         #jax.debug.print("spread:{}",spread)
         #jax.debug.print("mid price :{}",mid_price)
         #jax.debug.print("msg:{}",action_msgs)
-        return action_msgs,{"posted_spread":spread,
-                            "reservation_price":res_price,
-                            "bid_price":bid_price,
-                            "ask_price":ask_price}
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":False,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
+
+    def _getActionMsgs_BobStrategy(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
+        '''Transform discrete action into bid and ask order messages based on current best prices.'''
+        if self.cfg.fixed_action_setting == True:
+            action = jnp.asarray([self.cfg.fixed_action])
+        
+        kappa_values = jnp.array([0,0.05,0.1,0.5,0.9], dtype=jnp.float32)  # Risk aversion
+        kappa= kappa_values[action]
+        
+        
+        # Use the most recent best_ask and best_bid values
+        #These values may be my own orders... I clearly don't want to base myself off them. Get from world state directly.
+        ask_mask=(world_state.ask_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        bid_mask=(world_state.bid_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        
+        masked_asks=jnp.where(ask_mask[:, jnp.newaxis], world_state.ask_raw_orders, -1)
+        masked_bids=jnp.where(bid_mask[:, jnp.newaxis], world_state.bid_raw_orders, -1)
     
-    def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: WorldState, agent_params: MMEnvParams):
+        best_ask, best_bid = job.get_best_bid_and_ask(self.world_config,masked_asks,masked_bids)
+        #If the book is empty here, we get -1 back.
+
+        empty_book = jnp.where((best_ask == -1) | (best_bid == -1),True, False)
+        #We then replace with the last known bbid, bask, which in turn should have been forward filled, but is most likely our own order which will be v far from the last true market price. 
+        best_ask = jnp.int32((best_ask // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((best_bid // self.world_config.tick_size) * self.world_config.tick_size)
+        #The world state will have the mid-price propagated. Doing this just for the sake of logging to have reasonable averages. 
+        #If the book is empty, the quants are put to 0 anyway. 
+        best_bid = jnp.where(empty_book, world_state.best_bids[-1,0], best_bid)
+        best_ask = jnp.where(empty_book, world_state.best_asks[-1,0], best_ask)
+
+        position=agent_state.inventory
+
+        v_0=self.cfg.fixed_quant_value
+        bid_quant=jnp.round(v_0*jnp.maximum(1 - kappa*position,0)).astype(jnp.int32) #epsilon = -1
+        ask_quant=jnp.round(v_0*jnp.maximum(1 + kappa*position,0)).astype(jnp.int32) #epsilon = 1
+        bid_quant=jnp.where(empty_book, 0, bid_quant)
+        ask_quant=jnp.where(empty_book, 0, ask_quant)
+    
+        #jax.debug.print("bid_price after:{}",bid_price)
+        #jax.debug.print("ask_price after:{}",ask_price)
+        
+        # --------------- Construct messages ---------------#
+        # Message components (2 messages: bid then ask)
+        types = jnp.asarray([1, 1], dtype=jnp.int32)  # 1=limit order
+        sides = jnp.asarray([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
+        quants = jnp.asarray([bid_quant, ask_quant], dtype=jnp.int32)
+        prices = jnp.asarray([best_bid, best_ask], dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
+
+
+        if self.cfg.tenth_action== "MarketOrder":
+            liq_types = jnp.asarray([4, 4], dtype=jnp.int32)  # 4=IOC order
+            liq_sides = jnp.asarray([-1, 1], dtype=jnp.int32)  # -1=exec on ask, buy order, 1=exec on bid, sell order
+            liq_quants = jnp.asarray([self.cfg.auto_liquidate_alpha*jnp.maximum(-agent_state.inventory,0), self.cfg.auto_liquidate_alpha*jnp.maximum(agent_state.inventory,0)], dtype=jnp.int32)
+            liq_prices = jnp.asarray([best_ask+half_spread*10, best_bid-half_spread*10], dtype=jnp.int32)
+            types=jnp.where(action==9, liq_types, types)
+            sides=jnp.where(action==9, liq_sides, sides)
+            quants=jnp.where(action==9, liq_quants, quants)
+            prices=jnp.where(action==9, liq_prices, prices)
+
+        if self.cfg.auto_liquidate_threshold !=0:
+            liq_types = jnp.asarray([4, 4], dtype=jnp.int32)  # 4=IOC order
+            liq_sides = jnp.asarray([-1, 1], dtype=jnp.int32)  # -1=exec on ask, buy order, 1=exec on bid, sell order
+            liq_quants = jnp.asarray([self.cfg.auto_liquidate_alpha*jnp.maximum(-agent_state.inventory,0), self.cfg.auto_liquidate_alpha*jnp.maximum(agent_state.inventory,0)], dtype=jnp.int32)
+            liq_prices = jnp.asarray([best_ask+half_spread*10, best_bid-half_spread*10], dtype=jnp.int32)
+            types=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_types, types)
+            sides=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_sides, sides)
+            quants=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_quants, quants)
+            prices=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_prices, prices)
+
+        quants = quants.flatten() # Flatten so they have the same shape
+        prices = prices.flatten()
+        
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
+
+        
+        # Time fields (replicated for each message)
+        times = jnp.resize(
+            world_state.time + self.cfg.time_delay_obs_act,
+            (2, 2)  # Shape (2 messages, 2 time fields)
+        )
+
+
+
+        # Stack components into message array
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+
+        # action_msgs = jnp.where((action==9) & (~empty_book), jnp.ones_like(action_msgs)*9, action_msgs)  
+        #jax.debug.print("action_msgs mm:{}",action_msgs)
+
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":empty_book,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
+    
+    
+    def _getActionMsgs_BobRL(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
+        '''Transform discrete action into bid and ask order messages based on current best prices.'''
+        if self.cfg.fixed_action_setting == True:
+            action = jnp.asarray([self.cfg.fixed_action])
+        
+        
+        
+        # Use the most recent best_ask and best_bid values
+        #These values may be my own orders... I clearly don't want to base myself off them. Get from world state directly.
+        ask_mask=(world_state.ask_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        bid_mask=(world_state.bid_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        
+        masked_asks=jnp.where(ask_mask[:, jnp.newaxis], world_state.ask_raw_orders, -1)
+        masked_bids=jnp.where(bid_mask[:, jnp.newaxis], world_state.bid_raw_orders, -1)
+    
+        best_ask, best_bid = job.get_best_bid_and_ask(self.world_config,masked_asks,masked_bids)
+        #If the book is empty here, we get -1 back.
+
+        empty_book = jnp.where((best_ask == -1) | (best_bid == -1),True, False)
+        #We then replace with the last known bbid, bask, which in turn should have been forward filled, but is most likely our own order which will be v far from the last true market price. 
+        best_ask = jnp.int32((best_ask // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((best_bid // self.world_config.tick_size) * self.world_config.tick_size)
+        #The world state will have the mid-price propagated. Doing this just for the sake of logging to have reasonable averages. 
+        #If the book is empty, the quants are put to 0 anyway. 
+        best_bid = jnp.where(empty_book, world_state.best_bids[-1,0], best_bid)
+        best_ask = jnp.where(empty_book, world_state.best_asks[-1,0], best_ask)
+
+        bid_quants = jnp.array([1, 2, 0,], dtype=jnp.int32)
+        ask_quants = jnp.array([1, 0, 2], dtype=jnp.int32)##config quant....
+
+
+        v_0=self.cfg.fixed_quant_value
+        bid_quant = bid_quants[action]*v_0
+        ask_quant = ask_quants[action]*v_0
+        bid_quant=jnp.where(empty_book, 0, bid_quant)
+        ask_quant=jnp.where(empty_book, 0, ask_quant)
+    
+        #jax.debug.print("bid_price after:{}",bid_price)
+        #jax.debug.print("ask_price after:{}",ask_price)
+        
+        # --------------- Construct messages ---------------#
+        # Message components (2 messages: bid then ask)
+        types = jnp.asarray([1, 1], dtype=jnp.int32)  # 1=limit order
+        sides = jnp.asarray([1, -1], dtype=jnp.int32)  # 1=bid, -1=ask
+        quants = jnp.asarray([bid_quant, ask_quant], dtype=jnp.int32)
+        prices = jnp.asarray([best_bid, best_ask], dtype=jnp.int32)
+        trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
+
+
+
+
+        quants = quants.flatten() # Flatten so they have the same shape
+        prices = prices.flatten()
+        
+        # Placeholder for order ids
+        order_ids = jnp.full((self.cfg.num_action_messages_by_agent,), self.world_config.placeholder_order_id, dtype=jnp.int32)
+
+        
+        # Time fields (replicated for each message)
+        times = jnp.resize(
+            world_state.time + self.cfg.time_delay_obs_act,
+            (2, 2)  # Shape (2 messages, 2 time fields)
+        )
+
+
+
+        # Stack components into message array
+        action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
+        action_msgs = jnp.concatenate([action_msgs, times], axis=1)
+
+        # action_msgs = jnp.where((action==9) & (~empty_book), jnp.ones_like(action_msgs)*9, action_msgs)  
+        #jax.debug.print("action_msgs mm:{}",action_msgs)
+
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":empty_book,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
+    
+    def _getActionMsgs_fixedPrice(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Shape the action quantities in to messages sent the order book at the 
         prices levels determined from the orderbook'''
         def normal_quant_price(price_levels: jax.Array, action: jax.Array):
@@ -1419,10 +1589,10 @@ class MarketMakingAgent():
         action_msgs = jnp.stack([types, sides, quants, prices, order_ids,trader_ids], axis=1)
         action_msgs = jnp.concatenate([action_msgs, times],axis=1)
         #jax.debug.print('action_msgs\n {}', action_msgs)
-        return action_msgs,{}
+        return action_msgs,{"bid_quant":0,"ask_quant":0,"empty_book":False,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
         # ============================== Get Action_msgs ==============================
 
-    def _getActionMsgs_spread_skew(self, action: jax.Array, world_state: WorldState, agent_params: MMEnvParams):
+    def _getActionMsgs_spread_skew(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on spread and skew parameters.
         Actions [0-5] map to combinations of:
         spread: 0 = tight spread, 1 = wide spread
@@ -1561,11 +1731,11 @@ class MarketMakingAgent():
         #jax.debug.print("Final Bid Price: {}, Final Ask Price: {}", bid_price, ask_price)
         #jax.debug.print("Final Messages:\n{}", action_msgs)
         
-        return action_msgs,{}
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":False,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
 
 
 
-    def _getActionMsgs_directional_trading(self, action: jax.Array, world_state: WorldState, agent_params: MMEnvParams):
+    def _getActionMsgs_directional_trading(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Action space for directional trading. The agent can either:
             - Do nothing (action = 0)
             - Buy at best ask (action = 1)
@@ -1620,7 +1790,7 @@ class MarketMakingAgent():
         
         # Debug print final messages
         #jax.debug.print("Final Action Messages:\n{}", action_msgs)
-        return action_msgs,{}
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":False,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
 
 
 
@@ -2204,6 +2374,9 @@ class MarketMakingAgent():
         #A2.5 Spooner Asym Dampened
         reward_spooner_asym_damped = buyPnL + sellPnL + rebate_income + InventoryPnL - jnp.maximum(0,(self.cfg.inventoryPnL_eta*InventoryPnL))
 
+        #A2.75 Spooner Asym Damped, actually
+        reward_spooner_asym_damped2 = buyPnL + sellPnL + rebate_income + self.cfg.inventoryPnL_gamma*(InventoryPnL - jnp.maximum(0,self.cfg.inventoryPnL_eta*InventoryPnL))
+
         #A3) Spooner Scaled
         scaledInventoryPnL=InventoryPnL//(jnp.abs(agent_state.inventory)+1)
         reward_spooner_scaled=buyPnL + sellPnL + rebate_income + self.cfg.inventoryPnL_eta*(InventoryPnL - (1-self.cfg.inventoryPnL_eta)*jnp.maximum(0,InventoryPnL) )
@@ -2265,6 +2438,8 @@ class MarketMakingAgent():
             reward=reward_spooner_damped
         elif self.cfg.reward_function=="spooner_asym_damped":
             reward=reward_spooner_asym_damped
+        elif self.cfg.reward_function=="spooner_asym_damped2":
+            reward=reward_spooner_asym_damped2
         elif self.cfg.reward_function=="spooner_scaled":
             #Skip
             reward=reward_spooner_scaled
@@ -2408,6 +2583,7 @@ class MarketMakingAgent():
             "reward_spooner":reward_spooner,
             "reward_spooner_damped":reward_spooner_damped,
             "reward_spooner_asym_damped":reward_spooner_asym_damped,
+            "reward_spooner_asym_damped2":reward_spooner_asym_damped2,
             "reward_spooner_scaled":reward_spooner_scaled,
             "reward_delta_portfolio_value":delta_netWorth,
             "forced_unwind":forced_unwind,
@@ -2460,6 +2636,7 @@ class MarketMakingAgent():
             "end_of_ep_pv":extras["end_of_ep_pv"],
             "reward_spooner_damped":extras["reward_spooner_damped"],
             "reward_spooner_asym_damped":extras[ "reward_spooner_asym_damped"],
+            "reward_spooner_asym_damped2":extras[ "reward_spooner_asym_damped2"],
             "reward_delta_pv":extras["reward_delta_portfolio_value"],
             "total_PnL": agent_state.total_PnL,                           
             "done": done,
@@ -2473,6 +2650,8 @@ class MarketMakingAgent():
             "posted_ask_price":extras["posted_ask_price"],
             "bid_distance_from_best":extras["bid_distance_from_best"],
             "ask_distance_from_best":extras["ask_distance_from_best"],
+            "ask_quant":extras["ask_quant"],
+            "bid_quant":extras["bid_quant"],
             # "scaledInventoryPnL":extras["scaledInventoryPnL"],
             # "netWorth":extras["netWorth"],
             "sellPnL":extras["sellPnL"],
@@ -2556,6 +2735,10 @@ class MarketMakingAgent():
         elif self.cfg.action_space == "fixed_prices":
             return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
         elif self.cfg.action_space == "AvSt":
+            return self.action_fn(action=action, world_state=world_state, agent_state=agent_state, agent_params=agent_params)
+        elif self.cfg.action_space == "bobStrategy":
+            return self.action_fn(action=action, world_state=world_state, agent_state=agent_state, agent_params=agent_params)
+        elif self.cfg.action_space == "bobRL":
             return self.action_fn(action=action, world_state=world_state, agent_state=agent_state, agent_params=agent_params)
         elif self.cfg.action_space == "spread_skew":
             return self.action_fn(action=action, world_state=world_state, agent_params=agent_params)
@@ -2781,8 +2964,8 @@ class MarketMakingAgent():
         
         if self.world_config.ep_type == "fixed_time":
             obs = {
-                "dist_of_posted_ask": agent_state.posted_distance_ask,
-                "dist_of_posted_bid": agent_state.posted_distance_bid,
+                # "dist_of_posted_ask": agent_state.posted_distance_ask,
+                # "dist_of_posted_bid": agent_state.posted_distance_bid,
                 # "p_bid" : world_state.best_bids[-1][0],  
                 # "p_ask":world_state.best_asks[-1][0], 
                 "spread": spread,
@@ -2803,8 +2986,8 @@ class MarketMakingAgent():
             #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
 
             means = {
-                "dist_of_posted_ask": 0,
-                "dist_of_posted_bid": 0,
+                # "dist_of_posted_ask": 0,
+                # "dist_of_posted_bid": 0,
                 # "p_bid" : 0,
                 # "p_ask":0, 
                 "spread": 0,
@@ -2821,8 +3004,8 @@ class MarketMakingAgent():
             }
 
             stds = {
-                "dist_of_posted_ask": 1.0,
-                "dist_of_posted_bid": 1.0,
+                # "dist_of_posted_ask": 1.0,
+                # "dist_of_posted_bid": 1.0,
                 # "p_bid" : 1e6,
                 # "p_ask":1e6, 
                 "spread": 1e4,
@@ -2841,8 +3024,8 @@ class MarketMakingAgent():
 
         elif self.world_config.ep_type == "fixed_steps": # leave away time related stuff
             obs = {
-                "dist_of_posted_ask": agent_state.posted_distance_ask,
-                "dist_of_posted_bid": agent_state.posted_distance_bid,
+                # "dist_of_posted_ask": agent_state.posted_distance_ask,
+                # "dist_of_posted_bid": agent_state.posted_distance_bid,
                 # "p_bid" : world_state.best_bids[-1][0],  
                 # "p_ask":world_state.best_asks[-1][0], 
                 "spread": spread,
@@ -2861,8 +3044,8 @@ class MarketMakingAgent():
             #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
 
             means = {
-                "dist_of_posted_ask": 0,
-                "dist_of_posted_bid": 0,
+                # "dist_of_posted_ask": 0,
+                # "dist_of_posted_bid": 0,
                 # "p_bid" : 0,
                 # "p_ask":0, 
                 "spread": 0,
@@ -2878,8 +3061,8 @@ class MarketMakingAgent():
             }
 
             stds = {
-                "dist_of_posted_ask": 1,
-                "dist_of_posted_bid": 1,
+                # "dist_of_posted_ask": 1,
+                # "dist_of_posted_bid": 1,
                 # "p_bid" : 1e6,
                 # "p_ask":1e6, 
                 "spread": 1e4,
@@ -2925,6 +3108,10 @@ class MarketMakingAgent():
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
             return spaces.Discrete(10) #TODO change back to 8
+        if self.cfg.action_space == "bobStrategy":
+            return spaces.Discrete(5)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
+        elif self.cfg.action_space == "bobRL":
+            return spaces.Discrete(3)  # [0: do nothing, 1: buy at ask, 2: sell at bid, 3: buy at bid, 4: sell at ask, 5: place both orders, 6: cancel both orders]
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
         elif self.cfg.action_space == "simple":
@@ -2941,9 +3128,9 @@ class MarketMakingAgent():
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
             if self.world_config.ep_type == "fixed_time":
-             return spaces.Box(-1000, 1000, (4,), dtype=jnp.float32)
+             return spaces.Box(-1000, 1000, (2,), dtype=jnp.float32)
             elif self.world_config.ep_type == "fixed_steps":
-                return spaces.Box(-1000, 1000, (4,), dtype=jnp.float32)
+                return spaces.Box(-1000, 1000, (2,), dtype=jnp.float32)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
                 return spaces.Box(low=-1*self.world_config.maxint, high=self.world_config.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
