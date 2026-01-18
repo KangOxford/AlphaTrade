@@ -15,7 +15,7 @@
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 3436
 "N_DEVICES": 1
-"FIXED_ACTIONS" : [[0]]
+"FIXED_ACTIONS" : [[2]]
 
 # WandB Params
 "ENTITY": "oxford-lob"
@@ -44,10 +44,10 @@
 
 
 "BASELINE_CONFIGS" : {
-                  "MarketMaking" : {"action_space": "bobStrategy",} #fixed_quants,fixed_quants_complex}
+                  "MarketMaking" : {"action_space": "fixed_quants",} #fixed_quants,fixed_quants_complex}
                 }
 
-"AGENT_CONFIGS" : {"MarketMaking" : {"action_space": "bobStrategy",}
+"AGENT_CONFIGS" : {"MarketMaking" : {"action_space": "fixed_quants",}
                 }
 
 

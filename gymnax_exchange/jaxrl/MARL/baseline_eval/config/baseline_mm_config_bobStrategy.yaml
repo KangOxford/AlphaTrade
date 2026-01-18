@@ -2,20 +2,20 @@
 # apply differently to each ntwrk
 # Should match with NUM_AGENTS_PER_TYPE
 
-# "NUM_ENVS": 4096
-# "NUM_STEPS": 256 #128
-# "TINY_RUN": False
+"NUM_ENVS": 2048
+"NUM_STEPS": 6400 #128
+"TINY_RUN": False
 
-"NUM_ENVS": 16
-"NUM_STEPS": 2000000
-"TINY_RUN": True
+# "NUM_ENVS": 16
+# "NUM_STEPS": 256000
+# "TINY_RUN": True
 
 
 "ENV_NAME": "JAXMARL-Lob-v0"
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 3436
 "N_DEVICES": 1
-"FIXED_ACTIONS" : [[0]]
+"FIXED_ACTIONS" : [[3]]
 
 # WandB Params
 "ENTITY": "oxford-lob"
@@ -24,8 +24,8 @@
 
 # High-Level Params
 "CALC_EVAL" : False
-"EvalTimePeriod" : "2024_Dec" #"2024"
-"ENV_CONFIG": "config/env_configs/mm_debug_fixed_quant.json"
+"EvalTimePeriod" : "2024" #"2024"
+"ENV_CONFIG": "config/env_configs/mm_bobStrategy.json"
 
 
 

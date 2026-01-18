@@ -9,8 +9,6 @@ from humanize import metric
 import pandas as pd
 import csv
 
-from sympy import plot
-from torch import le
 
 from docs.source import conf
 # from lobgen.tgci.tgci import train
