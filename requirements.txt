@@ -7,11 +7,6 @@ scikit-learn
 statsmodels
 
 # JAX (Updated versions that are compatible)
-# jax[cuda12]==0.6.1
-# jax-cuda12-pjrt==0.6.1
-# jax-cuda12-plugin==0.6.1
-# jaxlib==0.6.1
-jaxopt==0.8.5
 optax
 flax
 chex
@@ -22,8 +17,7 @@ ml-dtypes
 # torch
 # torchvision
 # torchaudio
-tensorflow-probability
-
+tfp-nightly
 # RL and Environment Libraries
 gym
 dm-env
@@ -64,20 +58,7 @@ hydra-core
 pytest
 pytest-cov
 
-# CUDA Support (Optional - uncomment if you have CUDA)
-# nvidia-cublas-cu12
-# nvidia-cuda-cupti-cu12
-# nvidia-cuda-nvcc-cu12
-# nvidia-cuda-nvrtc-cu12
-# nvidia-cuda-runtime-cu12
-# nvidia-cudnn-cu12
-# nvidia-cufft-cu12
-# nvidia-curand-cu12
-# nvidia-cusolver-cu12
-# nvidia-cusparse-cu12
-# nvidia-nccl-cu12
-# nvidia-nvjitlink-cu12
-# nvidia-nvtx-cu12
+
 
 # Specialized Libraries
 einops
@@ -86,7 +67,7 @@ PyOpenGL
 distrax
 evosax
 ml-collections
-orbax-checkpoint==0.11.14
+orbax-checkpoint==0.11.18
 ray
 xgboost
 
