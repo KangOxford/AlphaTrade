@@ -70,16 +70,17 @@ def add_order(orderside: chex.Array, msg: dict) -> chex.Array :
         Returns:
                 orderside (Array): Side of orderbook with added order 
     """
-    emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
-    orderside=orderside.at[emptyidx,:]\
-                        .set(jnp.array([
-                            msg['price'],
-                            jnp.maximum(0,msg['quantity']),
-                            msg['orderid'],
-                            msg['traderid'],
-                            msg['time'],
-                            msg['time_ns']]))\
-                        .astype(jnp.int32)
+    with jax.named_scope("add_order"):
+        emptyidx=jnp.where(orderside==-1,size=1,fill_value=-1)[0]
+        orderside=orderside.at[emptyidx,:]\
+                            .set(jnp.asarray([
+                                msg['price'],
+                                jnp.maximum(0,msg['quantity']),
+                                msg['orderid'],
+                                msg['traderid'],
+                                msg['time'],
+                                msg['time_ns']]))\
+                            .astype(jnp.int32)
     return _removeZeroNegQuant(orderside)
 
 @jax.jit
@@ -199,6 +200,7 @@ def match_order(data_tuple):
     """
     (top_order_idx, orderside, qtm, price,
             trade, agrOID, time, time_ns,agrTID,side) = data_tuple
+    top_order_idx=top_order_idx[0].astype(jnp.int32)
     newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm)
     qtm=qtm-orderside[top_order_idx,1]
     qtm=qtm.astype(jnp.int32)
@@ -206,18 +208,115 @@ def match_order(data_tuple):
     passTID=orderside[top_order_idx,3]
     #side is 1 if incoming order is a buy.//
     #This makes trade q<0 if incoming order is a buy,i.e, a standing sale, and q>0 if there is a standing buy.
-    trade=trade.at[emptyidx,:] \
-                .set(jnp.array([orderside[top_order_idx,0],
-                                -side * (orderside[top_order_idx, 1] - newquant),
-                                orderside[top_order_idx,2],
-                                [agrOID],
-                                [time],
-                                [time_ns],
-                                passTID,
-                                [agrTID]]).transpose())
+    
+    trade_entry = jnp.asarray([
+        orderside[top_order_idx, 0],
+        -side * (orderside[top_order_idx, 1] - newquant),
+        orderside[top_order_idx, 2],
+        agrOID,
+        time,
+        time_ns,
+        passTID,
+        agrTID
+    ], dtype=jnp.int32)
+
+
+
+    trade=trade.at[emptyidx[0],:].set(trade_entry) #transpose?
     orderside=_removeZeroNegQuant(orderside.at[top_order_idx,1].set(newquant))
     return (orderside.astype(jnp.int32), jnp.squeeze(qtm),
              price, trade, agrOID, time, time_ns,agrTID,side)
+@jax.jit
+def test_match_order(data_tuple):
+    (top_order_idx, orderside, qtm, price,
+            trade, agrOID, time, time_ns,agrTID,side) = data_tuple
+    # top_order_idx=top_order_idx[0].astype(jnp.int32)
+    newquant=jnp.maximum(0,orderside[top_order_idx,1]-qtm)
+    qtm=qtm-1#¡orderside[top_order_idx,1]
+    # qtm=qtm.astype(jnp.int32)
+    # emptyidx=jnp.where(trade[:,cst.LOBMSGFEAT.OID.value]==-1,size=1,fill_value=-1)[0]
+    # passTID=orderside[top_order_idx,3]
+    #side is 1 if incoming order is a buy.//
+    #This makes trade q<0 if incoming order is a buy,i.e, a standing sale, and q>0 if there is a standing buy.
+    
+    # trade_entry = jnp.asarray([
+    #     orderside[top_order_idx, 0],
+    #     -side * (orderside[top_order_idx, 1] - newquant),
+    #     orderside[top_order_idx, 2],
+    #     agrOID,
+    #     time,
+    #     time_ns,
+    #     passTID,
+    #     agrTID
+    # ], dtype=jnp.int32)
+
+
+
+    # trade=trade.at[emptyidx[0],:].set(trade_entry) #transpose?
+    orderside=orderside.at[top_order_idx,1].set(newquant)
+    return (orderside.astype(jnp.int32), qtm,
+             price, trade, agrOID, time, time_ns,agrTID,side)
+
+@jax.jit
+def _test_match(match_tuple):
+    counter=match_tuple[0]-1
+    matching_tuple = test_match_order(match_tuple[1:])
+    top_i = test_get_top_bid_order_idx(matching_tuple[0])
+
+    return counter, top_i, *matching_tuple
+
+@partial(jax.jit,static_argnums=0)
+def _match_against_ask_orders(cfg: JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
+    """Wrapper for the while loop that gets the top ask order, and
+    matches the incoming order against it whilst the 
+    _check_before_matching_ask function remains true.
+    Returns the new set of bid orders after matching, and the remaining
+    quantity to match.
+    """
+    # with jax.transfer_guard("disallow"):
+    with jax.named_scope("match_ask"):
+        match_order=partial(_match_ask_order,cfg)
+        top_order_idx=test_get_top_bid_order_idx(orderside)
+        (counter,top_order_idx,orderside,
+        qtm,price,trade,_,_,_,_,_)=jax.lax.while_loop(test_check_before_matching_ask,
+                                                _test_match,
+                                                (10,top_order_idx,orderside,
+                                                    qtm,price,trade,agrOID,
+                                                    time,time_ns,agrTID,side))
+    return (orderside,qtm,price,trade)
+
+@jax.jit
+def test_check_before_matching_ask(data_tuple):
+    """Dummy fun for testing. 
+    """
+    counter,top_order_idx,orderside,qtm,price,_,_,_,_,_,_=data_tuple
+    # jax.debug.print("In check before matching ask: {}",counter)
+    returnarray=jnp.logical_and(orderside[top_order_idx,0]<=price,
+                  jnp.logical_and(qtm>0,
+                  orderside[top_order_idx,0]!=-1))
+ 
+    return jnp.logical_and(returnarray, counter>0)
+
+def test_get_top_bid_order_idx(orderside):
+    """Identifies the index in the array representing the bid side
+    which contains the best bid order. This is the order with the
+    largest price, with the arrival time acting as the tie-breaker.
+    """
+    print(orderside)
+    maxPrice=jnp.max(orderside[:,0],axis=0)
+    print("Max price: ", maxPrice)
+    times=jnp.where(orderside[:,0]==maxPrice,orderside[:,4],100_000_000)
+    print("Times: ", times)
+    minTime_s=jnp.min(times,axis=0)
+    print("Min time s: ", minTime_s)
+    times_ns=jnp.where(times==minTime_s,orderside[:,5],2_000_000_000)
+    print("Times ns: ", times_ns)
+    minTime_ns=jnp.min(times_ns,axis=0)
+    print("Min time ns: ", minTime_ns)
+    return_val= jnp.squeeze(jnp.where(times_ns==minTime_ns,size=1,fill_value=-1)[0])
+    print("Return val: ", return_val)
+    # return_val= 54
+    return return_val 
 
 
 @partial(jax.jit, static_argnums=(0,))
@@ -258,13 +357,14 @@ def _get_top_ask_order_idx(cfg: JAXLOB_Configuration,orderside):
     which contains the best ask order. This is the order with the
     smallest price, with the arrival time acting as the tie-breaker.
     """
-    prices=orderside[:,0]
-    prices=jnp.where(prices==-1,cfg.maxint,prices)
-    minPrice=jnp.min(prices)
-    times=jnp.where(orderside[:,0]==minPrice,orderside[:,4],cfg.maxint)
-    minTime_s=jnp.min(times,axis=0)
-    times_ns=jnp.where(times==minTime_s,orderside[:,5],cfg.maxint)
-    minTime_ns=jnp.min(times_ns,axis=0)
+    with jax.named_scope("get_top_ask"):
+        prices=orderside[:,0]
+        prices=jnp.where(prices==-1,cfg.maxint,prices)
+        minPrice=jnp.min(prices)
+        times=jnp.where(orderside[:,0]==minPrice,orderside[:,4],cfg.maxint)
+        minTime_s=jnp.min(times,axis=0)
+        times_ns=jnp.where(times==minTime_s,orderside[:,5],cfg.maxint)
+        minTime_ns=jnp.min(times_ns,axis=0)
     return jnp.where(times_ns==minTime_ns,size=1,fill_value=-1)[0]
 
 @jax.jit
@@ -313,25 +413,13 @@ def _check_before_matching_ask(data_tuple):
                   & (orderside[top_order_idx,0]!=-1))
     return jnp.squeeze(returnarray)
 
-@partial(jax.jit,static_argnums=0)
-def _match_against_ask_orders(cfg: JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
-    """Wrapper for the while loop that gets the top ask order, and
-    matches the incoming order against it whilst the 
-    _check_before_matching_ask function remains true.
-    Returns the new set of bid orders after matching, and the remaining
-    quantity to match.
-    """
-    top_order_idx=_get_top_ask_order_idx(cfg,orderside)
-    (top_order_idx,orderside,
-     qtm,price,trade,_,_,_,_,_)=jax.lax.while_loop(_check_before_matching_ask,
-                                               partial(_match_ask_order,cfg),
-                                               (top_order_idx,orderside,
-                                                qtm,price,trade,agrOID,
-                                                time,time_ns,agrTID,side))
-    return (orderside,qtm,price,trade)
+
+
+
 
 ################ TYPE AND SIDE FUNCTIONS ################
 
+@jax.jit
 def doNothing(msg,askside,bidside,trades):
     """Dummy function for conditional statements to do nothing
     in certain cases. 
@@ -379,43 +467,44 @@ def bid_lim(cfg:JAXLOB_Configuration,msg,askside,bidside,trades):
                 bidside (Array): Same as parameter, after processing
                 trades (Array): Same as parameter, after processing
     """
-    matchtuple=_match_against_ask_orders(cfg,
-                                         askside,msg["quantity"],
-                                         msg["price"],
-                                         trades,
-                                         msg['orderid'],
-                                         msg["time"],
-                                         msg["time_ns"],
-                                         msg["traderid"],
-                                         msg['side'])
-    if cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
-        msg["price"]=cfg.maxint
-    msg["quantity"]=matchtuple[1] #Remaining quantity
+    with jax.named_scope("bid_lim"):
+        matchtuple=_match_against_ask_orders(cfg,
+                                            askside,msg["quantity"],
+                                            msg["price"],
+                                            trades,
+                                            msg['orderid'],
+                                            msg["time"],
+                                            msg["time_ns"],
+                                            msg["traderid"],
+                                            msg['side'])
+        if cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
+            msg["price"]=cfg.maxint
+        msg["quantity"]=matchtuple[1] #Remaining quantity
 
-    if cfg.check_book_fill:
-        full_book_flag= jnp.where(jnp.all(bidside[:,cst.OrderSideFeat.P.value]>=0), True, False)
-        worst_price=jnp.min(bidside[:,cst.OrderSideFeat.P.value]) #Don't need the fancy stuff for the -1 (EMPTY) case because the book is full. Otherwise, just replace a -1 with an empty. 
-        remove=jnp.where((bidside[:,cst.OrderSideFeat.P.value]==worst_price).reshape(bidside.shape[0],1),(jnp.ones(bidside.shape)*-1).astype(jnp.int32),bidside)
-        bidside=jnp.where(full_book_flag,
-                    remove,
-                    bidside)
-        def actually_full_callback(full_book_flag,bidside,remove):
-            if full_book_flag:
-                print("WARNING: Full bid book before adding new order. Removing worst bid to make space." \
-                "\n \t Consider increasing book size to avoid this.")
-                # print("Removed best price (lowest) book: ", remove)
-                # print("Resulting ask book: ", askside)
-        # jax.debug.callback(actually_full_callback,full_book_flag,bidside,remove)
+        if cfg.check_book_fill:
+            full_book_flag= jnp.where(jnp.all(bidside[:,cst.OrderSideFeat.P.value]>=0), True, False)
+            worst_price=jnp.min(bidside[:,cst.OrderSideFeat.P.value]) #Don't need the fancy stuff for the -1 (EMPTY) case because the book is full. Otherwise, just replace a -1 with an empty. 
+            remove=jnp.where((bidside[:,cst.OrderSideFeat.P.value]==worst_price).reshape(bidside.shape[0],1),(jnp.ones(bidside.shape)*-1).astype(jnp.int32),bidside)
+            bidside=jnp.where(full_book_flag,
+                        remove,
+                        bidside)
+            def actually_full_callback(full_book_flag,bidside,remove):
+                if full_book_flag:
+                    print("WARNING: Full bid book before adding new order. Removing worst bid to make space." \
+                    "\n \t Consider increasing book size to avoid this.")
+                    # print("Removed best price (lowest) book: ", remove)
+                    # print("Resulting ask book: ", askside)
+            # jax.debug.callback(actually_full_callback,full_book_flag,bidside,remove)
 
-    bids=add_order(bidside,msg)
+        bids=add_order(bidside,msg)
 
-    if cfg.type_4_interpretation == cst.Type4Interpretation.LIM.value:
-        # Add any remainder to book.
-        pass
-    elif cfg.type_4_interpretation == cst.Type4Interpretation.IOC.value or cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
-        #Do not add to book if remainder is type 4
-        #Still add to book if message is type 1 in data. 
-        bids=jnp.where(msg["type"]==4,bidside,bids)
+        if cfg.type_4_interpretation == cst.Type4Interpretation.LIM.value:
+            # Add any remainder to book.
+            pass
+        elif cfg.type_4_interpretation == cst.Type4Interpretation.IOC.value or cfg.type_4_interpretation == cst.Type4Interpretation.MKT.value:
+            #Do not add to book if remainder is type 4
+            #Still add to book if message is type 1 in data. 
+            bids=jnp.where(msg["type"]==4,bidside,bids)
 
     return matchtuple[0],bids,matchtuple[3]
 @partial(jax.jit,static_argnums=0)
@@ -552,6 +641,17 @@ def match_top_order_if_pricematch(cfg:JAXLOB_Configuration,side,msg,askside,bids
                                             
 
 ################  BRANCHING FUNCTIONS ################
+# At module level, create a factory for operations
+def _get_operations(config, key):
+    return (partial(ask_lim, config), 
+            partial(bid_lim, config),
+            partial(ask_cancel, config, key), 
+            partial(bid_cancel, config, key),
+            doNothing)
+
+
+
+
 @partial(jax.jit,static_argnums=(0,))
 def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
     """Branching function which calls the relevant function based on
@@ -585,17 +685,17 @@ def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
     t = msg["type"]
 
     if config.simulator_mode == cst.SimulatorMode.GENERAL_EXCHANGE.value:
+        operations = _get_operations(config, key)
         #Means the match orders (4) will be treated as limit orders of opposite side
         # and delete orders (3) will just be treated as cancel orders.
         index = ( (((s == -1) & ((t == 1) | (t == 4)))) * 0 
                 + (((s ==  1) & ((t == 1) | (t == 4)))) * 1
-                + (((s == -1) & ((t == 2) | (t == 3)))) * 2 
+                + (((s == -1) & ((t == 2) | (t == 3)))) * 2
                 + (((s ==  1) & ((t == 2) | (t == 3)))) * 3
                 +((s==0)&(t==0))*4)
 
         ask, bid, trade = jax.lax.switch(index,
-                                        (partial(ask_lim,config), partial(bid_lim,config),
-                                        partial(ask_cancel,config,key), partial(bid_cancel,config,key),doNothing),
+                                        operations,
                                         msg,
                                         askside,
                                         bidside,
@@ -655,14 +755,15 @@ def cond_type_side_save_states(cfg:JAXLOB_Configuration,book_state,it_data):
 
     s = msg["side"]
     t = msg["type"]
+    operations = _get_operations(cfg, key)
+
     index = ( (((s == -1) & ((t == 1) | (t == 4)))) * 0 
             + (((s ==  1) & ((t == 1) | (t == 4)))) * 1
             + (((s == -1) & ((t == 2) | (t == 3)))) * 2 
             + (((s ==  1) & ((t == 2) | (t == 3)))) * 3
             + ((s==0)&(t==0))*4)
     ask, bid, trade = jax.lax.switch(index,
-                                     (partial(ask_lim,cfg), partial(bid_lim,cfg),
-                                       partial(ask_cancel,cfg,key), partial(bid_cancel,cfg,key),doNothing),
+                                     operations,
                                      msg,
                                      askside,
                                      bidside,
@@ -703,18 +804,19 @@ def cond_type_side_save_bidask(cfg:JAXLOB_Configuration,book_state,it_data):
 
     s = msg["side"]
     t = msg["type"]
+    operations = _get_operations(cfg, key)
     index = ( (((s == -1) & ((t == 1) | (t == 4)))) * 0 
             + (((s ==  1) & ((t == 1) | (t == 4)))) * 1
             + (((s == -1) & ((t == 2) | (t == 3)))) * 2 
             + (((s ==  1) & ((t == 2) | (t == 3)))) * 3
             + ((s==0)&(t==0))*4)
-    ask, bid, trade = jax.lax.switch(index,
-                                    (jax.jit(partial(ask_lim,cfg)), jax.jit(partial(bid_lim,cfg)),
-                                    jax.jit(partial(ask_cancel,cfg,key)), jax.jit(partial(bid_cancel,cfg,key)),doNothing),
-                                    msg,
-                                    askside,
-                                    bidside,
-                                    trades)
+    with jax.named_scope("switch operation"):
+        ask, bid, trade = jax.lax.switch(index,
+                                        operations,
+                                        msg,
+                                        askside,
+                                        bidside,
+                                        trades)
     return (ask,bid,trade),get_best_bid_and_ask_inclQuants(cfg,ask,bid)
 
 ################ SCAN FUNCTIONS ################
@@ -876,7 +978,7 @@ def add_trade(trades, new_trade):
     
 @jax.jit
 def create_trade(price, quant, passOID,agrOID , time, time_ns,passTID,agrTID):
-    return jnp.array([price, quant, passOID,agrOID , time, time_ns,passTID,agrTID], dtype=jnp.int32)
+    return jnp.asarray([price, quant, passOID,agrOID , time, time_ns,passTID,agrTID], dtype=jnp.int32)
 
 @jax.jit
 def get_agent_trades(trades, agent_id):
@@ -965,8 +1067,8 @@ def get_best_bid_and_ask_inclQuants(cfg:JAXLOB_Configuration,askside,bidside):
     best_ask,best_bid=get_best_bid_and_ask(cfg,askside,bidside)
     best_ask_Q=get_volume_at_price(askside,best_ask)
     best_bid_Q=get_volume_at_price(bidside,best_bid)
-    best_ask=jnp.array([best_ask,best_ask_Q],dtype=jnp.int32)
-    best_bid=jnp.array([best_bid,best_bid_Q],dtype=jnp.int32)    
+    best_ask=jnp.asarray([best_ask,best_ask_Q],dtype=jnp.int32)
+    best_bid=jnp.asarray([best_bid,best_bid_Q],dtype=jnp.int32)    
     return best_ask, best_bid
 
 
@@ -984,7 +1086,7 @@ def init_orderside(nOrders=100):
 
 @partial(jax.jit,static_argnums=(0,))
 def init_msgs_from_l2(cfg : JAXLOB_Configuration,
-                      book_l2: jnp.array,
+                      book_l2: jax.Array,
                       time: Optional[jax.Array] = None,) -> jax.Array:
     """Creates a set of messages, limit orders, to initialise an empty
     order book based on a single initial state of the orderbook from data.
@@ -1000,7 +1102,7 @@ def init_msgs_from_l2(cfg : JAXLOB_Configuration,
     data = book_l2.reshape(orderbookLevels * 2, 2)
     newarr = jnp.zeros((orderbookLevels * 2, 8), dtype=jnp.int32)
     if time is None:
-        time = jnp.array([34200, 0])
+        time = jnp.asarray([34200, 0])
     initOB_msgs = newarr \
         .at[:, 3].set(data[:,0]) \
         .at[:, 2].set(data[:,1]) \
@@ -1158,8 +1260,8 @@ def get_order_by_time_and_price(
                                  Returns an empty array (-1 dummy 
                                  values) if not found.
     """
-    jax.debug.print("Searching for order at time {}.{} and price {}",time_s,time_ns,price)
-    jax.debug.print("Orderbook side array: {}",side_array)
+    # jax.debug.print("Searching for order at time {}.{} and price {}",time_s,time_ns,price)
+    # jax.debug.print("Orderbook side array: {}",side_array)
 
     # NOTE: jnp.where without x, y returns a tuple
     idx = jnp.where(((side_array[..., 4] == time_s) &
@@ -1248,3 +1350,10 @@ def get_L2_state(asks, bids, n_levels,cfg:JAXLOB_Configuration):
     # combine asks and bids in joint representation
     l2_state = jnp.hstack((asks.T, bids.T)).flatten()
     return l2_state
+
+
+if __name__ == "__main__":
+    cfg= JAXLOB_Configuration()
+    orderside=init_orderside()
+
+    _match_against_ask_orders(cfg,orderside)
