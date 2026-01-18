@@ -1843,27 +1843,7 @@ class MarketMakingAgent():
 
 
 
-    #===================End Episode Functions=============================================#
-    def end_fn_pass(self,
-            time: jax.Array,
-            asks: jax.Array,
-            bids: jax.Array,
-            trades: jax.Array,
-            state: MMEnvState,
-            params: MMEnvParams,
-        ) -> Tuple[Tuple[jax.Array, jax.Array, jax.Array], Tuple[jax.Array, jax.Array], int, int, int, int]:
-        if self.cfg.action_space=="fixed_quants"or self.cfg.action_space=="AvSt":
-            id_counter = state.customIDcounter + 2 + 1 ## we send 2 messages here
-        elif self.cfg.action_space=="fixed_prices":
-            id_counter = state.customIDcounter + self.cfg.n_actions + 1 ## we send n_messages here
-        elif self.cfg.action_space=="spread_skew":
-            id_counter = state.customIDcounter + 2 + 1  # 2 messages for bid and ask
-        elif self.cfg.action_space=="directional_trading":
-            id_counter = state.customIDcounter + 1 + 1  # 1 message
-        else:
-            raise ValueError("Action space not implemented yet")
-        time = time + self.cfg.time_delay_obs_act
-        return (asks, bids, trades),  id_counter, time
+
 
 
 
