@@ -1115,7 +1115,7 @@ class MarketMakingAgent():
         # action_msgs = jnp.where((action==9) & (~empty_book), jnp.ones_like(action_msgs)*9, action_msgs)  
         #jax.debug.print("action_msgs mm:{}",action_msgs)
 
-        return action_msgs,{"posted_bid_price":bid_price,"posted_ask_price":ask_price,"bid_distance_from_best":best_bid - bid_price,"ask_distance_from_best":ask_price - best_ask,"empty_book":empty_book}
+        return action_msgs,{"posted_bid_price":bid_price,"posted_ask_price":ask_price,"bid_distance_from_best":best_bid - bid_price,"ask_distance_from_best":ask_price - best_ask,"empty_book":empty_book,"bid_quant":bid_quant,"ask_quant":ask_quant}
 
 
 
