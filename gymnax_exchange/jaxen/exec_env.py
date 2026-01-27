@@ -1142,8 +1142,8 @@ class ExecutionAgent():
             raise NotImplementedError("TWAP not implemented for fixed time episodes, need to have some notion of delta_time per step.")
         elif self.world_config.ep_type == 'fixed_steps':
             # Calculate remaining steps as a percentage
-            steps_left=world_state.max_steps_in_episode - world_state.step_counter-2
-            quant_left = agent_state.task_to_execute - agent_state.quant_executed
+            steps_left=world_state.max_steps_in_episode - world_state.step_counter-1
+            quant_left = jnp.maximum(agent_state.task_to_execute - agent_state.quant_executed, 0)
             quant_this_step= jnp.ceil(quant_left / steps_left).astype(jnp.int32)  # quant to execute this step
             # jax.debug.callback(quant_callback, quant_this_step,steps_left)
         # Get the quants based on the action
