@@ -17,7 +17,7 @@ ml-dtypes
 # torch
 # torchvision
 # torchaudio
-tfp-nightly
+
 # RL and Environment Libraries
 gym
 dm-env
