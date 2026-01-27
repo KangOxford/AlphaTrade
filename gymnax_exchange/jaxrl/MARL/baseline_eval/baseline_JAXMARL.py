@@ -644,10 +644,10 @@ def make_sim(config):
                     **{f"avg_reward_{i}": metric["avg_reward"][i] for i in range(len(metric["avg_reward"]))},
                     **action_distribution
                 }
-            if config["CALC_EVAL"]:
-                logging_dict.update({
-                    **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
-                })
+            # if config["CALC_EVAL"]:
+            #     logging_dict.update({
+            #         **{f"avg_eval_reward_{i}": metric["avg_reward_eval"][i] for i in range(len(metric["avg_reward_eval"]))},
+            #     })
             if config["WANDB_MODE"]!= "disabled":
                 wandb.log(logging_dict)
 
