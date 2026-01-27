@@ -1131,8 +1131,11 @@ class ExecutionAgent():
         1 = Execute TWAP Strategy with Passive Price (NT)
        """
 
-
-
+        def quant_callback(x,steps):
+            if x < 0 or steps<=0:
+                print(f"quant this step: {x}")
+                print(f"steps left: {steps}")
+            return x
         #calculate % time (steps) remaining in the episode 
         # Calculate % time or steps remaining in the episode 
         if self.world_config.ep_type == 'fixed_time':
@@ -1142,6 +1145,7 @@ class ExecutionAgent():
             steps_left=world_state.max_steps_in_episode - world_state.step_counter-2
             quant_left = agent_state.task_to_execute - agent_state.quant_executed
             quant_this_step= jnp.ceil(quant_left / steps_left).astype(jnp.int32)  # quant to execute this step
+            # jax.debug.callback(quant_callback, quant_this_step,steps_left)
         # Get the quants based on the action
 
 
@@ -1584,6 +1588,16 @@ class ExecutionAgent():
         )
         #Return traded amounts - Just for logging 
         doom_quant = ep_done_time * quant_left
+        def negative_doom_check(ep_done_time,doom_quant,quant_left,agent_state,quant_executed_this_step):
+            if doom_quant<0:
+                print(f"Warning: Negative quant left at episode end: {quant_left}")
+                print(f"ep_done_time: {ep_done_time}")
+                print(f" Task to execute: {agent_state.task_to_execute}")
+                print(f" Quant executed: {agent_state.quant_executed}")
+                print(f" Quant executed this step: {quant_executed_this_step}")
+
+
+        # jax.debug.callback(negative_doom_check,ep_done_time,doom_quant,quant_left,agent_state,quant_executed_this_step)
 
         #jax.debug.print("trades exec env: {}", trades)
 
@@ -1814,7 +1828,12 @@ class ExecutionAgent():
             "reward": new_reward,
         }
 
+        def debug_info_callback(info):
+            if info["doom_quant"]<0:
+                print(f"Doom executed: {info['doom_quant']}, quant left: {info['quant_left']}")
+
         #jax.debug.print("info exec env: {}", info)
+        # jax.debug.callback(debug_info_callback,info)
 
 
         return agent_state, done, info

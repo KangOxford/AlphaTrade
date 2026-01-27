@@ -620,6 +620,20 @@ def cond_type_side(config : JAXLOB_Configuration,book_state, it_data):
         raise NotImplementedError("Lobster interpreter mode not fully implemented yet.")
     else: 
         raise ValueError("The simulator mode does not match an expected value.")
+
+    def callback_func(msg,ask,bid,trade,l2_book):
+        if msg['time']<40_000:
+            with open('/tmp/orderbook_debug.log', 'a') as f:
+                f.write(f"Processed message: {msg}\n")
+                f.write(f"New ask side: {ask}\n")
+                f.write(f"New bid side: {bid}\n")
+                f.write(f"New trades: {trade}\n\n")
+
+            with open('/tmp/orderbook_l2_debug.log', 'a') as f:
+                f.write(f"{str(l2_book.tolist())}\n")
+
+    # l2_book=get_L2_state(ask,bid,10,config)
+    # jax.debug.callback(callback_func,msg,ask,bid,trade,l2_book)
     return (ask, bid, trade), 0
 
 @partial(jax.jit,static_argnums=0)
@@ -1158,8 +1172,8 @@ def get_order_by_time_and_price(
                                  Returns an empty array (-1 dummy 
                                  values) if not found.
     """
-    jax.debug.print("Searching for order at time {}.{} and price {}",time_s,time_ns,price)
-    jax.debug.print("Orderbook side array: {}",side_array)
+    # jax.debug.print("Searching for order at time {}.{} and price {}",time_s,time_ns,price)
+    # jax.debug.print("Orderbook side array: {}",side_array)
 
     # NOTE: jnp.where without x, y returns a tuple
     idx = jnp.where(((side_array[..., 4] == time_s) &
