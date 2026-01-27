@@ -1079,6 +1079,9 @@ class MarketMakingAgent():
             sides=jnp.where(action==9, liq_sides, sides)
             quants=jnp.where(action==9, liq_quants, quants)
             prices=jnp.where(action==9, liq_prices, prices)
+        if self.cfg.tenth_action== "NA":
+            pass
+
 
         if self.cfg.auto_liquidate_threshold !=0:
             liq_types = jnp.asarray([4, 4], dtype=jnp.int32)  # 4=IOC order

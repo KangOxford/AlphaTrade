@@ -98,7 +98,12 @@ class MarketMaking_EnvironmentConfig():
         # Since the class is frozen, we need to use object.__setattr__ to modify n_actions
         # Number of messages includes action messages and cancel messages!
         if self.action_space == "fixed_quants":
-            object.__setattr__(self, 'n_actions', 10)
+            if self.tenth_action == "NA":
+                object.__setattr__(self, 'n_actions', 9)
+            elif self.tenth_action == "MarketOrder":
+                object.__setattr__(self, 'n_actions', 10)
+            else:
+                raise ValueError(f"Invalid tenth_action {self.tenth_action} for fixed_quants action space")
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "spread_skew":
