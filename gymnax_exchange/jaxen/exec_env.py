@@ -1679,7 +1679,7 @@ class ExecutionAgent():
 
         price_advantage = advantage / (agentQuant + 1e-9)  # avoid div by zero, only applies if adv=0
         price_drift = drift/(agentQuant + 1e-9)
-        slippage = ( advantage + drift ) / (agentQuant + 1e-9) # lambda = 1 case
+        slippage = ( advantage + drift ) #/ (agentQuant + 1e-9) # lambda = 1 case
         
         
         # ---------- Rolling Means of Key Values ----------
