@@ -3084,24 +3084,25 @@ class MarketMakingAgent():
 
 
     def action_space(self) -> spaces.Box:
+        
         """ Action space of the environment. """
         if self.cfg.action_space == "directional_trading":
-            return spaces.Discrete(3)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
+            return spaces.Discrete(self.cfg.n_actions)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
         elif self.cfg.action_space == "fixed_prices":
             return spaces.Box(0, 100, (self.cfg.n_actions,), dtype=jnp.int32)
         elif self.cfg.action_space == "fixed_quants" or self.cfg.action_space == "AvSt":
-            return spaces.Discrete(10) #TODO change back to 8
+            return spaces.Discrete(self.cfg.n_actions) #TODO change back to 8
         if self.cfg.action_space == "bobStrategy":
-            return spaces.Discrete(5)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
+            return spaces.Discrete(self.cfg.n_actions)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
         elif self.cfg.action_space == "bobRL":
-            return spaces.Discrete(3)  # [0: do nothing, 1: buy at ask, 2: sell at bid, 3: buy at bid, 4: sell at ask, 5: place both orders, 6: cancel both orders]
+            return spaces.Discrete(self.cfg.n_actions)  # [0: do nothing, 1: buy at ask, 2: sell at bid, 3: buy at bid, 4: sell at ask, 5: place both orders, 6: cancel both orders]
         elif self.cfg.action_space == "spread_skew":
-            return spaces.Discrete(6)  # 6 possible combinations (2 spreads × 3 skews)
+            return spaces.Discrete(self.cfg.n_actions)  # 6 possible combinations (2 spreads × 3 skews)
         elif self.cfg.action_space == "simple":
             if self.cfg.simple_nothing_action==True:
-                return spaces.Discrete(4)
+                return spaces.Discrete(self.cfg.n_actions)
             else:
-                return spaces.Discrete(3)
+                return spaces.Discrete(self.cfg.n_actions)
         else:
             raise ValueError("Invalid action_space specified.")
        
