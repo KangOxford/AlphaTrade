@@ -6,8 +6,8 @@
 # "NUM_STEPS": 256 #128
 # "TINY_RUN": False
 
-"NUM_ENVS": 16
-"NUM_STEPS": 2000000
+"NUM_ENVS": 2
+"NUM_STEPS": 64
 "TINY_RUN": True
 
 
@@ -38,16 +38,16 @@
 "MAX_GRAD_NORM" : 25
 
 
-"RESTORE_PROJECT" : "v2_Exec_FixedQuantsComplex_Ablations"
-"RESTORE_RUN" : "usual-sweep-10"
+"RESTORE_PROJECT" : "v0MM_FixedQuant"
+"RESTORE_RUN" : "laced-sweep-1"
 
 
 
 "BASELINE_CONFIGS" : {
-                  "MarketMaking" : {"action_space": "bobStrategy",} #fixed_quants,fixed_quants_complex}
+                  "MarketMaking" : {"action_space": "twap",} #fixed_quants,fixed_quants_complex}
                 }
 
-"AGENT_CONFIGS" : {"MarketMaking" : {"action_space": "bobStrategy",}
+"AGENT_CONFIGS" : {"MarketMaking" : {"action_space": "fixed_quants",}
                 }
 
 
