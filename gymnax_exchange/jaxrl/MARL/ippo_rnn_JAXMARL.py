@@ -467,6 +467,8 @@ def make_train(config):
     env : MARLEnv = MARLEnv(key=init_key, multi_agent_config=ma_config)
     if config["CALC_EVAL"]:
         eval_env: MARLEnv = MARLEnv(key=init_key,multi_agent_config=eval_ma_config)
+    else:
+        eval_env = None
 
     agent_type_names = list(env.type_names)
 
