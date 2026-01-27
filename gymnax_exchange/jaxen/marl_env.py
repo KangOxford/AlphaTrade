@@ -538,9 +538,9 @@ class MARLEnv(MultiAgentEnv):
         for agent_type_index in range(len(self.instance_list)):
             # print("agent_type_index: ", agent_type_index)
             agent_state = state.agent_states[agent_type_index]
-            extras = agent_rew_extras_list[agent_type_index]
+            rew_extras = agent_rew_extras_list[agent_type_index]
             act_extras=agent_act_extras_list[agent_type_index]
-            extras = {**extras, **act_extras}
+            extras = {**rew_extras, **act_extras}
             vmapped_function = vmap(self.instance_list[agent_type_index].update_state_and_get_done_and_info, in_axes=(None,0,0), out_axes = (0,0,0))
             states, dones, infos = vmapped_function(new_world_state, agent_state, extras)
             new_agent_states_list.append(states)
