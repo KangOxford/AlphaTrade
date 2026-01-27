@@ -3,17 +3,17 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.00025]  # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.0001 better than 0.001 (latter is unstable) Ref is 2.5e-4
-"NUM_ENVS":  4096 #2048 #2048 #128 
-"NUM_STEPS": 64
-"NUM_STEPS_EVAL" : 64
+"NUM_ENVS": 512 #2048 #2048 #128 
+"NUM_STEPS": 6400
+"NUM_STEPS_EVAL" : 6400
 "GRU_HIDDEN_DIM": 256
 "FC_DIM_SIZE": 256
-"TOTAL_TIMESTEPS": 1e6 #Should take ~0.5 / 2 days
+"TOTAL_TIMESTEPS": 1e7 #Should take ~0.5 / 2 days
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 4 # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 8 better than 16, trying even smaller
-"GAMMA": [0.99] # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.99 better than 0.999 Ref is 0.99 GPT says smaller more stable. 
-"GAE_LAMBDA": [0.9] # Ref is 0.95, ive been trying 0.99+, GPT suggests smaller smoother value func
-"CLIP_EPS": 0.2 #Ref is 0.2, trying smaller for more stable updates
+"GAMMA": [0.999999999] # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.99 better than 0.999 Ref is 0.99 GPT says smaller more stable. 
+"GAE_LAMBDA": [0.85] # Ref is 0.95, ive been trying 0.99+, GPT suggests smaller smoother value func
+"CLIP_EPS": 0.2 #Ref is 0.2, trying smaller for morse stable updates
 "SCALE_CLIP_EPS": [False]
 "ENT_COEF": [0.01]
 "VF_COEF": [5e-1]  #Ref is 0.5... Crazy difference in values. 
@@ -23,44 +23,36 @@
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2 #Overriden in SWEEP
 "N_DEVICES": 1
-"ENV_CONFIG": "config/env_configs/exec_longrun_twap.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json
+"ENV_CONFIG": "config/env_configs/mm_bobStrategy.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json mm_debug_fixed_quant
 "ANNEAL_LR": [True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "DEBUG_SWEEP" #"Exec_FixedPrice_Long" #"DEBUG"Exec_FixedQuantsComplex_Long
+"PROJECT": "Debug_MM_FixedQuant" #"v4_2Player_reference_price_ablation" #"DEBUG"
 "WANDB_MODE" : "online"
-
-
-# High-Level Params
-"CALC_EVAL" : True
-"TimePeriod" : "2024"
-"EvalTimePeriod" : "2024_Dec"
-"Calculate Baseline" : False
-"Timing" : False
-
-
-SWEEP_PARAMETERS: 
+SWEEP_PARAMETERS:
         # LR:
-        #   values: [[0.0015],[0.001],[0.0005]]
-        # GAMMA:
-        #     values: [0.9]
+        #   values: [[0.001],[0.0001]]
+        # # NUM_STEPS:
+        # #   values: [32,config["NUM_STEPS"], 512]
         # GAE_LAMBDA:
-        #   values: [ [0.999],[0.9999],[0.99999]] #Should smooth value func
+        #   values: [ [0.999],[0.9999]] #Should smooth value func
+        # GAMMA:
+        #   values: [ [0.99],[0.999]] #Discoutn factor
         # NUM_MINIBATCHES:
         #   values: [8,16] # Bigger batches, potentially less noisy updates
-        # # ENT_COEF:
+        # ENT_COEF:
         #   values: [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]
         # UPDATE_EPOCHS:
         #   values: [config["UPDATE_EPOCHS"], 8]
         # CLIP_EPS:
         #   values: [config["CLIP_EPS"], 0.3, 0.1]
         # VF_COEF:
-        #   values: [[5e-1]]
+        #   values: [config["VF_COEF"], [1e-6,1e-7], [1e-9,1e-8]]
         # FC_DIM_SIZE:
         #   values: [config["FC_DIM_SIZE"], 256]
-        # # NUM_AGENTS_PER_TYPE:
-        # #   values: [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]
+        # NUM_AGENTS_PER_TYPE:
+        #   values: [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]
         SEED:
           values: [42]
         # NUM_ENVS:
@@ -69,24 +61,26 @@ SWEEP_PARAMETERS:
         #   values: [config["NUM_STEPS"], 128, 32, 8]
         AGENT_CONFIGS:
           parameters:
-            # MarketMaking:
-            #   parameters:
-            #     inv_penalty:
-            #       values: ['none']  # "none" "linear "quadratic"
-            #     skew_multiplier:
-            #       values: [10]
+            MarketMaking:
+              parameters:
+                inventoryPnL_eta:
+                  values: [0.6,0.1,0.3,0.9]  # "none" "linear "quadratic"
+                inventoryPnL_gamma:
+                  values: [0.5,0.1]  # "none" "linear "quadratic"
+                # fixed_action:
+                #   values: [0,1,2,3,4]
             #     action_space:
             #       values: ["fixed_quants"]  #"spread_skew",,"fixed_quants"simple
             #     reward_space:
             #       values: ["spooner","buy_sell_pnl"]  # "spooner"buy_sell_pnl
             #     reference_price_portfolio_value:
             #       values: ["best_bid_ask"]  #best_bid_ask "mid"
-            Execution:
-              parameters:
-                reward_lambda:
-                  values: [0.0,0.1,0.3,0.5,0.9]
-                doom_price_penalty:
-                  values: [5,7]
+            # Execution:
+            #   parameters:
+                # reward_lambda:
+                #   values: [0.0,0.3] #,0.2,0.8,1.0]
+                # doom_price_penalty:
+                #   values: [5,10]
                 # fixed_quant_value:
                 #   values: [10]
                 # n_actions:
@@ -97,6 +91,12 @@ SWEEP_PARAMETERS:
 
 
 
+# High-Level Params
+"CALC_EVAL" : True
+"TimePeriod" : "2024"
+"EvalTimePeriod" : "2024_Dec"
+"Calculate Baseline" : False
+"Timing" : False
 
 
 

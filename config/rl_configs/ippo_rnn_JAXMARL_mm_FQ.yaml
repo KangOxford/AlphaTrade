@@ -3,12 +3,12 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.00025]  # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.0001 better than 0.001 (latter is unstable) Ref is 2.5e-4
-"NUM_ENVS": 512 #2048 #2048 #128 
-"NUM_STEPS": 6400
-"NUM_STEPS_EVAL" : 6400
+"NUM_ENVS": 4096 #2048 #2048 #128 
+"NUM_STEPS": 64
+"NUM_STEPS_EVAL" : 64
 "GRU_HIDDEN_DIM": 256
 "FC_DIM_SIZE": 256
-"TOTAL_TIMESTEPS": 1e9 #Should take ~0.5 / 2 days
+"TOTAL_TIMESTEPS": 1e8 #Should take ~0.5 / 2 days
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 4 # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 8 better than 16, trying even smaller
 "GAMMA": [0.999999999] # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.99 better than 0.999 Ref is 0.99 GPT says smaller more stable. 
@@ -23,12 +23,12 @@
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2 #Overriden in SWEEP
 "N_DEVICES": 1
-"ENV_CONFIG": "config/env_configs/mm_bobStrategy.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json mm_debug_fixed_quant
+"ENV_CONFIG": "config/env_configs/mm_debug_fixed_quant.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json mm_debug_fixed_quant
 "ANNEAL_LR": [True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "Debug_MM_FixedQuant" #"v4_2Player_reference_price_ablation" #"DEBUG"
+"PROJECT": "v0MM_FixedQuant" #"v4_2Player_reference_price_ablation" #"DEBUG"
 "WANDB_MODE" : "online"
 SWEEP_PARAMETERS:
         # LR:
@@ -64,15 +64,15 @@ SWEEP_PARAMETERS:
             MarketMaking:
               parameters:
                 inventoryPnL_eta:
-                  values: [0.6,0.1,0.3,0.9]  # "none" "linear "quadratic"
+                  values: [0.6]  # "none" "linear "quadratic"
                 inventoryPnL_gamma:
-                  values: [0.5,0.1]  # "none" "linear "quadratic"
-                # fixed_action:
-                #   values: [0,1,2,3,4]
-            #     action_space:
-            #       values: ["fixed_quants"]  #"spread_skew",,"fixed_quants"simple
-            #     reward_space:
-            #       values: ["spooner","buy_sell_pnl"]  # "spooner"buy_sell_pnl
+                  values: [0.01]  # "none" "linear "quadratic"
+                reward_scaling_quo:
+                  values: [10]
+                fixed_quant_value:
+                  values: [1]
+                rebate_bps:
+                  values: [0.3,0.25,0.2]  # "spooner"buy_sell_pnl
             #     reference_price_portfolio_value:
             #       values: ["best_bid_ask"]  #best_bid_ask "mid"
             # Execution:
@@ -92,7 +92,7 @@ SWEEP_PARAMETERS:
 
 
 # High-Level Params
-"CALC_EVAL" : False
+"CALC_EVAL" : True
 "TimePeriod" : "2024"
 "EvalTimePeriod" : "2024_Dec"
 "Calculate Baseline" : False

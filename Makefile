@@ -1,7 +1,7 @@
 NVCC_RESULT := $(shell which nvcc 2> NULL; rm NULL)
 NVCC_TEST := $(notdir $(NVCC_RESULT))
 ifeq ($(NVCC_TEST),nvcc)
-GPUS=--gpus '"device=2"'
+GPUS=--gpus '"device=5"'
 else
 GPUS=
 endif
@@ -18,7 +18,7 @@ DATADIR=~/data_local/data
 endif
 SCRATCH_DIR=~/scratch_LOB
 BASE_FLAGS=-it --rm -v ${PWD}:/home/$(MYUSER) -v $(DATADIR):/home/$(MYUSER)/data -v $(SCRATCH_DIR):/home/$(MYUSER)/scratch --shm-size 20G
-PORT_FLAGS= -p 8073:80 -p 8072:6006
+PORT_FLAGS= -p 8077:80 -p 8076:6006
 RUN_FLAGS=$(GPUS) $(BASE_FLAGS) $(PORT_FLAGS)
 BASIC_FLAGS=$(GPUS) $(BASE_FLAGS)
 
@@ -47,15 +47,17 @@ ppo_exec_FQC:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_exec_FQC'"
 ppo_exec_FP:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_exec_FP'"
-ppo_mm:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_mm'"
+ppo_mm_BOB:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_mm_BOB'"
+ppo_mm_FQ:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_mm_FQ'"
 baseline:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py --config-name='baseline_mm_config'"
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py --config-name='baseline_exec_config'"
 baseline_only:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_only_JAXMARL.py --config-name='baseline_mm_config_bobStrategy'"
 
 plot_trajectories:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py --combo=default --directory=trajectories"
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py --combo "CURIOUS" "LACED" --directory=trajectories"
 workflow-test:
 	# without -it flag
 	docker run --rm -v ${PWD}:/home/workdir --shm-size 20G $(IMAGE) /bin/bash -c "pytest ./tests/"
