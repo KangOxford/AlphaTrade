@@ -487,7 +487,7 @@ def make_sim(config):
                     for main_metric in ["reward_portfolio_value","revenue_direction_normalised","end_of_ep_pv"]:
                         if main_metric in eval_metrics["traj_batch"][i].info['agent'].keys():
                             print(f"     (Agent type {i}): {main_metric} = {eval_metrics['traj_batch'][i].info['agent'][main_metric].mean()}")
-                            print(f"     (Agent type {i}): Dimensions = {eval_metrics['traj_batch'][i].info['agent'][main_metric].std()}")
+                            print(f"     (Agent type {i}): Std Dev of {main_metric} = {eval_metrics['traj_batch'][i].info['agent'][main_metric].std()}")
                             # if main_metric == "reward_portfolio_value":
                             #     print(f"     (Agent type {i}): Dimensions = {eval_metrics['traj_batch'][i].info['agent'][main_metric].shape}")
                             #     print(f"     (Agent type {i}): PNL END = {eval_metrics['traj_batch'][i].info['agent'][main_metric][63::64,:].mean()}")
