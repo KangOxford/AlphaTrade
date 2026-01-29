@@ -2,13 +2,13 @@
 # apply differently to each ntwrk
 # Should match with NUM_AGENTS_PER_TYPE
 
-# "NUM_ENVS": 4096
-# "NUM_STEPS": 256 #128
-# "TINY_RUN": False
+"NUM_ENVS": 4096
+"NUM_STEPS": 256 #128
+"TINY_RUN": False
 
-"NUM_ENVS": 2
-"NUM_STEPS": 64
-"TINY_RUN": True
+# "NUM_ENVS": 2
+# "NUM_STEPS": 64
+# "TINY_RUN": True
 
 
 "ENV_NAME": "JAXMARL-Lob-v0"
@@ -24,14 +24,14 @@
 
 # High-Level Params
 "CALC_EVAL" : False
-"EvalTimePeriod" : "2024_Dec" #"2024"
+"EvalTimePeriod" : "2024" #"2024"
 "ENV_CONFIG": "config/env_configs/mm_debug_fixed_quant.json"
 
 
 
 #Network params that must be manually matched with the config used in the original training
-"GRU_HIDDEN_DIM": 128
-"FC_DIM_SIZE": 128
+"GRU_HIDDEN_DIM": 256
+"FC_DIM_SIZE": 256
 #Training params which are reqquired to build the target network for the chkpt restore. 
 "ANNEAL_LR": False
 "LR": 20
@@ -44,7 +44,7 @@
 
 
 "BASELINE_CONFIGS" : {
-                  "MarketMaking" : {"action_space": "twap",} #fixed_quants,fixed_quants_complex}
+                  "MarketMaking" : {"action_space": "fixed_quants",} #fixed_quants,fixed_quants_complex}
                 }
 
 "AGENT_CONFIGS" : {"MarketMaking" : {"action_space": "fixed_quants",}
