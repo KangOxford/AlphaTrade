@@ -1,3 +1,13 @@
+"""
+LOBS5 Data Loader - Work in Progress
+
+This module provides functionality for loading and processing LOBS5 order book data.
+It is currently in development and will be integrated with the existing LOBS5 codebase
+at a later date. Some features may be incomplete or subject to change.
+
+TODO: Merge with LOBS5 code when ready for production.
+"""
+
 import os
 
 import platform
