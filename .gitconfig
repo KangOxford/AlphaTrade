@@ -1,5 +1,0 @@
-[user]
-	email = saschayvesfrey@gmail.com
-	name = saschafrey
-[credential]
-	helper = "!f() { /home/myuser/.vscode-server/bin/c9d77990917f3102ada88be140d28b038d1dd7c7/node /tmp/vscode-remote-containers-16c64bed-bddf-4dcc-90bf-e15b11e5ca94.js git-credential-helper $*; }; f"
