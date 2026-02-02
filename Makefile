@@ -11,7 +11,7 @@ endif
 MYUSER=myuser
 SERVER_NAME = $(shell hostname)
 # If using flair12 server, set data directory to /homes/80/sascha/data, otherwise assume data is on same level as the repo
-ifeq ($(SERVER_NAME),flair-node-12)
+ifneq (,$(filter $(SERVER_NAME),flair-node-12 flair-node-06))
 DATADIR=/homes/80/sascha/data
 else
 DATADIR=~/data_local/data

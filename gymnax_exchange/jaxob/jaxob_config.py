@@ -46,6 +46,7 @@ class MarketMaking_EnvironmentConfig():
     sell_buy_all_option: bool= False
     based_on_mid_price_of_action: bool = True
     tenth_action: str = "MarketOrder"
+    bob_v0: int = 1
 
     
     # Real Parameters
@@ -115,7 +116,16 @@ class MarketMaking_EnvironmentConfig():
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "bobRL":
-            object.__setattr__(self, 'n_actions', 3)
+            if self.bob_v0 == 1:
+                object.__setattr__(self, 'n_actions', 3)
+            elif self.bob_v0 == 2:
+                object.__setattr__(self, 'n_actions', 5)
+            elif self.bob_v0 == 5:
+                object.__setattr__(self, 'n_actions', 11)
+            elif self.bob_v0 == 10:
+                object.__setattr__(self, 'n_actions', 21)
+            else:
+                raise ValueError(f"Invalid bob_v0 {self.bob_v0} for bobRL action space")
             object.__setattr__(self, 'num_messages_by_agent', 4)
             object.__setattr__(self, 'num_action_messages_by_agent', 2)
         elif self.action_space == "directional_trading":
