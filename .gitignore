@@ -110,3 +110,7 @@ lob_bench/*
 debug_output/*
 jax_trace/*
 .ipython/*
+
+LOBS5/*
+lobgen/*
+jax_rwkv/*
