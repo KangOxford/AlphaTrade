@@ -116,3 +116,4 @@ lobgen/*
 jax_rwkv/*
 
 .python_history
+cache/*
