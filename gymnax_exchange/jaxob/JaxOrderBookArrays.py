@@ -54,6 +54,27 @@ import chex
 from gymnax_exchange.jaxob.jaxob_config import JAXLOB_Configuration
 import gymnax_exchange.jaxob.jaxob_constants as cst
 
+import os
+
+_USE_TRITON_MATCHING = os.environ.get("JAXOB_USE_TRITON_MATCHING", "0") == "1"
+try:
+    from gymnax_exchange.jaxob.triton_matching import (
+        match_against_ask_orders_triton as _triton_match_against_ask_orders,
+    )
+    from gymnax_exchange.jaxob.triton_matching import (
+        match_against_bid_orders_triton as _triton_match_against_bid_orders,
+    )
+    _TRITON_MATCHING_AVAILABLE = True
+except Exception:
+    _TRITON_MATCHING_AVAILABLE = False
+    if _USE_TRITON_MATCHING:
+        import warnings
+        warnings.warn(
+            "JAXOB_USE_TRITON_MATCHING=1 but Triton matching is not available. "
+            "Falling back to JAX matching. Install triton and jax-triton to enable.",
+            stacklevel=2,
+        )
+
 #TODO: Get rid of these magic numbers by allowing a config dict
 #  to be passed through as a static arg 
 
@@ -282,9 +303,9 @@ def _check_before_matching_bid(data_tuple):
     return jnp.squeeze(returnarray)
 
 @partial(jax.jit,static_argnums=0)
-def _match_against_bid_orders(cfg:JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
-    """Wrapper for the while loop that gets the top bid order, and
-    matches the incoming order against it whilst the 
+def _match_against_bid_orders_jax(cfg:JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
+    """JAX implementation: Wrapper for the while loop that gets the top bid order, and
+    matches the incoming order against it whilst the
     _check_before_matching_bid function remains true.
     Returns the new set of bid orders after matching, and the remaining
     quantity to match
@@ -314,9 +335,9 @@ def _check_before_matching_ask(data_tuple):
     return jnp.squeeze(returnarray)
 
 @partial(jax.jit,static_argnums=0)
-def _match_against_ask_orders(cfg: JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
-    """Wrapper for the while loop that gets the top ask order, and
-    matches the incoming order against it whilst the 
+def _match_against_ask_orders_jax(cfg: JAXLOB_Configuration,orderside,qtm,price,trade,agrOID,time,time_ns,agrTID,side):
+    """JAX implementation: Wrapper for the while loop that gets the top ask order, and
+    matches the incoming order against it whilst the
     _check_before_matching_ask function remains true.
     Returns the new set of bid orders after matching, and the remaining
     quantity to match.
@@ -329,6 +350,30 @@ def _match_against_ask_orders(cfg: JAXLOB_Configuration,orderside,qtm,price,trad
                                                 qtm,price,trade,agrOID,
                                                 time,time_ns,agrTID,side))
     return (orderside,qtm,price,trade)
+
+
+@partial(jax.jit, static_argnums=0)
+def _match_against_bid_orders(cfg: JAXLOB_Configuration, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side):
+    """Dispatch: selects Triton or JAX matching for bid orders.
+
+    If JAXOB_USE_TRITON_MATCHING=1 and Triton is available, uses GPU kernel.
+    Otherwise falls back to JAX implementation (default behavior).
+    """
+    if _USE_TRITON_MATCHING and _TRITON_MATCHING_AVAILABLE:
+        return _triton_match_against_bid_orders(orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
+    return _match_against_bid_orders_jax(cfg, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
+
+
+@partial(jax.jit, static_argnums=0)
+def _match_against_ask_orders(cfg: JAXLOB_Configuration, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side):
+    """Dispatch: selects Triton or JAX matching for ask orders.
+
+    If JAXOB_USE_TRITON_MATCHING=1 and Triton is available, uses GPU kernel.
+    Otherwise falls back to JAX implementation (default behavior).
+    """
+    if _USE_TRITON_MATCHING and _TRITON_MATCHING_AVAILABLE:
+        return _triton_match_against_ask_orders(orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
+    return _match_against_ask_orders_jax(cfg, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
 
 ################ TYPE AND SIDE FUNCTIONS ################
 
