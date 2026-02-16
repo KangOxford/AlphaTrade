@@ -1498,13 +1498,27 @@ class MarketMakingAgent():
         best_bid = jnp.where(empty_book, world_state.best_bids[-1,0], best_bid)
         best_ask = jnp.where(empty_book, world_state.best_asks[-1,0], best_ask)
 
-        bid_quants = jnp.array([1, 2, 0,], dtype=jnp.int32)
-        ask_quants = jnp.array([1, 0, 2], dtype=jnp.int32)##config quant....
+        
+        if self.cfg.bob_v0==1:
+            bid_quants = jnp.array([1, 2, 0,], dtype=jnp.int32)
+            ask_quants = jnp.array([1, 0, 2], dtype=jnp.int32)
+        elif self.cfg.bob_v0==2:
+            bid_quants = jnp.array([2, 3, 1, 4, 0], dtype=jnp.int32)
+            ask_quants = jnp.array([2, 1, 3, 0, 4], dtype=jnp.int32)
+        elif self.cfg.bob_v0==5:
+            bid_quants = jnp.array([5, 6, 4, 7, 3, 8, 2, 9, 1, 10, 0], dtype=jnp.int32)
+            ask_quants = jnp.array([5, 4, 6, 3, 7, 2, 8, 1, 9, 0, 10], dtype=jnp.int32)
+        elif self.cfg.bob_v0==10:
+            bid_quants = jnp.array([10, 11, 9, 12, 8, 13, 7, 14, 6, 15,
+                                         5, 16, 4, 17, 3, 18, 2, 19, 1, 20, 0], dtype=jnp.int32)
+            ask_quants = jnp.array([10, 9 , 11, 8, 12, 7, 13, 6, 14, 5,
+                                         15, 4, 16, 3, 17, 2, 18, 1, 19, 0, 20], dtype=jnp.int32)
+        else:
+            raise ValueError("cfg.bob_v0 must be one of [1,2,5,10]")
 
-
-        v_0=self.cfg.fixed_quant_value
-        bid_quant = bid_quants[action]*v_0
-        ask_quant = ask_quants[action]*v_0
+        scale=self.cfg.fixed_quant_value # Typically 1 
+        bid_quant = bid_quants[action]*scale
+        ask_quant = ask_quants[action]*scale
         bid_quant=jnp.where(empty_book, 0, bid_quant)
         ask_quant=jnp.where(empty_book, 0, ask_quant)
     
