@@ -110,3 +110,4 @@ lob_bench/*
 debug_output/*
 jax_trace/*
 .ipython/*
+baseline_sweep_results/*
