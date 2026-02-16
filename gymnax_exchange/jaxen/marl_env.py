@@ -395,9 +395,8 @@ class MARLEnv(MultiAgentEnv):
             if abs_delta_mid >100_000 or abort is True:
                 raise ValueError("Large mid-price change detected")
 
-        def large_spread_callback(spread, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids):
-            if spread <0 : # only print for a specific window range to avoid too much output
-                print(f"Bad spread detected: {spread} at window index {window_index} step {step}")
+        def large_spread_callback(world_state, window_index,combined_msgs, trades,step,new_raw_asks,new_raw_bids,old_raw_asks,old_raw_bids):
+            if world_state.step_counter in [44,45,46,47]: # only print for a specific window range to avoid too much output
                 print("combined messages: ", combined_msgs)
                 print("trades: ", trades)
                 print("old raw asks: ", old_raw_asks)
@@ -406,7 +405,7 @@ class MARLEnv(MultiAgentEnv):
                 print("new raw bids: ", new_raw_bids)
         # delta_mid = jnp.abs( (new_bestasks[-1,0] + new_bestbids[-1,0])/2 - state.world_state.mid_price)
         # full_book_flag= jnp.where(jnp.all(new_asks[:,0]>=0) | jnp.all(new_bids[:,0]>=0), True, False)
-        # jax.debug.callback(print_everything_callback, state.world_state.window_index, combined_msgs, new_trades, state.world_state.step_counter, new_asks, new_bids, state.world_state.ask_raw_orders, state.world_state.bid_raw_orders, full_book_flag)
+        # jax.debug.callback(large_spread_callback,state.world_state, state.world_state.window_index, combined_msgs, new_trades, state.world_state.step_counter, new_asks, new_bids, state.world_state.ask_raw_orders, state.world_state.bid_raw_orders)
         #jax.debug.print(f"best bids after ffill: {new_bestbids.shape}")
         #jax.debug.print("best asks after ffill: {}", new_bestasks[-1])
         #jax.debug.print("best bids after ffill: {}", new_bestbids[-1])
@@ -514,8 +513,14 @@ class MARLEnv(MultiAgentEnv):
             mid_price=new_mid_price,
             delta_time=new_delta_time
         )
+        def debug_callback_times(world_state, new_world_state, final_time,new_delta_time):
+            if world_state.step_counter in [44,45,46,47]:
+                print("Step:", world_state.step_counter)
+                print("final time: ", final_time)
+                print("old world state time: ", world_state.time)
+                print("new world state time: ", new_world_state.time)
 
-
+        # jax.debug.callback(debug_callback_times, state.world_state, new_world_state, final_time,new_delta_time)
         #jax.debug.print("new_world_state time: {}", new_world_state.time)
         #print("new world state: ", new_world_state)
       

@@ -1281,6 +1281,19 @@ class MarketMakingAgent():
 
         bid_price= res_price-spread/2
         ask_price= res_price+spread/2
+        def print_distances(best_bid, best_ask, bid_price, ask_price, mid_price, res_price, spread,window_idx,step,position):
+            print(f"Window {window_idx}:")
+            print("best ask: {}", best_ask)
+            print("best bid: {}", best_bid)
+            print("mid price: {}", mid_price)
+            print("reservation price: {}", res_price)
+            print("spread: {}", spread)
+            print("bid price before clipping: {}", bid_price)
+            print("ask price before clipping: {}", ask_price)
+            print("agent inventory: {}", position)
+            print("step: {}",step)
+        # jax.debug.callback(print_distances, best_bid, best_ask, bid_price, ask_price, mid_price, res_price, spread, world_state.window_index, world_state.step_counter, agent_state.inventory,)
+
 
         # Ensure valid price bound 
         bid_price = jnp.clip(bid_price, 0, self.world_config.maxint) 
@@ -1320,7 +1333,32 @@ class MarketMakingAgent():
         #jax.debug.print("spread:{}",spread)
         #jax.debug.print("mid price :{}",mid_price)
         #jax.debug.print("msg:{}",action_msgs)
-        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":False,"bid_distance_from_best":0,"ask_distance_from_best":0,"posted_bid_price":0,"posted_ask_price":0}
+
+        def debug_neg_distances(best_bid, best_ask, bid_price, ask_price, mid_price, res_price, spread,window_idx,step,position):
+            if bid_price>best_bid:
+                print(f"Window {window_idx}: Posted bid inside the spread! distance from best bid: {best_bid - bid_price}, step {step}, position {position}")
+                print("best ask: {}", best_ask)
+                print("best bid: {}", best_bid)
+                print("mid price: {}", mid_price)
+                print("reservation price: {}", res_price)
+                print("spread: {}", spread)
+                print("bid price before clipping: {}", bid_price)
+                print("ask price before clipping: {}", ask_price)
+                print("agent inventory: {}", position)
+                print("step: {}",step)
+            if ask_price<best_ask:
+                print(f"Window {window_idx}: Posted ask inside the spread! distance from best ask: {ask_price - best_ask}, step {step}, position {position}")
+                print("best ask: {}", best_ask)
+                print("best bid: {}", best_bid)
+                print("mid price: {}", mid_price)
+                print("reservation price: {}", res_price)
+                print("spread: {}", spread)
+                print("bid price before clipping: {}", bid_price)
+                print("ask price before clipping: {}", ask_price)
+                print("agent inventory: {}", position)
+                print("step: {}",step)
+        # jax.debug.callback(debug_neg_distances, best_bid, best_ask, bid_price, ask_price, mid_price, res_price, spread, world_state.window_index, world_state.step_counter, agent_state.inventory,)
+
 
     def _getActionMsgs_BobStrategy(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
@@ -2382,7 +2420,19 @@ class MarketMakingAgent():
     
         #--------------------C) Portfolio Value--------------#
         reward_portfolio_value=new_inventory*(reference_price/self.world_config.tick_size)+new_cash_balance
+        def debug_callback_times(world_state,agent_state, reward_portfolio_value,new_inventory, reference_price, new_cash_balance,income,outgoing,rebate_income):
+            if world_state.step_counter in [44,45,46,47]:
+                print("Reward PV:", reward_portfolio_value)
+                print("new_inventory: ", new_inventory)
+                print("ref_price: ", reference_price)
+                print("new_cash_balance: ", new_cash_balance)
+                print("old cash balance: ", agent_state.cash_balance)
+                print("income: ", income)
+                print("outgoing: ", outgoing)
+                print("rebate_income: ", rebate_income)
 
+
+        # jax.debug.callback(debug_callback_times, world_state,agent_state, reward_portfolio_value,new_inventory, reference_price, new_cash_balance,income,outgoing,rebate_income)
         #----------------- D) Delta Portfolio Value--------#
         #Get old ref price
         if self.cfg.reference_price in ("mid","mid_avg"):
