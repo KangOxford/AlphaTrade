@@ -3179,7 +3179,7 @@ class MarketMakingAgent():
         if self.cfg.action_space == "bobStrategy":
             return spaces.Discrete(self.cfg.n_actions)  # [0: do nothing, 1: buy at ask, 2: sell at bid]
         elif self.cfg.action_space == "bobRL":
-            return spaces.Discrete(self.cfg.n_actions)  # [0: do nothing, 1: buy at ask, 2: sell at bid, 3: buy at bid, 4: sell at ask, 5: place both orders, 6: cancel both orders]
+            return spaces.Discrete(self.cfg.n_actions)  # depending on v_0 bob in config. 
         elif self.cfg.action_space == "spread_skew":
             return spaces.Discrete(self.cfg.n_actions)  # 6 possible combinations (2 spreads × 3 skews)
         elif self.cfg.action_space == "simple":
