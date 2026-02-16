@@ -1402,8 +1402,7 @@ class MarketMakingAgent():
         if self.cfg.fixed_action_setting == True:
             action = jnp.asarray([self.cfg.fixed_action])
         
-        kappa_values = jnp.array([0,0.05,0.1,0.5,0.9], dtype=jnp.float32)  # Risk aversion
-        kappa= kappa_values[action]
+        kappa= (action+1)/(self.cfg.bob_v0*5)
         
         
         # Use the most recent best_ask and best_bid values
@@ -1428,7 +1427,7 @@ class MarketMakingAgent():
 
         position=agent_state.inventory
 
-        v_0=self.cfg.fixed_quant_value
+        v_0=self.cfg.bob_v0
         bid_quant=jnp.round(v_0*jnp.maximum(1 - kappa*position,0)).astype(jnp.int32) #epsilon = -1
         ask_quant=jnp.round(v_0*jnp.maximum(1 + kappa*position,0)).astype(jnp.int32) #epsilon = 1
         bid_quant=jnp.where(empty_book, 0, bid_quant)
@@ -1446,25 +1445,6 @@ class MarketMakingAgent():
         trader_ids = jnp.full(2, agent_params.trader_id, dtype=jnp.int32)
 
 
-        if self.cfg.tenth_action== "MarketOrder":
-            liq_types = jnp.asarray([4, 4], dtype=jnp.int32)  # 4=IOC order
-            liq_sides = jnp.asarray([-1, 1], dtype=jnp.int32)  # -1=exec on ask, buy order, 1=exec on bid, sell order
-            liq_quants = jnp.asarray([self.cfg.auto_liquidate_alpha*jnp.maximum(-agent_state.inventory,0), self.cfg.auto_liquidate_alpha*jnp.maximum(agent_state.inventory,0)], dtype=jnp.int32)
-            liq_prices = jnp.asarray([best_ask+half_spread*10, best_bid-half_spread*10], dtype=jnp.int32)
-            types=jnp.where(action==9, liq_types, types)
-            sides=jnp.where(action==9, liq_sides, sides)
-            quants=jnp.where(action==9, liq_quants, quants)
-            prices=jnp.where(action==9, liq_prices, prices)
-
-        if self.cfg.auto_liquidate_threshold !=0:
-            liq_types = jnp.asarray([4, 4], dtype=jnp.int32)  # 4=IOC order
-            liq_sides = jnp.asarray([-1, 1], dtype=jnp.int32)  # -1=exec on ask, buy order, 1=exec on bid, sell order
-            liq_quants = jnp.asarray([self.cfg.auto_liquidate_alpha*jnp.maximum(-agent_state.inventory,0), self.cfg.auto_liquidate_alpha*jnp.maximum(agent_state.inventory,0)], dtype=jnp.int32)
-            liq_prices = jnp.asarray([best_ask+half_spread*10, best_bid-half_spread*10], dtype=jnp.int32)
-            types=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_types, types)
-            sides=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_sides, sides)
-            quants=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_quants, quants)
-            prices=jnp.where(jnp.abs(agent_state.inventory)>self.cfg.auto_liquidate_threshold, liq_prices, prices)
 
         quants = quants.flatten() # Flatten so they have the same shape
         prices = prices.flatten()
