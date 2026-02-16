@@ -41,8 +41,8 @@ run:
 test:
 	$(DOCKER_RUN) /bin/bash -c "pytest ./tests/"
 
-ppo:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py"
+ppo_2player:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_2player'"
 ppo_exec_FQC:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_exec_FQC'"
 ppo_exec_FP:
@@ -52,9 +52,11 @@ ppo_mm_BOB:
 ppo_mm_FQ:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/ippo_rnn_JAXMARL.py --config-name='ippo_rnn_JAXMARL_mm_FQ'"
 baseline:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py --config-name='baseline_exec_config'"
-baseline_only:
-	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_only_JAXMARL.py --config-name='baseline_mm_config_fixedQuants'"
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_JAXMARL.py --config-name='2player_config'"
+baseline_only_avst:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_only_JAXMARL.py --config-name='baseline_mm_config_AvSt'"
+baseline_only_bob:
+	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/baseline_only_JAXMARL.py --config-name='baseline_mm_config_bobStrategy'"
 
 plot_trajectories:
 	$(DOCKER_RUN_BASIC) /bin/bash -c "python3 ./gymnax_exchange/jaxrl/MARL/baseline_eval/plotting_episodes.py --combo "CURIOUS" "LACED" --directory=trajectories"
