@@ -3,12 +3,12 @@
 # Should match with NUM_AGENTS_PER_TYPE
 
 "LR": [0.00025]  # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.0001 better than 0.001 (latter is unstable) Ref is 2.5e-4
-"NUM_ENVS": 4096 #2048 #2048 #128 
-"NUM_STEPS": 64
-"NUM_STEPS_EVAL" : 64
+"NUM_ENVS": 512 #2048 #2048 #128 
+"NUM_STEPS": 6400
+"NUM_STEPS_EVAL" : 6400
 "GRU_HIDDEN_DIM": 256
 "FC_DIM_SIZE": 256
-"TOTAL_TIMESTEPS": 1e8 #Should take ~0.5 / 2 days
+"TOTAL_TIMESTEPS": 5e9 #Should take ~0.5 / 2 days
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 4 # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 8 better than 16, trying even smaller
 "GAMMA": [0.999999999] # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.99 better than 0.999 Ref is 0.99 GPT says smaller more stable. 
@@ -23,7 +23,7 @@
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2 #Overriden in SWEEP
 "N_DEVICES": 1
-"ENV_CONFIG": "config/env_configs/mm_bobStrategy.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json mm_debug_fixed_quant
+"ENV_CONFIG": "config/env_configs/mm_bobRL.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json mm_debug_fixed_quant
 "ANNEAL_LR": [True]
 
 # WandB Params
@@ -68,7 +68,9 @@ SWEEP_PARAMETERS:
                 inventoryPnL_gamma:
                   values: [0.5]  # "none" "linear "quadratic"
                 rebate_bps:
-                  values: [0.15,0.1,0.2]
+                  values: [0.15]
+                # bob_v0:
+                #   values: [2,5,10]
             #     action_space:
             #       values: ["fixed_quants"]  #"spread_skew",,"fixed_quants"simple
             #     reward_space:

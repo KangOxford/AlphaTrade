@@ -8,7 +8,7 @@
 "NUM_STEPS_EVAL" : 64
 "GRU_HIDDEN_DIM": 256
 "FC_DIM_SIZE": 256
-"TOTAL_TIMESTEPS": 1e6 #Should take ~0.5 / 2 days
+"TOTAL_TIMESTEPS": 5e8 #Should take ~0.5 / 2 days
 "UPDATE_EPOCHS": 4
 "NUM_MINIBATCHES": 4 # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 8 better than 16, trying even smaller
 "GAMMA": [0.99] # HP (v3_Exec_FixedQuantsComplex_Ablations) shows 0.99 better than 0.999 Ref is 0.99 GPT says smaller more stable. 
@@ -23,12 +23,12 @@
 "NUM_AGENTS_PER_TYPE": [1]
 "SEED": 2 #Overriden in SWEEP
 "N_DEVICES": 1
-"ENV_CONFIG": "config/env_configs/exec_longrun_twap.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json
+"ENV_CONFIG": "config/env_configs/exec_longrun_fixed_quants_complex.json" #exec_longrun_fixed_quants_complex.json" # exec_longrun_fixed_price.json
 "ANNEAL_LR": [True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "DEBUG_SWEEP" #"Exec_FixedPrice_Long" #"DEBUG"Exec_FixedQuantsComplex_Long
+"PROJECT": "v2Exec_FixedQuantsComplex_Long" #"Exec_FixedPrice_Long" #"DEBUG"Exec_FixedQuantsComplex_Long
 "WANDB_MODE" : "online"
 
 
@@ -84,11 +84,13 @@ SWEEP_PARAMETERS:
             Execution:
               parameters:
                 reward_lambda:
-                  values: [0.0,0.1,0.3,0.5,0.9]
+                  values: [0.1]
                 doom_price_penalty:
-                  values: [5,7]
-                # fixed_quant_value:
-                #   values: [10]
+                  values: [3]
+                fixed_quant_value:
+                  values: [5,2,1]
+                task_size:
+                  values: [600]
                 # n_actions:
                 #   values: [2,4,3]  #fixed_quants,fixed_quants_complex
                 # reward_scaling_quo:

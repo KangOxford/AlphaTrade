@@ -2,41 +2,96 @@
 # apply differently to each ntwrk
 # Should match with NUM_AGENTS_PER_TYPE
 
-"LR": [0.0004,0.0004]
+"LR": [0.00025,0.00025]
 "NUM_ENVS": 4096 #128
-"NUM_STEPS": 128
+"NUM_STEPS": 64
 "NUM_STEPS_EVAL" : 64
-"GRU_HIDDEN_DIM": 128
-"FC_DIM_SIZE": 128
-"TOTAL_TIMESTEPS": 5e7
+"GRU_HIDDEN_DIM": 256
+"FC_DIM_SIZE": 256
+"TOTAL_TIMESTEPS": 5e8
 "UPDATE_EPOCHS": 4
-"NUM_MINIBATCHES": 16
-"GAMMA": [0.999,0.999]
-"GAE_LAMBDA": [0.99,0.99]
+"NUM_MINIBATCHES": 4
+"GAMMA": [0.999999999,0.999]
+"GAE_LAMBDA": [0.85,0.9]
 "CLIP_EPS": 0.2
 "SCALE_CLIP_EPS": [False,False]
-"ENT_COEF": [0.001,0.001]
-"VF_COEF": [1e-11,1e-11]
+"ENT_COEF": [0.01,0.01]
+"VF_COEF": [0.5,0.5]
 "MAX_GRAD_NORM": [0.5,0.5]
 "ACTIVATION": ["relu","relu"]
 "ENV_NAME": "JAXMARL-Lob-v0"
 "NUM_AGENTS_PER_TYPE": [1,1]
 "SEED": 2
 "N_DEVICES": 1
-"ENV_CONFIG": "random_file.json"
+"ENV_CONFIG": "config/env_configs/2_player_fq_fqc.json"
 
 "ANNEAL_LR": [True,True]
 
 # WandB Params
 "ENTITY": "oxford-lob"
-"PROJECT": "PMAP" #"v4_2Player_reference_price_ablation" #"DEBUG"
+"PROJECT": "2PLayer" #"v4_2Player_reference_price_ablation" #"DEBUG"
 "WANDB_MODE" : "online"
 
 # High-Level Params
-"CALC_EVAL" : False
-"EvalTimePeriod" : "2024_Eval"
+"CALC_EVAL" : True
+"TimePeriod" : "2024"
+"EvalTimePeriod" : "2024_Dec"
 "Calculate Baseline" : False
 "Timing" : False
 
-
+SWEEP_PARAMETERS: 
+        # LR:
+        #   values: [[0.0015],[0.001],[0.0005]]
+        # GAMMA:
+        #     values: [0.9]
+        # GAE_LAMBDA:
+        #   values: [ [0.999],[0.9999],[0.99999]] #Should smooth value func
+        # NUM_MINIBATCHES:
+        #   values: [8,16] # Bigger batches, potentially less noisy updates
+        # # ENT_COEF:
+        #   values: [config["ENT_COEF"], [0.1,0.1], [0.05,0.05]]
+        # UPDATE_EPOCHS:
+        #   values: [config["UPDATE_EPOCHS"], 8]
+        # CLIP_EPS:
+        #   values: [config["CLIP_EPS"], 0.3, 0.1]
+        # VF_COEF:
+        #   values: [[5e-1]]
+        # FC_DIM_SIZE:
+        #   values: [config["FC_DIM_SIZE"], 256]
+        # # NUM_AGENTS_PER_TYPE:
+        # #   values: [config["NUM_AGENTS_PER_TYPE"], [2,2], [10,10]]
+        SEED:
+          values: [42]
+        # NUM_ENVS:
+        #   values: [config["NUM_ENVS"]]
+        # NUM_STEPS:
+        #   values: [config["NUM_STEPS"], 128, 32, 8]
+        AGENT_CONFIGS:
+          parameters:
+            MarketMaking:
+              parameters:
+                inv_penalty:
+                  values: ['none']  # "none" "linear "quadratic"
+            #     skew_multiplier:
+            #       values: [10]
+            #     action_space:
+            #       values: ["fixed_quants"]  #"spread_skew",,"fixed_quants"simple
+            #     reward_space:
+            #       values: ["spooner","buy_sell_pnl"]  # "spooner"buy_sell_pnl
+            #     reference_price_portfolio_value:
+            #       values: ["best_bid_ask"]  #best_bid_ask "mid"
+            Execution:
+              parameters:
+                reward_lambda:
+                  values: [0.1]
+                # doom_price_penalty:
+                #   values: [3]
+                # fixed_quant_value:
+                #   values: [5,2,1]
+                # task_size:
+                #   values: [600]
+                # n_actions:
+                #   values: [2,4,3]  #fixed_quants,fixed_quants_complex
+                # reward_scaling_quo:
+                #   values: [100.0]
 

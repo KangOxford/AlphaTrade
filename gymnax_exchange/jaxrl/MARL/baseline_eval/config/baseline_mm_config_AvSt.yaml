@@ -1,0 +1,82 @@
+# Those hparams which are in a list 
+# apply differently to each ntwrk
+# Should match with NUM_AGENTS_PER_TYPE
+
+# "NUM_ENVS": 2048
+# "NUM_STEPS": 6400 #128
+# "TINY_RUN": False
+
+"NUM_ENVS": 2
+"NUM_STEPS": 100
+"TINY_RUN": True
+
+
+"ENV_NAME": "JAXMARL-Lob-v0"
+"NUM_AGENTS_PER_TYPE": [1]
+"SEED": 3436
+"N_DEVICES": 1
+"FIXED_ACTIONS" : [[1]]
+
+# WandB Params
+"ENTITY": "oxford-lob"
+"PROJECT": "Baseline_JAXMARL"
+"WANDB_MODE" : "disabled"
+
+# High-Level Params
+"CALC_EVAL" : False
+"EvalTimePeriod" : "debug_train" #"2024"
+"ENV_CONFIG": "config/env_configs/mm_AvSt.json"
+
+
+
+#Network params that must be manually matched with the config used in the original training
+"GRU_HIDDEN_DIM": 128
+"FC_DIM_SIZE": 128
+#Training params which are reqquired to build the target network for the chkpt restore. 
+"ANNEAL_LR": False
+"LR": 20
+"MAX_GRAD_NORM" : 25
+
+
+"RESTORE_PROJECT" : "v2_Exec_FixedQuantsComplex_Ablations"
+"RESTORE_RUN" : "usual-sweep-10"
+
+
+
+"BASELINE_CONFIGS" : {
+                  "MarketMaking" : {} #{"rebate_bps": 0.15,} #fixed_quants,fixed_quants_complex}
+                }
+
+"AGENT_CONFIGS" : { "MarketMaking" : {} #  {"rebate_bps": 0.15,}
+                }
+
+
+      #   """Action function for the fixed Quant Action space
+      #   Pick for a ladder of quant execution options
+      #   Always send 4 messages
+      #   0 = No trade
+      #   1=      # FT
+      #   2=     # M
+      #   3=    # NT
+      #   4=    # PP
+      #   5=    # FT*2 quant
+      #   6=    # M*2 quant
+      #   7=    # NT*2 quant
+      #   8=    # PP*2 quant
+      #   9=    # FT*5 quant
+      #   10=   # M*5 quant
+      #   11=   # NT*5 quant
+      #   12=   # PP*5 quant
+
+        
+      #  """
+
+
+        # Mapping:
+        # 0: tight spread, bid skew
+        # 1: tight spread, neutral 
+        # 2: tight spread, ask skew
+        # 3: wide spread, bid skew
+        # 4: wide spread, neutral
+        # 5: wide spread, ask skew
+        # '''

@@ -2,20 +2,20 @@
 # apply differently to each ntwrk
 # Should match with NUM_AGENTS_PER_TYPE
 
-# "NUM_ENVS": 4096
-# "NUM_STEPS": 256 #128
-# "TINY_RUN": False
+"NUM_ENVS": 4096
+"NUM_STEPS": 128
+"TINY_RUN": False
 
-"NUM_ENVS": 16
-"NUM_STEPS": 2000000
-"TINY_RUN": True
+# "NUM_ENVS": 16
+# "NUM_STEPS": 64
+# "TINY_RUN": True
 
 
 "ENV_NAME": "JAXMARL-Lob-v0"
-"NUM_AGENTS_PER_TYPE": [1]
-"SEED": 3436
+"NUM_AGENTS_PER_TYPE": [1,1]
+"SEED": 34
 "N_DEVICES": 1
-"FIXED_ACTIONS" : [[2]]
+"FIXED_ACTIONS" : [[1],[0]]
 
 # WandB Params
 "ENTITY": "oxford-lob"
@@ -25,30 +25,34 @@
 # High-Level Params
 "CALC_EVAL" : False
 "EvalTimePeriod" : "2024_Dec" #"2024"
-"ENV_CONFIG": "config/env_configs/mm_debug_fixed_quant.json"
-
 
 
 #Network params that must be manually matched with the config used in the original training
-"GRU_HIDDEN_DIM": 128
-"FC_DIM_SIZE": 128
-#Training params which are reqquired to build the target network for the chkpt restore. 
-"ANNEAL_LR": False
+"GRU_HIDDEN_DIM": 256
+"FC_DIM_SIZE": 256
+#Training params which are irellevant for the eval.
+"ANNEAL_LR": True
 "LR": 20
 "MAX_GRAD_NORM" : 25
 
+"ENV_CONFIG": "config/env_configs/2_player_fq_fqc.json"
 
-"RESTORE_PROJECT" : "v2_Exec_FixedQuantsComplex_Ablations"
-"RESTORE_RUN" : "usual-sweep-10"
+"RESTORE_PROJECT" : "2PLayer"
+"RESTORE_RUN" : "whole-sweep-1"
 
 
 
-"BASELINE_CONFIGS" : {
-                  "MarketMaking" : {"action_space": "fixed_quants",} #fixed_quants,fixed_quants_complex}
+"AGENT_CONFIGS" : {"MarketMaking" :{
+                                  },
+                  "Execution" : {
+                              }
+                }
+"BASELINE_CONFIGS" : {"MarketMaking" :{"action_space":"AvSt", #"spread_skew",,"fixed_quants"simple
+                                    },
+                  "Execution" : {"action_space": "twap"}
                 }
 
-"AGENT_CONFIGS" : {"MarketMaking" : {"action_space": "fixed_quants",}
-                }
+
 
 
       #   """Action function for the fixed Quant Action space
