@@ -1250,8 +1250,31 @@ class MarketMakingAgent():
         0-7, with lower giving more aggresive bid and asks
         '''
         # Use the most recent best_ask and best_bid values
-        best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
-        best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        # best_ask = jnp.int32((world_state.best_asks[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        # best_bid = jnp.int32((world_state.best_bids[-1][0] // self.world_config.tick_size) * self.world_config.tick_size)
+        # Use the most recent best_ask and best_bid values
+        #These values may be my own orders... I clearly don't want to base myself off them. Get from world state directly.
+        ask_mask=(world_state.ask_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        bid_mask=(world_state.bid_raw_orders[:,job.cst.OrderSideFeat.TID.value]!=agent_params.trader_id)
+        
+        masked_asks=jnp.where(ask_mask[:, jnp.newaxis], world_state.ask_raw_orders, -1)
+        masked_bids=jnp.where(bid_mask[:, jnp.newaxis], world_state.bid_raw_orders, -1)
+    
+        best_ask, best_bid = job.get_best_bid_and_ask(self.world_config,masked_asks,masked_bids)
+        #If the book is empty here, we get -1 back.
+
+        empty_book = jnp.where((best_ask == -1) | (best_bid == -1),True, False)
+        #We then replace with the last known bbid, bask, which in turn should have been forward filled, but is most likely our own order which will be v far from the last true market price. 
+        best_ask = jnp.int32((best_ask // self.world_config.tick_size) * self.world_config.tick_size)
+        best_bid = jnp.int32((best_bid // self.world_config.tick_size) * self.world_config.tick_size)
+        #The world state will have the mid-price propagated. Doing this just for the sake of logging to have reasonable averages. 
+        #If the book is empty, the quants are put to 0 anyway. 
+        best_bid = jnp.where(empty_book, world_state.best_bids[-1,0], best_bid)
+        best_ask = jnp.where(empty_book, world_state.best_asks[-1,0], best_ask)
+
+
+
+
         mid_price = (best_ask + best_bid) // 2
 
         #Select aaggresion parameter
@@ -1276,7 +1299,7 @@ class MarketMakingAgent():
         res_price = (mid_price - ((agent_state.inventory)) * gamma * (variance) * normalized_time)
 
         #Spread
-        spread = (gamma*variance*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))*self.world_config.tick_size
+        spread = (gamma*variance*normalized_time + (2/gamma) * jnp.log(1 + gamma/k))#*self.world_config.tick_size
         spread=jnp.clip(spread,self.world_config.tick_size,self.world_config.maxint)#make sure spread is at least a tick
 
         bid_price= res_price-spread/2
@@ -1303,6 +1326,19 @@ class MarketMakingAgent():
         bid_price=((bid_price) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
         ask_price=((ask_price) // self.world_config.tick_size * self.world_config.tick_size).astype(jnp.int32)
 
+        # Ensure that the quote prices are not crossing the midprice. Allows for entrance into spread, but not if the spread is one ticckc
+        def round_down(x, multiple):
+            """Round down to the nearest multiple of X (strictly less than x) - JAX compatible"""
+            return (x // multiple - jnp.where(x % multiple == 0, 1, 0)) * multiple
+
+        def round_up(x, multiple):
+            """Round up to the nearest multiple of X (strictly greater than x) - JAX compatible"""
+            return (x // multiple + 1) * multiple
+
+        bid_price = jnp.minimum(bid_price, round_down(mid_price, self.world_config.tick_size))
+        ask_price = jnp.maximum(ask_price, round_up(mid_price, self.world_config.tick_size))
+        # jax.debug.print("bid price : {}", bid_price)
+        # jax.debug.print("ask price: {}", ask_price)
         # Set fixed quantities
         bid_quant = self.cfg.fixed_quant_value
         ask_quant = self.cfg.fixed_quant_value
@@ -1359,6 +1395,7 @@ class MarketMakingAgent():
                 print("step: {}",step)
         # jax.debug.callback(debug_neg_distances, best_bid, best_ask, bid_price, ask_price, mid_price, res_price, spread, world_state.window_index, world_state.step_counter, agent_state.inventory,)
 
+        return action_msgs,{"bid_quant":bid_quant,"ask_quant":ask_quant,"empty_book":False,"bid_distance_from_best":best_bid-bid_price,"ask_distance_from_best":ask_price-best_ask,"posted_bid_price":bid_price,"posted_ask_price":ask_price}
 
     def _getActionMsgs_BobStrategy(self, action: jax.Array, world_state: WorldState, agent_state: MMEnvState, agent_params: MMEnvParams):
         '''Transform discrete action into bid and ask order messages based on current best prices.'''
