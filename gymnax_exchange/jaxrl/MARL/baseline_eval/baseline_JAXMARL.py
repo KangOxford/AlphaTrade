@@ -1011,15 +1011,17 @@ def seperate_main(config):
         else:
             print("Using default MultiAgentConfig as defined in jaxob_config.py file.")
             env_config=MultiAgentConfig()
-            save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     except Exception as e:
         print(f"Error loading env config: {e}")
         print("Reverting to default MultiAgentConfig as defined in jaxob_config.py file.")
         env_config=MultiAgentConfig()
-        save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    env_config=OmegaConf.structured(env_config)    
+        save_config_to_file(env_config,f"config/env_configs/default_config_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    print("Note: The sweep parameters in yaml will override these settings.")
+    env_config=OmegaConf.structured(env_config)
     final_config=OmegaConf.merge(config,env_config)
     config = OmegaConf.to_container(final_config)
+
 
     # jax.profiler.start_trace("/tmp/profile-data")
 
