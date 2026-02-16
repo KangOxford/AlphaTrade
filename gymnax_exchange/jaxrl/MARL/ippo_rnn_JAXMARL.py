@@ -232,18 +232,23 @@ class ActorCriticRNN(nn.Module):
 
         actor_mean = nn.relu(actor_mean)
 
+        # Normalize single-element lists to int (for n_actions=1 case)
+        action_dim = self.action_dim
+        if isinstance(action_dim, (list, tuple)) and len(action_dim) == 1:
+            action_dim = action_dim[0]
+
         # Option 1: Single action output (current behavior)
-        if isinstance(self.action_dim, int):
-            pi = SingleActionOutput(action_dim=self.action_dim, config=self.config)(actor_mean)
+        if isinstance(action_dim, int):
+            pi = SingleActionOutput(action_dim=action_dim, config=self.config)(actor_mean)
 
         # Option 2: Multiple independent actions
-        elif isinstance(self.action_dim, (list, tuple)):
-            pi = MultiActionOutputIndependant(action_dims=self.action_dim, config=self.config)(actor_mean)
+        elif isinstance(action_dim, (list, tuple)):
+            pi = MultiActionOutputIndependant(action_dims=action_dim, config=self.config)(actor_mean)
 
         # Option 3: Multiple autoregressive actions
-        elif isinstance(self.action_dim, (list, tuple)) and self.config.get("AUTOREGRESSIVE", True):
+        elif isinstance(action_dim, (list, tuple)) and self.config.get("AUTOREGRESSIVE", True):
             pi = MultiActionOutputAutoregressive(
-                action_dims=self.action_dim,  # e.g., [10, 10, 5]
+                action_dims=action_dim,  # e.g., [10, 10, 5]
                 config=self.config
             )(actor_mean)
         else:
