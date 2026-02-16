@@ -2781,6 +2781,7 @@ class MarketMakingAgent():
         elif self.cfg.observation_space == "basic":
             return self._get_obs_basic(world_state=world_state, 
                                        agent_state=agent_state,
+                                       agent_param=agent_param,
                                        normalize=normalize,
                                        flatten=flatten)
         else:
@@ -2959,41 +2960,43 @@ class MarketMakingAgent():
       
 
 
-    def _get_obs_basic(self, world_state: WorldState, agent_state: MMEnvState, normalize: bool, flatten: bool = True) -> chex.Array:
-        """ Return very basic obs space"""
+    def _get_obs_basic(
+            self,
+            world_state: WorldState,
+            agent_state: MMEnvState,
+            agent_param: MMEnvParams,
+            normalize: bool,
+            flatten: bool = True,
+        ) -> chex.Array:
+        """ Return observation from raw state trafo. """
+        # NOTE: only uses most recent observation from state
+
+        spread=jnp.abs(world_state.best_asks[-1][0] - world_state.best_bids[-1][0])
+
         obs = {
-            #"best_ask_price": world_state.best_asks[-1][0],
-            #"best_bid_price": world_state.best_bids[-1][0],
-            "inventory": agent_state.inventory,
-            #"cash_balance": agent_state.cash_balance,
+            "spread": spread,
+            "inventory" : agent_state.inventory,
         }
 
-        #jax.debug.print("best_ask_price: {}", obs["best_ask_price"])
-        #jax.debug.print("best_bid_price: {}", obs["best_bid_price"])
-        #jax.debug.print("inventory: {}", obs["inventory"])
-        #jax.debug.print("cash_balance: {}", obs["cash_balance"])
+        # TODO: put this into config somewhere?
+        #       also check if we can get rid of manual normalization
+        #       by e.g. functional transformations or maybe gymnax obs norm wrapper suffices?
 
         means = {
-            #"best_ask_price": 1550000,
-            #"best_bid_price": 1550000,
-            "inventory": 0,
-            #"cash_balance": 0,
+            "spread": 0,
+            "inventory" : 0,
         }
 
         stds = {
-            #"best_ask_price": 1e3,
-            #"best_bid_price": 1e3,
-            "inventory": 10,
-            #"cash_balance": 100000,
+            "spread": 1e4,
+            "inventory" : 10,
         }
-
+        
         if normalize:
             obs = self.normalize_obs(obs, means, stds)
             # jax.debug.print('normalized obs:\n {}', obs)
-
         if flatten:
-            obs, _ = jax.flatten_util.ravel_pytree(obs) # Important: this can change the order of the values
-        
+            obs, _ = jax.flatten_util.ravel_pytree(obs)
         return obs
     
 
@@ -3030,15 +3033,15 @@ class MarketMakingAgent():
             obs = {
                 # "dist_of_posted_ask": agent_state.posted_distance_ask,
                 # "dist_of_posted_bid": agent_state.posted_distance_bid,
-                # "p_bid" : world_state.best_bids[-1][0],  
-                # "p_ask":world_state.best_asks[-1][0], 
+                "p_bid" : world_state.best_bids[-1][0],  
+                "p_ask":world_state.best_asks[-1][0], 
                 "spread": spread,
-                # "q_bid": bid_vol_tot, #world_state.best_bids[-1][1],
-                # "q_ask": ask_vol_tot, #world_state.best_asks[-1][1],
-                # "delta_time": world_state.delta_time,
-                # "time_remaining": self.world_config.episode_time - time_elapsed,
-                # "mid_price":world_state.mid_price,
-                # "step_counter": world_state.step_counter,
+                "q_bid": bid_vol_tot, #world_state.best_bids[-1][1],
+                "q_ask": ask_vol_tot, #world_state.best_asks[-1][1],
+                "delta_time": world_state.delta_time,
+                "time_remaining": self.world_config.episode_time - time_elapsed,
+                "mid_price":world_state.mid_price,
+                "step_counter": world_state.step_counter,
                 # Set Agent specific stuff
                 # "total_PnL" : agent_state.total_PnL,
                 # "cash_balance" : agent_state.cash_balance,
@@ -3052,15 +3055,15 @@ class MarketMakingAgent():
             means = {
                 # "dist_of_posted_ask": 0,
                 # "dist_of_posted_bid": 0,
-                # "p_bid" : 0,
-                # "p_ask":0, 
+                "p_bid" : 0,
+                "p_ask":0, 
                 "spread": 0,
-                # "q_bid": 0,
-                # "q_ask": 0,
-                # "delta_time": 0,
-                # "time_remaining": 0,
-                # "mid_price":0,
-                # "step_counter": 0,
+                "q_bid": 0,
+                "q_ask": 0,
+                "delta_time": 0,
+                "time_remaining": 0,
+                "mid_price":0,
+                "step_counter": 0,
                 # Set Agent specific stuff
                 # "total_PnL" : 0,
                 # "cash_balance" : 0,
@@ -3070,15 +3073,15 @@ class MarketMakingAgent():
             stds = {
                 # "dist_of_posted_ask": 1.0,
                 # "dist_of_posted_bid": 1.0,
-                # "p_bid" : 1e6,
-                # "p_ask":1e6, 
+                "p_bid" : 1e6,
+                "p_ask":1e6, 
                 "spread": 1e4,
-                # "q_bid": 1000,
-                # "q_ask": 1000,
-                # "delta_time": 10,
-                # "time_remaining": self.world_config.episode_time,
-                # "mid_price":1e6,
-                # "step_counter": 10,
+                "q_bid": 1000,
+                "q_ask": 1000,
+                "delta_time": 10,
+                "time_remaining": self.world_config.episode_time,
+                "mid_price":1e6,
+                "step_counter": 10,
 
                 # Set Agent specific stuff
                 # "total_PnL" : 1000,
@@ -3090,13 +3093,13 @@ class MarketMakingAgent():
             obs = {
                 # "dist_of_posted_ask": agent_state.posted_distance_ask,
                 # "dist_of_posted_bid": agent_state.posted_distance_bid,
-                # "p_bid" : world_state.best_bids[-1][0],  
-                # "p_ask":world_state.best_asks[-1][0], 
+                "p_bid" : world_state.best_bids[-1][0],  
+                "p_ask":world_state.best_asks[-1][0], 
                 "spread": spread,
-                # "q_bid": bid_vol_tot,#world_state.best_bids[-1][1],
-                # "q_ask": ask_vol_tot,#world_state.best_asks[-1][1],
-                # "mid_price":world_state.mid_price,
-                # "step_counter": world_state.step_counter,
+                "q_bid": bid_vol_tot,#world_state.best_bids[-1][1],
+                "q_ask": ask_vol_tot,#world_state.best_asks[-1][1],
+                "mid_price":world_state.mid_price,
+                "step_counter": world_state.step_counter,
                 # Set Agent specific stuff
                 # "total_PnL" : agent_state.total_PnL,
                 # "cash_balance" : agent_state.cash_balance,
@@ -3110,13 +3113,13 @@ class MarketMakingAgent():
             means = {
                 # "dist_of_posted_ask": 0,
                 # "dist_of_posted_bid": 0,
-                # "p_bid" : 0,
-                # "p_ask":0, 
+                "p_bid" : 0,
+                "p_ask":0, 
                 "spread": 0,
-                # "q_bid": 0,
-                # "q_ask": 0,
-                # "mid_price":0,
-                # "step_counter": 0,
+                "q_bid": 0,
+                "q_ask": 0,
+                "mid_price":0,
+                "step_counter": 0,
 
                 # Set Agent specific stuff
                 # "total_PnL" : 0,
@@ -3127,13 +3130,13 @@ class MarketMakingAgent():
             stds = {
                 # "dist_of_posted_ask": 1,
                 # "dist_of_posted_bid": 1,
-                # "p_bid" : 1e6,
-                # "p_ask":1e6, 
+                "p_bid" : 1e6,
+                "p_ask":1e6, 
                 "spread": 1e4,
-                # "q_bid": 1000,
-                # "q_ask": 1000,
-                # "mid_price":1e6,
-                # "step_counter": 10,
+                "q_bid": 1000,
+                "q_ask": 1000,
+                "mid_price":1e6,
+                "step_counter": 10,
 
                 # Set Agent specific stuff
                 # "total_PnL" : 1000,
@@ -3193,9 +3196,9 @@ class MarketMakingAgent():
         """Observation space of the environment."""
         if self.cfg.observation_space =="engineered":
             if self.world_config.ep_type == "fixed_time":
-             return spaces.Box(-1000, 1000, (2,), dtype=jnp.float32)
+             return spaces.Box(-1000, 1000, (10,), dtype=jnp.float32)
             elif self.world_config.ep_type == "fixed_steps":
-                return spaces.Box(-1000, 1000, (2,), dtype=jnp.float32)
+                return spaces.Box(-1000, 1000, (8,), dtype=jnp.float32)
         elif self.cfg.observation_space =="messages":
                 num_messages_total=self.cfg.num_messages_by_agent+self.world_config.n_data_msg_per_step
                 return spaces.Box(low=-1*self.world_config.maxint, high=self.world_config.maxint ,shape=(num_messages_total, 8), dtype=jnp.int32)
@@ -3212,7 +3215,10 @@ class MarketMakingAgent():
                 dtype=jnp.int32,
             )
         elif self.cfg.observation_space == "basic":
-            return spaces.Box(low=-10000, high=10000, shape=(1,), dtype=jnp.float32)
+            if self.world_config.ep_type == "fixed_time":
+                return spaces.Box(-1000, 1000, (2,), dtype=jnp.float32)
+            elif self.world_config.ep_type == "fixed_steps":
+                return spaces.Box(-1000, 1000, (2,), dtype=jnp.float32)
         else:
             raise ValueError("Invalid observation_space specified.")
 
