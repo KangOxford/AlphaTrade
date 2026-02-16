@@ -2,6 +2,7 @@ import os
 from re import L
 import time
 import numpy as np
+import pandas as pd
 import pickle
 import glob
 from datetime import datetime
@@ -532,12 +533,20 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
+    # Create csvs subdirectory for CSV output
+    csv_dir = os.path.join(output_dir, "csvs")
+    os.makedirs(csv_dir, exist_ok=True)
+    
     num_agent_types = len(traj_batch)
     # Create a colormap that can handle all agent types
     cmap = plt.cm.get_cmap('viridis', num_agent_types)
     
     # Get the number of environments
     num_envs = traj_batch[0].reward.shape[1] if len(traj_batch[0].reward.shape) > 1 else 1
+    
+    # Initialize a dictionary to collect data for each environment's CSV
+    # Structure: {env_idx: {'step': [...], 'feature_name': [...], ...}}
+    env_csv_data = {env_idx: {'step': np.arange(traj_batch[0].reward.shape[0]).tolist()} for env_idx in range(num_envs)}
     
     # Create figure with subplots for each environment
     fig, axes = plt.subplots(num_envs, 1, figsize=(12, 5*num_envs), sharex=True)
@@ -555,6 +564,8 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
             rewards = traj.reward
             env_rewards = rewards[:, env_idx] if len(rewards.shape) > 1 else rewards
             ax_reward.plot(steps, env_rewards, color=cmap(agent_idx), label=f"Agent Type {agent_idx}")
+            # Save to CSV data
+            env_csv_data[env_idx][f'reward_agent_{agent_idx}'] = env_rewards.tolist() if hasattr(env_rewards, 'tolist') else list(env_rewards)
         
         ax_reward.set_title(f"Environment {env_idx} Rewards")
         ax_reward.set_xlabel("Steps")
@@ -578,6 +589,8 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
             actions = traj.action
             env_actions = actions[:, env_idx] if len(actions.shape) > 1 else actions
             ax_action.plot(steps, env_actions, color=cmap(agent_idx), label=f"Agent Type {agent_idx}")
+            # Save to CSV data
+            env_csv_data[env_idx][f'action_agent_{agent_idx}'] = env_actions.tolist() if hasattr(env_actions, 'tolist') else list(env_actions)
         
         ax_action.set_title(f"Environment {env_idx} Actions")
         ax_action.set_xlabel("Steps")
@@ -638,6 +651,9 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
                                     info_axes[env_idx,subkey_to_index[subkey]].set_ylabel(f"{key}.{subkey}")
                                     info_axes[env_idx,subkey_to_index[subkey]].legend()
                                     info_axes[env_idx,subkey_to_index[subkey]].grid(True)
+                                    # Save to CSV data
+                                    csv_col_name = f'{key}_{subkey}_agent_{agent_idx}'
+                                    env_csv_data[env_idx][csv_col_name] = env_values.tolist() if hasattr(env_values, 'tolist') else list(env_values)
                                 else:
                                     print(f"Skipping plotting for {key}.{subkey} as it has more than 2 dimensions. {subvalues.shape}")
                 # Save the figure for this metric
@@ -663,6 +679,9 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
                                 info_axes[env_idx].set_ylabel(key)
                                 info_axes[env_idx].legend()
                                 info_axes[env_idx].grid(True)
+                                # Save to CSV data
+                                csv_col_name = f'{key}_agent_{agent_idx}'
+                                env_csv_data[env_idx][csv_col_name] = env_values.tolist() if hasattr(env_values, 'tolist') else list(env_values)
                             else:
                                 print(f"Skipping plotting for {key} as it has more than 2 dimensions. {values.shape}")
                 # Save the figure for this metric
@@ -706,11 +725,17 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
                 if len(values.shape) == 2:
                     env_values = values[:, env_idx]
                     world_axes[env_idx].plot(steps, env_values, color='blue')  # World info uses blue
+                    # Save to CSV data
+                    env_csv_data[env_idx][f'world_{key}'] = env_values.tolist() if hasattr(env_values, 'tolist') else list(env_values)
                 elif len(values.shape) == 3:
                     env_values = values[:, env_idx,0]+ values[:, env_idx,1]/1e9
                     world_axes[env_idx].plot(steps, env_values, color='blue')  # World info uses blue
+                    # Save to CSV data
+                    env_csv_data[env_idx][f'world_{key}'] = env_values.tolist() if hasattr(env_values, 'tolist') else list(env_values)
                 else:
                     world_axes[env_idx].plot(steps, values, color='blue')  # World info uses blue
+                    # Save to CSV data
+                    env_csv_data[env_idx][f'world_{key}'] = values.tolist() if hasattr(values, 'tolist') else list(values)
                     
                 world_axes[env_idx].set_title(f"Environment {env_idx} - World {key}")
                 world_axes[env_idx].set_xlabel("Steps")
@@ -722,6 +747,14 @@ def plot_episode_features(traj_batch, output_dir="intra-episode-figs", feature_n
             world_fig.tight_layout()
             world_fig.savefig(world_metric_path)
             plt.close(world_fig)
+    
+    # Save CSV files for each environment
+    timestamp = time.strftime('%Y%m%d-%H%M%S')
+    for env_idx in range(num_envs):
+        csv_path = os.path.join(csv_dir, f"env_{env_idx}_{timestamp}.csv")
+        df = pd.DataFrame(env_csv_data[env_idx])
+        df.to_csv(csv_path, index=False)
+        print(f"Saved CSV for environment {env_idx} to: {csv_path}")
 
 
 if __name__ == "__main__":
