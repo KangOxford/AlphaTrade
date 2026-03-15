@@ -6,7 +6,7 @@
 #SBATCH --time=00:30:00
 #SBATCH --output=logs/benchmark_mengine_%j.out
 #SBATCH --error=logs/benchmark_mengine_%j.out
-#SBATCH --account=s5e
+#SBATCH --account=brics.s5e
 
 set -euo pipefail
 
@@ -16,13 +16,21 @@ echo "Node:   $(hostname)"
 echo "Date:   $(date)"
 echo "================================="
 
-# Environment setup
-source ~/miniforge3/etc/profile.d/conda.sh
-conda activate base
+# Environment setup (conda.sh has hardcoded broken paths, use direct PATH)
+export CONDA_PREFIX=/projects/s5e/quant/miniforge3
+export PATH=$CONDA_PREFIX/bin:$PATH
+
+module load cuda/12.6
+
+# CUDA/NCCL libs
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cublas/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cudnn/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/nccl/lib:${LD_LIBRARY_PATH:-}
 
 export XLA_PYTHON_CLIENT_PREALLOCATE=true
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.50
 export JAX_COMPILATION_CACHE_DIR=/lus/lfs1aip2/projects/s5e/quant/jax_cache_lobs5
+
+echo "Python: $(which python) ($(python --version 2>&1))"
+echo "JAX devices will be shown by the benchmark script"
 
 cd /lus/lfs1aip2/projects/s5e/quant/AlphaTrade/LOBS5/Alphatrade
 
