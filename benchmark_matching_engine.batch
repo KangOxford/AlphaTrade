@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --job-name=mengine-bench
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=1
+#SBATCH --time=00:30:00
+#SBATCH --output=logs/benchmark_mengine_%j.out
+#SBATCH --error=logs/benchmark_mengine_%j.out
+#SBATCH --account=s5e
+
+set -euo pipefail
+
+echo "=== Matching Engine Benchmark ==="
+echo "Job ID: ${SLURM_JOB_ID}"
+echo "Node:   $(hostname)"
+echo "Date:   $(date)"
+echo "================================="
+
+# Environment setup
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate base
+
+export XLA_PYTHON_CLIENT_PREALLOCATE=true
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.50
+export JAX_COMPILATION_CACHE_DIR=/lus/lfs1aip2/projects/s5e/quant/jax_cache_lobs5
+
+cd /lus/lfs1aip2/projects/s5e/quant/AlphaTrade/LOBS5/Alphatrade
+
+echo ""
+echo "=== Run 1: JAX matching (default) ==="
+export JAXOB_USE_TRITON_MATCHING=0
+python benchmark_matching_engine.py \
+    --n_orders 100 \
+    --n_msgs 500 \
+    --n_books 1,10,100,1000 \
+    --warmup 5 \
+    --trials 20
+
+echo ""
+echo ""
+echo "=== Run 2: Triton matching ==="
+export JAXOB_USE_TRITON_MATCHING=1
+python benchmark_matching_engine.py \
+    --n_orders 100 \
+    --n_msgs 500 \
+    --n_books 1,10,100,1000 \
+    --warmup 5 \
+    --trials 20
+
+echo ""
+echo "=== Done: $(date) ==="
