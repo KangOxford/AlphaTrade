@@ -22,6 +22,10 @@ export PATH=$CONDA_PREFIX/bin:$PATH
 
 module load cuda/12.6
 
+# Force Triton to use system ptxas (12.6) instead of its bundled 12.8.
+# Without this, Triton generates PTX 8.7 but XLA's ptxas only handles PTX 8.5.
+export TRITON_PTXAS_PATH=/opt/nvidia/hpc_sdk/Linux_aarch64/24.11/cuda/12.6/bin/ptxas
+
 # CUDA/NCCL libs
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cublas/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cudnn/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/nccl/lib:${LD_LIBRARY_PATH:-}
 
