@@ -44,8 +44,13 @@ echo "=== Step 2: V1 per-match correctness + benchmark ==="
 python test_cuda_matching.py
 echo ""
 
-# Step 3: V2 batched scan tests
-echo "=== Step 3: V2 batched scan correctness + benchmark ==="
+# Step 3: V2 debug (find first divergence)
+echo "=== Step 3: V2 debug — find first divergence ==="
+python debug_cuda_batch.py
+echo ""
+
+# Step 4: V2 batched scan tests
+echo "=== Step 4: V2 batched scan correctness + benchmark ==="
 python test_cuda_batch.py
 echo ""
 
