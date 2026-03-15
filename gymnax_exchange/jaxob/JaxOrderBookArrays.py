@@ -75,6 +75,23 @@ except Exception:
             stacklevel=2,
         )
 
+_USE_CUDA_MATCHING = os.environ.get("JAXOB_USE_CUDA_MATCHING", "0") == "1"
+try:
+    from gymnax_exchange.jaxob.cuda_matching import (
+        match_against_ask_orders_cuda as _cuda_match_against_ask_orders,
+        match_against_bid_orders_cuda as _cuda_match_against_bid_orders,
+        _CUDA_MATCHING_AVAILABLE,
+    )
+except Exception:
+    _CUDA_MATCHING_AVAILABLE = False
+    if _USE_CUDA_MATCHING:
+        import warnings
+        warnings.warn(
+            "JAXOB_USE_CUDA_MATCHING=1 but CUDA matching is not available. "
+            "Falling back to JAX matching. Build libcuda_matching.so first.",
+            stacklevel=2,
+        )
+
 #TODO: Get rid of these magic numbers by allowing a config dict
 #  to be passed through as a static arg 
 
@@ -354,11 +371,9 @@ def _match_against_ask_orders_jax(cfg: JAXLOB_Configuration,orderside,qtm,price,
 
 @partial(jax.jit, static_argnums=0)
 def _match_against_bid_orders(cfg: JAXLOB_Configuration, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side):
-    """Dispatch: selects Triton or JAX matching for bid orders.
-
-    If JAXOB_USE_TRITON_MATCHING=1 and Triton is available, uses GPU kernel.
-    Otherwise falls back to JAX implementation (default behavior).
-    """
+    """Dispatch: selects CUDA → Triton → JAX matching for bid orders."""
+    if _USE_CUDA_MATCHING and _CUDA_MATCHING_AVAILABLE:
+        return _cuda_match_against_bid_orders(orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
     if _USE_TRITON_MATCHING and _TRITON_MATCHING_AVAILABLE:
         return _triton_match_against_bid_orders(orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
     return _match_against_bid_orders_jax(cfg, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
@@ -366,11 +381,9 @@ def _match_against_bid_orders(cfg: JAXLOB_Configuration, orderside, qtm, price, 
 
 @partial(jax.jit, static_argnums=0)
 def _match_against_ask_orders(cfg: JAXLOB_Configuration, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side):
-    """Dispatch: selects Triton or JAX matching for ask orders.
-
-    If JAXOB_USE_TRITON_MATCHING=1 and Triton is available, uses GPU kernel.
-    Otherwise falls back to JAX implementation (default behavior).
-    """
+    """Dispatch: selects CUDA → Triton → JAX matching for ask orders."""
+    if _USE_CUDA_MATCHING and _CUDA_MATCHING_AVAILABLE:
+        return _cuda_match_against_ask_orders(orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
     if _USE_TRITON_MATCHING and _TRITON_MATCHING_AVAILABLE:
         return _triton_match_against_ask_orders(orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)
     return _match_against_ask_orders_jax(cfg, orderside, qtm, price, trade, agrOID, time, time_ns, agrTID, side)

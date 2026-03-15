@@ -1,0 +1,47 @@
+#!/bin/bash
+#SBATCH --job-name=cuda-match-test
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=1
+#SBATCH --time=00:15:00
+#SBATCH --account=brics.s5e
+#SBATCH --output=logs/cuda_match_test_%j.out
+#SBATCH --error=logs/cuda_match_test_%j.out
+
+set -euo pipefail
+
+WORKDIR=/lus/lfs1aip2/projects/s5e/quant/AlphaTrade/experiments/exp_M1_cuda_matching
+
+echo "=== CUDA Matching Engine: Build + Test ==="
+echo "Job ID: ${SLURM_JOB_ID}"
+echo "Node:   $(hostname)"
+echo "Date:   $(date)"
+echo "==========================================="
+
+# Environment
+export CONDA_PREFIX=/projects/s5e/quant/miniforge3
+export PATH=$CONDA_PREFIX/bin:$PATH
+module load cuda/12.6
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cublas/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/cudnn/lib:$CONDA_PREFIX/lib/python3.12/site-packages/nvidia/nccl/lib:${LD_LIBRARY_PATH:-}
+export XLA_PYTHON_CLIENT_PREALLOCATE=true
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.50
+
+echo "Python: $(which python) ($(python --version 2>&1))"
+echo "nvcc:   $(nvcc --version 2>&1 | tail -1)"
+echo ""
+
+cd "${WORKDIR}"
+
+# Step 1: Build CUDA kernel
+echo "=== Step 1: Building CUDA matching kernel ==="
+cd gymnax_exchange/jaxob/cuda_matching
+bash build.sh
+cd "${WORKDIR}"
+echo ""
+
+# Step 2: Run correctness tests + benchmark
+echo "=== Step 2: Correctness tests + Benchmark ==="
+python test_cuda_matching.py
+echo ""
+
+echo "=== Done: $(date) ==="
