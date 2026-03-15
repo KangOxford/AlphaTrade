@@ -59,20 +59,23 @@ def _match_against_orders_cuda_impl(
         dtype=jnp.int32,
     )
 
-    orderside_out, trade_out, qtm_arr = jax.ffi.ffi_call(
+    # ffi_call returns a callable; attrs go to the returned function, not ffi_call
+    _cuda_fn = jax.ffi.ffi_call(
         "cuda_match_orders",
         (
             jax.ShapeDtypeStruct(orderside.shape, jnp.int32),
             jax.ShapeDtypeStruct(trade.shape, jnp.int32),
             jax.ShapeDtypeStruct((1,), jnp.int32),
         ),
+        vmap_method="sequential",
+    )
+    orderside_out, trade_out, qtm_arr = _cuda_fn(
         orderside,
         trade,
         incoming,
         n_orders=np.int32(n_orders),
         n_trades=np.int32(n_trades),
         is_bid=np.int32(1 if is_bid else 0),
-        vectorized=False,
     )
 
     return (orderside_out, jnp.squeeze(qtm_arr, axis=0), price, trade_out)
