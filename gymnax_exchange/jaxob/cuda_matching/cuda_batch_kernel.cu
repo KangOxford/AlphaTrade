@@ -121,28 +121,46 @@ __device__ int32_t match_against_orders(
 }
 
 
-// ─── Device helper: add order ────────────────────────────────
+// ─── Device helper: add order (matches JAX add_order exactly) ──
+// JAX finds empty slot via jnp.where(orderside==-1) which checks
+// ANY column for -1 (not just price). qty is capped to max(0, qty).
 __device__ void add_order(
     int32_t* side_arr,
     int32_t price, int32_t qty, int32_t oid, int32_t tid,
     int32_t time_s, int32_t time_ns,
     int32_t n_orders
 ) {
-    if (qty <= 0) return;
-    for (int i = 0; i < n_orders; i++) {
-        if (side_arr[i * ORDER_COLS + O_PRICE] == EMPTY) {
-            side_arr[i * ORDER_COLS + O_PRICE] = price;
-            side_arr[i * ORDER_COLS + O_QTY]   = qty;
-            side_arr[i * ORDER_COLS + O_OID]   = oid;
-            side_arr[i * ORDER_COLS + O_TID]   = tid;
-            side_arr[i * ORDER_COLS + O_TIME]  = time_s;
-            side_arr[i * ORDER_COLS + O_TNS]   = time_ns;
-            return;
+    // Find first row where ANY column is -1 (matches JAX's jnp.where)
+    int empty_idx = -1;
+    for (int i = 0; i < n_orders && empty_idx == -1; i++) {
+        for (int c = 0; c < ORDER_COLS; c++) {
+            if (side_arr[i * ORDER_COLS + c] == EMPTY) {
+                empty_idx = i;
+                break;
+            }
         }
     }
-    // Book full — remove worst price to make space
-    // For bids: remove lowest price; for asks: remove highest price
-    // Simplified: just skip (matches JAX's check_book_fill behavior)
+    // Fallback: overwrite last row (JAX uses fill_value=-1 → Python -1 index)
+    if (empty_idx == -1) empty_idx = n_orders - 1;
+
+    int32_t safe_qty = (qty > 0) ? qty : 0;
+    side_arr[empty_idx * ORDER_COLS + O_PRICE] = price;
+    side_arr[empty_idx * ORDER_COLS + O_QTY]   = safe_qty;
+    side_arr[empty_idx * ORDER_COLS + O_OID]   = oid;
+    side_arr[empty_idx * ORDER_COLS + O_TID]   = tid;
+    side_arr[empty_idx * ORDER_COLS + O_TIME]  = time_s;
+    side_arr[empty_idx * ORDER_COLS + O_TNS]   = time_ns;
+}
+
+// ─── Device helper: removeZeroNegQuant (matches JAX exactly) ──
+// Clears ALL rows where qty (column 1) <= 0 to all -1.
+__device__ void removeZeroNegQuant(int32_t* side_arr, int32_t n_orders) {
+    for (int i = 0; i < n_orders; i++) {
+        if (side_arr[i * ORDER_COLS + O_QTY] <= 0) {
+            for (int c = 0; c < ORDER_COLS; c++)
+                side_arr[i * ORDER_COLS + c] = EMPTY;
+        }
+    }
 }
 
 
@@ -250,26 +268,30 @@ __global__ void batch_process_messages_kernel(
         }
 
         if ((type == 1 || type == 4) && eff_side == -1) {
-            // ASK LIMIT: match against bids, add to asks
+            // ASK LIMIT (ask_lim): match against bids, add to asks
             int32_t qtm = match_against_orders(
                 bids, trades, qty, price, oid, time_s, time_ns, tid,
                 eff_side, 0 /*is_bid=false: incoming ask vs bids*/,
                 n_orders, n_trades
             );
-            // Add remaining to book (unless type 4 IOC)
-            if (qtm > 0 && type != 4) {
+            if (type != 4) {
+                // Always call add_order + cleanup (matches JAX bid_lim/ask_lim)
+                // add_order caps qty to max(0, qtm); cleanup removes qty<=0 rows
                 add_order(asks, price, qtm, oid, tid, time_s, time_ns, n_orders);
+                removeZeroNegQuant(asks, n_orders);
             }
+            // type 4 IOC: match only, no add (JAX restores pre-add state)
         }
         else if ((type == 1 || type == 4) && eff_side == 1) {
-            // BID LIMIT: match against asks, add to bids
+            // BID LIMIT (bid_lim): match against asks, add to bids
             int32_t qtm = match_against_orders(
                 asks, trades, qty, price, oid, time_s, time_ns, tid,
                 eff_side, 1 /*is_bid=true: incoming bid vs asks*/,
                 n_orders, n_trades
             );
-            if (qtm > 0 && type != 4) {
+            if (type != 4) {
                 add_order(bids, price, qtm, oid, tid, time_s, time_ns, n_orders);
+                removeZeroNegQuant(bids, n_orders);
             }
         }
         else if ((type == 2 || type == 3) && side == -1) {
