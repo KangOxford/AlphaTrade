@@ -1187,16 +1187,22 @@ def get_order_by_time(
                                  Returns an empty array (-1 dummy 
                                  values) if not found.
     """
-    # NOTE: jnp.where without x, y returns a tuple
-    idx = jnp.where(((side_array[..., 4] == time_s) &
-                     (side_array[..., 5] == time_ns)),
-                    size=1,
-                    fill_value=-1,)[0][0]
-    # return vector of NEGATIVE_RETURN_ID if not found
-    return jax.lax.cond(idx == -1,
-                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
-                        lambda i: side_array[i],
-                        idx)
+    diff_s = side_array[..., 4] - time_s
+    diff_ns = side_array[..., 5] - time_ns
+    diff_total = jnp.abs(diff_s.astype(jnp.int64) * 1000000000 + diff_ns.astype(jnp.int64))
+    
+    valid_mask = side_array[..., 0] != -1
+    diff_total = jnp.where(~valid_mask, jnp.int32(2**30), diff_total)
+    
+    idx = jnp.argmin(diff_total)
+    min_diff = diff_total[idx]
+    
+    tolerance = 1000000000 # 1 second in ns
+    
+    return jax.lax.cond(min_diff <= tolerance,
+                        lambda _: side_array[idx],
+                        lambda _: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
+                        None)
 
 @jax.jit
 def get_order_by_time_and_price(
@@ -1220,27 +1226,36 @@ def get_order_by_time_and_price(
     # jax.debug.print("Searching for order at time {}.{} and price {}",time_s,time_ns,price)
     # jax.debug.print("Orderbook side array: {}",side_array)
 
-    # NOTE: jnp.where without x, y returns a tuple
-    idx = jnp.where(((side_array[..., 4] == time_s) &
-                     (side_array[..., 5] == time_ns) &
-                     (side_array[..., 0] == price)),
-                    size=1,
-                    fill_value=-1,)[0][0]
+    diff_s = side_array[..., 4] - time_s
+    diff_ns = side_array[..., 5] - time_ns
+    diff_total = jnp.abs(diff_s.astype(jnp.int64) * 1000000000 + diff_ns.astype(jnp.int64))
+    
+    # Match both price and time
+    valid_mask_price = (side_array[..., 0] == price)
+    diff_total_price = jnp.where(~valid_mask_price, jnp.int32(2**30), diff_total)
+    
+    idx_price = jnp.argmin(diff_total_price)
+    min_diff_price = diff_total_price[idx_price]
+    
+    # Fallback to time only
+    valid_mask = side_array[..., 0] != -1
+    diff_total_time = jnp.where(~valid_mask, jnp.int32(2**30), diff_total)
+    
+    idx_time = jnp.argmin(diff_total_time)
+    min_diff_time = diff_total_time[idx_time]
+    
+    tolerance = 1000000000 # 1 second
+    
+    def time_fallback(operand):
+        return jax.lax.cond(min_diff_time <= tolerance,
+                            lambda _: side_array[idx_time],
+                            lambda _: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
+                            None)
 
-    def find_by_time__fallback(idx):
-        return jnp.where(((side_array[..., 4] == time_s) &
-                     (side_array[..., 5] == time_ns)),
-                    size=1,
-                    fill_value=-1,)[0][0]
-    idx=jax.lax.cond(idx == -1,
-                 find_by_time__fallback,
-                    lambda i: i,
-                    idx)
-    # return vector of NEGATIVE_RETURN_ID if not found
-    return jax.lax.cond(idx == -1,
-                        lambda i: cst.NEGATIVE_RETURN_ID * jnp.ones((6,), dtype=jnp.int32),
-                        lambda i: side_array[i],
-                        idx)
+    return jax.lax.cond(min_diff_price <= tolerance,
+                        lambda _: side_array[idx_price],
+                        time_fallback,
+                        None)
 
 @jax.jit
 def get_order_ids(orderside: jax.Array,) -> jax.Array:
