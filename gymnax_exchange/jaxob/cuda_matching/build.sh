@@ -23,7 +23,7 @@ echo "XLA FFI include: ${XLA_INCLUDE}"
 GPU_ARCH=${GPU_ARCH:-sm_90}
 echo "GPU architecture: ${GPU_ARCH}"
 
-echo "Compiling cuda_matching_kernel.cu ..."
+echo "Compiling cuda_matching_kernel.cu (V1: per-match) ..."
 nvcc -shared -o libcuda_matching.so \
     -std=c++17 \
     -Xcompiler -fPIC \
@@ -32,5 +32,14 @@ nvcc -shared -o libcuda_matching.so \
     -O3 \
     cuda_matching_kernel.cu
 
+echo "Compiling cuda_batch_kernel.cu (V2: batched scan) ..."
+nvcc -shared -o libcuda_batch.so \
+    -std=c++17 \
+    -Xcompiler -fPIC \
+    -I"${XLA_INCLUDE}" \
+    --gpu-architecture="${GPU_ARCH}" \
+    -O3 \
+    cuda_batch_kernel.cu
+
 echo "Build successful:"
-ls -lh "${SCRIPT_DIR}/libcuda_matching.so"
+ls -lh "${SCRIPT_DIR}"/libcuda_*.so

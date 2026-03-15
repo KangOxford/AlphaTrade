@@ -1,11 +1,12 @@
 """CUDA Matching Engine — JAX FFI Integration.
 
-Drop-in replacement for _match_against_ask/bid_orders.
-Mirrors the Triton kernel interface exactly: same signature, same vmap rules.
+Two levels:
+  V1: Per-match kernel (replaces _match_against_ask/bid_orders)
+  V2: Batched scan kernel (replaces scan_through_entire_array)
 
 Usage:
-    export JAXOB_USE_CUDA_MATCHING=1
-    python your_script.py
+    export JAXOB_USE_CUDA_MATCHING=1    # V1 per-match
+    export JAXOB_USE_CUDA_BATCH=1       # V2 batched scan (recommended)
 
 Build first:
     cd gymnax_exchange/jaxob/cuda_matching && bash build.sh
@@ -19,9 +20,11 @@ import jax.numpy as jnp
 import numpy as np
 from jax import custom_batching
 
-# ─── Load shared library and register FFI target ────────────
+_DIR = os.path.dirname(__file__)
 
-_LIB_PATH = os.path.join(os.path.dirname(__file__), "libcuda_matching.so")
+# ─── Load V1: per-match kernel ────────────────────────────────
+
+_LIB_PATH = os.path.join(_DIR, "libcuda_matching.so")
 _CUDA_MATCHING_AVAILABLE = False
 
 try:
@@ -35,7 +38,25 @@ try:
         _CUDA_MATCHING_AVAILABLE = True
 except Exception as e:
     import warnings
-    warnings.warn(f"CUDA matching kernel load failed: {e}", stacklevel=2)
+    warnings.warn(f"CUDA V1 matching kernel load failed: {e}", stacklevel=2)
+
+# ─── Load V2: batched scan kernel ─────────────────────────────
+
+_BATCH_LIB_PATH = os.path.join(_DIR, "libcuda_batch.so")
+_CUDA_BATCH_AVAILABLE = False
+
+try:
+    if os.path.exists(_BATCH_LIB_PATH):
+        _batch_lib = ctypes.cdll.LoadLibrary(_BATCH_LIB_PATH)
+        jax.ffi.register_ffi_target(
+            "cuda_batch_process_messages",
+            jax.ffi.pycapsule(_batch_lib.CudaBatchProcessMessages),
+            platform="CUDA",
+        )
+        _CUDA_BATCH_AVAILABLE = True
+except Exception as e:
+    import warnings
+    warnings.warn(f"CUDA V2 batch kernel load failed: {e}", stacklevel=2)
 
 
 # ─── Core implementation ─────────────────────────────────────
@@ -165,4 +186,96 @@ def _bid_vmap(axis_size, in_batched,
         orderside, qtm, price, trade,
         agrOID, time, time_ns, agrTID, side,
         False,
+    )
+
+
+# ═════════════════════════════════════════════════════════════
+# V2: Batched scan — replaces scan_through_entire_array
+# ═════════════════════════════════════════════════════════════
+
+def scan_through_entire_array_cuda(cfg, key, msg_array, book_state):
+    """CUDA V2: Process all messages in one kernel launch.
+
+    Drop-in replacement for scan_through_entire_array.
+    Handles: limit, cancel, delete, match (type 1-4), noop (type 0).
+    Supports: GENERAL_EXCHANGE mode, IOC type4, INCLUDE_INITS cancel.
+
+    Args:
+        cfg: JAXLOB_Configuration (used for init_id)
+        key: PRNGKey (unused — CUDA cancel doesn't use randomness)
+        msg_array: (n_msgs, 8) int32 messages
+        book_state: tuple (asks, bids, trades)
+
+    Returns:
+        (asks, bids, trades) after processing all messages
+    """
+    asks, bids, trades = book_state
+    n_orders = asks.shape[0]
+    n_trades = trades.shape[0]
+    n_msgs = msg_array.shape[0]
+
+    # Single env → n_envs=1, add batch dim, call batched kernel, squeeze
+    asks_b = asks[None, ...]      # (1, n_orders, 6)
+    bids_b = bids[None, ...]
+    trades_b = trades[None, ...]
+    msgs_b = msg_array[None, ...]  # (1, n_msgs, 8)
+
+    _fn = jax.ffi.ffi_call(
+        "cuda_batch_process_messages",
+        (
+            jax.ShapeDtypeStruct(asks_b.shape, jnp.int32),
+            jax.ShapeDtypeStruct(bids_b.shape, jnp.int32),
+            jax.ShapeDtypeStruct(trades_b.shape, jnp.int32),
+        ),
+        vmap_method="sequential",
+    )
+    asks_out, bids_out, trades_out = _fn(
+        asks_b, bids_b, trades_b, msgs_b,
+        n_envs=np.int32(1),
+        n_orders=np.int32(n_orders),
+        n_trades=np.int32(n_trades),
+        n_msgs=np.int32(n_msgs),
+        init_id=np.int32(cfg.init_id),
+    )
+    return (asks_out[0], bids_out[0], trades_out[0])
+
+
+def vscan_through_entire_array_cuda(cfg, keys, msg_arrays, book_states):
+    """CUDA V2 batched: Process multiple envs in one kernel launch.
+
+    Drop-in replacement for vmap(scan_through_entire_array).
+    grid=(n_envs,) — each CUDA block handles one independent book.
+    NO vmap needed — explicit batch dimension.
+
+    Args:
+        cfg: JAXLOB_Configuration
+        keys: (n_envs,) PRNGKeys (unused)
+        msg_arrays: (n_envs, n_msgs, 8) int32
+        book_states: tuple of (n_envs, n_orders, 6), (n_envs, n_orders, 6), (n_envs, n_trades, 8)
+
+    Returns:
+        (asks_batch, bids_batch, trades_batch)
+    """
+    asks_b, bids_b, trades_b = book_states
+    n_envs = asks_b.shape[0]
+    n_orders = asks_b.shape[1]
+    n_trades = trades_b.shape[1]
+    n_msgs = msg_arrays.shape[1]
+
+    _fn = jax.ffi.ffi_call(
+        "cuda_batch_process_messages",
+        (
+            jax.ShapeDtypeStruct(asks_b.shape, jnp.int32),
+            jax.ShapeDtypeStruct(bids_b.shape, jnp.int32),
+            jax.ShapeDtypeStruct(trades_b.shape, jnp.int32),
+        ),
+        vmap_method="sequential",
+    )
+    return _fn(
+        asks_b, bids_b, trades_b, msg_arrays,
+        n_envs=np.int32(n_envs),
+        n_orders=np.int32(n_orders),
+        n_trades=np.int32(n_trades),
+        n_msgs=np.int32(n_msgs),
+        init_id=np.int32(cfg.init_id),
     )

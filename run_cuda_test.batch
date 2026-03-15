@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
-#SBATCH --time=00:15:00
+#SBATCH --time=00:30:00
 #SBATCH --account=brics.s5e
 #SBATCH --output=logs/cuda_match_test_%j.out
 #SBATCH --error=logs/cuda_match_test_%j.out
@@ -39,9 +39,14 @@ bash build.sh
 cd "${WORKDIR}"
 echo ""
 
-# Step 2: Run correctness tests + benchmark
-echo "=== Step 2: Correctness tests + Benchmark ==="
+# Step 2: V1 per-match tests
+echo "=== Step 2: V1 per-match correctness + benchmark ==="
 python test_cuda_matching.py
+echo ""
+
+# Step 3: V2 batched scan tests
+echo "=== Step 3: V2 batched scan correctness + benchmark ==="
+python test_cuda_batch.py
 echo ""
 
 echo "=== Done: $(date) ==="
