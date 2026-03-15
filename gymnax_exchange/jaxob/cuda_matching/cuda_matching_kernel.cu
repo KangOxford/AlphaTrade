@@ -151,17 +151,20 @@ __global__ void match_orders_kernel(
 
         if (best_idx == -1) break;  // No matchable orders
 
-        // Execute match
+        // Execute match — match JAX/Triton semantics exactly:
+        //   new_qty = max(0, standing_qty - qtm)
+        //   matched_qty = standing_qty - new_qty
+        //   qtm -= standing_qty  (can go negative, by design)
         int32_t standing_qty = orderside_out[best_idx * ORDER_COLS + COL_QTY];
         int32_t standing_oid = orderside_out[best_idx * ORDER_COLS + COL_OID];
         int32_t standing_tid = orderside_out[best_idx * ORDER_COLS + COL_TID];
 
-        int32_t matched_qty = (qtm < standing_qty) ? qtm : standing_qty;
-        int32_t new_qty = standing_qty - matched_qty;
+        int32_t diff = standing_qty - qtm;
+        int32_t new_qty = (diff > 0) ? diff : 0;
+        int32_t matched_qty = standing_qty - new_qty;
 
         // Update standing order
         if (new_qty <= 0) {
-            // Remove entire order
             for (int c = 0; c < ORDER_COLS; c++) {
                 orderside_out[best_idx * ORDER_COLS + c] = EMPTY_SLOT;
             }
@@ -169,9 +172,10 @@ __global__ void match_orders_kernel(
             orderside_out[best_idx * ORDER_COLS + COL_QTY] = new_qty;
         }
 
-        // Record trade — find first empty slot
+        // Record trade — find first empty slot by checking PRICE column
+        // (not PASS_OID, because OID can legitimately be -1 for init orders)
         for (int t = 0; t < n_trades; t++) {
-            if (trade_out[t * TRADE_COLS + T_PASS_OID] == EMPTY_SLOT) {
+            if (trade_out[t * TRADE_COLS + T_PRICE] == EMPTY_SLOT) {
                 trade_out[t * TRADE_COLS + T_PRICE]    = best_price;
                 trade_out[t * TRADE_COLS + T_QTY]      = -side * matched_qty;
                 trade_out[t * TRADE_COLS + T_PASS_OID] = standing_oid;
@@ -184,7 +188,8 @@ __global__ void match_orders_kernel(
             }
         }
 
-        qtm -= matched_qty;
+        // Subtract FULL standing_qty (can go negative — matches JAX/Triton)
+        qtm -= standing_qty;
     }
 
     qtm_out[0] = qtm;
