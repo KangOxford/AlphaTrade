@@ -209,6 +209,9 @@ __device__ void check_book_fill_asks(int32_t* side_arr, int32_t n_orders) {
 
 
 // ─── Device helper: cancel order (INCLUDE_INITS mode) ────────
+// Matches JAX cancel_order exactly, including the -1 index fallback:
+// When order is not found, JAX's jnp.where returns fill_value=-1,
+// and Python's -1 index modifies the LAST row. We replicate this.
 __device__ void cancel_order(
     int32_t* side_arr,
     int32_t price, int32_t qty, int32_t oid,
@@ -238,13 +241,19 @@ __device__ void cancel_order(
         }
     }
 
-    if (idx == -1) return;  // Order not found, skip
+    // JAX behavior: when idx == -1 (not found), jnp.where returns fill_value=-1
+    // and orderside.at[-1, 1] modifies the LAST row (Python -1 index).
+    // We must replicate this for bit-identical output.
+    if (idx == -1) idx = n_orders - 1;
 
     side_arr[idx * ORDER_COLS + O_QTY] -= qty;
-    // Remove if qty <= 0
-    if (side_arr[idx * ORDER_COLS + O_QTY] <= 0) {
-        for (int c = 0; c < ORDER_COLS; c++)
-            side_arr[idx * ORDER_COLS + c] = EMPTY;
+
+    // removeZeroNegQuant on the ENTIRE array (matches JAX's _removeZeroNegQuant)
+    for (int i = 0; i < n_orders; i++) {
+        if (side_arr[i * ORDER_COLS + O_QTY] <= 0) {
+            for (int c = 0; c < ORDER_COLS; c++)
+                side_arr[i * ORDER_COLS + c] = EMPTY;
+        }
     }
 }
 
