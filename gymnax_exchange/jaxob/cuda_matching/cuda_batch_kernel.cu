@@ -163,6 +163,50 @@ __device__ void removeZeroNegQuant(int32_t* side_arr, int32_t n_orders) {
     }
 }
 
+// ─── Device helper: check_book_fill (matches JAX bid_lim/ask_lim) ──
+// When book is full (no empty slots), remove worst price to make room.
+// For bids: worst = lowest price. For asks: worst = highest price.
+// Runs BEFORE add_order.
+__device__ void check_book_fill_bids(int32_t* side_arr, int32_t n_orders) {
+    bool full = true;
+    for (int i = 0; i < n_orders; i++) {
+        if (side_arr[i * ORDER_COLS + O_PRICE] < 0) { full = false; break; }
+    }
+    if (!full) return;
+
+    int32_t worst = MAXINT;
+    for (int i = 0; i < n_orders; i++) {
+        int32_t p = side_arr[i * ORDER_COLS + O_PRICE];
+        if (p < worst) worst = p;
+    }
+    for (int i = 0; i < n_orders; i++) {
+        if (side_arr[i * ORDER_COLS + O_PRICE] == worst) {
+            for (int c = 0; c < ORDER_COLS; c++)
+                side_arr[i * ORDER_COLS + c] = EMPTY;
+        }
+    }
+}
+
+__device__ void check_book_fill_asks(int32_t* side_arr, int32_t n_orders) {
+    bool full = true;
+    for (int i = 0; i < n_orders; i++) {
+        if (side_arr[i * ORDER_COLS + O_PRICE] < 0) { full = false; break; }
+    }
+    if (!full) return;
+
+    int32_t worst = -1;
+    for (int i = 0; i < n_orders; i++) {
+        int32_t p = side_arr[i * ORDER_COLS + O_PRICE];
+        if (p > worst) worst = p;
+    }
+    for (int i = 0; i < n_orders; i++) {
+        if (side_arr[i * ORDER_COLS + O_PRICE] == worst) {
+            for (int c = 0; c < ORDER_COLS; c++)
+                side_arr[i * ORDER_COLS + c] = EMPTY;
+        }
+    }
+}
+
 
 // ─── Device helper: cancel order (INCLUDE_INITS mode) ────────
 __device__ void cancel_order(
@@ -275,8 +319,8 @@ __global__ void batch_process_messages_kernel(
                 n_orders, n_trades
             );
             if (type != 4) {
-                // Always call add_order + cleanup (matches JAX bid_lim/ask_lim)
-                // add_order caps qty to max(0, qtm); cleanup removes qty<=0 rows
+                // Full ask_lim flow: check_book_fill → add_order → cleanup
+                check_book_fill_asks(asks, n_orders);
                 add_order(asks, price, qtm, oid, tid, time_s, time_ns, n_orders);
                 removeZeroNegQuant(asks, n_orders);
             }
@@ -290,6 +334,8 @@ __global__ void batch_process_messages_kernel(
                 n_orders, n_trades
             );
             if (type != 4) {
+                // Full bid_lim flow: check_book_fill → add_order → cleanup
+                check_book_fill_bids(bids, n_orders);
                 add_order(bids, price, qtm, oid, tid, time_s, time_ns, n_orders);
                 removeZeroNegQuant(bids, n_orders);
             }
