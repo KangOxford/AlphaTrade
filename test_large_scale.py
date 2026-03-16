@@ -71,14 +71,35 @@ def make_msgs(key, n_msgs=500):
 
 
 def build_batch(n_envs, n_orders, n_msgs):
-    """Pre-build batched data for n_envs environments."""
-    key = jax.random.PRNGKey(42)
-    keys = jax.random.split(key, n_envs)
-    asks_b = jnp.stack([make_book(k, n_orders=n_orders, n_filled=60)[0] for k in keys])
-    bids_b = jnp.stack([make_book(k, n_orders=n_orders, n_filled=60)[1] for k in keys])
+    """Pre-build batched data using vectorized JAX ops (no Python loops)."""
+    n_filled = 60
+
+    # Vectorized book generation: tile a single template book across n_envs
+    template_asks = jnp.full((n_orders, 6), -1, dtype=jnp.int32)
+    template_bids = jnp.full((n_orders, 6), -1, dtype=jnp.int32)
+    idxs = jnp.arange(n_filled)
+    ask_prices = 10000 + 100 * (idxs + 1)
+    bid_prices = 10000 - 100 * (idxs + 1)
+    qtys = jnp.full(n_filled, 50, dtype=jnp.int32)
+    ask_oids = -(idxs + 1)
+    bid_oids = -(100 + idxs + 1)
+    tids = jnp.full(n_filled, -2, dtype=jnp.int32)
+    times = jnp.full(n_filled, 34200, dtype=jnp.int32)
+    nss = idxs * 1000
+
+    ask_rows = jnp.stack([ask_prices, qtys, ask_oids, tids, times, nss], axis=1)
+    bid_rows = jnp.stack([bid_prices, qtys, bid_oids, tids, times, nss], axis=1)
+    template_asks = template_asks.at[:n_filled].set(ask_rows)
+    template_bids = template_bids.at[:n_filled].set(bid_rows)
+
+    # Tile across envs
+    asks_b = jnp.tile(template_asks[None, :, :], (n_envs, 1, 1))
+    bids_b = jnp.tile(template_bids[None, :, :], (n_envs, 1, 1))
     trades_b = jnp.full((n_envs, 100, 8), -1, dtype=jnp.int32)
+
+    # Vectorized message generation: vmap make_msgs
     msg_keys = jax.random.split(jax.random.PRNGKey(1), n_envs)
-    msgs_b = jnp.stack([make_msgs(k, n_msgs) for k in msg_keys])
+    msgs_b = jax.vmap(lambda k: make_msgs(k, n_msgs))(msg_keys)
     return keys, asks_b, bids_b, trades_b, msgs_b
 
 
