@@ -97,6 +97,10 @@ def build_batch(n_envs, n_orders, n_msgs):
     bids_b = jnp.tile(template_bids[None, :, :], (n_envs, 1, 1))
     trades_b = jnp.full((n_envs, 100, 8), -1, dtype=jnp.int32)
 
+    # Keys for JAX vmap benchmark
+    key = jax.random.PRNGKey(42)
+    keys = jax.random.split(key, n_envs)
+
     # Vectorized message generation: vmap make_msgs
     msg_keys = jax.random.split(jax.random.PRNGKey(1), n_envs)
     msgs_b = jax.vmap(lambda k: make_msgs(k, n_msgs))(msg_keys)
