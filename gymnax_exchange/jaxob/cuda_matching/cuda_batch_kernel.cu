@@ -100,20 +100,23 @@ __device__ int32_t match_against_orders(
             side_arr[best_idx * ORDER_COLS + O_QTY] = new_qty;
         }
 
-        // Record trade (find by T_PRICE == -1)
+        // Record trade — find first empty slot by T_PRICE == -1
+        // When full, JAX's fill_value=-1 → Python -1 index → overwrites last row
+        int trade_idx = n_trades - 1;  // fallback: last row (matches JAX -1 index)
         for (int t = 0; t < n_trades; t++) {
             if (trade_arr[t * TRADE_COLS + T_PRICE] == EMPTY) {
-                trade_arr[t * TRADE_COLS + T_PRICE] = best_price;
-                trade_arr[t * TRADE_COLS + T_QTY]   = -side * matched;
-                trade_arr[t * TRADE_COLS + T_POID]  = s_oid;
-                trade_arr[t * TRADE_COLS + T_AOID]  = agr_oid;
-                trade_arr[t * TRADE_COLS + T_TIME]  = time_s;
-                trade_arr[t * TRADE_COLS + T_TNS]   = time_ns;
-                trade_arr[t * TRADE_COLS + T_PTID]  = s_tid;
-                trade_arr[t * TRADE_COLS + T_ATID]  = agr_tid;
+                trade_idx = t;
                 break;
             }
         }
+        trade_arr[trade_idx * TRADE_COLS + T_PRICE] = best_price;
+        trade_arr[trade_idx * TRADE_COLS + T_QTY]   = -side * matched;
+        trade_arr[trade_idx * TRADE_COLS + T_POID]  = s_oid;
+        trade_arr[trade_idx * TRADE_COLS + T_AOID]  = agr_oid;
+        trade_arr[trade_idx * TRADE_COLS + T_TIME]  = time_s;
+        trade_arr[trade_idx * TRADE_COLS + T_TNS]   = time_ns;
+        trade_arr[trade_idx * TRADE_COLS + T_PTID]  = s_tid;
+        trade_arr[trade_idx * TRADE_COLS + T_ATID]  = agr_tid;
 
         qtm -= sq;  // subtract full standing qty (can go negative)
     }

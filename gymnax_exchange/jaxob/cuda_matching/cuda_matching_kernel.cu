@@ -172,21 +172,23 @@ __global__ void match_orders_kernel(
             orderside_out[best_idx * ORDER_COLS + COL_QTY] = new_qty;
         }
 
-        // Record trade — find first empty slot by checking PRICE column
-        // (not PASS_OID, because OID can legitimately be -1 for init orders)
+        // Record trade — find first empty slot (T_PRICE == -1)
+        // When full, fallback to last row (matches JAX's -1 index behavior)
+        int trade_idx = n_trades - 1;
         for (int t = 0; t < n_trades; t++) {
             if (trade_out[t * TRADE_COLS + T_PRICE] == EMPTY_SLOT) {
-                trade_out[t * TRADE_COLS + T_PRICE]    = best_price;
-                trade_out[t * TRADE_COLS + T_QTY]      = -side * matched_qty;
-                trade_out[t * TRADE_COLS + T_PASS_OID] = standing_oid;
-                trade_out[t * TRADE_COLS + T_AGR_OID]  = agr_oid;
-                trade_out[t * TRADE_COLS + T_TIME]     = time_s;
-                trade_out[t * TRADE_COLS + T_TNS]      = time_ns;
-                trade_out[t * TRADE_COLS + T_PASS_TID] = standing_tid;
-                trade_out[t * TRADE_COLS + T_AGR_TID]  = agr_tid;
+                trade_idx = t;
                 break;
             }
         }
+        trade_out[trade_idx * TRADE_COLS + T_PRICE]    = best_price;
+        trade_out[trade_idx * TRADE_COLS + T_QTY]      = -side * matched_qty;
+        trade_out[trade_idx * TRADE_COLS + T_PASS_OID] = standing_oid;
+        trade_out[trade_idx * TRADE_COLS + T_AGR_OID]  = agr_oid;
+        trade_out[trade_idx * TRADE_COLS + T_TIME]     = time_s;
+        trade_out[trade_idx * TRADE_COLS + T_TNS]      = time_ns;
+        trade_out[trade_idx * TRADE_COLS + T_PASS_TID] = standing_tid;
+        trade_out[trade_idx * TRADE_COLS + T_AGR_TID]  = agr_tid;
 
         // Subtract FULL standing_qty (can go negative — matches JAX/Triton)
         qtm -= standing_qty;
